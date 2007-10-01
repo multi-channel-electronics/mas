@@ -327,11 +327,11 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 		dsp_pci_remove_handler(pci);
 	
 #ifdef REALTIME
-	PRINT_ERR(SUBNAME "request REALTIME irq %#x\n", new_irq);
-	rt_disable_irq(new_irq);
-	err = rt_request_global_irq(new_irq, (void*)handler);
+	PRINT_ERR(SUBNAME "request REALTIME irq %#x\n", pci->irq);
+	rt_disable_irq(pci->irq);
+	err = rt_request_global_irq(pci->irq, (void*)handler);
 #else
-	PRINT_INFO(SUBNAME "requesting irq %#x\n", new_irq);
+	PRINT_INFO(SUBNAME "requesting irq %#x\n", pci->irq);
 	err = request_irq(pci->irq, handler, IRQ_FLAGS, dev_name, dev);
 #endif
 
