@@ -1,0 +1,35 @@
+ifeq ($(DEBUG),y)
+  MY_CFLAGS += -O -g -D_DEBUG
+else
+  MY_CFLAGS += -O2
+endif
+
+KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+
+ifeq ($(KERNELRELEASE),) # we are in the source folder
+
+modules:
+	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) modules
+
+else # we are in the kernel source tree
+
+#Add our CFLAGS to existing ones.  Don't replace CFLAGS.
+
+CFLAGS += $(MY_CFLAGS) $(INCLUDES) $(DEFS) $(LIBS)
+
+$(DRIVER_NAME)-objs := $(SOURCE_OBJ)
+
+obj-m	:= $(DRIVER_NAME).o
+
+endif #KERNELRELEASE
+
+
+depend .depend dep:
+	$(CC) $(CFLAGS) -M *.c > .depend
+
+ifeq (.depend,$(wildcard .depend))
+include .depend
+endif
+
+kversion_clean:
+	-rm $(DRIVER_NAME).ko

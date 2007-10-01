@@ -1,0 +1,10 @@
+<asm/uaccess.h>
+ copy_to_user
+ copy_from_user
+
+<linux/slab.h>
+ GFP_KERNEL
+
+<linux/dma-mapping.h>
+ dma_alloc_coherent / dma_free_coherent
+

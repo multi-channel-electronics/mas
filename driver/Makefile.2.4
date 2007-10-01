@@ -1,0 +1,19 @@
+CC	:= gcc
+
+KERNEL_DIR ?= /usr/src/linux
+
+INCLUDES += -I${KERNEL_DIR}/include
+
+CFLAGS	:= -O2 -DMODULE -D__KERNEL__ -DLINUX -Wall \
+	-Wstrict-prototypes  $(DEFS) $(INCLUDES) $(MY_CFLAGS)
+
+default: $(DRIVER_NAME).o
+
+$(DRIVER_NAME).o: $(SOURCE_OBJ)
+	ld -r $(SOURCE_OBJ) -o $@
+
+depend:
+	makedepend -- $(CFLAGS) -- $(SOURCE)
+
+kversion_clean:
+

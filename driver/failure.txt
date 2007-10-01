@@ -1,0 +1,72 @@
+Goal: outline how to handle various failure modes, and determine the
+level of seizure associated with each one and what messages should be
+sent or flags set.
+
+
+ dsp_driver.c
+--------------
+
+Essentially we call dsp_send_command with a callback.  If
+dsp_send_command fails, it returns <0.  If it succeeds, but the
+response fails (timeout??) the callback should be called with the
+error argument non-zero.
+
+
+ mce_data.c
+------------
+
+Circular buffer management: running out of buffers should cause
+complaint but not seizure.  Dropped frames will be obvious in the data
+stream anyway, so no big deal.
+
+
+ mce_driver.c
+--------------
+
+Flow:
+  mce_send_command with callback:
+  fails on:
+   - can't get sem
+   - non-trivial flags
+   - dsp_send_command fails
+   - dsp_send_command reply is not REP
+   - dsp_send_command reply is not ACK
+
+  next failure opportunity is in NFY handler, which fails when:
+   - notification is not NFY (as if)
+   - dsp_send_command (HST) fails
+   - heh, doesn't check for REP/ACK
+
+  next failure opportunity is in HST callback handler, which fails when:
+   - flags inconsistent
+
+  Things that can time-out: the whole process; timing out individual
+  parts is a pain.  We can't use wait-event, since this requires a
+  waiter, we must have kernel timer and call-back that sets a timeout
+  flag and awakens any waiters.
+
+  "Unsolicited" errors have to be logged somewhere.  Maybe we need to
+  add an error driver that can hold and expose such things.  Not a bad
+  idea to have a single place to track and count diverse kinds of
+  errors.
+
+  This suggests a model like: - all errors are passed to a log driver
+  after being processed internally to any extent necessary
+  (i.e. waking up a waiting process).
+
+  mce_command must pass an error code with the callback, this allows
+  the caller to awaken things intelligently.
+
+Highest level:
+  a) command cannot be sent
+  b) command is sent, no reply is received (including timeout)
+  c) unsolicited reply is received
+
+a: - dsp_command is rejected
+
+Possible errors:
+ - command format
+ - command ER
+ - timed-out commands
+ - unsolicited replies
+ - 

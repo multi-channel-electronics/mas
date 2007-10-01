@@ -1,0 +1,2 @@
+Ubuntu: install the linux-headers package for your kernel version.
+This goes into /usr/src/linux-headers-#.#..., so link this to /usr/src/linux
