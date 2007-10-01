@@ -10,15 +10,14 @@ BIGPHYS    ?= 0
 
 # Special directories - must be ?= or they get overwritten
 PWD ?= $(shell pwd)/
-FAKEMCE_DIR ?= ../fake_mce/
-# RTAI_DIR  ?= /usr/src/rtai/rtai-3.2/base/
+FAKEMCE_DIR ?= fake_mce/
 RTAI_DIR   ?= /usr/src/rtai
 
 
 # Compilation options - don't trash CFLAGS, everything breaks.
 
 DEFS = 
-INCLUDES = -I$(PWD)
+INCLUDES = -I$(PWD) -I$(PWD)/../include
 LIBS = 
 MY_CFLAGS = -Wall
 
