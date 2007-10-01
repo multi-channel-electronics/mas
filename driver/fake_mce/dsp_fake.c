@@ -34,7 +34,7 @@
 #include "dsp_fake.h"
 #include "dsp_state.h"
 #include "mce_fake.h"
-
+#include <dsp_ioctl.h>
 
 #define SUBNAME "fake_int_handler: "
 
@@ -166,6 +166,31 @@ int dsp_fake_cleanup()
 {
 	mce_fake_cleanup();
 	dsp_state_cleanup();
+
+	return 0;
+}
+
+#define SUBNAME "dsp_fake_ioctl: "
+
+int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg)
+{
+	switch (iocmd) {
+	case DSPDEV_IOCT_CORE:
+		
+		PRINT_IOCT(SUBNAME "Fake_DSP doesn't have registers!\n");
+		
+		break;
+
+	case DSPDEV_IOCT_CORE_IRQ:
+
+		PRINT_IOCT(SUBNAME "Fake_DSP can't dis/enable irq!\n");
+
+		break;
+
+	default:
+		PRINT_ERR(SUBNAME "I don't handle iocmd=%ui\n", iocmd);
+		return -1;
+	}
 
 	return 0;
 }

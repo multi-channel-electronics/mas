@@ -24,4 +24,6 @@ void  dsp_free_dma(void* buffer, int size, unsigned int bus_addr);
 
 int fake_int_handler(dsp_message *msg);
 
+int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg);
+
 #endif

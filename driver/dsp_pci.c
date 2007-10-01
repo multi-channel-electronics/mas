@@ -28,7 +28,7 @@
 
 #include "dsp_pci.h"
 #include "dsp_driver.h"
-#include "dsp_ioctl.h"
+#include <dsp_ioctl.h>
 
 struct dsp_dev_t dsp_dev;
 struct dsp_dev_t *dev = &dsp_dev;

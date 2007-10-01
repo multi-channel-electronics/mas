@@ -250,9 +250,15 @@ int data_refile_make_filename(datafile_t *f, int frame)
 
 int data_refile_increment(datafile_t *f, int frame)
 {
-	f->frames_next = ( (frame / f->frames_max) + 1) * f->frames_max;
-	f->index = (frame / f->frames_max);
+	switch (f->mode) {
+	case FMODE_SERIES:
+	case FMODE_FRAME:
 
+		f->frames_next = ( (frame / f->frames_max) + 1) *
+			f->frames_max;
+		f->index = (frame / f->frames_max);
+
+	}
 	return 0;
 }
 
@@ -291,16 +297,20 @@ int data_refile_start(datafile_t *f, int seq_first)
 
 	// Sanity checks on file mode and switch interval
 	switch (f->mode) {
+
 	case FMODE_SINGLE:
-	case FMODE_SERIES:
-	case FMODE_FRAME:
 	case FMODE_CTIME:
 		break;
+
+	case FMODE_SERIES:
+	case FMODE_FRAME:
+		if (f->frames_max < 1) return -1;
+		break;
+
 	default:
 		return -1;
 	}
 
-	if (f->frames_max < 1) return -1;
 	data_refile_increment(f, seq_first);
 
 	int err = data_refile_make_filename(f, seq_first);
