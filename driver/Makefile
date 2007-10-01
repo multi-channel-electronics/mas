@@ -3,7 +3,7 @@ DRIVER_NAME ?= mce_dsp
 
 # Module configuration options, set to 0 or 1.
 
-FAKEMCE    ?= 1
+FAKEMCE    ?= 0
 REALTIME   ?= 0
 BIGPHYS    ?= 0
 
