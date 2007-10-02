@@ -90,15 +90,33 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 
 	switch (dsp_ops.state) {
 	case OPS_IDLE:
-	case OPS_CMD:
 	case OPS_ERR:
-		ret_val = -EAGAIN;
+		ret_val = 0;
 		goto out;
-	
+		
+	case OPS_CMD:
+		if (filp->f_flags & O_NONBLOCK) {
+			ret_val = -EAGAIN;
+			goto out;
+		}
+
+		if (wait_event_interruptible(dsp_ops.queue,
+					     dsp_ops.state != OPS_CMD)) {
+			ret_val = -ERESTARTSYS;
+			goto out;
+		}
+
+		if ( dsp_ops.state != OPS_REP ) {
+			PRINT_INFO(SUBNAME "awoke in unexpected state=%#x\n",
+				   dsp_ops.state);
+			ret_val = -ERESTARTSYS;
+			goto out;
+		}
+		break;
+		
 	case OPS_REP:
 		break;
 	}
-
 
 /* 	/\* Blocking version *\/ */
 /* 	if (wait_event_interruptible(dsp_ops.queue, */
