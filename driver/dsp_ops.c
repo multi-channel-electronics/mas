@@ -22,6 +22,13 @@
 #include "dsp_driver.h"
 #include "dsp_ioctl.h"
 
+typedef enum {
+	OPS_IDLE = 0,
+	OPS_CMD,
+	OPS_REP,
+	OPS_ERR
+} dsp_ops_state_t;
+
 
 struct dsp_ops_t {
 
@@ -32,10 +39,12 @@ struct dsp_ops_t {
 
 	int error;
 
-	int flags;
-#define   OPS_COMMANDED 0x1
-#define   OPS_REPLIED   0x2
-#define   OPS_ERROR     0x4
+	dsp_ops_state_t state;
+
+/* 	int flags; */
+/* #define   OPS_COMMANDED 0x1 */
+/* #define   OPS_REPLIED   0x2 */
+/* #define   OPS_ERROR     0x4 */
 
 	dsp_message msg;
 	dsp_command cmd;
@@ -70,40 +79,41 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
 	int read_count = 0;
+	int ret_val = 0;
 	int err = 0;
 
-	PRINT_INFO(SUBNAME "flags=%#x\n", dsp_ops.flags);
+	PRINT_INFO(SUBNAME "state=%#x\n", dsp_ops.state);
 	
 	if (down_interruptible(&dsp_ops.sem)) {
 		return -ERESTARTSYS;
 	}
 
-	if (dsp_ops.flags & OPS_ERROR) {
-		PRINT_INFO(SUBNAME "ops error, exiting\n");
-		dsp_ops.error = -DSP_ERR_ERRORS;
+	switch (dsp_ops.state) {
+	case OPS_IDLE:
+	case OPS_CMD:
+	case OPS_ERR:
+		ret_val = -EAGAIN;
 		goto out;
-	}
-   
-	if (!dsp_ops.flags & OPS_COMMANDED) {
-		PRINT_INFO(SUBNAME "not awaiting reply\n");
-		dsp_ops.error = -DSP_ERR_COMMAND;
-		goto out;
+	
+	case OPS_REP:
+		break;
 	}
 
-	/* Blocking version */
-	if (wait_event_interruptible(dsp_ops.queue,
-				     dsp_ops.flags & (OPS_REPLIED | 
-						      OPS_ERROR))) {
-		PRINT_INFO(SUBNAME "interrupted\n");
-		read_count = -ERESTARTSYS;
-		goto out;
-	}
-	/* Non blocking version wouldn't do that :) */
+
+/* 	/\* Blocking version *\/ */
+/* 	if (wait_event_interruptible(dsp_ops.queue, */
+/* 				     dsp_ops.flags & (OPS_REPLIED |  */
+/* 						      OPS_ERROR))) { */
+/* 		PRINT_INFO(SUBNAME "interrupted\n"); */
+/* 		read_count = -ERESTARTSYS; */
+/* 		goto out; */
+/* 	} */
+/* 	/\* Non blocking version wouldn't do that :) *\/ */
 	
-	if ( !(dsp_ops.flags & OPS_REPLIED) ) {
-		PRINT_INFO(SUBNAME "awoke with errors\n");
-		goto out;
-	}
+/* 	if ( !(dsp_ops.flags & OPS_REPLIED) ) { */
+/* 		PRINT_INFO(SUBNAME "awoke with errors\n"); */
+/* 		goto out; */
+/* 	} */
 
 	read_count = sizeof(dsp_ops.msg);
 	if (read_count > count) read_count = count;
@@ -113,16 +123,15 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 	if (err) {
 		PRINT_ERR(SUBNAME "could not copy %#x bytes to user\n",
 			  err );
-		dsp_ops.error = DSP_ERR_SYSTEM;
 	}
-
-	dsp_ops.flags &= OPS_ERROR; //~(OPS_COMMANDED | OPS_REPLIED);
+	dsp_ops.state = OPS_IDLE;
+	ret_val = read_count;
 
  out:
-	PRINT_INFO(SUBNAME "exiting (%i)\n", read_count);
+	PRINT_INFO(SUBNAME "exiting (ret_val=%i)\n", ret_val);
 
 	up(&dsp_ops.sem);
-	return read_count;
+	return ret_val;
 }
 
 #undef SUBNAME
@@ -147,21 +156,24 @@ int dsp_write_callback( int error, dsp_message* msg );
 ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
-	int write_bytes = 0;
+	int ret_val = 0;
 
-	PRINT_INFO("write: comm_flags=%#x\n", dsp_ops.flags);
+	PRINT_INFO("write: state=%#x\n", dsp_ops.state);
 
 	if (down_interruptible(&dsp_ops.sem))
 		return -ERESTARTSYS;
 
-	if (dsp_ops.flags & OPS_COMMANDED) {
-		dsp_ops.flags |= OPS_ERROR;
-		dsp_ops.error = DSP_ERR_COMMAND;
-		goto out;
-	}
+	switch (dsp_ops.state) {
+	case OPS_IDLE:
+		break;
 
-	if (dsp_ops.flags & OPS_ERROR) {
-		dsp_ops.error = DSP_ERR_ERRORS;
+	case OPS_CMD:
+	case OPS_REP:
+		ret_val = -EAGAIN;
+		goto out;
+
+	default:
+		ret_val = -EIO;
 		goto out;
 	}
 
@@ -169,42 +181,29 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
   
 	if (count != sizeof(dsp_ops.cmd)) {
 		PRINT_ERR(SUBNAME "count != sizeof(dsp_command)\n");
-		dsp_ops.error = DSP_ERR_FORMAT;
+		ret_val = -EPROTO;
 		goto out;
 	}
 
 	if (copy_from_user(&dsp_ops.cmd, buf, sizeof(dsp_ops.cmd))) {
 		PRINT_ERR(SUBNAME "copy_from_user incomplete\n");
-		dsp_ops.error = DSP_ERR_SYSTEM;
+		ret_val = -EIO;
 		goto out;
 	}
 
-	/* BLOCKING VERSION */
-        /*
-	  if (dsp_send_command_wait(&dsp_ops.cmd, &dsp_ops.msg)) {
-	  dsp_ops.flags |= OPS_ERROR;
-	  goto out;
-	  }
-	  dsp_ops.flags |= OPS_COMMANDED | OPS_REPLIED;
-	  write_bytes = count;
-	*/
-	/* END */
-
-	/* NON-BLOCKING VERSION*/
 	if (dsp_send_command(&dsp_ops.cmd, dsp_write_callback)) {
-		dsp_ops.flags |= OPS_ERROR;
-		dsp_ops.error = DSP_ERR_IO;
+		PRINT_ERR(SUBNAME "dsp_send_command failed\n");
+		ret_val = -EIO;
 		goto out;
 	}
-	dsp_ops.flags |= OPS_COMMANDED;
-	write_bytes = count;
-	/* END */
+
+	dsp_ops.state = OPS_CMD;
+	ret_val = count;
 
  out:
 	up(&dsp_ops.sem);
 
-	if (write_bytes==0) return -EPROTOTYPE;
-	return write_bytes;
+	return ret_val;
 }
 
 #undef SUBNAME
@@ -221,17 +220,15 @@ int dsp_write_callback( int error, dsp_message* msg ) {
 	
 	wake_up_interruptible(&dsp_ops.queue);
 
-	if (dsp_ops.flags != OPS_COMMANDED) {
-		PRINT_ERR("dsp_write_callback: flags in "
-			  "unexpected state, %#x\n", dsp_ops.flags);
-		dsp_ops.flags |= OPS_ERROR;
-		dsp_ops.error = DSP_ERR_FLAGS;
+	if (dsp_ops.state != OPS_CMD) {
+		PRINT_ERR("dsp_write_callback: state is %#x, expected %#x\n",
+			  dsp_ops.state, OPS_CMD);
 		return -1;
 	}			  
 
 	PRINT_INFO("dsp_write_callback: type=%#x\n", msg->type);
 	memcpy(&dsp_ops.msg, msg, sizeof(dsp_ops.msg));
-	dsp_ops.flags |= OPS_REPLIED;
+	dsp_ops.state = OPS_REP;
 
 	return 0;
 }
@@ -248,7 +245,7 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 		if (down_interruptible(&dsp_ops.sem)) {
 			return -ERESTARTSYS;
 		}
-		dsp_ops.flags = 0;
+		dsp_ops.state = OPS_IDLE;
 		dsp_ops.error = 0;
 
 		up(&dsp_ops.sem);
