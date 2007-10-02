@@ -93,5 +93,7 @@ fault:
 	@echo Unknown kernel version $(TARGET_KERNEL) : $(KVER)
 
 clean: kversion_clean
-	-rm -rf *.o *~ core .depend .*.cmd *.mod.c .tmp_versions
-	-rm $(FAKEMCE_DIR)/*.o
+	-rm -rf *.o *~ core .depend .*.cmd *.mod.c .tmp_versions Modules.symvers
+ifeq ($(FAKEMCE),1)
+	make -C $(FAKEMCE_DIR) clean
+endif #FAKEMCE=1
