@@ -267,9 +267,14 @@ int data_refile_increment(datafile_t *f, int frame)
 
 int data_refile_criterion(datafile_t *f, int frame)
 {
-	if (f->mode == FMODE_SINGLE) return 0;
+	switch (f->mode) {
 
-	return (frame >= f->frames_next);
+	case FMODE_SERIES:
+	case FMODE_FRAME:
+		return (frame >= f->frames_next);
+
+	}
+	return 0;
 }
 
 int data_refile_now(datafile_t *f, int frame)

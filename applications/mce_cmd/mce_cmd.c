@@ -36,9 +36,13 @@ struct cmd_str {
 	int  format;
 };
 
-#define NCOM 7
+// fine NCOM 7
 
-struct cmd_str commands[NCOM] = {
+struct cmd_str commands[] = {
+	{"rb",     MCE_RB, 0, 0, FMT_HEX},
+	{"rb_hex", MCE_RB, 0, 0, FMT_HEX},
+	{"rb_dec", MCE_RB, 0, 0, FMT_DEC},
+	{"wb",     MCE_WB, 0, 0, FMT_HEX},
 	{"r",      MCE_RB, 0, 0, FMT_HEX},
 	{"r_hex",  MCE_RB, 0, 0, FMT_HEX},
 	{"r_dec",  MCE_RB, 0, 0, FMT_DEC},
@@ -46,6 +50,7 @@ struct cmd_str commands[NCOM] = {
 	{"go",     MCE_GO, 0, 0, FMT_HEX},
 	{"stop",   MCE_ST, 0, 0, FMT_HEX},
 	{"reset",  MCE_RS, 0, 0, FMT_HEX},
+	{"",       0     , 0, 0, FMT_HEX},
 };
 
 struct spec_str {
@@ -53,20 +58,22 @@ struct spec_str {
 	int  id;
 };
 
-#define SPECIAL_CLEAR          0
-#define SPECIAL_FAKESTOP       1
-#define SPECIAL_EMPTY          2
-#define SPECIAL_SLEEP          3
-#define SPECIAL_FRAME          4
+enum { SPECIAL_HELP,
+       SPECIAL_CLEAR,
+       SPECIAL_FAKESTOP,
+       SPECIAL_EMPTY,
+       SPECIAL_SLEEP,
+       SPECIAL_FRAME
+};   
 
-#define NSPEC 5
-
-struct spec_str specials[NSPEC] = {
-	{"CLEAR_FLAGS", SPECIAL_CLEAR},
-	{"FRAME_SIZE", SPECIAL_FRAME},
-	{"FAKE_STOP", SPECIAL_FAKESTOP},
-	{"EMPTY", SPECIAL_EMPTY},
-	{"SLEEP", SPECIAL_SLEEP}
+struct spec_str specials[] = {
+	{"help", SPECIAL_HELP},
+	{"clear_flags", SPECIAL_CLEAR},
+	{"frame_size", SPECIAL_FRAME},
+	{"fake_stop", SPECIAL_FAKESTOP},
+	{"empty", SPECIAL_EMPTY},
+	{"sleep", SPECIAL_SLEEP},
+	{"", -1}
 };
 
 
@@ -96,6 +103,8 @@ int special_key(char *name);
 
 int process_options(int argc, char **argv);
 void init_options(void);
+
+char *lowify(char *src);
 
 int main(int argc, char **argv)
 {
@@ -264,15 +273,16 @@ int process_options(int argc, char **argv) {
 
 int command_key(char *name) {
 	int i;
-	for (i=0; i<NCOM; i++)
+	for (i=0; commands[i].name[0]!=0; i++)
 		if ( strcmp(commands[i].name, name)==0) return i;
 	return -1;
 }
 
 int special_key(char *name) {
 	int i;
-	for (i=0; i<NSPEC; i++)
-		if ( strcmp(specials[i].name, name)==0) return i;
+	for (i=0; specials[i].id >= 0; i++)
+		if ( strcmp(specials[i].name, name)==0) 
+			return specials[i].id;
 	return -1;
 }
 
@@ -464,8 +474,16 @@ int process_special(int key) {
 	int ret_val = 0;
 	int a;
 	char *nextword = strtok(NULL, WHITE);
+	char *s;
 
-	switch(specials[key].id) {
+	switch(key) {
+
+	case SPECIAL_HELP:
+		s = errstr + sprintf(errstr, "Special commands:\n");
+		for (a=0; specials[a].name[0]!=0; a++)
+			s += sprintf(s, "%s\n", specials[a].name);
+		ret_val = 0;
+		break;
 
 /* 	case SPECIAL_CLEAR: */
 /* 		ret_val = mce_reset(handle, card_id, para_id); */
@@ -506,3 +524,10 @@ int process_special(int key) {
 	return ret_val;
 }
 
+char *lowify(char *src)
+{
+	char *s = src;
+	while (*s != 0)
+		*(s++) = toupper(*s);
+	return src;
+}
