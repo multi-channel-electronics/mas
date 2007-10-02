@@ -163,7 +163,7 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector)
        
 	// HSTR must be ready to receive
 	if ( !(dsp_read_hstr(dev->dsp) & HSTR_TRDY) ) {
-		PRINT_ERR(SUBNAME "HSTR not ready to recieve!\n");
+		PRINT_ERR(SUBNAME "HSTR not ready to transmit!\n");
 		return -1;
 	}
 
