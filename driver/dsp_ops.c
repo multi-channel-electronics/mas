@@ -85,59 +85,42 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 	PRINT_INFO(SUBNAME "state=%#x\n", dsp_ops.state);
 
 	if (filp->f_flags & O_NONBLOCK) {
-
-		// Non-blocking
-
-		if (down_trylock(&dsp_ops.sem)) {
+		if (down_trylock(&dsp_ops.sem))
 			return -EAGAIN;
-		}
+	} else {
+		if (down_interruptible(&dsp_ops.sem))
+			return -ERESTARTSYS;
+	}		
 
-		switch (dsp_ops.state) {
-		case OPS_IDLE:
-		case OPS_ERR:
-			ret_val = 0;
-			goto out;
-		
-		case OPS_CMD:
+	switch (dsp_ops.state) {
+	case OPS_CMD:
+		if (filp->f_flags & O_NONBLOCK) {
 			ret_val = -EAGAIN;
 			goto out;
-			
-		case OPS_REP:
-			break;
-		}
+		} 
 
-	} else {
-		
-		if (down_interruptible(&dsp_ops.sem)) {
-			return -ERESTARTSYS;
-		}
-		
-		switch (dsp_ops.state) {
-		case OPS_IDLE:
-		case OPS_ERR:
-			ret_val = 0;
+		if (wait_event_interruptible(dsp_ops.queue,
+					     dsp_ops.state != OPS_CMD)) {
+			ret_val = -ERESTARTSYS;
 			goto out;
-		
-		case OPS_CMD:
-			if (wait_event_interruptible(dsp_ops.queue,
-						     dsp_ops.state != OPS_CMD)) {
-				ret_val = -ERESTARTSYS;
-				goto out;
-			}
-
-			if ( dsp_ops.state != OPS_REP ) {
-				PRINT_INFO(SUBNAME "awoke in unexpected state=%#x\n",
-					   dsp_ops.state);
-				ret_val = -ERESTARTSYS;
-				goto out;
-			}
-			break;
-			
-		case OPS_REP:
-			break;
 		}
-	}
 
+		if ( dsp_ops.state != OPS_REP ) {
+			PRINT_INFO(SUBNAME "awoke in unexpected state=%#x\n",
+				   dsp_ops.state);
+			ret_val = -ERESTARTSYS;
+			goto out;
+		}
+		break;
+		
+	case OPS_REP:
+		break;
+
+	default:
+		ret_val = 0;
+		goto out;
+	}
+	
 	read_count = sizeof(dsp_ops.msg);
 	if (read_count > count) read_count = count;
 
@@ -183,8 +166,13 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 
 	PRINT_INFO("write: state=%#x\n", dsp_ops.state);
 
-	if (down_interruptible(&dsp_ops.sem))
-		return -ERESTARTSYS;
+	if (filp->f_flags & O_NONBLOCK) {
+		if (down_trylock(&dsp_ops.sem))
+			return -EAGAIN;
+	} else {
+		if (down_interruptible(&dsp_ops.sem))
+			return -ERESTARTSYS;
+	}		
 
 	switch (dsp_ops.state) {
 	case OPS_IDLE:
@@ -192,11 +180,11 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 
 	case OPS_CMD:
 	case OPS_REP:
-		ret_val = -EAGAIN;
+		ret_val = -EBUSY;
 		goto out;
 
 	default:
-		ret_val = -EIO;
+		ret_val = -EBADRQC;
 		goto out;
 	}
 

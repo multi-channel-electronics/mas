@@ -139,27 +139,6 @@ int dsp_int_handler(dsp_message *msg)
 		return -1;
 	}
 
-
-/* 	if ((dsp_message_code)msg->type != DSP_REP) { */
-/* 		PRINT_ERR(SUBNAME "called with wrong message type!\n"); */
-/* 		return -1; */
-/* 	} */
-
-/* 	if (!ddat.flags & DDAT_CMD) { */
-/* 		PRINT_ERR(SUBNAME "unsolicited REP received.\n"); */
-/* 		return -1; */
-/* 	} */
-
-/* 	PRINT_INFO(SUBNAME "REP accepted\n"); */
-/* 	ddat.flags &= ~DDAT_CMD; */
-	
-/* 	// Call the registered callbacks */
-/* 	if (ddat.callback != NULL) { */
-/* 		ddat.callback(0, msg); */
-/* 	} else { */
-/* 		PRINT_ERR(SUBNAME "no handler defined\n"); */
-/* 	} */
-
 	return 0;
 }
 
@@ -239,15 +218,13 @@ int dsp_send_command(dsp_command *cmd,
 		
 	ddat.callback = callback;
 	ddat.state = DDAT_CMD;
-/* 	ddat.flags |= DDAT_CMD; */
 
 	if ( (err = dsp_send_command_now(cmd)) ) {
 		ddat.callback = NULL;
 		ddat.state = DDAT_IDLE;
-/* 		ddat.flags &= ~DDAT_CMD; */
 	}
 
- up_and_out:
+up_and_out:
 	up(&ddat.sem);
 	return err;
 }
