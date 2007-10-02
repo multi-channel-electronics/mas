@@ -36,10 +36,10 @@ struct mce_ops_t {
 
 	mce_ops_state_t state;
 
-	int flags;
-#define   OPS_COMMANDED  0x1
-#define   OPS_REPLIED    0x2
-#define   OPS_ERROR      0x8
+/* 	int flags; */
+/* #define   OPS_COMMANDED  0x1 */
+/* #define   OPS_REPLIED    0x2 */
+/* #define   OPS_ERROR      0x8 */
 
 	mce_reply   rep;
 	mce_command cmd;
@@ -71,130 +71,81 @@ OPS_REPLIED indicates that a reply has been received.  It is set by
 ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
-	int read_count = 0;
 	int err = 0;
-	int last_flags = 0;
+	int ret_val = 0;
 
-	PRINT_INFO(SUBNAME "flags=%#x\n", mce_ops.flags);
+	PRINT_INFO(SUBNAME "state=%#x\n", mce_ops.state);
 
-	// Separate blocking/non-blocking to get to the point where a
-	// reply can be copied.
-	
 	if (filp->f_flags & O_NONBLOCK) {
-		// Non-blocking code must copy reply immediately
 
-		PRINT_INFO(SUBNAME "non-blocking call\n");
+		// Non-blocking
 
-		if (down_trylock(&mce_ops.sem))
+		if (down_trylock(&mce_ops.sem)) {
 			return -EAGAIN;
-
-		if (mce_ops.flags & OPS_ERROR) {
-			mce_ops.flags = 0;
-			goto out;
 		}
-		
-		if ( !(mce_ops.flags & OPS_COMMANDED) )
-			goto out;
 
-		if ( !(mce_ops.flags & OPS_REPLIED) ) {
-			read_count = -EAGAIN;
+		switch (mce_ops.state) {
+		case OPS_IDLE:
+		case OPS_ERR:
+			ret_val = 0;
 			goto out;
-		}
 		
+		case OPS_CMD:
+			ret_val = -EAGAIN;
+			goto out;
+			
+		case OPS_REP:
+			break;
+		}
+
 	} else {
-                //Blocking, wait for reply if command has been sent.
-
-		PRINT_INFO(SUBNAME "blocking call\n");
-
-		if (down_interruptible(&mce_ops.sem))
+		
+		if (down_interruptible(&mce_ops.sem)) {
 			return -ERESTARTSYS;
-		last_flags = mce_ops.flags;
-		barrier();
-
-		// Loop exits cleanly on REPLY, escapes if necessary
-
-		while ( !(last_flags & OPS_REPLIED) ) {
-
-			// With sem held, check error and commanded flags.
-
-			if (last_flags & OPS_ERROR) {
-				mce_ops.flags = 0;
-				goto out;
-			}
-
-			if ( !(last_flags & OPS_COMMANDED) )
-				goto out;
-			
-			up(&mce_ops.sem);
-
-			PRINT_INFO(SUBNAME "sleeping with flags=%x\n", last_flags);
-			
+		}
+		
+		switch (mce_ops.state) {
+		case OPS_IDLE:
+		case OPS_ERR:
+			ret_val = 0;
+			goto out;
+		
+		case OPS_CMD:
 			if (wait_event_interruptible(mce_ops.queue,
-						     mce_ops.flags != last_flags)) {
-				PRINT_INFO(SUBNAME "interrupted\n");
-				read_count = -ERESTARTSYS;
+						     mce_ops.state != OPS_CMD)) {
+				ret_val = -ERESTARTSYS;
 				goto out;
 			}
 
-			PRINT_INFO(SUBNAME "waking with flags=%x\n", mce_ops.flags);
+			if ( mce_ops.state != OPS_REP ) {
+				PRINT_INFO(SUBNAME "awoke in unexpected state=%#x\n",
+					   mce_ops.state);
+				ret_val = -ERESTARTSYS;
+				goto out;
+			}
+			break;
 			
-			if (down_interruptible(&mce_ops.sem))
-				return -ERESTARTSYS;
-
-			last_flags = mce_ops.flags;
-			barrier();
+		case OPS_REP:
+			break;
 		}
 	}
 
-/* 	if (mce_ops.flags & OPS_ERROR) { */
-/* 		PRINT_INFO(SUBNAME "ops error, clearing and exiting\n"); */
-/* 		mce_ops.flags = 0; */
-/* 		goto out; */
-/* 	} */
+	ret_val = sizeof(mce_ops.rep);
+	if (ret_val > count) ret_val = count;
 	
-/* 	if ( !(mce_ops.flags & OPS_COMMANDED) ) { */
-/* 		PRINT_INFO(SUBNAME "not awaiting reply\n"); */
-/* 		goto out; */
-/* 	} */
-
-/* 	PRINT_INFO(SUBNAME "sleeping\n"); */
-
-/* 	if (wait_event_interruptible(mce_ops.queue, */
-/* 				     mce_ops.flags & (OPS_REPLIED |  */
-/* 						   OPS_ERROR))) { */
-/* 		PRINT_INFO(SUBNAME "interrupted\n"); */
-/* 		read_count = -ERESTARTSYS; */
-/* 		goto out; */
-/* 	} */
-
-/* 	if ( mce_ops.flags & OPS_ERROR ) { */
-/* 		PRINT_INFO(SUBNAME "awoke with error\n"); */
-/* 		mce_ops.flags = 0; */
-/* 		goto out;	 */
-/* 	} */
-	
-/* 	if ( !(mce_ops.flags & OPS_REPLIED) ) { */
-/* 		PRINT_INFO(SUBNAME "awoke without reply\n"); */
-/* 		mce_ops.flags = 0; */
-/* 		goto out;	 */
-/* 	} */
-
-	read_count = sizeof(mce_ops.rep);
-	if (read_count > count) read_count = count;
-	
-	err = copy_to_user(buf, (void*)&mce_ops.rep, sizeof(mce_ops.rep));
-	read_count -= err;
+	err = copy_to_user(buf, (void*)&mce_ops.rep, ret_val);
+	ret_val -= err;
 	if (err)
 		PRINT_ERR(SUBNAME "could not copy %#x bytes to user\n",
 			  err );
 	
-	mce_ops.flags = 0;
+	mce_ops.state = OPS_IDLE;
 	
  out:
-	PRINT_INFO(SUBNAME "exiting (%i)\n", read_count);
+	PRINT_INFO(SUBNAME "exiting (%i)\n", ret_val);
 	
 	up(&mce_ops.sem);
-	return read_count;	
+	return ret_val;
 }
 
 #undef SUBNAME
@@ -202,31 +153,31 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 
 #define SUBNAME "mce_write_callback: "
 
-int mce_write_callback( int error, mce_reply* rep ) {
-	
+int mce_write_callback( int error, mce_reply* rep )
+{
 	wake_up_interruptible(&mce_ops.queue);
 
-	if (error) {
-		PRINT_INFO(SUBNAME "called with error\n");
-		mce_ops.flags |= OPS_ERROR;
-		return 0;
-	}
-	
-	if (mce_ops.flags != OPS_COMMANDED) {
-		PRINT_ERR(SUBNAME "flags in unexpected state, %#x\n",
-			  mce_ops.flags);
+	if (mce_ops.state != OPS_CMD) {
+		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
+			  mce_ops.state, OPS_CMD);
 		return -1;
 	}			  
 
-	PRINT_INFO(SUBNAME "msg=%#lx\n", (long)rep);
-	if (rep==NULL) {
-		PRINT_INFO(SUBNAME "called with null reply\n");
-		mce_ops.flags |= OPS_ERROR;
-		return -1;
+	if (error) {
+		PRINT_ERR(SUBNAME "called with error\n");
+		memset(&mce_ops.rep, 0, sizeof(mce_ops.rep));
+		return 0;
 	}
 
+	if (rep==NULL) {
+		PRINT_ERR(SUBNAME "called with null message\n");
+		memset(&mce_ops.rep, 0, sizeof(mce_ops.rep));
+		return 0;
+	}
+
+	PRINT_INFO(SUBNAME "type=%#x\n", rep->oker);
 	memcpy(&mce_ops.rep, rep, sizeof(mce_ops.rep));
-	mce_ops.flags |= OPS_REPLIED;
+	mce_ops.state = OPS_REP;
 
 	return 0;
 }
@@ -238,7 +189,8 @@ int mce_write_callback( int error, mce_reply* rep ) {
 ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
-	int write_bytes = 0;
+	int err = 0;
+	int ret_val = 0;
 
 	PRINT_INFO(SUBNAME "ops_flags=%#x\n", mce_ops.flags);
 
@@ -254,39 +206,51 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 			return -ERESTARTSYS;
 	}
 
-	// Must be idle
-	if (mce_ops.flags & (OPS_ERROR | OPS_COMMANDED | OPS_REPLIED) ) {
-		mce_ops.flags = 0;
+	switch (mce_ops.state) {
+	case OPS_IDLE:
+		break;
+
+	case OPS_CMD:
+	case OPS_REP:
+	case OPS_ERR:
+		ret_val = 0;
+		goto out;
+
+	default:
+		ret_val = -EIO; // this is wrong
 		goto out;
 	}
 
 	// Command size check
 	if (count != sizeof(mce_ops.cmd)) {
 		PRINT_ERR(SUBNAME "count != sizeof(mce_command)\n");
+		ret_val = -EPROTO;
 		goto out;
 	}
 
 	// Copy command to local buffer
-	if (copy_from_user( &mce_ops.cmd, buf, sizeof(mce_ops.cmd))) {
+	if ( (err=copy_from_user(&mce_ops.cmd, buf,
+				 sizeof(mce_ops.cmd)))!=0) {
 		PRINT_ERR(SUBNAME "copy_from_user incomplete\n");
+		ret_val = count - err;
 		goto out;
 	}
 
-	mce_ops.flags |= OPS_COMMANDED;
+	mce_ops.state = OPS_CMD;
 
 	if (mce_send_command(&mce_ops.cmd, mce_write_callback)) {
 		PRINT_ERR(SUBNAME "mce_send_command failed\n");
-		mce_ops.flags &= ~OPS_COMMANDED;
+		mce_ops.state = OPS_IDLE;
+		ret_val = 0;
 		goto out;
 	}
  
-	write_bytes = count;
+	ret_val = count;
  out:
 	up(&mce_ops.sem);
 
-	PRINT_INFO(SUBNAME "exiting with %#x\n", write_bytes);
-	if (write_bytes==0) return -EPROTOTYPE;
-	return write_bytes;
+	PRINT_INFO(SUBNAME "exiting [%#x]\n", ret_val);
+	return ret_val;
 }
 
 #undef SUBNAME

@@ -83,55 +83,60 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 	int err = 0;
 
 	PRINT_INFO(SUBNAME "state=%#x\n", dsp_ops.state);
-	
-	if (down_interruptible(&dsp_ops.sem)) {
-		return -ERESTARTSYS;
-	}
 
-	switch (dsp_ops.state) {
-	case OPS_IDLE:
-	case OPS_ERR:
-		ret_val = 0;
-		goto out;
+	if (filp->f_flags & O_NONBLOCK) {
+
+		// Non-blocking
+
+		if (down_trylock(&dsp_ops.sem)) {
+			return -EAGAIN;
+		}
+
+		switch (dsp_ops.state) {
+		case OPS_IDLE:
+		case OPS_ERR:
+			ret_val = 0;
+			goto out;
 		
-	case OPS_CMD:
-		if (filp->f_flags & O_NONBLOCK) {
+		case OPS_CMD:
 			ret_val = -EAGAIN;
 			goto out;
+			
+		case OPS_REP:
+			break;
 		}
 
-		if (wait_event_interruptible(dsp_ops.queue,
-					     dsp_ops.state != OPS_CMD)) {
-			ret_val = -ERESTARTSYS;
-			goto out;
-		}
-
-		if ( dsp_ops.state != OPS_REP ) {
-			PRINT_INFO(SUBNAME "awoke in unexpected state=%#x\n",
-				   dsp_ops.state);
-			ret_val = -ERESTARTSYS;
-			goto out;
-		}
-		break;
+	} else {
 		
-	case OPS_REP:
-		break;
-	}
+		if (down_interruptible(&dsp_ops.sem)) {
+			return -ERESTARTSYS;
+		}
+		
+		switch (dsp_ops.state) {
+		case OPS_IDLE:
+		case OPS_ERR:
+			ret_val = 0;
+			goto out;
+		
+		case OPS_CMD:
+			if (wait_event_interruptible(dsp_ops.queue,
+						     dsp_ops.state != OPS_CMD)) {
+				ret_val = -ERESTARTSYS;
+				goto out;
+			}
 
-/* 	/\* Blocking version *\/ */
-/* 	if (wait_event_interruptible(dsp_ops.queue, */
-/* 				     dsp_ops.flags & (OPS_REPLIED |  */
-/* 						      OPS_ERROR))) { */
-/* 		PRINT_INFO(SUBNAME "interrupted\n"); */
-/* 		read_count = -ERESTARTSYS; */
-/* 		goto out; */
-/* 	} */
-/* 	/\* Non blocking version wouldn't do that :) *\/ */
-	
-/* 	if ( !(dsp_ops.flags & OPS_REPLIED) ) { */
-/* 		PRINT_INFO(SUBNAME "awoke with errors\n"); */
-/* 		goto out; */
-/* 	} */
+			if ( dsp_ops.state != OPS_REP ) {
+				PRINT_INFO(SUBNAME "awoke in unexpected state=%#x\n",
+					   dsp_ops.state);
+				ret_val = -ERESTARTSYS;
+				goto out;
+			}
+			break;
+			
+		case OPS_REP:
+			break;
+		}
+	}
 
 	read_count = sizeof(dsp_ops.msg);
 	if (read_count > count) read_count = count;
@@ -234,24 +239,38 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
    context!  No semaphores!
 */
 
-int dsp_write_callback( int error, dsp_message* msg ) {
-	
+#define SUBNAME "dsp_write_callback: "
+
+int dsp_write_callback( int error, dsp_message* msg )
+{
 	wake_up_interruptible(&dsp_ops.queue);
 
 	if (dsp_ops.state != OPS_CMD) {
-		PRINT_ERR("dsp_write_callback: state is %#x, expected %#x\n",
+		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
 			  dsp_ops.state, OPS_CMD);
 		return -1;
 	}			  
 
-	PRINT_INFO("dsp_write_callback: type=%#x\n", msg->type);
+	if (error) {
+		PRINT_ERR(SUBNAME "called with error\n");
+		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
+		return 0;
+	}
+
+	if (msg==NULL) {
+		PRINT_ERR(SUBNAME "called with null message\n");
+		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
+		return 0;
+	}
+
+	PRINT_INFO(SUBNAME "type=%#x\n", msg->type);
 	memcpy(&dsp_ops.msg, msg, sizeof(dsp_ops.msg));
 	dsp_ops.state = OPS_REP;
 
 	return 0;
 }
 
-
+#undef SUBNAME
 
 int dsp_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
