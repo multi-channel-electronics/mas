@@ -175,7 +175,7 @@ int mce_write_callback( int error, mce_reply* rep )
 		return 0;
 	}
 
-	PRINT_INFO(SUBNAME "type=%#x\n", rep->oker);
+	PRINT_INFO(SUBNAME "type=%#x\n", rep->ok_er);
 	memcpy(&mce_ops.rep, rep, sizeof(mce_ops.rep));
 	mce_ops.state = OPS_REP;
 
@@ -192,7 +192,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	int err = 0;
 	int ret_val = 0;
 
-	PRINT_INFO(SUBNAME "ops_flags=%#x\n", mce_ops.flags);
+	PRINT_INFO(SUBNAME "state=%#x\n", mce_ops.state);
 
 	// Non-blocking version may not wait on semaphore.
 
