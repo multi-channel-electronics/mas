@@ -135,7 +135,7 @@ int dsp_int_handler(dsp_message *msg)
 		break;
 
 	default:
-		PRINT_ERR(SUBNAME "unknown message type\n");
+		PRINT_ERR(SUBNAME "unknown message type: %#06x\n", msg->type);
 		return -1;
 	}
 

@@ -96,9 +96,10 @@ static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
 irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 {
 	dsp_message msg;
-	u32 *msg_ptr = (u32*)&msg;
+/* 	u32 *msg_ptr = (u32*)&msg; */
 	dsp_reg_t *dsp = dev->dsp;
-	int n_reads = sizeof(msg) / sizeof(u32);
+	int i = 0;
+	int n = sizeof(msg) / sizeof(u32);
 
 #ifdef REALTIME
 	PRINT_INFO(SUBNAME "REALTIME interrupt entry irq=%#x\n", irq);
@@ -111,12 +112,12 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	dsp_clear_interrupt(dsp);
 
 	// Read data into dsp_message structure
-	while ( (dsp_read_hstr(dsp) & HSTR_HRRQ) && n_reads--) {
-		*(msg_ptr++) = dsp_read_hrxs(dsp) & DSP_DATAMASK;
+	while ( i<n && (dsp_read_hstr(dsp) & HSTR_HRRQ) ) {
+		((u32*)&msg)[i++] = dsp_read_hrxs(dsp) & DSP_DATAMASK;
 	}
 
 	//Completed reads?
-	if (n_reads)
+	if (i<n)
 		PRINT_ERR(SUBNAME "could not obtain entire message.\n");
 	
 	PRINT_INFO(SUBNAME "%6x %6x %6x %6x\n",
