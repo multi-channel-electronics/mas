@@ -1,6 +1,6 @@
 CC=gcc
 
-INCLUDE += -I../../include
+INCLUDE += -I../../include -I../../interfaces/dsp_library
 LIBRARY += -L../../interfaces/dsp_library -lmcedsp
 
 CFLAGS += $(INCLUDE)
