@@ -91,7 +91,7 @@ int  mce_HST_dsp_callback( int error, dsp_message *msg );
 
 /* First set: interrupt context, no blocking and no sems! */
 
-#define SUBNAME "mce_error_reply: "
+#define SUBNAME "mce_command_do_callback: "
 
 /* Generic error handler; reports error to caller and goes to IDLE state */
 
@@ -103,9 +103,13 @@ int mce_command_do_callback( int error, mce_reply *rep )
 		PRINT_INFO(SUBNAME "no callback specified\n");
 	} 
 	
+	// Clear the buffer for the next reply
+	memset(mdat.buff.reply, 0, sizeof(*mdat.buff.reply));
+
 	mdat.state = MDAT_IDLE;
 	mdat.callback = NULL;
 	mdat.timer_ignore = 1;
+
 	return 0;
 }
 
@@ -158,6 +162,11 @@ int mce_NFY_RP_handler( int error, dsp_message *msg )
 			  error, (unsigned long)msg);
 		mce_command_do_callback(-1, NULL);
 		return 0;
+	}
+
+	if (mdat.state != MDAT_CONOK) {
+		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat.state);
+		return -1;
 	}
 
 	mdat.state = MDAT_NFY;
@@ -256,22 +265,28 @@ int mce_send_command_now (void)
 		   (int)mdat.buff.command->para_id,
 		   (int)mdat.buff.command->card_id);
 	
-	if ( (err=dsp_send_command_wait( &cmd, &msg ))) {
+	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback ))) {
 		PRINT_INFO(SUBNAME "dsp_send_command_wait failed (%#x)\n",
 			  err);
 		return -1;
 	}
 
-	if ( msg.type!=DSP_REP ) {
-		PRINT_INFO(SUBNAME "dsp_message not recognized!\n");
-		return -1;
-	}
+/* 	if ( (err=dsp_send_command_wait( &cmd, &msg ))) { */
+/* 		PRINT_INFO(SUBNAME "dsp_send_command_wait failed (%#x)\n", */
+/* 			  err); */
+/* 		return -1; */
+/* 	} */
+
+/* 	if ( msg.type!=DSP_REP ) { */
+/* 		PRINT_INFO(SUBNAME "dsp_message not recognized!\n"); */
+/* 		return -1; */
+/* 	} */
 	
-	if ( msg.reply!=DSP_ACK) {
-		PRINT_INFO(SUBNAME "dsp command not acknowledged (%#x)!\n",
-			  msg.reply);
-		return -1;
-	}
+/* 	if ( msg.reply!=DSP_ACK) { */
+/* 		PRINT_INFO(SUBNAME "dsp command not acknowledged (%#x)!\n", */
+/* 			  msg.reply); */
+/* 		return -1; */
+/* 	} */
 	
 	return 0;
  }

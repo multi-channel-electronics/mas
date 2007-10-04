@@ -50,19 +50,13 @@ typedef enum {
 struct dsp_control {
 	
 	struct semaphore sem;
+	struct timer_list tim;
+	int tim_ignore;
 
 	dsp_state_t state;
 	int evil_flag;
 
-/* 	int flags; */
-/* #define DDAT_CMD 0x1 */
-/* #define DDAT_ERR 0x2 */
-
 	dsp_callback callback;
-
-/* 	struct tasklet_struct nfy_tasklet; */
-/* 	dsp_message nfy_storage; */
-/* 	int nfy_waiting; */
 
 } ddat;
 
@@ -106,6 +100,7 @@ int dsp_int_handler(dsp_message *msg)
 			} else {
 				PRINT_ERR(SUBNAME "no handler defined\n");
 			}
+			ddat.tim_ignore = 1;
 			ddat.state = DDAT_IDLE;
 		} else {
 			PRINT_ERR(SUBNAME
@@ -115,29 +110,7 @@ int dsp_int_handler(dsp_message *msg)
 		
 	case DSP_NFY: // Message is notification of MCE packet
 
-		// PASS IMMEDIATELY TO MCE_DRIVER!!
-
-/* 		// Save for later */
-
-/* 		if (ddat.nfy_waiting) { */
-/* 			PRINT_ERR(SUBNAME "NFY received, " */
-/* 				  "overwrites outstanding NFY!\n"); */
-/* 		} else { */
-/* 			PRINT_INFO(SUBNAME "NFY received, " */
-/* 				   "recorded for dispatch soon\n"); */
-/* 		} */
-
-/* 		if (ddat.state == DDAT_IDLE) { */
-/* 			PRINT_INFO(SUBNAME "dispatching mce_int_handler now\n"); */
-/* 			mce_int_handler( msg ); */
-/* 			ddat.nfy_waiting = 0; */
-/* 		} else { */
-/* 			PRINT_ERR(SUBNAME "ddat not idle, scheduling NFY for later.\n"); */
-/* 			memcpy(&ddat.nfy_storage, msg, sizeof(*msg)); */
-/* 			tasklet_schedule(&ddat.nfy_tasklet); */
-/* 			ddat.nfy_waiting = 1; */
-/* 		} */
-
+		// Register the NFY; may result in HST being issued.
 		mce_int_handler( msg );
 
 		break;
@@ -148,6 +121,27 @@ int dsp_int_handler(dsp_message *msg)
 	}
 
 	return 0;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "dsp_timeout: "
+
+void dsp_timeout(unsigned long data)
+{
+	dsp_callback callback = (dsp_callback)data;
+
+	if (ddat.tim_ignore) {
+		PRINT_INFO(SUBNAME "timer ignored\n");
+		ddat.tim_ignore = 0;
+		return;
+	}
+
+	PRINT_ERR(SUBNAME "dsp reply timed out!\n");
+	if (callback != NULL)
+		callback(-1, NULL);
+	ddat.state = DDAT_IDLE;
 }
 
 #undef SUBNAME
@@ -230,6 +224,14 @@ int dsp_send_command(dsp_command *cmd,
 	if ( (err = dsp_send_command_now(cmd)) ) {
 		ddat.callback = NULL;
 		ddat.state = DDAT_IDLE;
+	} else {
+		//Setup new timeout
+		del_timer_sync(&ddat.tim);
+		ddat.tim.function = dsp_timeout;
+		ddat.tim.data = (unsigned long)ddat.callback;
+		ddat.tim.expires = jiffies + HZ;
+		ddat.tim_ignore = 0;
+		add_timer(&ddat.tim);
 	}
 
 up_and_out:
@@ -366,7 +368,7 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
 
 void driver_cleanup(void)
 {
-/* 	tasklet_kill(&ddat.nfy_tasklet); */
+	del_timer_sync(&ddat.tim);
 
 	mce_cleanup();
 
@@ -397,8 +399,7 @@ inline int driver_init(void)
 	init_MUTEX(&dsp_local.sem);
 	init_waitqueue_head(&dsp_local.queue);
 
-/* 	tasklet_init(&ddat.nfy_tasklet, */
-/* 		     nfy_task, 0); */
+	init_timer(&ddat.tim);
   
 #ifdef FAKEMCE
 	dsp_fake_init( DSPDEV_NAME );
