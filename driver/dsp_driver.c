@@ -196,17 +196,16 @@ int dsp_send_command(dsp_command *cmd,
 		return -DSP_ERR_SYSTEM;
 	}
 	
-/* 	if (ddat.flags) { */
-/* 		err = -DSP_ERR_FLAGS; */
-/* 		goto up_and_out; */
-/* 	} */
+	PRINT_INFO(SUBNAME "entry\n");
 
 	// An interrupt that commands will set this flag.
 	ddat.evil_flag = 0;
 	barrier();
 
-	if (ddat.state != DDAT_IDLE)
+	if (ddat.state != DDAT_IDLE) {
+		err = -1;
 		goto up_and_out;
+	}
 
 	// After this call we are safe from interrupt routine
 	ddat.state = DDAT_CMD;
@@ -235,6 +234,7 @@ int dsp_send_command(dsp_command *cmd,
 	}
 
 up_and_out:
+	PRINT_INFO(SUBNAME "returning [%i]\n", err);
 	up(&ddat.sem);
 	return err;
 }

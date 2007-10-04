@@ -120,6 +120,8 @@ int mce_command_do_callback( int error, mce_reply *rep )
 
 int mce_CON_dsp_callback( int error, dsp_message *msg )
 {
+	PRINT_INFO(SUBNAME "entry\n");
+
 	if (mdat.state != MDAT_CON) {
 		PRINT_ERR(SUBNAME "unexpected callback! (state=%i)\n",
 			  mdat.state);
@@ -145,6 +147,7 @@ int mce_CON_dsp_callback( int error, dsp_message *msg )
 	}
 
 	mdat.state = MDAT_CONOK;
+	PRINT_INFO(SUBNAME "state<-CONOK\n");
 	
 	return 0;
 }
@@ -199,6 +202,7 @@ void mce_do_HST_or_schedule(unsigned long data)
 	mdat.state = MDAT_HST;;
 	if ( (err=dsp_send_command( &cmd, mce_HST_dsp_callback )) ) {
 		// FIX ME: discriminate between would-block errors and fatals!
+		PRINT_INFO(SUBNAME "dsp busy; rescheduling.\n");
 		mdat.state = MDAT_NFY;
 		tasklet_schedule(&mdat.hst_tasklet);
 		return;
@@ -271,23 +275,6 @@ int mce_send_command_now (void)
 		return -1;
 	}
 
-/* 	if ( (err=dsp_send_command_wait( &cmd, &msg ))) { */
-/* 		PRINT_INFO(SUBNAME "dsp_send_command_wait failed (%#x)\n", */
-/* 			  err); */
-/* 		return -1; */
-/* 	} */
-
-/* 	if ( msg.type!=DSP_REP ) { */
-/* 		PRINT_INFO(SUBNAME "dsp_message not recognized!\n"); */
-/* 		return -1; */
-/* 	} */
-	
-/* 	if ( msg.reply!=DSP_ACK) { */
-/* 		PRINT_INFO(SUBNAME "dsp command not acknowledged (%#x)!\n", */
-/* 			  msg.reply); */
-/* 		return -1; */
-/* 	} */
-	
 	return 0;
  }
 
@@ -424,9 +411,9 @@ int mce_send_command_user(mce_command *cmd, mce_callback callback)
   functions are responsible for immediately 
 */
 
-#define HST_FILL(cmd, bus) cmd.command = DSP_HST; \
-                           cmd.args[0] = (bus >> 16) & 0xffff; \
-                           cmd.args[1] = bus & 0xffff
+/* #define HST_FILL(cmd, bus) cmd.command = DSP_HST; \ */
+/*                            cmd.args[0] = (bus >> 16) & 0xffff; \ */
+/*                            cmd.args[1] = bus & 0xffff */
 
 #define SUBNAME "mce_da_hst_callback: "
 
@@ -486,7 +473,7 @@ int mce_da_hst_now(void)
 	HST_FILL(cmd, baddr);
 
 	if ((err = dsp_send_command(&cmd, mce_da_hst_callback))) {
-
+		PRINT_INFO(SUBNAME "dsp_send_command failed!\n");
 		if (mce_error_register()) {
 			PRINT_ERR(SUBNAME "dsp_send_command error %i; "
 				   "packet dropped\n",
@@ -601,8 +588,8 @@ int mce_int_handler( dsp_message *msg )
 	switch(note->code) {
 
 	case DSP_RP:
-/* 		mce_rp_hst_now(); */
 
+		PRINT_INFO(SUBNAME "NFY RP identified\n");
 		mce_NFY_RP_handler( 0, msg );
 
 		break;

@@ -107,13 +107,13 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	if (dev_id != dev) return IRQ_NONE;
 #endif
 
-	// Clear DSP interrupt flags
-	dsp_clear_interrupt(dsp);
-
 	// Read data into dsp_message structure
 	while ( i<n && (dsp_read_hstr(dsp) & HSTR_HRRQ) ) {
 		((u32*)&msg)[i++] = dsp_read_hrxs(dsp) & DSP_DATAMASK;
 	}
+
+	// Clear DSP interrupt flags
+	dsp_clear_interrupt(dsp);
 
 	//Completed reads?
 	if (i<n)
@@ -207,6 +207,9 @@ int dsp_lookup_vector(dsp_command *cmd)
 int dsp_send_command_now(dsp_command *cmd) 
 {
 	int vector = dsp_lookup_vector(cmd);
+
+	PRINT_INFO(SUBNAME "cmd=%06x\n", cmd->command);
+
 	if (vector<0) return -1;
 	return dsp_send_command_now_vector(cmd, vector);
 }
