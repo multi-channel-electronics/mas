@@ -96,7 +96,6 @@ static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
 irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 {
 	dsp_message msg;
-/* 	u32 *msg_ptr = (u32*)&msg; */
 	dsp_reg_t *dsp = dev->dsp;
 	int i = 0;
 	int n = sizeof(msg) / sizeof(u32);

@@ -26,7 +26,8 @@ int mce_send_command_user( __user mce_command *,
 			   mce_callback callback );
 
 int mce_send_command( mce_command *cmd,
-		      mce_callback callback );
+		      mce_callback callback,
+		      int nonblock );
 
 int mce_get_reply( __user void* reply_user,
 		   void* reply_kern, int count );

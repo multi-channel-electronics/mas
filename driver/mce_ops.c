@@ -76,72 +76,59 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 
 	PRINT_INFO(SUBNAME "state=%#x\n", mce_ops.state);
 
+	// Lock semaphore
+
 	if (filp->f_flags & O_NONBLOCK) {
-
-		// Non-blocking
-
-		if (down_trylock(&mce_ops.sem)) {
+		if (down_trylock(&mce_ops.sem))
 			return -EAGAIN;
-		}
-
-		switch (mce_ops.state) {
-		case OPS_IDLE:
-		case OPS_ERR:
-			ret_val = 0;
-			goto out;
-		
-		case OPS_CMD:
-			ret_val = -EAGAIN;
-			goto out;
-			
-		case OPS_REP:
-			break;
-		}
-
 	} else {
-		
-		if (down_interruptible(&mce_ops.sem)) {
+		if (down_interruptible(&mce_ops.sem))
 			return -ERESTARTSYS;
-		}
-		
-		switch (mce_ops.state) {
-		case OPS_IDLE:
-		case OPS_ERR:
-			ret_val = 0;
-			goto out;
-		
-		case OPS_CMD:
-			if (wait_event_interruptible(mce_ops.queue,
-						     mce_ops.state != OPS_CMD)) {
-				ret_val = -ERESTARTSYS;
-				goto out;
-			}
+	}
 
-			if ( mce_ops.state != OPS_REP ) {
-				PRINT_INFO(SUBNAME "awoke in unexpected state=%#x\n",
-					   mce_ops.state);
-				ret_val = -ERESTARTSYS;
-				goto out;
-			}
-			break;
-			
-		case OPS_REP:
-			break;
+
+	// If command in progress, block if we're allowed.
+
+	while ( (filp->f_flags & O_NONBLOCK) && (mce_ops.state == OPS_CMD) ) {
+		if (wait_event_interruptible(mce_ops.queue,
+					     mce_ops.state != OPS_CMD)) {
+			ret_val = -ERESTARTSYS;
+			goto out;
 		}
 	}
 
-	ret_val = sizeof(mce_ops.rep);
-	if (ret_val > count) ret_val = count;
+	switch (mce_ops.state) {
+
+	case OPS_IDLE:
+		ret_val = 0;
+		goto out;
+		
+	case OPS_CMD:
+		// Not possible in blocking calls
+		ret_val = -EAGAIN;
+		goto out;
+			
+	case OPS_REP:
+		// Fix me: partial packet reads not supported
+		ret_val = sizeof(mce_ops.rep);
+		if (ret_val > count) ret_val = count;
 	
-	err = copy_to_user(buf, (void*)&mce_ops.rep, ret_val);
-	ret_val -= err;
-	if (err)
-		PRINT_ERR(SUBNAME "could not copy %#x bytes to user\n",
-			  err );
-	
-	mce_ops.state = OPS_IDLE;
-	
- out:
+		err = copy_to_user(buf, (void*)&mce_ops.rep, ret_val);
+		ret_val -= err;
+		if (err)
+			PRINT_ERR(SUBNAME
+				  "could not copy %#x bytes to user\n", err );
+
+		mce_ops.state = OPS_IDLE;
+		break;
+		
+	case OPS_ERR:
+	default:
+		ret_val = 0;
+		mce_ops.state = OPS_IDLE;
+	}
+		
+out:
 	PRINT_INFO(SUBNAME "exiting (%i)\n", ret_val);
 	
 	up(&mce_ops.sem);
@@ -155,30 +142,26 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 
 int mce_write_callback( int error, mce_reply* rep )
 {
-	wake_up_interruptible(&mce_ops.queue);
-
+	// Reject unexpected interrupts
 	if (mce_ops.state != OPS_CMD) {
 		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
 			  mce_ops.state, OPS_CMD);
 		return -1;
 	}			  
 
-	if (error) {
-		PRINT_ERR(SUBNAME "called with error\n");
+	// Change state to REP or ERR, awaken readers, exit with success.
+	if (error || rep==NULL) {
+		PRINT_ERR(SUBNAME "called with error=%i, rep=%lx\n",
+			  error, (unsigned long)rep);
 		memset(&mce_ops.rep, 0, sizeof(mce_ops.rep));
-		return 0;
+		mce_ops.state = OPS_ERR;
+	} else {
+		PRINT_INFO(SUBNAME "type=%#x\n", rep->ok_er);
+		memcpy(&mce_ops.rep, rep, sizeof(mce_ops.rep));
+		mce_ops.state = OPS_REP;
 	}
 
-	if (rep==NULL) {
-		PRINT_ERR(SUBNAME "called with null message\n");
-		memset(&mce_ops.rep, 0, sizeof(mce_ops.rep));
-		return 0;
-	}
-
-	PRINT_INFO(SUBNAME "type=%#x\n", rep->ok_er);
-	memcpy(&mce_ops.rep, rep, sizeof(mce_ops.rep));
-	mce_ops.state = OPS_REP;
-
+	wake_up_interruptible(&mce_ops.queue);
 	return 0;
 }
 
@@ -207,17 +190,15 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	}
 
 	switch (mce_ops.state) {
+
 	case OPS_IDLE:
 		break;
 
 	case OPS_CMD:
 	case OPS_REP:
 	case OPS_ERR:
-		ret_val = 0;
-		goto out;
-
 	default:
-		ret_val = -EIO; // this is wrong
+		ret_val = 0;
 		goto out;
 	}
 
@@ -236,9 +217,12 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		goto out;
 	}
 
-	mce_ops.state = OPS_CMD;
+	// Set CMD, then go back to IDLE on failure.
+	//  - leaves us vulnerable to unexpected interrupts
+	//  - the alternative risks losing expected interrupts
 
-	if (mce_send_command(&mce_ops.cmd, mce_write_callback)) {
+	mce_ops.state = OPS_CMD;
+	if (mce_send_command(&mce_ops.cmd, mce_write_callback, 1)) {
 		PRINT_ERR(SUBNAME "mce_send_command failed\n");
 		mce_ops.state = OPS_IDLE;
 		ret_val = 0;

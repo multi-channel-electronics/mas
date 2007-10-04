@@ -60,9 +60,9 @@ struct dsp_control {
 
 	dsp_callback callback;
 
-	struct tasklet_struct nfy_tasklet;
-	dsp_message nfy_storage;
-	int nfy_waiting;
+/* 	struct tasklet_struct nfy_tasklet; */
+/* 	dsp_message nfy_storage; */
+/* 	int nfy_waiting; */
 
 } ddat;
 
@@ -75,6 +75,9 @@ struct dsp_control {
   point for the DSP's hardware interrupts over the PCI bus.  Rather,
   this is the function that is called once pci_int_handler has
   identified a message as an REP.
+
+  Although we'd like to respond to NFY immediately, we may be in the
+  middle of some other command.  Not!
 */
 
 
@@ -112,26 +115,31 @@ int dsp_int_handler(dsp_message *msg)
 		
 	case DSP_NFY: // Message is notification of MCE packet
 
-		// Save for later
+		// PASS IMMEDIATELY TO MCE_DRIVER!!
 
-		if (ddat.nfy_waiting) {
-			PRINT_ERR(SUBNAME "NFY received, "
-				  "overwrites outstanding NFY!\n");
-		} else {
-			PRINT_INFO(SUBNAME "NFY received, "
-				   "recorded for dispatch soon\n");
-		}
+/* 		// Save for later */
 
-		if (ddat.state == DDAT_IDLE) {
-			PRINT_INFO(SUBNAME "dispatching mce_int_handler now\n");
-			mce_int_handler( msg );
-			ddat.nfy_waiting = 0;
-		} else {
-			PRINT_ERR(SUBNAME "ddat not idle, scheduling NFY for later.\n");
-			memcpy(&ddat.nfy_storage, msg, sizeof(*msg));
-			tasklet_schedule(&ddat.nfy_tasklet);
-			ddat.nfy_waiting = 1;
-		}
+/* 		if (ddat.nfy_waiting) { */
+/* 			PRINT_ERR(SUBNAME "NFY received, " */
+/* 				  "overwrites outstanding NFY!\n"); */
+/* 		} else { */
+/* 			PRINT_INFO(SUBNAME "NFY received, " */
+/* 				   "recorded for dispatch soon\n"); */
+/* 		} */
+
+/* 		if (ddat.state == DDAT_IDLE) { */
+/* 			PRINT_INFO(SUBNAME "dispatching mce_int_handler now\n"); */
+/* 			mce_int_handler( msg ); */
+/* 			ddat.nfy_waiting = 0; */
+/* 		} else { */
+/* 			PRINT_ERR(SUBNAME "ddat not idle, scheduling NFY for later.\n"); */
+/* 			memcpy(&ddat.nfy_storage, msg, sizeof(*msg)); */
+/* 			tasklet_schedule(&ddat.nfy_tasklet); */
+/* 			ddat.nfy_waiting = 1; */
+/* 		} */
+
+		mce_int_handler( msg );
+
 		break;
 
 	default:
@@ -145,21 +153,21 @@ int dsp_int_handler(dsp_message *msg)
 #undef SUBNAME
 
 
-#define SUBNAME "nfy_task: "
+/* #define SUBNAME "nfy_task: " */
 
-void nfy_task(unsigned long data)
-{
-	if (ddat.state == DDAT_IDLE) {
-		PRINT_INFO(SUBNAME "NFY being dispatched "
-			   "to mce_int_handler\n");
-		mce_int_handler( &ddat.nfy_storage );
-		ddat.nfy_waiting = 0;
-	} else {
-		tasklet_schedule(&ddat.nfy_tasklet);
-	}
-}
+/* void nfy_task(unsigned long data) */
+/* { */
+/* 	if (ddat.state == DDAT_IDLE) { */
+/* 		PRINT_INFO(SUBNAME "NFY being dispatched " */
+/* 			   "to mce_int_handler\n"); */
+/* 		mce_int_handler( &ddat.nfy_storage ); */
+/* 		ddat.nfy_waiting = 0; */
+/* 	} else { */
+/* 		tasklet_schedule(&ddat.nfy_tasklet); */
+/* 	} */
+/* } */
 
-#undef SUBNAME
+/* #undef SUBNAME */
 
 
 /*
@@ -358,7 +366,7 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
 
 void driver_cleanup(void)
 {
-	tasklet_kill(&ddat.nfy_tasklet);
+/* 	tasklet_kill(&ddat.nfy_tasklet); */
 
 	mce_cleanup();
 
@@ -389,8 +397,8 @@ inline int driver_init(void)
 	init_MUTEX(&dsp_local.sem);
 	init_waitqueue_head(&dsp_local.queue);
 
-	tasklet_init(&ddat.nfy_tasklet,
-		     nfy_task, 0);
+/* 	tasklet_init(&ddat.nfy_tasklet, */
+/* 		     nfy_task, 0); */
   
 #ifdef FAKEMCE
 	dsp_fake_init( DSPDEV_NAME );
