@@ -79,9 +79,11 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 	// Lock semaphore
 
 	if (filp->f_flags & O_NONBLOCK) {
+		PRINT_INFO(SUBNAME "non-blocking call\n");
 		if (down_trylock(&mce_ops.sem))
 			return -EAGAIN;
 	} else {
+		PRINT_INFO(SUBNAME "blocking call\n");
 		if (down_interruptible(&mce_ops.sem))
 			return -ERESTARTSYS;
 	}
@@ -89,7 +91,7 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 
 	// If command in progress, block if we're allowed.
 
-	while ( (filp->f_flags & O_NONBLOCK) && (mce_ops.state == OPS_CMD) ) {
+	while ( !(filp->f_flags & O_NONBLOCK) && (mce_ops.state == OPS_CMD) ) {
 		if (wait_event_interruptible(mce_ops.queue,
 					     mce_ops.state != OPS_CMD)) {
 			ret_val = -ERESTARTSYS;
