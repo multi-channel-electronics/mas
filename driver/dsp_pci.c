@@ -44,7 +44,7 @@ struct dsp_vector {
 	u32 vector;
 };
 
-#define NUM_DSP_CMD 8
+#define NUM_DSP_CMD 9
 
 static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_WRM, 0x8079},
@@ -54,7 +54,8 @@ static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_RST, 0x8081},
 	{DSP_CON, 0x8083},
 	{DSP_HST, 0x8085},
-	{DSP_RCO, 0x8087}
+	{DSP_RCO, 0x8087},
+	{DSP_QTS, 0x8089}
 };
 
 

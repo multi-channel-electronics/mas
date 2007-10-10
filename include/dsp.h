@@ -20,7 +20,8 @@ typedef enum
 	DSP_RST  = 0x00525354,   // "RST" PCI board software RESET 
 	DSP_CON  = 0x00434f4e,   // "CON" Data packet to CONTROLLER 
 	DSP_HST  = 0x00485354,   // "HST" Data packet to HOST 
-	DSP_RCO  = 0x0052434f    // "RCO" RESET 
+	DSP_RCO  = 0x0052434f,   // "RCO" RESET 
+	DSP_QTS  = 0x00515453    // "QTS" Quiet transfer setup
 
 } dsp_command_code;
 
@@ -33,6 +34,20 @@ typedef enum
 	DSP_MEMP = 0x00005f50, // "_P"  -     P
 
 } dsp_memory_code;
+
+
+typedef enum
+{
+
+	DSP_QT_BASE   = 0x00424153, // "BAS" - PC memory base address
+	DSP_QT_DELTA  = 0x0044454c, // "DEL" - buffer size increment in bytes
+	DSP_QT_NUMBER = 0x004e554d, // "NUM" - number of buffers
+	DSP_QT_INFORM = 0x00494e46, // "INF" - information interval
+	DSP_QT_SIZE   = 0x0053495a, // "SIZ" - packet size in bytes
+	DSP_QT_FLUSH  = 0x00464c55, // "FLU" - flush (inform) remaining data
+	DSP_QT_ENABLE = 0x00534554  // "SET" - enable/disable quiet transfer
+
+} dsp_qt_code;
 
 
 typedef enum
