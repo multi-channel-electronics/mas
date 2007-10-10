@@ -243,12 +243,14 @@ int dsp_write_callback( int error, dsp_message* msg )
 	if (error) {
 		PRINT_ERR(SUBNAME "called with error\n");
 		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
+		dsp_ops.state = OPS_ERR;
 		return 0;
 	}
 
 	if (msg==NULL) {
 		PRINT_ERR(SUBNAME "called with null message\n");
 		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
+		dsp_ops.state = OPS_ERR;
 		return 0;
 	}
 
