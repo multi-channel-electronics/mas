@@ -232,7 +232,8 @@ void* dsp_allocate_dma(ssize_t size, unsigned int* bus_addr_p)
 #ifdef OLD_KERNEL
 	return pci_alloc_consistent(dev->pci, size, bus_addr_p);
 #else
-	return dma_alloc_coherent(NULL, size, bus_addr_p, GFP_KERNEL);
+	return dma_alloc_coherent(NULL, size, (dma_addr_t*)bus_addr_p,
+				  GFP_KERNEL);
 #endif
 }
 
