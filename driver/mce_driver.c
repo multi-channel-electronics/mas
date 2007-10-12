@@ -263,7 +263,7 @@ int mce_send_command_now (void)
 		{ (baddr >> 16) & 0xffff, baddr & 0xffff, 0 }
 	};
 
-	PRINT_INFO(SUBNAME "Sending CON [%#x %#x %#x]\n",
+	PRINT_INFO(SUBNAME "Sending CON [%#08x %#04x %#04x]\n",
 		   mdat.buff.command->command,
 		   (int)mdat.buff.command->para_id,
 		   (int)mdat.buff.command->card_id);
