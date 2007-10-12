@@ -105,15 +105,10 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 			goto out;
 		}
 
-		if ( dsp_ops.state != OPS_REP ) {
-			PRINT_INFO(SUBNAME "awoke in unexpected state=%#x\n",
-				   dsp_ops.state);
-			ret_val = -ERESTARTSYS;
-			goto out;
-		}
 		break;
 		
 	case OPS_REP:
+	case OPS_ERR:
 		break;
 
 	default:
@@ -121,15 +116,21 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 		goto out;
 	}
 	
-	read_count = sizeof(dsp_ops.msg);
-	if (read_count > count) read_count = count;
-
-	err = copy_to_user(buf, (void*)&dsp_ops.msg, sizeof(dsp_ops.msg));
-	read_count -= err;
-	if (err) {
-		PRINT_ERR(SUBNAME "could not copy %#x bytes to user\n",
-			  err );
+	if (dsp_ops.state == OPS_REP) {
+		
+		read_count = sizeof(dsp_ops.msg);
+		if (read_count > count) read_count = count;
+		
+		err = copy_to_user(buf, (void*)&dsp_ops.msg, sizeof(dsp_ops.msg));
+		read_count -= err;
+		if (err) {
+			PRINT_ERR(SUBNAME "could not copy %#x bytes to user\n",
+				  err );
+		}
+	} else {
+		read_count = 0;
 	}
+
 	dsp_ops.state = OPS_IDLE;
 	ret_val = read_count;
 
