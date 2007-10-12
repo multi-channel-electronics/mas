@@ -262,7 +262,6 @@ int mce_send_command_now (void)
 		DSP_CON,
 		{ (baddr >> 16) & 0xffff, baddr & 0xffff, 0 }
 	};
-	dsp_message msg;
 
 	PRINT_INFO(SUBNAME "Sending CON [%#x %#x %#x]\n",
 		   mdat.buff.command->command,
@@ -615,6 +614,22 @@ int mce_int_handler( dsp_message *msg )
 
 #undef SUBNAME
 
+
+#define SUBNAME "mce_qti_handler"
+
+int mce_qti_handler ( dsp_message *msg )
+{
+	dsp_qtinformation *qti = (dsp_qtinformation*)msg;
+
+	PRINT_INFO(SUBNAME "registered %ui new packets (interval %ui); "
+		   "next buffer is %ui\n",
+		   qti->inform_count, qti->inform_interval,
+		   qti->buffer_index);
+
+	return 0;	
+}
+
+#undef SUBNAME
 
 
 /********** PLUG-IN: BLOCKING COMMANDER *********/

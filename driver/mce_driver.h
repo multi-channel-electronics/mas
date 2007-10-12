@@ -38,4 +38,7 @@ int mce_clear_commflags(void);
 int mce_int_handler( dsp_message *msg );
 
 
+int mce_qti_handler ( dsp_message *msg );
+
+
 #endif

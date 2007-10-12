@@ -55,6 +55,7 @@ typedef enum
 
 	DSP_REP  = 0x00524550, // "REP" - dsp command reply
 	DSP_NFY  = 0x004E4659, // "NFY" - mce packet has arrived
+	DSP_QTI  = 0x00515449, // "QTI" - quiet transfer information packet
 
 } dsp_message_code;
 
@@ -102,5 +103,14 @@ typedef struct {
 	u32              size_hi;  //bits 31-16
 
 } dsp_notification;
+
+typedef struct {
+
+	dsp_message_code type;
+	u32              buffer_index;
+	u32              inform_count;
+	u32              inform_interval;
+
+} dsp_qtinformation;
 
 #endif
