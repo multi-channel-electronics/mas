@@ -61,6 +61,8 @@ int dsp_stop_application(int handle);
 
 int dsp_reset_mce(int handle);
 
+int dsp_qt_set(int handle, int var, int arg1, int arg2);
+
 int dsp_ioctl(int handle, unsigned int iocmd, unsigned long arg);
 
 int dsp_reset_flags(int handle);

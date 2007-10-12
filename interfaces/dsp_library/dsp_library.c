@@ -244,6 +244,18 @@ int dsp_reset_mce(int handle)
 	return dsp_send_command_now(handle, &cmd);
 }
 
+int dsp_qt_set(int handle, int var, int arg1, int arg2)
+{
+	CHECK_HANDLE(handle);
+	CHECK_OPEN(handle);
+	
+	dsp_command cmd = {
+		command: DSP_QTS,
+		args: {var, arg1, arg2},
+	};
+	return dsp_send_command_now(handle, &cmd);
+}
+
 int dsp_atomem(char *mem_type) {
 	if (strlen(mem_type) != 1) return -DSP_ERR_MEMTYPE;
 
