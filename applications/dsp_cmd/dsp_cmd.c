@@ -23,7 +23,7 @@ struct cmd_str {
 	int  mem_arg1;
 };
 
-#define NCOM 6
+#define NCOM 7
 
 struct cmd_str commands[NCOM] = {
 	{"READ",      DSP_RDM, 2, 1},
@@ -32,6 +32,7 @@ struct cmd_str commands[NCOM] = {
 	{"STOP",      DSP_STP, 0, 0},
 	{"RESET",     DSP_RST, 0, 0},
 	{"RESET_MCE", DSP_RCO, 0, 0},
+	{"QT_SET",    DSP_QTS, 1, 0},
 };
 
 struct spec_str {
@@ -78,7 +79,7 @@ int main(int argc, char **argv) {
 	}
 
 	while (1) {
-		int n = LINE_LEN;
+		unsigned int n = LINE_LEN;
 		getline(&line, &n, fin);
 
 		if (n==0 || feof(fin)) break;
@@ -231,6 +232,10 @@ int process_command(int key)
 
 	case DSP_RCO:
 		ret_val = dsp_reset_mce(handle);
+		break;
+    
+	case DSP_QTS:
+		ret_val = dsp_qt_set(handle, argi[0], argi[1], argi[2]);
 		break;
     
 	default:
