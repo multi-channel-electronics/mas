@@ -1,9 +1,12 @@
 CC=gcc
 
-INCLUDE += -I../../include -I../../interfaces/dsp_library
-LIBRARY += -L../../interfaces/dsp_library -lmcedsp
+MISC = ../../interfaces/misc/
+DSP = ../../interfaces/dsp_library/
 
-CFLAGS += $(INCLUDE)
+INCLUDE += -I../../include -I$(DSP) -I$(MISC)
+LIBRARY += -L$(DSP) -lmcedsp $(MISC)cmdtree.o
+
+CFLAGS += -Wall $(INCLUDE)
 
 default: dsp_cmd
 
@@ -13,4 +16,4 @@ dsp_cmd: dsp_cmd.o
 	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY)
 
 clean:
-	-rm *.a *.o *~ dsp_cmd
+	-rm *.o *~ dsp_cmd
