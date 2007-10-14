@@ -1,17 +1,18 @@
-TARGET = socks.o
+TARGET ?= all
 
-OBJECT = $(TARGET)
-SOURCE = socks.c
-HEADER = socks.h
+OBJECTS = socks.o cmdtree.o
 
 CC = gcc
 
-default: all
+default: $(TARGET)
 
-all: $(TARGET)
+all: $(OBJECTS)
 
-$(OBJECT): $(SOURCE) $(HEADER)
-	$(CC) $(CFLAGS) -c -o $(OBJECT) $(SOURCE)
+socks.o: socks.c socks.h
+	$(CC) $(CFLAGS) $< -c -o $@
+
+cmdtree.o: cmdtree.c cmdtree.h
+	$(CC) $(CFLAGS) $< -c -o $@
 
 tidy:
 	-rm *~ *.o
