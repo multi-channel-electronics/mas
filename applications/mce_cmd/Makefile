@@ -3,15 +3,16 @@ CC=gcc
 # DSPINC=-I../dsp_library -I../driver -I../mce_library
 # MCELIB= -lmcecmd -L../mce_library -lexpat -L../libmaslog -lmaslog -lconfig
 
-INTERFACES=../../interfaces
+INTERFACES=../../interfaces/
+MISC=$(INTERFACES)/misc/
 
-INCLUDE=-I$(INTERFACES)/mce_library -I../../include
+INCLUDE=-I$(INTERFACES)/mce_library -I../../include -I$(MISC)
 
 LIBRARY=-L$(INTERFACES)/mce_library -lmcecmd \
 	-L$(INTERFACES)/log_library -lmaslog \
-	-lexpat -lconfig
+	-lexpat -lconfig $(MISC)cmdtree.o
 
-CFLAGS += $(INCLUDE)
+CFLAGS += $(INCLUDE) -Wall
 
 default: mce_cmd
 

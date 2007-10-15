@@ -11,51 +11,30 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <mcecmd.h>
+#include <mceconfig.h>
+
+#include <cmdtree.h>
 
 #define LINE_LEN 1024
+#define NARGS 64
 
 #define WHITE " \t"
 
-#define ERR_CMD  1
-#define ERR_OPT  2
-#define ERR_MCE  3
-#define ERR_MEM  4
+#define CASE_INSENSITIVE
 
-#define FMT_HEX 0
-#define FMT_DEC 1
+#define DEFAULT_DEVICE "/dev/mce_cmd0"
+#define DEFAULT_DATA "/dev/mce_data0"
+#define DEFAULT_XML "/etc/mce.cfg"
 
-struct cmd_str {
-	char name[32];
-	mce_command_code code;
-	int  carded;
-	int  paraed;
-	int  format;
-};
 
-// fine NCOM 7
-
-struct cmd_str commands[] = {
-	{"rb",     MCE_RB, 0, 0, FMT_HEX},
-	{"rb_hex", MCE_RB, 0, 0, FMT_HEX},
-	{"rb_dec", MCE_RB, 0, 0, FMT_DEC},
-	{"wb",     MCE_WB, 0, 0, FMT_HEX},
-	{"r",      MCE_RB, 0, 0, FMT_HEX},
-	{"r_hex",  MCE_RB, 0, 0, FMT_HEX},
-	{"r_dec",  MCE_RB, 0, 0, FMT_DEC},
-	{"w",      MCE_WB, 0, 0, FMT_HEX},
-	{"go",     MCE_GO, 0, 0, FMT_HEX},
-	{"stop",   MCE_ST, 0, 0, FMT_HEX},
-	{"reset",  MCE_RS, 0, 0, FMT_HEX},
-	{"",       0     , 0, 0, FMT_HEX},
-};
-
-struct spec_str {
-	char name[32];
-	int  id;
+enum {
+	COMMAND=CMDTREE_USERBASE,
+	SPECIAL
 };
 
 enum { SPECIAL_HELP,
@@ -66,26 +45,44 @@ enum { SPECIAL_HELP,
        SPECIAL_FRAME
 };   
 
-struct spec_str specials[] = {
-	{"help", SPECIAL_HELP},
-	{"clear_flags", SPECIAL_CLEAR},
-	{"frame_size", SPECIAL_FRAME},
-	{"fake_stop", SPECIAL_FAKESTOP},
-	{"empty", SPECIAL_EMPTY},
-	{"sleep", SPECIAL_SLEEP},
-	{"", -1}
+cmdtree_opt_t root_opts[] = {
+	{"RB"   , COMMAND, MCE_RB, 2, 2, NULL, NULL},
+	{"WB"   , COMMAND, MCE_WB, 3,-1, NULL, NULL},
+	{"R"    , COMMAND, MCE_RB, 2, 2, NULL, NULL},
+	{"W"    , COMMAND, MCE_WB, 3,-1, NULL, NULL},
+	{"GO"   , COMMAND, MCE_GO, 2,-1, NULL, NULL},
+	{"STOP" , COMMAND, MCE_ST, 2,-1, NULL, NULL},
+	{"RESET", COMMAND, MCE_RS, 2,-1, NULL, NULL},
+	{"HELP"    , SPECIAL, SPECIAL_HELP    , 0,0, NULL, NULL},
+	{"FAKESTOP", SPECIAL, SPECIAL_FAKESTOP, 0,0, NULL, NULL},
+	{"EMPTY"   , SPECIAL, SPECIAL_EMPTY   , 0,0, NULL, NULL},
+	{"SLEEP"   , SPECIAL, SPECIAL_SLEEP   , 1,1, NULL, NULL},
+	{"FRAME"   , SPECIAL, SPECIAL_FRAME   , 0,0, NULL, NULL},
+	{"", CMDTREE_TERMINATOR, 0,0,0,NULL, NULL},
+};
+	
+struct {
+	int interactive;
+	int nonzero_only;
+	int no_prefix;
+
+	char batch_file[LINE_LEN];
+	int  batch_now;
+
+	char cmd_command[LINE_LEN];
+	int  cmd_now;
+
+	char device_file[LINE_LEN];
+	char config_file[LINE_LEN];
+
+} options = {
+	0, 0, 0, "", 0, "", 0, DEFAULT_DEVICE
 };
 
 
-#define DEFAULT_DEVICE "/dev/mce_cmd0"
-#define DEFAULT_DATA "/dev/mce_data0"
-#define DEFAULT_XML "/etc/mce.cfg"
-
-struct {
-	char device_name[LINE_LEN];
-	char xml_name[LINE_LEN];
-} options;
-
+enum { ERR_MEM=1,
+       ERR_OPT=2,
+       ERR_MCE=3 };
 
 int handle = -1;
 int data_fd = 0;
@@ -95,16 +92,18 @@ char *line;
 
 char errstr[LINE_LEN];
 
-int process_special(int key);
-int process_command(int key);
 
-int command_key(char *name);
-int special_key(char *name);
+int  load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts);
 
-int process_options(int argc, char **argv);
+int  process_command(cmdtree_opt_t *src_opts, int *args, int nargs,
+		     char *errmsg);
+
+int  process_options(int argc, char **argv);
+
 void init_options(void);
 
-char *lowify(char *src);
+void uppify(char *s);
+
 
 int main(int argc, char **argv)
 {
@@ -127,10 +126,10 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	handle = mce_open(options.device_name);
+	handle = mce_open(options.device_file);
 	if (handle<0) {
 		fprintf(ferr, "Could not open mce device '%s'\n",
-			options.device_name);
+			options.device_file);
 		err = ERR_MCE;
 		goto exit_now;
 	}
@@ -142,63 +141,82 @@ int main(int argc, char **argv)
 		fprintf(ferr, "Could not open mce data '%s'\n",	DEFAULT_DATA);
 	}		
 
-	if (mce_load_config(handle, options.xml_name)!=0) {
+	if (mce_load_config(handle, options.config_file)!=0) {
 		fprintf(ferr, "Could not load file '%s', "
 			"card/para decoding will be unavailable\n",
-			options.xml_name);
+			options.config_file);
 	}
-/* 	if (mce_load_xml(handle, options.xml_name)!=0) { */
-/* 		fprintf(ferr, "Could not load file '%s', " */
-/* 			"card/para decoding will be unavailable\n", */
-/* 			options.xml_name); */
-/* 	} */
 
+	mce_data_t *mce = NULL;
+
+	if (mceconfig_load(options.config_file, &mce)!=0) {
+		fprintf(ferr, "Could not load MCE config file '%s'.\n",
+			options.config_file);
+		err = ERR_MCE;
+		goto exit_now;
+	}
+	load_mceconfig(mce, root_opts);
+	
+	char errmsg[1024] = "";
+	char premsg[1024] = "";
 	int done = 0;
 
 	while (!done) {
 
-		if (command_now) {
-			// This only occurs if command was passed with -x
+		unsigned int n = LINE_LEN;
+
+		if ( options.cmd_now ) {
+			strcpy(line, options.cmd_command);
 			done = 1;
 		} else {
-			int n = LINE_LEN;
-			getline(&line, &n, fin);
-			line_count++;
 
-			if (n==0 || feof(fin)) {
-				done = 1;
+			getline(&line, &n, fin);
+			if (n==0 || feof(fin)) break;
+
+			n = strlen(line);
+			if (line[n-1]=='\n') line[--n]=0;
+			line_count++;
+		}
+#ifdef CASE_INSENSITIVE
+		uppify(line);
+#endif
+
+		if (options.no_prefix)
+			premsg[0] = 0;
+		else
+			sprintf(premsg, "Line %3i : ", line_count);
+		errmsg[0] = 0;
+
+		int args[NARGS];
+		int err = 0;
+		int count = cmdtree_decode(line, args, NARGS, root_opts, errmsg);
+/* 		printf("count=%i\n", count); */
+		if (count == 0) {
+			if (options.interactive) {
+				cmdtree_list(errmsg + strlen(errmsg),
+					     root_opts, "MCE_CMD expects "
+					     "command from [ ", " ", "]");
+				err = 1;
 			} else {
-				n = strlen(line);
-				if (line[n-1]=='\n') line[--n] = 0;
-				command_now = 1;
+				err = 0;
 			}
+		} else if (count < 0) {
+			err = -1;
+		} else {
+			err = process_command(root_opts, args, count, errmsg);
 		}
 
-		if (command_now) {
-			command_now = 0;
-			char *cmd = strtok(line, WHITE);
-			if (cmd==NULL || *cmd=='#')
-				continue;
-			
-			int key;
-			if ( (key = command_key(cmd)) >= 0 ) {
-				err = process_command(key);
-			} else if ( (key = special_key(cmd)) >= 0) {
-				err = process_special(key);
-			} else {
-				sprintf(errstr, "unknown command");
-				err = ERR_CMD;
-			}
 
-			if (err==0) {
-				printf("Line %i: %s ok: %s\n",
-				       line_count, cmd, errstr);
-			} else {
-				fprintf(ferr, "Line %i: %s failed!: %s\n",
-					line_count, cmd, errstr);
-				err = ERR_CMD;
-				done = !interactive;
-			}
+		if (err > 0) {
+			if (*errmsg == 0 && !options.nonzero_only)
+				printf("%sok\n", premsg);
+			else 
+				printf("%sok : %s\n", premsg, errmsg);
+		} else if (err < 0) {
+			printf("%serror : %s\n", premsg, errmsg);
+			if (options.interactive)
+				continue;
+			return 1;
 		}
 	}
 
@@ -213,53 +231,260 @@ exit_now:
 
 void init_options()
 {
-	strcpy(options.xml_name, DEFAULT_XML);
-	strcpy(options.device_name, DEFAULT_DEVICE);
+	strcpy(options.config_file, DEFAULT_XML);
+	strcpy(options.device_file, DEFAULT_DEVICE);
 }
 
-int setup_command(int argc, char **argv, int optind)
+void uppify(char *s)
 {
-	if (line==NULL) {
-		fprintf(stderr, "Memory, tsk tsk.\n");
-		return -1;
+	if (s==NULL || *(s--)==0) return;
+	while (*(++s)!=0) {
+		if (*s<'a' || *s>'z') continue;
+		*s += 'A' - 'a';
+	}	
+}
+
+int load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts)
+{
+	cmdtree_opt_t *card_opts;
+	card_t card;
+	int i;
+	int n;
+	for (n=0; mceconfig_get_card(mce, &card, n) == 0; n++);
+
+	card_opts = calloc(n+1, sizeof(*card_opts));
+	if (card_opts==NULL) {
+		printf("Holy, memory.\n");
+		return 1;
+	}
+	for (i=0; mceconfig_get_card(mce, &card, i) == 0; i++) {
+
+		cmdtree_opt_t *par_opts;
+		int j,k,n=0;
+		cardtype_t ct;
+		paramset_t ps;
+		param_t p;
+		mceconfig_card_cardtype(mce, &card, &ct);
+		
+		for (j=0; mceconfig_cardtype_paramset(mce, &ct, j, &ps)==0; j++) {
+			for (k=0; mceconfig_paramset_param(mce, &ps, k, &p)==0; k++) {
+				n++;
+			}
+		}
+
+		par_opts = calloc(n+1, sizeof(*par_opts));
+		n = 0;
+		for (j=0; mceconfig_cardtype_paramset(mce, &ct, j, &ps)==0; j++) {
+			for (k=0; mceconfig_paramset_param(mce, &ps, k, &p)==0; k++) {
+				strcpy(par_opts[n].name, p.name);
+				uppify(par_opts[n].name);
+				par_opts[n].id = p.id;
+				par_opts[n].type = 12;
+				par_opts[n].max_args = p.count;
+				par_opts[n].sub_opts = NULL;
+				par_opts[n].cargo = p.cfg;
+				n++;
+			}
+		}
+		par_opts[n].type = CMDTREE_TERMINATOR;
+					
+		strcpy(card_opts[i].name, card.name);
+		uppify(card_opts[i].name);
+		card_opts[i].id = card.id;
+		card_opts[i].min_args = 1;
+		card_opts[i].max_args = -1;
+		card_opts[i].type = 11;
+		card_opts[i].sub_opts = par_opts;
+		card_opts[i].cargo = card.cfg;
+	}
+	card_opts[i].type = CMDTREE_TERMINATOR;
+
+	for (i=0; opts[i].type != CMDTREE_TERMINATOR; i++) {
+		if (opts[i].type == COMMAND)
+			opts[i].sub_opts = card_opts;
 	}
 
-	char *s = line;
-	while (optind < argc) {
-		s += sprintf(s, "%s ", argv[optind++]);
-	}
-	command_now = 1;
-	
 	return 0;
 }
 
-int process_options(int argc, char **argv) {
 
+int process_command(cmdtree_opt_t *src_opts, int *arg_opt, int nargs, char *errmsg)
+{
+	int ret_val = 0;
+	int err;
+	int i;
+	int arg_id[NARGS] = {0};
+	param_t p;
+	card_t c;
+	int to_read;
+	u32 bufr[100];
+
+	err = cmdtree_translate(arg_id, arg_opt, nargs, src_opts);
+	
+	switch (src_opts[arg_opt[0]].type) {
+	case COMMAND:
+
+		mceconfig_cfg_card(&c, src_opts[arg_opt[0]].sub_opts[arg_opt[1]].cargo);
+		mceconfig_cfg_param(&p, src_opts[arg_opt[0]].sub_opts[arg_opt[1]].sub_opts[arg_opt[2]].cargo);
+		to_read = p.count;
+
+		switch( arg_id[0] ) {
+		    
+		case MCE_RS:
+			err = mce_reset(handle, arg_id[1], arg_id[2]);
+			break;
+
+		case MCE_GO:
+			err = mce_start_application(handle,
+						    arg_id[1], arg_id[2]);
+			break;
+
+		case MCE_ST:
+			err = mce_stop_application(handle,
+						   arg_id[1], arg_id[2]);
+			break;
+
+		case MCE_RB:
+			//Check count in bounds; scale if "card" returns multiple data
+			if (p.count<0 || p.count>MCE_REP_DATA_MAX) {
+				sprintf(errstr, "read length out of bounds!");
+				return -1;
+			}
+			err = mce_read_block(handle, arg_id[1], arg_id[2],
+					     to_read, bufr, 1);
+
+			if (err==0) {
+				for (i=0; i<p.count; i++) {
+					errmsg += sprintf(errmsg, "%#x", bufr[i]);
+				}
+			}
+			break;
+
+		case MCE_WB:
+			//Check bounds
+/* 			for (i=0; i<p.count; i++) { */
+/* 				if ((props.flags & PARAM_MIN) */
+/* 				    && bufw[i]<props.minimum) break; */
+/* 				if ((props.flags & PARAM_MAX) */
+/* 				    && bufw[i]<props.maximum) break; */
+/* 			} */
+/* 			if (i!=p.count) { */
+/* 				sprintf(errstr,	"command expects values in range " */
+/* 					"[%#x, %#x] = [%i,%i]\n", */
+/* 					props.minimum, props.maximum, */
+/* 					props.minimum, props.maximum); */
+/* 				return -1; */
+/* 			} */
+
+			err = mce_write_block(handle,
+						  arg_id[1], arg_id[2],
+						  p.count, (unsigned*)arg_id+3);
+			break;
+
+		default:
+			sprintf(errmsg, "command not implemented");
+			return -1;
+		}
+
+		if (err==0)
+			ret_val = 1;
+		else {
+			sprintf(errmsg, "mce library error %#08x", err);
+			ret_val = -1;
+		} 
+
+		break;
+
+
+	case SPECIAL:
+
+		switch( arg_id[0] ) {
+
+		case SPECIAL_HELP:
+			cmdtree_list(errmsg, root_opts,
+				     "MCE commands: [ ", " ", "]");
+			break;
+
+		case SPECIAL_CLEAR:
+			ret_val = mce_reset(handle, arg_id[1], arg_id[2]);
+			break;
+
+		case SPECIAL_FAKESTOP:
+			ret_val = mce_fake_stopframe(data_fd);
+			break;
+
+		case SPECIAL_EMPTY:
+			ret_val = mce_empty_data(data_fd);
+			break;
+
+		case SPECIAL_SLEEP:
+			//printf("SLEEP! %i\n", arg_id[1]); fflush(stdout);
+			usleep(arg_id[1]);
+			ret_val = 0;
+			break;
+
+		case SPECIAL_FRAME:
+			ret_val = mce_set_datasize(data_fd, arg_id[1]);
+			break;
+		default:
+			sprintf(errmsg, "command not implemented");
+		}
+
+		break;
+
+	default:
+		sprintf(errmsg, "Unknown root command type!");
+	}
+
+	return ret_val;
+}
+
+int process_options(int argc, char **argv)
+{
+	char *s;
 	int option;
-	while ( (option = getopt(argc, argv, "x:f:d:ih")) >=0) {
+	while ( (option = getopt(argc, argv, "?hiqpf:c:d:x")) >=0) {
 
 		switch(option) {
 		case '?':
 		case 'h':
-			printf("Usage:\n\t%s [-i] [-d devfile] "
-			       "[-f <config file>] [-x <command>]\n",
+			printf("Usage:\n\t%s [-i] [-q] [-p] [-d devfile] "
+			       "[-c <config file> ] "
+			       "[-f <batch file> | -x <command>]\n",
 			       argv[0]);
 			return -1;
 
-		case 'x':
-			setup_command(argc, argv, optind-1);
+		case 'i':
+			options.interactive = 1;
+			break;
+
+		case 'q':
+			options.nonzero_only = 1;
+			break;
+
+		case 'p':
+			options.no_prefix = 1;
 			break;
 
 		case 'f':
-			strcpy(options.xml_name, optarg);
+			strcpy(options.batch_file, optarg);
+			options.batch_now = 1;
+			break;
+
+		case 'c':
+			strcpy(options.config_file, optarg);
 			break;
 
 		case 'd':
-			strcpy(options.device_name, optarg);
+			strcpy(options.device_file, optarg);
 			break;
 
-		case 'i':
-			interactive = 1;
+		case 'x':
+			s = options.cmd_command;
+			while (optind < argc) {
+				s += sprintf(s, "%s ", argv[optind++]);
+			}
+			options.cmd_now = 1;
 			break;
 
 		default:
@@ -271,263 +496,11 @@ int process_options(int argc, char **argv) {
 }
 
 
-int command_key(char *name) {
-	int i;
-	for (i=0; commands[i].name[0]!=0; i++)
-		if ( strcmp(commands[i].name, name)==0) return i;
-	return -1;
-}
-
-int special_key(char *name) {
-	int i;
-	for (i=0; specials[i].id >= 0; i++)
-		if ( strcmp(specials[i].name, name)==0) 
-			return specials[i].id;
-	return -1;
-}
-
-
-int get_int(char *card, int *card_id) {
+int get_int(char *card, int *card_id)
+{
 	char *end = card;
 	if (end==NULL || *end==0) return -1;
 	*card_id = strtol(card, &end, 0);
 	if (*end!=0) return -1;
-}
-
-/* Command word ("w") has already been toked off.  Allowed formats:
- * 
- *     w 0x2 0x99 7 ...
- *     r 0x2 0x96 [1]
- * 
- */
-//Return 0 on success
-
-int process_command(int key)
-{	
-	int i;
-
-	//All commands have card, then param.
-	char *card;
-	char *para;
-
-	int para_type = -1;
-	     
-	card = strtok(NULL, WHITE);
-	if (card==NULL) {
-		sprintf(errstr, "expected card string or number");
-		return -1;
-	}
-	para = strtok(NULL, WHITE);
-	if (para==NULL) {
-		sprintf(errstr, "expected param string or number");
-		return -1;
-	}
-	
-       
-	//Attempt to convert card and para to integers, otherwise lookup
-	param_properties_t props;
-	mce_param_init(&props);
-
-	int raw_mode = ( get_int(card, &props.card_id)==0 &&
-			 get_int(para, &props.para_id)==0 );
-
-	if (!raw_mode) {
-		//Extract trailing numerals from para as para_index
-		int index = 0;
-		char *s;
-		for ( s=para; *s!=0 && ( *s<'0' || *s>'9'); s++);
-		sscanf(s, "%i", &index);
-		*s = 0;
-
-		if (mce_lookup(handle, &props,
-			       card, para, index) !=0) {
-			sprintf(errstr, "Could not locate card:param:index "
-				"= %s:%s:%i", card, para, index);
-			return -1;
-		}
-	}
-
-
-        // Rules for arguments: In raw mode, for all commands except
-        // read_block, 0 to MCE_CMD_DATA_MAX arguments may be passed;
-        // for read_block only a single argument is accepted and it is
-        // the size of the read.
-
-        // In non-raw mode:
-        // rb: up to props.count args are accepted, but ignored.
-        // wb: exactly props.count args must be given
-        // other commands: up to props.count args accepted, but ignored
-
-	int code = commands[key].code;
-	char *name = commands[key].name;
-
-	int exact_mode =
-		(!raw_mode && (code==MCE_WB)) ||
-		( raw_mode && (code==MCE_RB));
-	
-	if (raw_mode) {
-		props.count = (code==MCE_RB) ?
-			1 : MCE_CMD_DATA_MAX;
-	}
-
-	int data_count = 0;
-	int bufr[MCE_REP_DATA_MAX];
-	int bufw[MCE_CMD_DATA_MAX];
-	char *token;
-	while ( (token=strtok(NULL, WHITE)) !=NULL ) {
-		if (data_count>=props.count) {
-			sprintf(errstr, "too many arguments!");
-			return -1;
-		}
-		if ( get_int(token, bufw+data_count++) !=0) {
-			sprintf(errstr, "integer arguments expected!");
-			return -1;
-		}
-	}
-	if (exact_mode && data_count<props.count) {
-		sprintf(errstr, "%i arguments expected.", props.count);
-		return -1;
-	}
-
-	int to_read = raw_mode ? bufw[0] : props.count;
-	int read_count = to_read * props.card_count;
-
-	// That will likely do it.
-	int ret_val = 0;
-	errstr[0] = 0;
-
-	switch(code) {
-
-	case MCE_RS:
-		ret_val = mce_reset(handle, props.card_id, props.para_id);
-		break;
-
-	case MCE_GO:
-		ret_val = mce_start_application(handle,
-						props.card_id, props.para_id);
-		break;
-
-	case MCE_ST:
-		ret_val = mce_stop_application(handle,
-					       props.card_id, props.para_id);
-		break;
-
-	case MCE_RB:
-		//Check count in bounds; scale if "card" returns multiple data
-
-		if (read_count<0 || read_count>MCE_REP_DATA_MAX) {
-			sprintf(errstr, "read length out of bounds!");
-			return -1;
-		}
-		ret_val = mce_read_block(handle,
-					 props.card_id, props.para_id,
-					 to_read, bufr, props.card_count);
-
-		if (ret_val==0) {
-			char* next = errstr;			
-			for (i=0; i<read_count; i++) {
-				next += sprintf(next,
-						(commands[key].format==FMT_HEX
-						 ? " %#x" : " %10i"),
-						bufr[i]);
-			}
-		}
-		break;
-
-	case MCE_WB:
-		//Check bounds
-		for (i=0; i<data_count; i++) {
-			if ((props.flags & PARAM_MIN)
-			    && bufw[i]<props.minimum) break;
-			if ((props.flags & PARAM_MAX)
-			    && bufw[i]<props.maximum) break;
-		}
-		if (i!=data_count) {
-			sprintf(errstr,	"command expects values in range "
-					"[%#x, %#x] = [%i,%i]\n",
-				props.minimum, props.maximum,
-				props.minimum, props.maximum);
-			return -1;
-		}
-
-		ret_val = mce_write_block(handle,
-					  props.card_id, props.para_id,
-					  data_count, bufw);
-		break;
-
-	default:
-		sprintf(errstr, "command '%s' not implemented\n",
-			name);
-		return -1;
-	}
-
-	if (ret_val != 0) {
-		sprintf(errstr, mce_error_string (ret_val));
-	}
-
-	return ret_val;
-}
-
-
-int process_special(int key) {
-
-	int ret_val = 0;
-	int a;
-	char *nextword = strtok(NULL, WHITE);
-	char *s;
-
-	switch(key) {
-
-	case SPECIAL_HELP:
-		s = errstr + sprintf(errstr, "Special commands:\n");
-		for (a=0; specials[a].name[0]!=0; a++)
-			s += sprintf(s, "%s\n", specials[a].name);
-		ret_val = 0;
-		break;
-
-/* 	case SPECIAL_CLEAR: */
-/* 		ret_val = mce_reset(handle, card_id, para_id); */
-/* 		break; */
-
-	case SPECIAL_FAKESTOP:
-		ret_val = mce_fake_stopframe(data_fd);
-		break;
-
-	case SPECIAL_EMPTY:
-		ret_val = mce_empty_data(data_fd);
-		break;
-
-	case SPECIAL_SLEEP:
-		if (get_int(nextword, &a)==0) {
-			usleep(a);
-		} else
-			sleep(1);
-		ret_val = 0;
-		break;
-
-	case SPECIAL_FRAME:
-		if (get_int(nextword, &a)==0) {
-			ret_val = mce_set_datasize(data_fd, a);
-		} else {
-			sprintf(errstr, "'%s' expects integer argument",
-				specials[key].name);
-			ret_val = -1;
-		}
-		break;
-
-	default:
-		sprintf(errstr, "special command '%s' not implemented\n",
-			specials[key].name);
-		return -1;
-	}
-
-	return ret_val;
-}
-
-char *lowify(char *src)
-{
-	char *s = src;
-	while (*s != 0)
-		*(s++) = toupper(*s);
-	return src;
+	return 0;
 }

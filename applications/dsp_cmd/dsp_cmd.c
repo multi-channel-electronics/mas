@@ -46,34 +46,34 @@ enum {
 
 
 cmdtree_opt_t mem_opts[] = {
-	{"X", DATA, DSP_MEMX, 0, -1, NULL},
-	{"Y", DATA, DSP_MEMY, 0, -1, NULL},
-	{"P", DATA, DSP_MEMP, 0, -1, NULL},
-	{"", CMDTREE_TERMINATOR, 0, 0, 0, NULL}
+	{"X", DATA, DSP_MEMX, 0, -1, NULL, NULL},
+	{"Y", DATA, DSP_MEMY, 0, -1, NULL, NULL},
+	{"P", DATA, DSP_MEMP, 0, -1, NULL, NULL},
+	{"", CMDTREE_TERMINATOR, 0, 0, 0, NULL, NULL}
 };
 
 cmdtree_opt_t qt_opts[] = {
-	{"BASE"  , DATA, DSP_QT_BASE  , 2, 2, NULL},
-	{"DELTA" , DATA, DSP_QT_DELTA , 1, 1, NULL},
-	{"NUMBER", DATA, DSP_QT_NUMBER, 1, 1, NULL},
-	{"INFORM", DATA, DSP_QT_INFORM, 1, 1, NULL},
-	{"SIZE"  , DATA, DSP_QT_SIZE  , 1, 1, NULL},
-	{"TAIL"  , DATA, DSP_QT_TAIL  , 1, 1, NULL},
-	{"FLUSH" , DATA, DSP_QT_FLUSH , 1, 1, NULL},
-	{"ENABLE", DATA, DSP_QT_ENABLE, 1, 1, NULL},
-	{"", CMDTREE_TERMINATOR, 0, 0, 0, NULL}
+	{"BASE"  , DATA, DSP_QT_BASE  , 2, 2, NULL, NULL},
+	{"DELTA" , DATA, DSP_QT_DELTA , 1, 1, NULL, NULL},
+	{"NUMBER", DATA, DSP_QT_NUMBER, 1, 1, NULL, NULL},
+	{"INFORM", DATA, DSP_QT_INFORM, 1, 1, NULL, NULL},
+	{"SIZE"  , DATA, DSP_QT_SIZE  , 1, 1, NULL, NULL},
+	{"TAIL"  , DATA, DSP_QT_TAIL  , 1, 1, NULL, NULL},
+	{"FLUSH" , DATA, DSP_QT_FLUSH , 1, 1, NULL, NULL},
+	{"ENABLE", DATA, DSP_QT_ENABLE, 1, 1, NULL, NULL},
+	{"", CMDTREE_TERMINATOR, 0, 0, 0, NULL, NULL}
 };
 
 cmdtree_opt_t root_opts[] = {
-	{"READ"     , COMMAND, DSP_RDM, 2, 2, mem_opts},
-	{"WRITE"    , COMMAND, DSP_WRM, 3, 3, mem_opts},
-	{"START"    , COMMAND, DSP_GOA, 0, 0, NULL},
-	{"STOP"     , COMMAND, DSP_STP, 0, 0, NULL},
-	{"RESET"    , COMMAND, DSP_RST, 0, 0, NULL},
-	{"RESET_MCE", COMMAND, DSP_RCO, 0, 0, NULL},
-	{"QT_SET"   , COMMAND, DSP_RDM, 1,-1, qt_opts},
-	{"#"        , SPECIAL, COMMENT, 0, 0, NULL},
-	{""         , CMDTREE_TERMINATOR, 0, 0, 0, NULL}
+	{"READ"     , COMMAND, DSP_RDM, 2, 2, mem_opts, NULL},
+	{"WRITE"    , COMMAND, DSP_WRM, 3, 3, mem_opts, NULL},
+	{"START"    , COMMAND, DSP_GOA, 0, 0, NULL, NULL},
+	{"STOP"     , COMMAND, DSP_STP, 0, 0, NULL, NULL},
+	{"RESET"    , COMMAND, DSP_RST, 0, 0, NULL, NULL},
+	{"RESET_MCE", COMMAND, DSP_RCO, 0, 0, NULL, NULL},
+	{"QT_SET"   , COMMAND, DSP_RDM, 1,-1, qt_opts, NULL},
+	{"#"        , SPECIAL, COMMENT, 0, 0, NULL, NULL},
+	{""         , CMDTREE_TERMINATOR, 0, 0, 0, NULL, NULL}
 };
 
 struct {
