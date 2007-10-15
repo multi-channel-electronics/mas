@@ -131,6 +131,8 @@ int mce_ioctl(int fd, int key, unsigned long arg);
 int mce_set_datasize(int fd, int datasize);
 int mce_empty_data(int fd);
 int mce_fake_stopframe(int fd);
+int mce_qt_setup(int fd, int frame_index);
+int mce_qt_enable(int fd, int on);
 
 /* XML/config lookup facilities */
 

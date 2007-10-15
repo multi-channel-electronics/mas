@@ -14,6 +14,9 @@ socks.o: socks.c socks.h
 cmdtree.o: cmdtree.c cmdtree.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
+test: test.o cmdtree.o cmdtree.h
+	$(CC) $(CFLAGS) test.o cmdtree.o -o test
+
 tidy:
 	-rm *~ *.o
 

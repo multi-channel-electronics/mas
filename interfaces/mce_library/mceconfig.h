@@ -136,4 +136,13 @@ char*   mceconfig_errstr(void);
 int     mceconfig_lookup(param_properties_t *p, mce_data_t *mce,
 				const char *card_str, const char *para_str,
 				int para_idx);
+
+int mceconfig_cfg_cardtype(cardtype_t *ct, config_setting_t *cfg);
+
+int mceconfig_cfg_paramset(paramset_t *ps, config_setting_t *cfg);
+
+int mceconfig_cfg_param(param_t *p, config_setting_t *cfg);
+
+int mceconfig_cfg_card(card_t *card, config_setting_t *cfg);
+
 #endif

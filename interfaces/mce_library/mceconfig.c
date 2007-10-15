@@ -186,6 +186,27 @@ int mceconfig_card_cardtype(mce_data_t *mce,
 /* 	for  */
 /* } */
 
+int mceconfig_cfg_cardtype(cardtype_t *ct, config_setting_t *cfg)
+{
+	return load_as_cardtype(ct, cfg);
+}
+
+int mceconfig_cfg_paramset(paramset_t *ps, config_setting_t *cfg)
+{
+	return load_as_paramset(ps, cfg);
+}
+
+int mceconfig_cfg_param(param_t *p, config_setting_t *cfg)
+{
+	return load_as_param(p, cfg);
+}
+
+int mceconfig_cfg_card(card_t *card, config_setting_t *cfg)
+{
+	return load_as_card(card, cfg);
+}
+
+
 int load_as_cardtype(cardtype_t *ct, config_setting_t *cfg)
 {
 	ct->cfg = cfg;
@@ -541,6 +562,7 @@ int get_int_elem(int *dest, config_setting_t *parent,
 	config_setting_t *set = get_setting(parent,name);
 	if (set==NULL) return -1;
 	set = config_setting_get_elem(set, idx);
+	if (set==NULL) return -1;
 	*dest = config_setting_get_int(set);
 	return 0;
 }
@@ -559,6 +581,7 @@ int get_string_elem(char *dest, config_setting_t *parent,
 	config_setting_t *set = get_setting(parent,name);
 	if (set==NULL) return -1;
 	set = config_setting_get_elem(set, idx);
+	if (set==NULL) return -1;
 	strcpy(dest, config_setting_get_string(set));
 	return 0;
 }

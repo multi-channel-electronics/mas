@@ -9,14 +9,17 @@ static int get_int(char *card, int *card_id);
 
 static int string_index(char *word, cmdtree_opt_t *list);
 
-int cmdtree_translate(int *dest, const int *src, int nargs, cmdtree_opt_t *src_opts)
+int cmdtree_translate(int *dest, const int *src, int nargs,
+		      cmdtree_opt_t *src_opts)
 {
 	int i;
 	for (i=0; i<nargs && src_opts != NULL; i++) {
+/* 		printf("tx-s %i\n", src[i]); fflush(stdout); */
 		dest[i] = src_opts[src[i]].id;
-		src_opts = src_opts[i].sub_opts;
+		src_opts = src_opts[src[i]].sub_opts;
 	}
 	for ( ; i<nargs; i++) {
+/* 		printf("tx-# %i\n", src[i]); fflush(stdout); */
 		dest[i] = src[i];
 	}
 	return 0;
@@ -39,6 +42,8 @@ int cmdtree_decode(char *line, int *args, int max_args, cmdtree_opt_t *opts, cha
 {
 	char *word = strtok(line, " ");
 	if (word == NULL) return 0;
+
+/* 	printf(" decode %s\n", word); */
 	
 	if (max_args <= 0) {
 		sprintf(errmsg, "I can't parse that many arguments");
@@ -54,7 +59,7 @@ int cmdtree_decode(char *line, int *args, int max_args, cmdtree_opt_t *opts, cha
 			word = strtok(NULL, " ");
 		}
 
-		int final_word = cmdtree_decode(word, args, 0, NULL, errmsg);
+		int final_word = cmdtree_decode(NULL, args, 0, NULL, errmsg);
 		return (final_word >= 0 ? arg_idx + final_word : final_word);
 	}
 
@@ -102,9 +107,72 @@ int string_index(char *word, cmdtree_opt_t *list)
 {
 	int idx;
 	for (idx = 0; list[idx].type != CMDTREE_TERMINATOR; idx++) {
+/* 		printf("CMP %s %s\n", word, list[idx].name); */
 		if (strcmp(word, list[idx].name)==0) return idx;
 	}
 
 	return idx;
 }
 
+
+int get_word( char *word, token_set_t *tset, int index )
+{
+	if (index <0 || index >= tset->n) {
+		*word = 0;
+		return 0;
+	}
+	
+	strncpy( word, tset->line + tset->start[index],
+		 tset->stop[index] - tset->start[index] );
+	word[tset->stop[index]-tset->start[index]] = 0;
+
+	return 0;
+}
+
+/* int select(token_set_t *t, cmdtree_opt_t *opt) */
+/* { */
+/* 	int i; */
+
+/* 	for (i=0; opt[i]. */
+
+
+/* } */
+
+
+int tokenize(token_set_t *tset, char *line) 
+{
+	if (tset==NULL) return -1;
+	if (line==NULL) return -2;
+	
+	int idx = 0;
+	tset->n = 0;
+	tset->line = line;
+
+	while (line[idx] != 0) {
+		while ( index(WHITESPACE, line[idx]) != NULL &&
+			line[idx] != 0) idx++;
+
+		if (line[idx] == 0) break;
+		
+		tset->start[tset->n] = idx;
+		
+		while ( index(WHITESPACE, line[idx]) == NULL && 
+			line[idx] != 0 ) idx++;
+		
+		tset->stop[tset->n++] = idx;
+	}
+
+/* 	printf("%i %s\n", tset->n, tset->line); */
+/* 	char word[128]; */
+/* 	int i; */
+/* 	for (i=0; i<tset->n; i++) { */
+/* /\* 		strncpy(word, line+tset->start[i], *\/ */
+/* /\* 			tset->stop[i]-tset->start[i]); *\/ */
+/* /\* 		word[tset->stop[i]-tset->start[i]] = 0; *\/ */
+/* 		get_word(word, tset, i); */
+/* 		printf("%i %i %s\n", tset->start[i], tset->stop[i], word); */
+/* 	} */
+
+	return 0;		
+	
+}

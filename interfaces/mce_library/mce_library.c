@@ -437,6 +437,16 @@ int mce_fake_stopframe(int fd)
 	return ioctl(fd, DATADEV_IOCT_FAKE_STOPFRAME);
 }
 
+int mce_qt_enable(int fd, int on)
+{
+	return ioctl(fd, DATADEV_IOCT_QT_ENABLE, on);
+}
+
+int mce_qt_setup(int fd, int frame_index)
+{
+	return ioctl(fd, DATADEV_IOCT_QT_CONFIG, frame_index);
+}
+
 
 #ifdef USE_XML
 
