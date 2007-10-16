@@ -232,6 +232,7 @@ int load_as_param(param_t *p, config_setting_t *cfg)
 	if (cfg == NULL) return -1;
 
 	// Fill with defaults
+	p->cfg = cfg;
 	p->id = -1;
 	p->type = 0;
 	p->count = 1;

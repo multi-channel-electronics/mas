@@ -5,174 +5,204 @@
 
 #include "cmdtree.h"
 
+typedef cmdtree_token_t token_t;
+
+int cmdtree_debug = 0;
+
 static int get_int(char *card, int *card_id);
 
-static int string_index(char *word, cmdtree_opt_t *list);
 
-int cmdtree_translate(int *dest, const int *src, int nargs,
-		      cmdtree_opt_t *src_opts)
-{
-	int i;
-	for (i=0; i<nargs && src_opts != NULL; i++) {
-/* 		printf("tx-s %i\n", src[i]); fflush(stdout); */
-		dest[i] = src_opts[src[i]].id;
-		src_opts = src_opts[src[i]].sub_opts;
-	}
-	for ( ; i<nargs; i++) {
-/* 		printf("tx-# %i\n", src[i]); fflush(stdout); */
-		dest[i] = src[i];
-	}
-	return 0;
-}
-
-int cmdtree_list(char *dest, cmdtree_opt_t *opts,
+int cmdtree_list(char *dest, const cmdtree_opt_t *opts,
 		 const char *intro, const char *delim, const char *outro)
 {
 	int i;
-	dest += sprintf(dest, "%s", intro);
+	char *d = dest;
+	d += sprintf(d, "%s", intro);
 	for (i=0; opts[i].type != CMDTREE_TERMINATOR; i++) {
-		dest += sprintf(dest, "%s%s", opts[i].name, delim);
+		switch(opts[i].type) {
+		case CMDTREE_SELECT:
+			d += sprintf(d, "%s%s", opts[i].name, delim);
+			break;
+			
+		case CMDTREE_INTEGER:
+			d += sprintf(d, "(int)%s", delim);
+			break;
+			
+		case CMDTREE_STRING:
+			d += sprintf(d, "(string)%s", delim);
+			break;
+				
+		default:
+			d += sprintf(d, "(other)%s", delim);
+		}
 	}
-	dest += sprintf(dest, "%s", outro);
-	return i;		
+	d += sprintf(d, "%s", outro);
+	return d-dest;
 }
 
 
-int cmdtree_decode(char *line, int *args, int max_args, cmdtree_opt_t *opts, char *errmsg)
+int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 {
-	char *word = strtok(line, " ");
-	if (word == NULL) return 0;
+	int i;
+	char arg_s[1024];
+	int  arg_i;
+	const cmdtree_opt_t *my_opt = opt;
 
-/* 	printf(" decode %s\n", word); */
+	t->type = CMDTREE_UNDEF;
+
+	cmdtree_token_word(arg_s, t);
+	if (cmdtree_debug) printf("select %s\n", arg_s);
 	
-	if (max_args <= 0) {
-		sprintf(errmsg, "I can't parse that many arguments");
-		return -1;
-	}
+	for (i = 0; t->type==CMDTREE_UNDEF; i++) {
 
-	if (opts == NULL) {
-		// Fill last args with ints from command line
-		int arg_idx = 0;
-		while ( word != NULL && (arg_idx < max_args) &&
-			(get_int(word, args+arg_idx) == 0) ) {
-			arg_idx ++;
-			word = strtok(NULL, " ");
+		my_opt = opt+i;
+
+		if (cmdtree_debug) printf(" compare %i %s\n", my_opt->type, my_opt->name);
+		switch (my_opt->type) {
+
+		case CMDTREE_TERMINATOR:
+			t->type = CMDTREE_TERMINATOR;
+			break;
+			
+		case CMDTREE_SELECT:
+			if (strcmp(arg_s, my_opt->name)==0) {
+				t->value = my_opt->user_cargo;  // We either store this, or i.
+				t->type = CMDTREE_SELECT;
+			}
+			break;
+			
+		case CMDTREE_INTEGER:
+			if (get_int(arg_s, &arg_i)==0) {
+				t->value = arg_i;
+				t->type = CMDTREE_INTEGER;
+			}
+			break;
+
+		case CMDTREE_STRING:
+			t->value = 0;
+			t->type = CMDTREE_STRING;
+			break;
+
+		default:
+			sprintf(errmsg, "Unknown menu option type!");
+			t->type = CMDTREE_TERMINATOR;
 		}
-
-		int final_word = cmdtree_decode(NULL, args, 0, NULL, errmsg);
-		return (final_word >= 0 ? arg_idx + final_word : final_word);
 	}
 
-	int idx = string_index(word, opts);
-
-	// Pass un-found parameters up to previous level
-	if (opts[idx].type == CMDTREE_TERMINATOR)
+	if (t->type == CMDTREE_TERMINATOR)
 		return 0;
 
-	*args = idx;
-	int sub_args = cmdtree_decode(NULL, args+1, max_args-1,
-				      opts[idx].sub_opts, errmsg);
-	if (sub_args < 0) return sub_args;
-	if (sub_args < opts[idx].min_args) {
-		if (sub_args==0 && opts[idx].sub_opts != NULL) {
-			sprintf(errmsg, "%s expects argument from ",
-				opts[idx].name);
-			cmdtree_list(errmsg + strlen(errmsg),
-				     opts[idx].sub_opts,
-				     "[ ", " ", "]");
-		} else {
-			sprintf(errmsg, "%s expects at least %i arguments",
-				opts[idx].name, opts[idx].min_args);
+	// Get additional args
+	int count = 0;
+	if (my_opt==NULL) {
+		if (t->n > 1) {
+			sprintf(errmsg, "orphaned arguments!");
+			return -1;
 		}
-		return -1;
-	} else if ( opts[idx].max_args >= 0 && sub_args > opts[idx].max_args) {
-		sprintf(errmsg, "%s expects at most %i arguments",
-			opts[idx].name, opts[idx].max_args);
+		return 0;
+	}
+	
+	if (t->n > 1) {
+		count = climb( t+1, my_opt->sub_opts, errmsg, suggest);
+	} 
+
+	if (count < 0) return count - 1;
+
+	if (count == 0 && t->n > 1) {
+		errmsg += sprintf(errmsg, "%s expects argument from ", arg_s);
+		errmsg += cmdtree_list(errmsg, opt->sub_opts, "[ ",
+				       " ", "]");
+		return -2; // Biased so that missing arg position is well-represented.
+	}
+
+	// Arg counts checking...
+	if (count < my_opt->min_args) {
+		sprintf(errmsg, "%s expects at least %i arguments",
+			arg_s, my_opt->min_args);
 		return -1;
 	}
-	return sub_args + 1;
+	if (my_opt->max_args >=0 && count > my_opt->max_args) {
+		sprintf(errmsg, "%s expects at most %i arguments",
+			arg_s, my_opt->max_args);
+		return -1;
+	}
+
+	return count + 1;
+	
+
+}
+
+
+/* These aren't different. Hm. */
+
+int cmdtree_suggest( token_t *t, const cmdtree_opt_t *opt, char *errmsg )
+{
+	return climb(t, opt, errmsg, 1);
+}
+
+int cmdtree_select( token_t *t, const cmdtree_opt_t *opt, char *errmsg )
+{
+	return climb(t, opt, errmsg, 0);
 }
 
 
 int get_int(char *card, int *card_id) {
+	char *last;
 	errno = 0;
 	if (card==NULL) return -1;
-	*card_id = strtol(card, NULL, 0);
-	if (errno!=0) return -1;
+	*card_id = strtol(card, &last, 0);
+	if (errno!=0 || *last != 0) return -1;
 	return 0;
 }
 
-		
-int string_index(char *word, cmdtree_opt_t *list)
+
+int cmdtree_token_word( char *word, token_t *tset )
 {
-	int idx;
-	for (idx = 0; list[idx].type != CMDTREE_TERMINATOR; idx++) {
-/* 		printf("CMP %s %s\n", word, list[idx].name); */
-		if (strcmp(word, list[idx].name)==0) return idx;
-	}
-
-	return idx;
-}
-
-
-int get_word( char *word, token_set_t *tset, int index )
-{
-	if (index <0 || index >= tset->n) {
-		*word = 0;
-		return 0;
-	}
-	
-	strncpy( word, tset->line + tset->start[index],
-		 tset->stop[index] - tset->start[index] );
-	word[tset->stop[index]-tset->start[index]] = 0;
+	strncpy( word, tset->line + tset->start,
+		 tset->stop - tset->start );
+	word[tset->stop-tset->start] = 0;
 
 	return 0;
 }
 
-/* int select(token_set_t *t, cmdtree_opt_t *opt) */
-/* { */
-/* 	int i; */
-
-/* 	for (i=0; opt[i]. */
-
-
-/* } */
-
-
-int tokenize(token_set_t *tset, char *line) 
+int cmdtree_tokenize(token_t *t, char *line, int max_tokens) 
 {
-	if (tset==NULL) return -1;
+	if (t==NULL) return -1;
 	if (line==NULL) return -2;
 	
 	int idx = 0;
-	tset->n = 0;
-	tset->line = line;
+	int n = 0;
 
-	while (line[idx] != 0) {
+	while (line[idx] != 0 && n < max_tokens) {
 		while ( index(WHITESPACE, line[idx]) != NULL &&
 			line[idx] != 0) idx++;
 
 		if (line[idx] == 0) break;
 		
-		tset->start[tset->n] = idx;
+		t[n].start = idx;
 		
 		while ( index(WHITESPACE, line[idx]) == NULL && 
 			line[idx] != 0 ) idx++;
 		
-		tset->stop[tset->n++] = idx;
+		t[n++].stop = idx;
 	}
 
-/* 	printf("%i %s\n", tset->n, tset->line); */
-/* 	char word[128]; */
-/* 	int i; */
-/* 	for (i=0; i<tset->n; i++) { */
-/* /\* 		strncpy(word, line+tset->start[i], *\/ */
-/* /\* 			tset->stop[i]-tset->start[i]); *\/ */
-/* /\* 		word[tset->stop[i]-tset->start[i]] = 0; *\/ */
-/* 		get_word(word, tset, i); */
-/* 		printf("%i %i %s\n", tset->start[i], tset->stop[i], word); */
-/* 	} */
+	for (idx=0; idx<n; idx++ ) {
+		t[idx].n = n-idx;
+		t[idx].line = line;
+	}
+
+	if (cmdtree_debug) {
+		printf("%i %s\n", t->n, t->line);
+		char word[128];
+		int i;
+		for (i=0; i<t->n; i++) {
+			cmdtree_token_word(word, t+i);
+			printf("%i %i %s\n", t->start, t->stop, word);
+		}
+	}
+
+	if (n >= max_tokens) return -1;
 
 	return 0;		
-	
 }
