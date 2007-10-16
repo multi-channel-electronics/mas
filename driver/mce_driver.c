@@ -630,7 +630,7 @@ int mce_qti_handler ( dsp_message *msg )
 
 	/* Check consistency of buffer_index */
 
- 	data_frame_contribute( qti->dsp_tail );
+ 	data_frame_contribute( qti->dsp_head );
 	
 	// Schedule a grant update
 

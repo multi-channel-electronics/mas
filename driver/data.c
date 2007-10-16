@@ -143,8 +143,6 @@ int data_frame_contribute(int new_head)
 			     % frames.max_index);
 #endif
         
-	wake_up_interruptible(&frames.queue);
-
 	// Ensure that new_head >= head >= tail
 	//   or        head >= tail > new_head
         //   or        tail > new_head >= head
@@ -163,6 +161,8 @@ int data_frame_contribute(int new_head)
 	}
 
 	tasklet_schedule(&frames.grant_tasklet);
+
+	wake_up_interruptible(&frames.queue);
 
         return 0;
 }
