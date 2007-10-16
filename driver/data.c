@@ -145,13 +145,13 @@ int data_frame_contribute(int new_head)
         
 	wake_up_interruptible(&frames.queue);
 
-	// Ensure that new_head > head > tail
-	//   or        head > tail > new_head
-        //   or        tail > new_head > head
+	// Ensure that new_head >= head >= tail
+	//   or        head >= tail > new_head
+        //   or        tail > new_head >= head
 
 	d = 
-		(new_head > frames.head_index) +
-		(frames.head_index > frames.tail_index) +
+		(new_head >= frames.head_index) +
+		(frames.head_index >= frames.tail_index) +
 		(frames.tail_index > new_head);
 	
 	if (d != 2) {
