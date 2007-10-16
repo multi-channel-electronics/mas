@@ -110,7 +110,7 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 
 	if (count == 0 && t->n > 1) {
 		errmsg += sprintf(errmsg, "%s expects argument from ", arg_s);
-		errmsg += cmdtree_list(errmsg, opt->sub_opts, "[ ",
+		errmsg += cmdtree_list(errmsg, my_opt->sub_opts, "[ ",
 				       " ", "]");
 		return -2; // Biased so that missing arg position is well-represented.
 	}
