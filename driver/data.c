@@ -112,6 +112,150 @@ int data_frame_increment()
 
 #undef SUBNAME
 
+/*
+
+  Quiet Transfer Mode support
+
+  Information interrupts from DSP are directed to
+  data_frame_contribute, which checks for consistency of the informed
+  value and then updates tail_index in the driver.
+
+  Following information, a tasklet is scheduled to update the head
+  index on the DSP.
+
+  QT configuration is achieved with calls to data_qt_setup and
+  data_qt_enable.
+
+*/
+
+
+#define SUBNAME "data_frame_contribute: "
+
+int data_frame_contribute(int new_head)
+{
+	int d;
+
+#ifdef OPT_WATCHER
+	if (watcher.on)
+		watcher_file((frames.head_index
+			      + frames.max_index
+			      - frames.tail_index)
+			     % frames.max_index);
+#endif
+        
+	wake_up_interruptible(&frames.queue);
+
+	// Ensure that new_head > head > tail
+	//   or        head > tail > new_head
+        //   or        tail > new_head > head
+
+	d = 
+		(new_head > frames.head_index) +
+		(frames.head_index > frames.tail_index) +
+		(frames.tail_index > new_head);
+	
+	if (d != 2) {
+		PRINT_ERR(SUBNAME "buffer trashed!\n");
+		frames.head_index = new_head;
+		frames.tail_index = (new_head+1) % frames.max_index;
+	} else {
+		frames.head_index = new_head;
+	}
+
+	tasklet_schedule(&frames.grant_tasklet);
+
+        return 0;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "data_grant_callback: "
+
+int  data_grant_callback( int error, dsp_message *msg )
+{
+	if (error != 0 || msg==NULL) {
+		PRINT_ERR(SUBNAME "error or NULL message.\n");
+	}
+	return 0;		
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "data_grant_task: "
+
+void data_grant_task(unsigned long arg)
+{
+	int err;
+	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, frames.tail_index, 0 } };
+
+	if ( (err=dsp_send_command( &cmd, data_grant_callback )) ) {
+		// FIX ME: discriminate between would-block errors and fatals!
+		PRINT_INFO(SUBNAME "dsp busy; rescheduling.\n");
+		tasklet_schedule(&frames.grant_tasklet);
+		return;
+	}
+	
+
+}
+
+#undef SUBNAME
+
+int data_qt_cmd( dsp_qt_code code, int arg1, int arg2)
+{
+	dsp_command cmd = { DSP_QTS, {code,arg1,arg2} };
+	dsp_message reply;
+	return dsp_send_command_wait( &cmd, &reply );
+}	
+
+
+#define SUBNAME "data_qt_enable: "
+
+int data_qt_enable(int on)
+{
+	return data_qt_cmd(DSP_QT_ENABLE, on, 0);
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "data_qt_setup: "
+
+int data_qt_configure( int qt_interval )
+{
+	int err = 0;
+	PRINT_INFO(SUBNAME "entry\n");
+
+	if ( data_qt_enable(0) || data_reset() )
+		err = -1;
+
+	if (!err)
+		err = data_qt_cmd(DSP_QT_DELTA , frames.frame_size, 0);
+	
+	if (!err)
+		err = data_qt_cmd(DSP_QT_NUMBER, frames.max_index, 0);
+
+	if (!err)
+		err = data_qt_cmd(DSP_QT_INFORM, qt_interval, 0);
+
+	if (!err)
+		err = data_qt_cmd(DSP_QT_SIZE  , frames.data_size, 0);
+
+	if (!err)
+		err = data_qt_cmd(DSP_QT_TAIL, frames.tail_index, 0);
+
+	if (!err)
+		err = data_qt_cmd(DSP_QT_BASE,
+				  ((long)frames.base_busaddr      ) & 0xffff,
+				  ((long)frames.base_busaddr >> 16) & 0xffff);
+	
+	return err;
+}
+
+#undef SUBNAME
+
+
 /* data_frame_poll
  *
  * This function can be used by data distributors to check for full
@@ -383,12 +527,16 @@ void* data_init(int mem_size, int data_size, int borrow)
 {
 	init_waitqueue_head(&frames.queue);
 
+	tasklet_init(&frames.grant_tasklet,
+		     data_grant_task, 0);
+
 	return data_alloc(mem_size, data_size, borrow);
 }
 
 
 int data_cleanup()
 {
+	tasklet_kill(&frames.grant_tasklet);
 	return data_free();
 }
 

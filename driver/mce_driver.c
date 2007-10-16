@@ -8,6 +8,8 @@
 #include "mce_options.h"
 #include "memory.h"
 
+#include <dsp.h>
+
 #include "mce_driver.h"
 #include "mce_ops.h"
 #include "data.h"
@@ -615,18 +617,24 @@ int mce_int_handler( dsp_message *msg )
 #undef SUBNAME
 
 
-#define SUBNAME "mce_qti_handler"
+#define SUBNAME "mce_qti_handler: "
 
 int mce_qti_handler ( dsp_message *msg )
 {
-	dsp_qtinformation *qti = (dsp_qtinformation*)msg;
+	dsp_qtinform *qti = (dsp_qtinform*)msg;
 
-	PRINT_INFO(SUBNAME "registered %ui new packets (interval %ui); "
-		   "next buffer is %ui\n",
-		   qti->inform_count, qti->inform_interval,
-		   qti->buffer_index);
+	PRINT_INFO(SUBNAME
+		   "update head to %u with %u drops; active tail is %u\n",
+		   qti->dsp_head, qti->dsp_drops,
+		   qti->dsp_tail);
 
-	return 0;	
+	/* Check consistency of buffer_index */
+
+ 	data_frame_contribute( qti->dsp_tail );
+	
+	// Schedule a grant update
+
+	return 0;
 }
 
 #undef SUBNAME

@@ -117,6 +117,15 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		mce_error_reset();
 		return data_frame_empty_buffers();
 
+	case DATADEV_IOCT_QT_CONFIG:
+		PRINT_INFO("ioctl: configure Quiet Transfer mode "
+			   "[inform=%li]\n", arg);
+		return data_qt_configure(arg);
+
+	case DATADEV_IOCT_QT_ENABLE:
+		PRINT_INFO("ioctl: enable/disable quiet Transfer mode "
+			   "[on=%li]\n", arg);
+		return data_qt_configure(arg);
 
 	default:
 		PRINT_ERR("ioctl: unknown command (%#x)\n", iocmd );

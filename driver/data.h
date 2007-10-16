@@ -1,6 +1,8 @@
 #ifndef _DATA_H_
 #define _DATA_H_
 
+#include <linux/interrupt.h>
+
 #include "data_ioctl.h"
 
 /*
@@ -70,6 +72,9 @@ typedef struct {
 
 	struct semaphore sem;
 
+        // Tasklet for updating grants on card.
+ 	struct tasklet_struct grant_tasklet;
+
 	int dropped;
 
 	int flags;
@@ -102,6 +107,7 @@ void  data_report(void);
 
 int   data_frame_address(u32 *dest);
 int   data_frame_increment(void);
+int   data_frame_contribute(int count);
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
 		    int count);
@@ -112,5 +118,9 @@ int data_frame_resize(int size);
 int data_frame_empty_buffers( void );
 
 int data_frame_poll( void );
+
+int data_qt_configure( int qt_interval );
+
+int data_qt_enable(int on);
 
 #endif
