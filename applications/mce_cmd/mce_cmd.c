@@ -23,8 +23,6 @@
 #define LINE_LEN 1024
 #define NARGS 64
 
-#define WHITE " \t"
-
 #define CASE_INSENSITIVE
 
 #define DEFAULT_DEVICE "/dev/mce_cmd0"
@@ -33,38 +31,67 @@
 
 
 enum {
-	COMMAND=CMDTREE_USERBASE,
-	SPECIAL
-};
-
-enum { SPECIAL_HELP,
-       SPECIAL_CLEAR,
-       SPECIAL_FAKESTOP,
-       SPECIAL_EMPTY,
-       SPECIAL_SLEEP,
-       SPECIAL_FRAME
+	ENUM_COMMAND_LOW,	
+	COMMAND_RB,
+	COMMAND_WB,
+	COMMAND_R,
+	COMMAND_W,
+	COMMAND_GO,
+	COMMAND_ST,
+	COMMAND_RS,
+	ENUM_COMMAND_HIGH,
+	ENUM_SPECIAL_LOW,
+	SPECIAL_HELP,
+	SPECIAL_CLEAR,
+	SPECIAL_FAKESTOP,
+	SPECIAL_EMPTY,
+	SPECIAL_SLEEP,
+	SPECIAL_FRAME,
+	SPECIAL_DEC,
+	SPECIAL_HEX,
+	ENUM_SPECIAL_HIGH,
 };   
 
+
+cmdtree_opt_t anything_opts[] = {
+	{ CMDTREE_INTEGER, "", 0, -1, 0, anything_opts },
+	{ CMDTREE_STRING , "", 0, -1, 0, anything_opts },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
+cmdtree_opt_t integer_opts[] = {
+	{ CMDTREE_INTEGER   , "", 0, -1, 0, integer_opts },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
+cmdtree_opt_t command_placeholder_opts[] = {
+	{ CMDTREE_INTEGER   , "", 0, -1, 0, integer_opts },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
 cmdtree_opt_t root_opts[] = {
-	{"RB"   , COMMAND, MCE_RB, 2, 2, NULL, NULL},
-	{"WB"   , COMMAND, MCE_WB, 3,-1, NULL, NULL},
-	{"R"    , COMMAND, MCE_RB, 2, 2, NULL, NULL},
-	{"W"    , COMMAND, MCE_WB, 3,-1, NULL, NULL},
-	{"GO"   , COMMAND, MCE_GO, 2,-1, NULL, NULL},
-	{"STOP" , COMMAND, MCE_ST, 2,-1, NULL, NULL},
-	{"RESET", COMMAND, MCE_RS, 2,-1, NULL, NULL},
-	{"HELP"    , SPECIAL, SPECIAL_HELP    , 0,0, NULL, NULL},
-	{"FAKESTOP", SPECIAL, SPECIAL_FAKESTOP, 0,0, NULL, NULL},
-	{"EMPTY"   , SPECIAL, SPECIAL_EMPTY   , 0,0, NULL, NULL},
-	{"SLEEP"   , SPECIAL, SPECIAL_SLEEP   , 1,1, NULL, NULL},
-	{"FRAME"   , SPECIAL, SPECIAL_FRAME   , 0,0, NULL, NULL},
-	{"", CMDTREE_TERMINATOR, 0,0,0,NULL, NULL},
+	{ CMDTREE_SELECT, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
+	{ CMDTREE_SELECT, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
+	{ CMDTREE_SELECT, "R"       , 2, 3, COMMAND_RB, command_placeholder_opts},
+	{ CMDTREE_SELECT, "W"       , 3,-1, COMMAND_WB, command_placeholder_opts},
+	{ CMDTREE_SELECT, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
+	{ CMDTREE_SELECT, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
+	{ CMDTREE_SELECT, "RESET"   , 2,-1, COMMAND_RS, command_placeholder_opts},
+	{ CMDTREE_SELECT, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
+	{ CMDTREE_SELECT, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
+	{ CMDTREE_SELECT, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
+	{ CMDTREE_SELECT, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
+	{ CMDTREE_SELECT, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
+	{ CMDTREE_SELECT, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
+	{ CMDTREE_SELECT, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
+	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 	
 struct {
 	int interactive;
 	int nonzero_only;
 	int no_prefix;
+	int display;
 
 	char batch_file[LINE_LEN];
 	int  batch_now;
@@ -76,7 +103,7 @@ struct {
 	char config_file[LINE_LEN];
 
 } options = {
-	0, 0, 0, "", 0, "", 0, DEFAULT_DEVICE
+	0, 0, 0, SPECIAL_HEX, "", 0, "", 0, DEFAULT_DEVICE
 };
 
 
@@ -95,8 +122,7 @@ char errstr[LINE_LEN];
 
 int  load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts);
 
-int  process_command(cmdtree_opt_t *src_opts, int *args, int nargs,
-		     char *errmsg);
+int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
 
 int  process_options(int argc, char **argv);
 
@@ -159,6 +185,7 @@ int main(int argc, char **argv)
 	
 	char errmsg[1024] = "";
 	char premsg[1024] = "";
+
 	int done = 0;
 
 	while (!done) {
@@ -187,25 +214,33 @@ int main(int argc, char **argv)
 			sprintf(premsg, "Line %3i : ", line_count);
 		errmsg[0] = 0;
 
-		int args[NARGS];
+		cmdtree_token_t args[NARGS];
+		args[0].n = 0;
 		int err = 0;
-		int count = cmdtree_decode(line, args, NARGS, root_opts, errmsg);
-/* 		printf("count=%i\n", count); */
-		if (count == 0) {
-			if (options.interactive) {
-				cmdtree_list(errmsg + strlen(errmsg),
-					     root_opts, "MCE_CMD expects "
-					     "command from [ ", " ", "]");
-				err = 1;
-			} else {
-				err = 0;
-			}
-		} else if (count < 0) {
-			err = -1;
-		} else {
-			err = process_command(root_opts, args, count, errmsg);
+
+		cmdtree_debug = 0;
+
+		err = cmdtree_tokenize(args, line, NARGS);
+		if (err) {
+			strcpy(errmsg, "could not tokenize");
 		}
 
+		if (!err) {
+			int count = cmdtree_select( args, root_opts, errmsg);
+			
+			if (count < 0) {
+				err = -1;
+			} else if (count == 0) {
+				if (options.interactive || args->n > 0) {
+					cmdtree_list(errmsg, root_opts,
+						     "mce_cmd expects argument from [ ", " ", "]");
+					err = -1;
+				}					
+			} else {
+ 				err = process_command(root_opts, args, errmsg);
+				if (err==0) err = 1;
+			}
+		}				
 
 		if (err > 0) {
 			if (*errmsg == 0 && !options.nonzero_only)
@@ -252,7 +287,7 @@ int load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts)
 	int n;
 	for (n=0; mceconfig_get_card(mce, &card, n) == 0; n++);
 
-	card_opts = calloc(n+1, sizeof(*card_opts));
+	card_opts = calloc(n+2, sizeof(*card_opts));
 	if (card_opts==NULL) {
 		printf("Holy, memory.\n");
 		return 1;
@@ -266,41 +301,50 @@ int load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts)
 		param_t p;
 		mceconfig_card_cardtype(mce, &card, &ct);
 		
+		int string_count = strlen(card.name) + 1;
+
 		for (j=0; mceconfig_cardtype_paramset(mce, &ct, j, &ps)==0; j++) {
 			for (k=0; mceconfig_paramset_param(mce, &ps, k, &p)==0; k++) {
+				string_count += strlen(p.name) + 1;
 				n++;
 			}
 		}
 
-		par_opts = calloc(n+1, sizeof(*par_opts));
+		char *string_table = malloc(string_count);
+		par_opts = calloc(n+2, sizeof(*par_opts));
+
 		n = 0;
 		for (j=0; mceconfig_cardtype_paramset(mce, &ct, j, &ps)==0; j++) {
 			for (k=0; mceconfig_paramset_param(mce, &ps, k, &p)==0; k++) {
-				strcpy(par_opts[n].name, p.name);
-				uppify(par_opts[n].name);
-				par_opts[n].id = p.id;
-				par_opts[n].type = 12;
+				strcpy(string_table, p.name);
+				uppify(string_table);
+				par_opts[n].name = string_table;
+				string_table += strlen(string_table) + 1;
+				par_opts[n].type = CMDTREE_SELECT;
+				par_opts[n].min_args = 0;
 				par_opts[n].max_args = p.count;
-				par_opts[n].sub_opts = NULL;
-				par_opts[n].cargo = p.cfg;
+				par_opts[n].sub_opts = integer_opts;
+				par_opts[n].user_cargo = (unsigned long)p.cfg;
 				n++;
 			}
 		}
-		par_opts[n].type = CMDTREE_TERMINATOR;
+
+		memcpy(&(par_opts[n]), integer_opts, sizeof(integer_opts));
 					
-		strcpy(card_opts[i].name, card.name);
-		uppify(card_opts[i].name);
-		card_opts[i].id = card.id;
+		card_opts[i].name = string_table;
+ 		strcpy(string_table, card.name);
+		uppify(string_table);
 		card_opts[i].min_args = 1;
 		card_opts[i].max_args = -1;
-		card_opts[i].type = 11;
+		card_opts[i].type = CMDTREE_SELECT;
 		card_opts[i].sub_opts = par_opts;
-		card_opts[i].cargo = card.cfg;
+		card_opts[i].user_cargo = (unsigned long)card.cfg;
 	}
-	card_opts[i].type = CMDTREE_TERMINATOR;
+
+	memcpy(&(card_opts[i]), integer_opts, sizeof(integer_opts));
 
 	for (i=0; opts[i].type != CMDTREE_TERMINATOR; i++) {
-		if (opts[i].type == COMMAND)
+		if (opts[i].sub_opts == command_placeholder_opts)
 			opts[i].sub_opts = card_opts;
 	}
 
@@ -308,59 +352,84 @@ int load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts)
 }
 
 
-int process_command(cmdtree_opt_t *src_opts, int *arg_opt, int nargs, char *errmsg)
+int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 {
 	int ret_val = 0;
 	int err;
 	int i;
-	int arg_id[NARGS] = {0};
 	param_t p;
 	card_t c;
-	int to_read;
-	u32 bufr[100];
+	int to_read, to_write;
+	u32 buf[NARGS];
 
-	err = cmdtree_translate(arg_id, arg_opt, nargs, src_opts);
+	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW && 
+			  tokens[0].value < ENUM_COMMAND_HIGH);
 	
-	switch (src_opts[arg_opt[0]].type) {
-	case COMMAND:
+	if (is_command) {
 
-		mceconfig_cfg_card(&c, src_opts[arg_opt[0]].sub_opts[arg_opt[1]].cargo);
-		mceconfig_cfg_param(&p, src_opts[arg_opt[0]].sub_opts[arg_opt[1]].sub_opts[arg_opt[2]].cargo);
-		to_read = p.count;
+		// Token[0] is the command (RB, WB, etc.)
+		// Token[1] is the card
+		// Token[2] is the param
+		// Token[3+] are the data
 
-		switch( arg_id[0] ) {
-		    
-		case MCE_RS:
-			err = mce_reset(handle, arg_id[1], arg_id[2]);
+		// Allow integer values for card and para.
+
+		to_read = 0;
+		to_write = NARGS;
+		int card_id = tokens[1].value;
+		int para_id = tokens[2].value;
+
+		if ( tokens[1].type == CMDTREE_SELECT ) {
+			mceconfig_cfg_card (&c, (config_setting_t*)tokens[1].value);
+			card_id = c.id;
+			
+			if (tokens[2].type == CMDTREE_SELECT ) {
+				mceconfig_cfg_param(&p, (config_setting_t*)tokens[2].value);
+				para_id = p.id;
+				to_read = p.count;
+				to_write = p.count;
+			}
+		}
+	
+		if (to_read == 0 && tokens[3].type == CMDTREE_INTEGER)
+			to_read = tokens[3].value;
+
+		switch( tokens[0].value ) {
+		
+		case COMMAND_RS:
+			err = mce_reset(handle, card_id, para_id);
 			break;
 
-		case MCE_GO:
+		case COMMAND_GO:
 			err = mce_start_application(handle,
-						    arg_id[1], arg_id[2]);
+						    card_id, para_id);
 			break;
 
-		case MCE_ST:
+		case COMMAND_ST:
 			err = mce_stop_application(handle,
-						   arg_id[1], arg_id[2]);
+						   card_id, para_id);
 			break;
 
-		case MCE_RB:
+		case COMMAND_RB:
 			//Check count in bounds; scale if "card" returns multiple data
-			if (p.count<0 || p.count>MCE_REP_DATA_MAX) {
+			if (to_read<0 || to_read>MCE_REP_DATA_MAX) {
 				sprintf(errstr, "read length out of bounds!");
 				return -1;
 			}
-			err = mce_read_block(handle, arg_id[1], arg_id[2],
-					     to_read, bufr, 1);
+			err = mce_read_block(handle, card_id, para_id,
+					     to_read, buf, 1);
 
 			if (err==0) {
-				for (i=0; i<p.count; i++) {
-					errmsg += sprintf(errmsg, "%#x", bufr[i]);
+				for (i=0; i<to_read; i++) {
+					if (options.display == SPECIAL_HEX )
+						errmsg += sprintf(errmsg, "%#x ", buf[i]);
+					else 
+						errmsg += sprintf(errmsg, "%i ", buf[i]);
 				}
 			}
 			break;
 
-		case MCE_WB:
+		case COMMAND_WB:
 			//Check bounds
 /* 			for (i=0; i<p.count; i++) { */
 /* 				if ((props.flags & PARAM_MIN) */
@@ -376,37 +445,37 @@ int process_command(cmdtree_opt_t *src_opts, int *arg_opt, int nargs, char *errm
 /* 				return -1; */
 /* 			} */
 
+/* 			if (tokens[3].n > to_write) { */
+/* 				sprintf(errmsg, "too many arguments  */
+			to_write = tokens[3].n;
+			for (i=0; i<to_write; i++) {
+				buf[i] = tokens[3+i].value;
+			}
+			
 			err = mce_write_block(handle,
-						  arg_id[1], arg_id[2],
-						  p.count, (unsigned*)arg_id+3);
+					      card_id, para_id, p.count, buf);
 			break;
-
+			
 		default:
 			sprintf(errmsg, "command not implemented");
 			return -1;
 		}
-
-		if (err==0)
-			ret_val = 1;
-		else {
+		
+		if (err!=0) {
 			sprintf(errmsg, "mce library error %#08x", err);
 			ret_val = -1;
 		} 
+	} else {
 
-		break;
-
-
-	case SPECIAL:
-
-		switch( arg_id[0] ) {
+		switch(tokens[0].value) {
 
 		case SPECIAL_HELP:
-			cmdtree_list(errmsg, root_opts,
-				     "MCE commands: [ ", " ", "]");
+/* 			cmdtree_list(errmsg, root_opts, */
+/* 				     "MCE commands: [ ", " ", "]"); */
 			break;
 
 		case SPECIAL_CLEAR:
-			ret_val = mce_reset(handle, arg_id[1], arg_id[2]);
+			ret_val = mce_reset(handle, tokens[1].value, tokens[2].value);
 			break;
 
 		case SPECIAL_FAKESTOP:
@@ -418,22 +487,28 @@ int process_command(cmdtree_opt_t *src_opts, int *arg_opt, int nargs, char *errm
 			break;
 
 		case SPECIAL_SLEEP:
-			//printf("SLEEP! %i\n", arg_id[1]); fflush(stdout);
-			usleep(arg_id[1]);
-			ret_val = 0;
+			usleep(tokens[1].value);
 			break;
 
 		case SPECIAL_FRAME:
-			ret_val = mce_set_datasize(data_fd, arg_id[1]);
+			ret_val = mce_set_datasize(data_fd, tokens[1].value);
+			if (ret_val != 0) {
+				sprintf(errmsg, "mce_library error %i", ret_val);
+			}
 			break;
+
+		case SPECIAL_DEC:
+			options.display = SPECIAL_DEC;
+			break;
+
+		case SPECIAL_HEX:
+			options.display = SPECIAL_HEX;
+			break;
+
 		default:
 			sprintf(errmsg, "command not implemented");
+			ret_val = -1;
 		}
-
-		break;
-
-	default:
-		sprintf(errmsg, "Unknown root command type!");
 	}
 
 	return ret_val;

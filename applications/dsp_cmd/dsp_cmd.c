@@ -1,9 +1,3 @@
-/*
-
-  User interfaces are only fun to write when the user is also a machine
-
-*/
-
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -17,63 +11,72 @@
 
 #include <cmdtree.h>
 
-#define CASE_INSENSITIVE
-
 #define LINE_LEN 1024
+#define NARGS 64
 
+#define CASE_INSENSITIVE
 
 #define DEFAULT_DEVICE "/dev/mce_dsp0"
 
 int handle;
 
 
-/* Extend the cmdtree enum for option type */
-
 enum {
-	COMMAND = CMDTREE_USERBASE,
-	SPECIAL,
+	ENUM_COMMAND_LOW,
+	COMMAND_RDM,
+	COMMAND_WRM,
+	COMMAND_GOA,
+	COMMAND_STP,
+	COMMAND_RST,
+	COMMAND_RCO,
+	COMMAND_QTS,
+	ENUM_COMMAND_HIGH,
+	SPECIAL_COMMENT,
+	SPECIAL_SLEEP,
+	SPECIAL_RESETFLAGS,
 	DATA
 };
 
-
-/* Our custom commands ("SPECIAL") get their own enum */
-
-enum {
-	COMMENT,
-	SLEEP,
-	RESET_FLAGS
+cmdtree_opt_t anything_opts[] = {
+	{ CMDTREE_INTEGER, "", 0, -1, 0, anything_opts },
+	{ CMDTREE_STRING , "", 0, -1, 0, anything_opts },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
+cmdtree_opt_t integer_opts[] = {
+	{ CMDTREE_INTEGER   , "", 0, -1, 0, integer_opts },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
 
 cmdtree_opt_t mem_opts[] = {
-	{"X", DATA, DSP_MEMX, 0, -1, NULL, NULL},
-	{"Y", DATA, DSP_MEMY, 0, -1, NULL, NULL},
-	{"P", DATA, DSP_MEMP, 0, -1, NULL, NULL},
-	{"", CMDTREE_TERMINATOR, 0, 0, 0, NULL, NULL}
+	{ CMDTREE_SELECT, "X", 0,-1, DSP_MEMX, integer_opts},
+	{ CMDTREE_SELECT, "Y", 0,-1, DSP_MEMY, integer_opts},
+	{ CMDTREE_SELECT, "P", 0,-1, DSP_MEMP, integer_opts},
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL}
 };
 
 cmdtree_opt_t qt_opts[] = {
-	{"BASE"  , DATA, DSP_QT_BASE  , 2, 2, NULL, NULL},
-	{"DELTA" , DATA, DSP_QT_DELTA , 1, 1, NULL, NULL},
-	{"NUMBER", DATA, DSP_QT_NUMBER, 1, 1, NULL, NULL},
-	{"INFORM", DATA, DSP_QT_INFORM, 1, 1, NULL, NULL},
-	{"SIZE"  , DATA, DSP_QT_SIZE  , 1, 1, NULL, NULL},
-	{"TAIL"  , DATA, DSP_QT_TAIL  , 1, 1, NULL, NULL},
-	{"FLUSH" , DATA, DSP_QT_FLUSH , 1, 1, NULL, NULL},
-	{"ENABLE", DATA, DSP_QT_ENABLE, 1, 1, NULL, NULL},
-	{"", CMDTREE_TERMINATOR, 0, 0, 0, NULL, NULL}
+	{ CMDTREE_SELECT, "BASE"  , 1,1, DSP_QT_BASE  , integer_opts},
+	{ CMDTREE_SELECT, "DELTA" , 1,1, DSP_QT_DELTA , integer_opts},
+	{ CMDTREE_SELECT, "NUMBER", 1,1, DSP_QT_NUMBER, integer_opts},
+	{ CMDTREE_SELECT, "INFORM", 1,1, DSP_QT_INFORM, integer_opts},
+	{ CMDTREE_SELECT, "SIZE"  , 1,1, DSP_QT_SIZE  , integer_opts},
+	{ CMDTREE_SELECT, "TAIL"  , 1,1, DSP_QT_TAIL  , integer_opts},
+	{ CMDTREE_SELECT, "FLUSH" , 1,1, DSP_QT_FLUSH , integer_opts},
+	{ CMDTREE_SELECT, "ENABLE", 1,1, DSP_QT_ENABLE, integer_opts},
+	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
 
 cmdtree_opt_t root_opts[] = {
-	{"READ"     , COMMAND, DSP_RDM, 2, 2, mem_opts, NULL},
-	{"WRITE"    , COMMAND, DSP_WRM, 3, 3, mem_opts, NULL},
-	{"START"    , COMMAND, DSP_GOA, 0, 0, NULL, NULL},
-	{"STOP"     , COMMAND, DSP_STP, 0, 0, NULL, NULL},
-	{"RESET"    , COMMAND, DSP_RST, 0, 0, NULL, NULL},
-	{"RESET_MCE", COMMAND, DSP_RCO, 0, 0, NULL, NULL},
-	{"QT_SET"   , COMMAND, DSP_RDM, 1,-1, qt_opts, NULL},
-	{"#"        , SPECIAL, COMMENT, 0, 0, NULL, NULL},
-	{""         , CMDTREE_TERMINATOR, 0, 0, 0, NULL, NULL}
+	{ CMDTREE_SELECT, "READ"     , 2,2, COMMAND_RDM, mem_opts},
+	{ CMDTREE_SELECT, "WRITE"    , 3,3, COMMAND_WRM, mem_opts},
+	{ CMDTREE_SELECT, "START"    , 0,0, COMMAND_GOA, integer_opts},
+	{ CMDTREE_SELECT, "STOP"     , 0,0, COMMAND_STP, integer_opts},
+	{ CMDTREE_SELECT, "RESET"    , 0,0, COMMAND_RST, integer_opts},
+	{ CMDTREE_SELECT, "RESET_MCE", 0,0, COMMAND_RCO, integer_opts},
+	{ CMDTREE_SELECT, "QT_SET"   , 0,0, COMMAND_RDM, qt_opts},
+	{ CMDTREE_SELECT, "#"        , 0,-1, SPECIAL_COMMENT, anything_opts},
+	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
 
 struct {
@@ -94,8 +97,7 @@ struct {
 };
 
 
-int  process_command(cmdtree_opt_t *src_opts, int *args, int nargs,
-			    char *errmsg);
+int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
 
 int  process_options(int argc, char **argv);
 
@@ -148,24 +150,33 @@ int main(int argc, char **argv)
 			sprintf(premsg, "Line %3i : ", line_count);
 		errmsg[0] = 0;
 
-		int args[25];
+		cmdtree_token_t args[NARGS];
+		args[0].n = 0;
 		int err = 0;
-		int count = cmdtree_decode(line, args, 25, root_opts, errmsg);
-		if (count == 0) {
-			if (options.interactive) {
-				cmdtree_list(errmsg + strlen(errmsg),
-					     root_opts, "DSP_CMD expects "
-					     "command from [ ", " ", "]");
-				err = 1;
-			} else {
-				err = 0;
-			}
-		} else if (count < 0) {
-			err = -1;
-		} else {
-			err = process_command(root_opts, args, count, errmsg);
+
+		cmdtree_debug = 0;
+
+		err = cmdtree_tokenize(args, line, NARGS);
+		if (err) {
+			strcpy(errmsg, "could not tokenize");
 		}
 
+		if (!err) {
+			int count = cmdtree_select( args, root_opts, errmsg);
+			
+			if (count < 0) {
+				err = -1;
+			} else if (count == 0) {
+				if (options.interactive || args->n > 0) {
+					cmdtree_list(errmsg, root_opts,
+						     "mce_cmd expects argument from [ ", " ", "]");
+					err = -1;
+				}					
+			} else {
+ 				err = process_command(root_opts, args, errmsg);
+				if (err==0) err = 1;
+			}
+		}				
 
 		if (err > 0) {
 			if (*errmsg == 0 && !options.nonzero_only)
@@ -249,47 +260,48 @@ void uppify(char *s) {
 }
 
 
-int process_command(cmdtree_opt_t *src_opts, int *arg_opt, int nargs, char *errmsg)
+int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 {
 	int ret_val = 0;
 	int err;
 
-	int arg_id[25] = {0};
-	cmdtree_translate(arg_id, arg_opt, nargs, src_opts);
-	
-	switch (src_opts[arg_opt[0]].type) {
-	case COMMAND:
 
-		switch( arg_id[0] ) {
+
+	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW && 
+			  tokens[0].value < ENUM_COMMAND_HIGH);
+	
+	if (is_command) {
+
+		switch( tokens[0].value ) {
 		
-		case DSP_RDM:
-			err = dsp_read_word(handle, arg_id[1], arg_id[2]);
+		case COMMAND_RDM:
+			err = dsp_read_word(handle, tokens[1].value, tokens[2].value);
 			if (err >= 0) {
 				sprintf(errmsg, "%s[%#x] = %#x",
-					src_opts[arg_opt[0]].sub_opts[arg_opt[1]].name,
-					arg_opt[2], err);
+					dsp_memtoa(tokens[1].value),
+					tokens[2].value, err);
 				err = 0;
 			}
 			break;
     
-		case DSP_WRM:
-			err = dsp_write_word(handle, arg_id[1],
-						 arg_id[2], arg_id[3]);
+		case COMMAND_WRM:
+			err = dsp_write_word(handle, tokens[1].value,
+						 tokens[2].value, tokens[3].value);
 			break;
 
-		case DSP_GOA:
-			err = dsp_start_application(handle, arg_id[1]);
+		case COMMAND_GOA:
+			err = dsp_start_application(handle, tokens[1].value);
 			break;
     
-		case DSP_STP:
+		case COMMAND_STP:
 			err = dsp_stop_application(handle);
 			break;
 
-		case DSP_RST:
+		case COMMAND_RST:
 			err = dsp_reset(handle);
 			break;
 
-		case DSP_RCO:
+		case COMMAND_RCO:
 			err = dsp_reset_mce(handle);
 			break;
     
@@ -305,21 +317,18 @@ int process_command(cmdtree_opt_t *src_opts, int *arg_opt, int nargs, char *errm
 			ret_val = -1;
 		} 
 
-		break;
+	} else {
 
+		switch( tokens[0].value ) {
 
-	case SPECIAL:
-
-		switch( arg_id[0] ) {
-
-		case COMMENT:
+		case SPECIAL_COMMENT:
 			break;
 
-		case SLEEP:
-			usleep(arg_opt[1]);
+		case SPECIAL_SLEEP:
+			usleep(tokens[1].value);
 			break;
 
-		case RESET_FLAGS:
+		case SPECIAL_RESETFLAGS:
 			ret_val = dsp_reset_flags(handle);
 			if (ret_val < 0) break;
 			break;
@@ -327,11 +336,6 @@ int process_command(cmdtree_opt_t *src_opts, int *arg_opt, int nargs, char *errm
 		default:
 			sprintf(errmsg, "command not implemented");
 		}
-
-		break;
-
-	default:
-		sprintf(errmsg, "Unknown root command type!");
 	}
 
 	return ret_val;
