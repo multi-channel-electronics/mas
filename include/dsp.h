@@ -44,6 +44,7 @@ typedef enum
 	DSP_QT_NUMBER = 0x004e554d, // "NUM" - number of buffers
 	DSP_QT_INFORM = 0x00494e46, // "INF" - information interval
 	DSP_QT_SIZE   = 0x0053495a, // "SIZ" - packet size in bytes
+	DSP_QT_TAIL   = 0x00474e54, // "TAI" - lease buffers to qt
 	DSP_QT_FLUSH  = 0x00464c55, // "FLU" - flush (inform) remaining data
 	DSP_QT_ENABLE = 0x00534554  // "SET" - enable/disable quiet transfer
 
@@ -107,10 +108,10 @@ typedef struct {
 typedef struct {
 
 	dsp_message_code type;
-	u32              buffer_index;
-	u32              inform_count;
-	u32              inform_interval;
+	u32              dsp_head;
+	u32              dsp_tail;
+	u32              dsp_drops;
 
-} dsp_qtinformation;
+} dsp_qtinform;
 
 #endif
