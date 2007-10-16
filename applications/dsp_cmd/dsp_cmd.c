@@ -74,7 +74,7 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT, "STOP"     , 0,0, COMMAND_STP, integer_opts},
 	{ CMDTREE_SELECT, "RESET"    , 0,0, COMMAND_RST, integer_opts},
 	{ CMDTREE_SELECT, "RESET_MCE", 0,0, COMMAND_RCO, integer_opts},
-	{ CMDTREE_SELECT, "QT_SET"   , 0,0, COMMAND_RDM, qt_opts},
+	{ CMDTREE_SELECT, "QT_SET"   , 0,-1, COMMAND_QTS, qt_opts},
 	{ CMDTREE_SELECT, "#"        , 0,-1, SPECIAL_COMMENT, anything_opts},
 	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
@@ -305,6 +305,12 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			err = dsp_reset_mce(handle);
 			break;
     
+		case COMMAND_QTS:
+			err = dsp_qt_set(handle,
+					 tokens[1].value,
+					 tokens[2].value,
+					 tokens[3].value);
+			break;
 		default:
 			sprintf(errmsg, "command not implemented");
 			return -1;
