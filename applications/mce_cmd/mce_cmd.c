@@ -47,6 +47,8 @@ enum {
 	SPECIAL_ACQ_FRAMESIZE,
 	SPECIAL_ACQ_CARDS,
 	SPECIAL_ACQ_FILENAME,
+	SPECIAL_QT_CONFIG,
+	SPECIAL_QT_ENABLE,
 	SPECIAL_CLEAR,
 	SPECIAL_FAKESTOP,
 	SPECIAL_EMPTY,
@@ -95,6 +97,8 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT, "ACQ_FRAMESIZE", 1, 1, SPECIAL_ACQ_FRAMESIZE, integer_opts},
 	{ CMDTREE_SELECT, "ACQ_FILENAME" , 1, 1, SPECIAL_ACQ_FILENAME , string_opts},
 	{ CMDTREE_SELECT, "ACQ_CARDS"    , 1, 1, SPECIAL_ACQ_CARDS    , string_opts},
+	{ CMDTREE_SELECT, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
+	{ CMDTREE_SELECT, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ CMDTREE_SELECT, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
 	{ CMDTREE_SELECT, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
 	{ CMDTREE_SELECT, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
@@ -640,6 +644,14 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case SPECIAL_ACQ_FILENAME:			
 			cmdtree_token_word( my_acq.filename, tokens+1 );
+			break;
+
+		case SPECIAL_QT_ENABLE:
+			ret_val = mce_qt_enable( data_fd, tokens[1].value );
+			break;
+
+		case SPECIAL_QT_CONFIG:
+			ret_val = mce_qt_setup( data_fd, tokens[1].value );
 			break;
 
 
