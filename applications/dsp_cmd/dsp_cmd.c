@@ -64,6 +64,8 @@ cmdtree_opt_t qt_opts[] = {
 	{ CMDTREE_SELECT, "TAIL"  , 1,1, DSP_QT_TAIL  , integer_opts},
 	{ CMDTREE_SELECT, "FLUSH" , 1,1, DSP_QT_FLUSH , integer_opts},
 	{ CMDTREE_SELECT, "ENABLE", 1,1, DSP_QT_ENABLE, integer_opts},
+	{ CMDTREE_SELECT, "TON" ,0,0, 10, NULL},
+	{ CMDTREE_SELECT, "TOFF",0,0, 11, NULL},
 	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
 
@@ -169,7 +171,7 @@ int main(int argc, char **argv)
 			} else if (count == 0) {
 				if (options.interactive || args->n > 0) {
 					cmdtree_list(errmsg, root_opts,
-						     "mce_cmd expects argument from [ ", " ", "]");
+						     "dsp_cmd expects argument from [ ", " ", "]");
 					err = -1;
 				}					
 			} else {
@@ -287,22 +289,27 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		case COMMAND_WRM:
 			err = dsp_write_word(handle, tokens[1].value,
 						 tokens[2].value, tokens[3].value);
+			if (err >= 0) err = 0;
 			break;
 
 		case COMMAND_GOA:
 			err = dsp_start_application(handle, tokens[1].value);
+			if (err >= 0) err = 0;
 			break;
     
 		case COMMAND_STP:
 			err = dsp_stop_application(handle);
+			if (err >= 0) err = 0;
 			break;
 
 		case COMMAND_RST:
 			err = dsp_reset(handle);
+			if (err >= 0) err = 0;
 			break;
 
 		case COMMAND_RCO:
 			err = dsp_reset_mce(handle);
+			if (err >= 0) err = 0;
 			break;
     
 		case COMMAND_QTS:
@@ -310,6 +317,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 					 tokens[1].value,
 					 tokens[2].value,
 					 tokens[3].value);
+			if (err >= 0) err = 0;
 			break;
 		default:
 			sprintf(errmsg, "command not implemented");
