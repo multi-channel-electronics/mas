@@ -243,7 +243,13 @@ int data_qt_configure( int qt_interval )
 		err = data_qt_cmd(DSP_QT_SIZE  , frames.data_size, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_TAIL, frames.tail_index, 0);
+		err = data_qt_cmd(DSP_QT_TAIL  , frames.tail_index, 0);
+
+	if (!err)
+		err = data_qt_cmd(DSP_QT_HEAD  , frames.head_index, 0);
+
+	if (!err)
+		err = data_qt_cmd(DSP_QT_DROPS , 0, 0);
 
 	if (!err)
 		err = data_qt_cmd(DSP_QT_BASE,

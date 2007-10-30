@@ -62,6 +62,8 @@ cmdtree_opt_t qt_opts[] = {
 	{ CMDTREE_SELECT, "INFORM", 1,1, DSP_QT_INFORM, integer_opts},
 	{ CMDTREE_SELECT, "SIZE"  , 1,1, DSP_QT_SIZE  , integer_opts},
 	{ CMDTREE_SELECT, "TAIL"  , 1,1, DSP_QT_TAIL  , integer_opts},
+	{ CMDTREE_SELECT, "HEAD"  , 1,1, DSP_QT_HEAD  , integer_opts},
+	{ CMDTREE_SELECT, "DROPS" , 1,1, DSP_QT_DROPS , integer_opts},
 	{ CMDTREE_SELECT, "FLUSH" , 1,1, DSP_QT_FLUSH , integer_opts},
 	{ CMDTREE_SELECT, "ENABLE", 1,1, DSP_QT_ENABLE, integer_opts},
 	{ CMDTREE_SELECT, "TON" ,0,0, 10, NULL},

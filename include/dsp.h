@@ -44,7 +44,9 @@ typedef enum
 	DSP_QT_NUMBER = 0x004e554d, // "NUM" - number of buffers
 	DSP_QT_INFORM = 0x00494e46, // "INF" - information interval
 	DSP_QT_SIZE   = 0x0053495a, // "SIZ" - packet size in bytes
-	DSP_QT_TAIL   = 0x00544149, // "TAI" - lease buffers to qt
+	DSP_QT_TAIL   = 0x00544149, // "TAI" - buffer tail index
+	DSP_QT_HEAD   = 0x00484541, // "HEA" - buffer head index
+	DSP_QT_DROPS  = 0x0044524f, // "DRO" - dropped frames counter
 	DSP_QT_FLUSH  = 0x00464c55, // "FLU" - flush (inform) remaining data
 	DSP_QT_ENABLE = 0x00534554  // "SET" - enable/disable quiet transfer
 

@@ -29,10 +29,15 @@
 #define RET_DAT_S         0x53
 #define DATA_RATE         0xa0
 
+#define NUM_ROWS_REPORTED 0x55
+#define NUM_ROWS          0x31
+#define ROW_LEN           0x50
+#define RUN_ID            0x56
+#define USER_WORD         0x57
+
 
 /* Other stuff... */
 
-#define N_ROWS 41
 #define N_LED 16
 
 /* Clock divider: 50 MHz / 41 / 64 = 19055 Hz */
@@ -76,19 +81,30 @@
 /* Some default settings */
 
 #define DEFAULT_DATA_RATE  0x5f /* 200 Hz */
+#define DEFAULT_NUM_ROWS   41
 
 
 #define INIT_KEY 0xa43125
+
+#define HEADER_VERSION 6
 
 typedef struct frame_header_struct {
 
 	u32 flags;
 	u32 sequence;
 	u32 row_len;
-	u32 num_rows;
+	u32 num_rows_rep;
 	u32 data_rate;
-	u32 sync_num;
-	u32 other[37];
+	u32 sync_num; // cc return to 0
+	u32 header_v;
+	u32 ramp_val;
+	u32 ramp_card;
+	u32 num_rows;
+	u32 sync_dv;
+	u32 run_id;
+	u32 user_word;
+
+	u32 other[30];
 
 } frame_header_t;
 
@@ -102,11 +118,16 @@ typedef struct frame_header_struct {
 struct mce_state_struct {
 
 	int led[N_LED];
-	int data_rate;
+	u32 data_rate;
 	
-	int ret_dat;
-	int seq_first;
-	int seq_last;
+	u32 ret_dat;
+	u32 seq_first;
+	u32 seq_last;
+	u32 num_rows_rep;
+	u32 num_rows;
+	u32 row_len;
+	u32 run_id;
+	u32 user_word;
 
 	int seq;
 	int go;
@@ -167,6 +188,7 @@ int mce_fake_init( void )
 	} else {
 		mce_state.data_rate = DEFAULT_DATA_RATE;
 	}	
+	mce_state.num_rows_rep = DEFAULT_NUM_ROWS;
 
 	mce_state.initialized = INIT_KEY;
 
@@ -276,9 +298,17 @@ void fake_data_now(unsigned long arg)
 	
 	PRINT_INFO("fake_data_now: frame!\n");
 
-	header->sequence = mce_state.seq;
 	header->flags = (mce_state.seq == mce_state.seq_last);
+	header->sequence = mce_state.seq;
+	header->row_len = mce_state.row_len;
+	header->num_rows_rep = mce_state.num_rows_rep;
+	header->data_rate = mce_state.data_rate;
+	header->num_rows = mce_state.num_rows;
+	header->header_v = HEADER_VERSION;
+	header->run_id = mce_state.run_id;
+	header->user_word = mce_state.user_word;
 	
+
 	cols = 8;
 	card_count = 1;
 
@@ -315,7 +345,7 @@ void fake_data_now(unsigned long arg)
 
 	// Write the appointed number of columns
 	for (card = card_start; card < card_start + card_count; card++) {
-		for (r=0; r<N_ROWS; r++) {
+		for (r=0; r<mce_state.num_rows_rep ; r++) {
 			for (c = 0; c < cols; c++) {
 				*data = (r << 8) | (c+card*cols);
 				chksum ^= *(data++);
@@ -475,6 +505,27 @@ int fake_writeblock(const mce_command *cmd, mce_reply *rep)
 		mce_state.seq_last  = cmd->data[1];
 		break;
 
+	case NUM_ROWS_REPORTED:
+		mce_state.num_rows_rep = cmd->data[0];
+		break;
+
+	case NUM_ROWS:
+		mce_state.num_rows = cmd->data[0];
+		break;
+
+	case ROW_LEN:
+		mce_state.row_len = cmd->data[0];
+		break;
+
+	case USER_WORD:
+		mce_state.user_word = cmd->data[0];
+		break;
+
+	case RUN_ID:
+		mce_state.run_id = cmd->data[0];
+		break;
+
+
 /* 	default: */
 /* 		//Who am I to stop you? */
 		
@@ -505,6 +556,27 @@ int fake_readblock(const mce_command *cmd, mce_reply *rep)
 		rep->data[0] = mce_state.seq_first;
 		rep->data[1] = mce_state.seq_last;
 		break;
+
+	case NUM_ROWS_REPORTED:
+		rep->data[0] = mce_state.num_rows_rep;
+		break;
+
+	case NUM_ROWS:
+		rep->data[0] = mce_state.num_rows;
+		break;
+
+	case ROW_LEN:
+		rep->data[0] = mce_state.row_len;
+		break;
+
+	case USER_WORD:
+		rep->data[0] = mce_state.user_word;
+		break;
+
+	case RUN_ID:
+		rep->data[0] = mce_state.run_id;
+		break;
+
 
 	default:
 		//Here, have some data.

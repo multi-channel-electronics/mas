@@ -9,7 +9,7 @@
   DEBUG MESSAGES
 */
 
-#define OPT_VERBOSE
+//#define OPT_VERBOSE
 //#define OPT_QUIET
 
 #ifdef OPT_QUIET
