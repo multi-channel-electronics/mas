@@ -8,8 +8,8 @@ LINCDIR = /usr/include/
 CC = gcc
 
 DSP_DIR = ../driver
-OBJECTS = mce_library.o mce_xml.o mceconfig.o
-HEADERS = $(LIBHDR) mce_xml.h mceconfig.h
+OBJECTS = mce_library.o mcedata.o mce_xml.o mceconfig.o
+HEADERS = $(LIBHDR) mcedata.h mce_xml.h mceconfig.h
 
 INCLUDE += -I. -I../../include -I../log_library
 LIBRARY += -L../log_libary
@@ -22,15 +22,19 @@ all: $(LIBNAME)
 
 install: $(LIBNAME) $(LIBHDR)
 	-mkdir $(DESTDIR)
-	cp $(LIBNAME) $(LIBHDR) $(DESTDIR)
+	cp $(LIBNAME) $(LIBHDR) mcedata.h $(DESTDIR)
 	-ln -s $(DESTDIR)$(LIBNAME) $(LINKDIR)$(LIBNAME)
 	-ln -s $(DESTDIR)$(LIBHDR) $(LINCDIR)$(LIBHDR)
+	-ln -s $(DESTDIR)mcedata.h $(LINCDIR)mcedata.h
 
 $(LIBNAME) : $(OBJECTS) $(HEADERS)
 	$(AR) rs $@ $(OBJECTS)
 
 mce_library.o : mce_library.c # $(HEADERS)
 	$(CC) $(CFLAGS) mce_library.c -c
+
+mcedata.o: mcedata.c $(HEADERS)
+	$(CC) $(CFLAGS) mcedata.c -c
 
 mceconfig.o: mceconfig.c mceconfig.h
 	$(CC) $(CFLAGS) $< -c

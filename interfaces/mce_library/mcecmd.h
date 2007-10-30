@@ -26,6 +26,13 @@
 #define MCE_SHORT 32
 
 
+/*! \def MCE_LONG
+ *  \brief Length of long strings.
+ */
+
+#define MCE_LONG 1024
+
+
 /*! \def MAX_CONS
  *  \brief Number of MCE handles available
  */

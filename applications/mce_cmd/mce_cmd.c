@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include <mcecmd.h>
+#include <mcedata.h>
 #include <mceconfig.h>
 
 #include <cmdtree.h>
@@ -23,7 +24,7 @@
 #define LINE_LEN 1024
 #define NARGS 64
 
-#define CASE_INSENSITIVE
+// #define CASE_INSENSITIVE
 
 #define DEFAULT_DEVICE "/dev/mce_cmd0"
 #define DEFAULT_DATA "/dev/mce_data0"
@@ -42,6 +43,10 @@ enum {
 	ENUM_COMMAND_HIGH,
 	ENUM_SPECIAL_LOW,
 	SPECIAL_HELP,
+	SPECIAL_ACQ,
+	SPECIAL_ACQ_FRAMESIZE,
+	SPECIAL_ACQ_CARDS,
+	SPECIAL_ACQ_FILENAME,
 	SPECIAL_CLEAR,
 	SPECIAL_FAKESTOP,
 	SPECIAL_EMPTY,
@@ -64,6 +69,11 @@ cmdtree_opt_t integer_opts[] = {
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
+cmdtree_opt_t string_opts[] = {
+	{ CMDTREE_STRING    , "", 0, -1, 0, string_opts },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
 cmdtree_opt_t command_placeholder_opts[] = {
 	{ CMDTREE_INTEGER   , "", 0, -1, 0, integer_opts },
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
@@ -72,12 +82,19 @@ cmdtree_opt_t command_placeholder_opts[] = {
 cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
 	{ CMDTREE_SELECT, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
-	{ CMDTREE_SELECT, "R"       , 2, 3, COMMAND_RB, command_placeholder_opts},
-	{ CMDTREE_SELECT, "W"       , 3,-1, COMMAND_WB, command_placeholder_opts},
+	{ CMDTREE_SELECT, "rb"      , 2, 3, COMMAND_RB, command_placeholder_opts},
+	{ CMDTREE_SELECT, "wb"      , 3,-1, COMMAND_WB, command_placeholder_opts},
+	{ CMDTREE_SELECT, "r"       , 2, 3, COMMAND_RB, command_placeholder_opts},
+	{ CMDTREE_SELECT, "w"       , 3,-1, COMMAND_WB, command_placeholder_opts},
 	{ CMDTREE_SELECT, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
+	{ CMDTREE_SELECT, "go"      , 2,-1, COMMAND_GO, command_placeholder_opts},
 	{ CMDTREE_SELECT, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
 	{ CMDTREE_SELECT, "RESET"   , 2,-1, COMMAND_RS, command_placeholder_opts},
 	{ CMDTREE_SELECT, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
+	{ CMDTREE_SELECT, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
+	{ CMDTREE_SELECT, "ACQ_FRAMESIZE", 1, 1, SPECIAL_ACQ_FRAMESIZE, integer_opts},
+	{ CMDTREE_SELECT, "ACQ_FILENAME" , 1, 1, SPECIAL_ACQ_FILENAME , string_opts},
+	{ CMDTREE_SELECT, "ACQ_CARDS"    , 1, 1, SPECIAL_ACQ_CARDS    , string_opts},
 	{ CMDTREE_SELECT, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
 	{ CMDTREE_SELECT, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
 	{ CMDTREE_SELECT, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
@@ -93,6 +110,8 @@ struct {
 	int no_prefix;
 	int display;
 
+	int das_compatible; // horror
+
 	char batch_file[LINE_LEN];
 	int  batch_now;
 
@@ -103,7 +122,7 @@ struct {
 	char config_file[LINE_LEN];
 
 } options = {
-	0, 0, 0, SPECIAL_HEX, "", 0, "", 0, DEFAULT_DEVICE
+	0, 0, 0, SPECIAL_HEX, 0, "", 0, "", 0, DEFAULT_DEVICE
 };
 
 
@@ -118,6 +137,20 @@ int  interactive = 0;
 char *line;
 
 char errstr[LINE_LEN];
+
+mcedata_t mcedata;
+mce_acq_t acq;
+
+
+// This structure is used to cache data which eventually constructs acq.
+
+struct {
+	char filename[LINE_LEN];
+	int  frame_size;
+	int  cards;
+	int  rows;
+	int  n_frames;
+} my_acq;
 
 
 int  load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts);
@@ -160,6 +193,14 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 
+	// Ready data thing
+	if (mcedata_init(&mcedata, handle, DEFAULT_DATA)!=0) {
+		fprintf(ferr, "No data device connection.\n");
+		err = ERR_MCE;
+		goto exit_now;
+	}
+
+
 	int line_count = 0;
 
 	data_fd = open(DEFAULT_DATA, 0);
@@ -183,6 +224,18 @@ int main(int argc, char **argv)
 	}
 	load_mceconfig(mce, root_opts);
 	
+	//Open batch file, if given
+	if (options.batch_now) {
+		fin = fopen(options.batch_file, "r");
+		if (fin==NULL) {
+			fprintf(ferr, "Could not open batch file '%s'\n",
+				options.batch_file);
+			err = ERR_MCE;
+			goto exit_now;
+		}
+	}
+				
+
 	char errmsg[1024] = "";
 	char premsg[1024] = "";
 
@@ -243,9 +296,10 @@ int main(int argc, char **argv)
 		}				
 
 		if (err > 0) {
-			if (*errmsg == 0 && !options.nonzero_only)
-				printf("%sok\n", premsg);
-			else 
+			if (*errmsg == 0) {
+				if (!options.nonzero_only)
+					printf("%sok\n", premsg);
+			} else 
 				printf("%sok : %s\n", premsg, errmsg);
 		} else if (err < 0) {
 			printf("%serror : %s\n", premsg, errmsg);
@@ -317,7 +371,9 @@ int load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts)
 		for (j=0; mceconfig_cardtype_paramset(mce, &ct, j, &ps)==0; j++) {
 			for (k=0; mceconfig_paramset_param(mce, &ps, k, &p)==0; k++) {
 				strcpy(string_table, p.name);
+#ifdef CASE_INSENSITIVE
 				uppify(string_table);
+#endif
 				par_opts[n].name = string_table;
 				string_table += strlen(string_table) + 1;
 				par_opts[n].type = CMDTREE_SELECT;
@@ -333,7 +389,9 @@ int load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts)
 					
 		card_opts[i].name = string_table;
  		strcpy(string_table, card.name);
+#ifdef CASE_INSENSITIVE
 		uppify(string_table);
+#endif
 		card_opts[i].min_args = 1;
 		card_opts[i].max_args = -1;
 		card_opts[i].type = CMDTREE_SELECT;
@@ -351,16 +409,82 @@ int load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts)
 	return 0;
 }
 
+int learn_acq_params()
+{
+	int ret_val = 0;
+	u32 data[64];
+
+	ret_val = mce_read_block(handle, 0x2 /*cc*/, 0x53 /*ret_dat_s*/,
+				 2, data, 1);
+	my_acq.n_frames = data[1]-data[0]+1;
+
+	ret_val = mce_read_block(handle, 0x2, 0x55 /*num_rows_reported*/,
+				 1, data, 1);
+	my_acq.rows = data[0];
+	
+	return 0;
+}
+
+int translate_card_string(char *s)
+{	
+	if (strcmp(s, "rc1")==0)
+		return MCEDATA_RC1;
+	else if (strcmp(s, "rc2")==0)
+		return MCEDATA_RC2;
+	else if (strcmp(s, "rc3")==0)
+		return MCEDATA_RC3;
+	else if (strcmp(s, "rc4")==0)
+		return MCEDATA_RC4;
+	else if (strcmp(s, "rcs")==0)
+		return MCEDATA_RC1 | MCEDATA_RC2 | MCEDATA_RC3 | MCEDATA_RC4;
+	return -1;
+}
+
+int bit_count(int k)
+{
+	int i = 32;
+	int count = 0;
+	while (i-- > 0) {
+		count += (k&1);
+		k = k >> 1;
+	}
+	return count;
+}
+
+
+int do_acq_now(char *errmsg)
+{
+	// Unload my_acq into acq and get the frames.
+
+	if (mcedata_acq_reset(&acq, &mcedata)!=0) {
+		return -1;
+	}
+
+	if (mcedata_acq_setup(&acq, 0, my_acq.cards,
+			      my_acq.frame_size, my_acq.filename) != 0) {
+		return -1;
+	}
+
+	if (mcedata_acq_go(&acq, my_acq.n_frames) != 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 
 int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 {
 	int ret_val = 0;
-	int err;
+	int err = 0;
 	int i;
 	param_t p;
 	card_t c;
 	int to_read, to_write;
 	u32 buf[NARGS];
+	char s[LINE_LEN];
+
+	errmsg[0] = 0;
 
 	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW && 
 			  tokens[0].value < ENUM_COMMAND_HIGH);
@@ -401,8 +525,31 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case COMMAND_GO:
-			err = mce_start_application(handle,
-						    card_id, para_id);
+			if (options.das_compatible) {
+				if (learn_acq_params()!=0) {
+					sprintf(errmsg, "Failed to learn acq params.\n");
+					ret_val = -1;
+					break;
+				}
+				
+				cmdtree_token_word( s, tokens+1 );
+				my_acq.cards = translate_card_string(s);
+				if (my_acq.cards<0) {
+					sprintf(errmsg, "Bad card name.\n");
+					ret_val = -1;
+				} else {
+					my_acq.frame_size = 4*(44 + my_acq.rows*bit_count(my_acq.cards)*8);
+					ret_val = do_acq_now(errmsg);
+/* 					if (ret_val>0) { */
+/* 						sprintf(errmsg, "Acquired %i frames", ret_val); */
+/* 					} */
+					fclose(acq.fout);
+					acq.fout = NULL;
+				}
+			} else {
+				err = mce_start_application(handle,
+							    card_id, para_id);
+			}
 			break;
 
 		case COMMAND_ST:
@@ -461,7 +608,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			return -1;
 		}
 		
-		if (err!=0) {
+		if (err!=0 && errmsg[0] == 0) {
 			sprintf(errmsg, "mce library error %#08x", err);
 			ret_val = -1;
 		} 
@@ -473,6 +620,28 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 /* 			cmdtree_list(errmsg, root_opts, */
 /* 				     "MCE commands: [ ", " ", "]"); */
 			break;
+
+		case SPECIAL_ACQ:
+			ret_val = do_acq_now(errstr);
+			break;
+
+		case SPECIAL_ACQ_FRAMESIZE:
+			my_acq.frame_size = tokens[1].value;
+			break;
+
+		case SPECIAL_ACQ_CARDS:
+			cmdtree_token_word( s, tokens+1 );
+			my_acq.cards = translate_card_string(s);
+			if (my_acq.cards < 0) {
+				sprintf(errmsg, "Bad card option '%s'", s);
+				ret_val = -1;
+			}
+			break;
+
+		case SPECIAL_ACQ_FILENAME:			
+			cmdtree_token_word( my_acq.filename, tokens+1 );
+			break;
+
 
 		case SPECIAL_CLEAR:
 			ret_val = mce_reset(handle, tokens[1].value, tokens[2].value);
@@ -518,14 +687,15 @@ int process_options(int argc, char **argv)
 {
 	char *s;
 	int option;
-	while ( (option = getopt(argc, argv, "?hiqpf:c:d:x")) >=0) {
+	while ( (option = getopt(argc, argv, "?hiqpf:c:d:C:x")) >=0) {
 
 		switch(option) {
 		case '?':
 		case 'h':
 			printf("Usage:\n\t%s [-i] [-q] [-p] [-d devfile] "
 			       "[-c <config file> ] "
-			       "[-f <batch file> | -x <command>]\n",
+			       "[-f <batch file> | -x <command>] "
+			       "[-C <data file> ]",
 			       argv[0]);
 			return -1;
 
@@ -552,6 +722,11 @@ int process_options(int argc, char **argv)
 
 		case 'd':
 			strcpy(options.device_file, optarg);
+			break;
+
+		case 'C':
+			options.das_compatible = 1;
+			strcpy(my_acq.filename, optarg);
 			break;
 
 		case 'x':
