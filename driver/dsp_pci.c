@@ -123,9 +123,6 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 		((u32*)&msg)[i++] = dsp_read_hrxs(dsp) & DSP_DATAMASK;
 	}
 
-	// Clear DSP interrupt flags
-	dsp_clear_interrupt(dsp);
-
 	//Completed reads?
 	if (i<n)
 		PRINT_ERR(SUBNAME "could not obtain entire message.\n");
@@ -135,6 +132,9 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 
 	// Call the generic message handler
 	dsp_int_handler( &msg );
+
+	// Clear DSP interrupt flags
+	dsp_clear_interrupt(dsp);
 
 	return IRQ_HANDLED;
 }

@@ -54,7 +54,7 @@ struct dsp_control {
 	int tim_ignore;
 
 	dsp_state_t state;
-	int evil_flag;
+/* 	int evil_flag; */
 
 	dsp_callback callback;
 
@@ -204,31 +204,33 @@ int dsp_send_command(dsp_command *cmd,
 		     dsp_callback callback)
 {
 	int err = 0;
-	
+
+	// This semaphore protects us from interrupting commanders too.	
 	if (down_trylock(&ddat.sem)) {
+		PRINT_ERR(SUBNAME "could not get sem\n");
 		return -DSP_ERR_SYSTEM;
 	}
 	
 	PRINT_INFO(SUBNAME "entry\n");
 
-	// An interrupt that commands will set this flag.
-	ddat.evil_flag = 0;
-	barrier();
+/* 	// An interrupt that commands will set this flag. */
+/* 	ddat.evil_flag = 0; */
+/* 	barrier(); */
 
-	if (ddat.state != DDAT_IDLE) {
-		err = -1;
-		goto up_and_out;
-	}
+/* 	if (ddat.state != DDAT_IDLE) { */
+/* 		err = -1; */
+/* 		goto up_and_out; */
+/* 	} */
 
-	// After this call we are safe from interrupt routine
-	ddat.state = DDAT_CMD;
-	barrier();
+/* 	// After this call we are safe from interrupt routine */
+/* 	ddat.state = DDAT_CMD; */
+/* 	barrier(); */
 	
-	if (ddat.evil_flag) {
-		// Damn you, interrupt
-		err = -DSP_ERR_SYSTEM;
-		goto up_and_out;
-	}
+/* 	if (ddat.evil_flag) { */
+/* 		// Damn you, interrupt */
+/* 		err = -DSP_ERR_SYSTEM; */
+/* 		goto up_and_out; */
+/* 	} */
 		
 	ddat.callback = callback;
 	ddat.state = DDAT_CMD;
@@ -237,7 +239,7 @@ int dsp_send_command(dsp_command *cmd,
 		ddat.callback = NULL;
 		ddat.state = DDAT_IDLE;
 	} else {
-		//Setup new timeout
+		//Setup new timeout - there is a race condition here
 		del_timer_sync(&ddat.tim);
 		ddat.tim.function = dsp_timeout;
 		ddat.tim.data = (unsigned long)ddat.callback;
