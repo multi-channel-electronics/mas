@@ -183,10 +183,12 @@ int main(int argc, char **argv)
 		}				
 
 		if (err > 0) {
-			if (*errmsg == 0 && !options.nonzero_only)
-				printf("%sok\n", premsg);
-			else 
+			if (*errmsg == 0) {
+				if (!options.nonzero_only)
+					printf("%sok\n", premsg);
+			} else {
 				printf("%sok : %s\n", premsg, errmsg);
+			}
 		} else if (err < 0) {
 			printf("%serror : %s\n", premsg, errmsg);
 			if (options.interactive)
