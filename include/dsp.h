@@ -21,7 +21,13 @@ typedef enum
 	DSP_CON  = 0x00434f4e,   // "CON" Data packet to CONTROLLER 
 	DSP_HST  = 0x00485354,   // "HST" Data packet to HOST 
 	DSP_RCO  = 0x0052434f,   // "RCO" RESET 
-	DSP_QTS  = 0x00515453    // "QTS" Quiet transfer setup
+	DSP_QTS  = 0x00515453,   // "QTS" Quiet transfer setup
+
+	//Quick commands, no data or reply
+	DSP_INT_RST = 0x49525354, // "IRST" Clear interrupt
+	DSP_INT_DON = 0x49444f4e, // "IDON" Indicate interrupt done (?)
+	DSP_SYS_ERR = 0x53455252, // "IERR" Signal fatal error to DSP
+	DSP_SYS_RST = 0x53525354, // "IRST" System reset
 
 } dsp_command_code;
 
@@ -59,6 +65,7 @@ typedef enum
 	DSP_REP  = 0x00524550, // "REP" - dsp command reply
 	DSP_NFY  = 0x004E4659, // "NFY" - mce packet has arrived
 	DSP_QTI  = 0x00515449, // "QTI" - quiet transfer information packet
+	DSP_HEY  = 0x00484559, // "HEY" - debug information
 
 } dsp_message_code;
 
