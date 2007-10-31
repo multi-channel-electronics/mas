@@ -264,6 +264,8 @@ int mce_ops_init(void) {
 	init_waitqueue_head(&mce_ops.queue);
 	init_MUTEX(&mce_ops.sem);
 
+	mce_ops.state = OPS_IDLE;
+
 	err = register_chrdev(0, MCEDEV_NAME, &mce_fops);
 	if (err<0) {
 		PRINT_ERR("mce_ops_init: could not register_chrdev,"

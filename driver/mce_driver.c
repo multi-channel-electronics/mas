@@ -855,6 +855,9 @@ int mce_init_module()
 
 	init_timer(&mdat.timer);
 
+	mdat.state = MDAT_IDLE;
+	mdat.data_flags = 0;
+
 	PRINT_INFO(SUBNAME "init ok.\n");
 
 	return 0;

@@ -536,6 +536,8 @@ void* data_init(int mem_size, int data_size, int borrow)
 	tasklet_init(&frames.grant_tasklet,
 		     data_grant_task, 0);
 
+	data_reset();
+
 	return data_alloc(mem_size, data_size, borrow);
 }
 

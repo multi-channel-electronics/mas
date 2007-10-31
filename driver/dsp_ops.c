@@ -335,6 +335,8 @@ int dsp_ops_init(void)
 	init_waitqueue_head(&dsp_ops.queue);
 	init_MUTEX(&dsp_ops.sem);
 
+	dsp_ops.state = OPS_IDLE;
+
 	err = register_chrdev(0, DSPDEV_NAME, &dsp_fops);
 	if (err<0) {
 		PRINT_ERR("dsp_ops_init: could not register_chrdev, "

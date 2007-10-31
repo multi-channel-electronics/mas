@@ -406,6 +406,8 @@ inline int driver_init(void)
 	init_waitqueue_head(&dsp_local.queue);
 
 	init_timer(&ddat.tim);
+
+	ddat.state = DDAT_IDLE;
   
 #ifdef FAKEMCE
 	dsp_fake_init( DSPDEV_NAME );
