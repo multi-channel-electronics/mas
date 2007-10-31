@@ -39,23 +39,33 @@ struct dsp_dev_t *dev = &dsp_dev;
   address.  Those can be firmware specific, but aren't so far.
 */
 
+enum dsp_vector_type {
+	VECTOR_STANDARD, // 4 words into htxr
+	VECTOR_QUICK,    // no htxr, no reply expected
+};
+
 struct dsp_vector {
 	u32 key;
 	u32 vector;
+	enum dsp_vector_type type;
 };
 
-#define NUM_DSP_CMD 9
+#define NUM_DSP_CMD 13
 
 static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
-	{DSP_WRM, 0x8079},
-	{DSP_RDM, 0x807B},
-	{DSP_GOA, 0x807D},
-	{DSP_STP, 0x807F},
-	{DSP_RST, 0x8081},
-	{DSP_CON, 0x8083},
-	{DSP_HST, 0x8085},
-	{DSP_RCO, 0x8087},
-	{DSP_QTS, 0x8089}
+	{DSP_WRM, 0x8079, VECTOR_STANDARD},
+	{DSP_RDM, 0x807B, VECTOR_STANDARD},
+	{DSP_GOA, 0x807D, VECTOR_STANDARD},
+	{DSP_STP, 0x807F, VECTOR_STANDARD},
+	{DSP_RST, 0x8081, VECTOR_STANDARD},
+	{DSP_CON, 0x8083, VECTOR_STANDARD},
+	{DSP_HST, 0x8085, VECTOR_STANDARD},
+	{DSP_RCO, 0x8087, VECTOR_STANDARD},
+	{DSP_QTS, 0x8089, VECTOR_STANDARD},
+	{DSP_INT_RST, HCVR_INT_RST, VECTOR_QUICK},
+	{DSP_INT_DON, HCVR_INT_DON, VECTOR_QUICK},
+	{DSP_SYS_ERR, HCVR_SYS_ERR, VECTOR_QUICK},
+	{DSP_SYS_RST, HCVR_SYS_RST, VECTOR_QUICK},
 };
 
 
@@ -134,6 +144,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 
 void dsp_clear_interrupt(dsp_reg_t *dsp)
 {
+
 	// Ensure PCI interrupt flags are clear
 	dsp_write_hcvr(dsp, HCVR_INT_RST);
 	dsp_write_hcvr(dsp, HCVR_INT_DON);
@@ -161,7 +172,7 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector)
 {
 	int i = 0;
 	int n = sizeof(dsp_command) / sizeof(u32);
-       
+
 	// HSTR must be ready to receive
 	if ( !(dsp_read_hstr(dev->dsp) & HSTR_TRDY) ) {
 		PRINT_ERR(SUBNAME "HSTR not ready to transmit!\n");
@@ -186,18 +197,30 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector)
 #undef SUBNAME
 
 
+#define SUBNAME "dsp_quick_command: "
+
+int dsp_quick_command(u32 vector) 
+{
+	PRINT_INFO(SUBNAME "sending vector %#x\n", vector);
+	dsp_write_hcvr(dev->dsp, vector);
+	return 0;
+}
+
+#undef SUBNAME
+
+
 #define SUBNAME "dsp_lookup_vector: "
 
-int dsp_lookup_vector(dsp_command *cmd)
+struct dsp_vector *dsp_lookup_vector(dsp_command *cmd)
 {
 	int i;
 	for (i = 0; i < NUM_DSP_CMD; i++)
 		if (dsp_vector_set[i].key == cmd->command)
-			return dsp_vector_set[i].vector;
-
+			return dsp_vector_set+i;
+	
 	PRINT_ERR(SUBNAME "could not identify command %#x\n",
 		  cmd->command);
-	return -1;
+	return NULL;
 }
 
 #undef SUBNAME
@@ -207,12 +230,23 @@ int dsp_lookup_vector(dsp_command *cmd)
 
 int dsp_send_command_now(dsp_command *cmd) 
 {
-	int vector = dsp_lookup_vector(cmd);
-
+	struct dsp_vector *vect = dsp_lookup_vector(cmd);
 	PRINT_INFO(SUBNAME "cmd=%06x\n", cmd->command);
 
-	if (vector<0) return -1;
-	return dsp_send_command_now_vector(cmd, vector);
+	if (vect==NULL) return -1;
+	
+	switch (vect->type) {
+
+	case VECTOR_STANDARD:
+		return dsp_send_command_now_vector(cmd, vect->vector);
+
+	case VECTOR_QUICK:
+		// FIXME: these don't reply so they'll always time out.
+		return dsp_quick_command(vect->vector);
+	}
+
+	PRINT_ERR(SUBNAME "unimplemented vector command type!\n");
+	return -1;
 }
 
 #undef SUBNAME

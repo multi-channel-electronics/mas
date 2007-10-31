@@ -26,7 +26,8 @@
 
 #define HCVR_INT_RST     0x8073 /* Clear DSP interrupt */
 #define HCVR_INT_DON     0x8075 /* Clear interrupt flag */
-#define HCVR_FATAL_ERR   0x8077 /* Set fatal error flag */
+#define HCVR_SYS_ERR     0x8077 /* Set fatal error flag */
+#define HCVR_SYS_RST     0x808B /* Set fatal error flag */
 
 #define PCI_MAX_FLUSH       256
 
@@ -55,8 +56,8 @@ struct dsp_dev_t {
 
 	dsp_reg_t *dsp;
 
-	irqreturn_t (*int_handler)(int, void*,
-				   struct pt_regs*);
+	irqreturn_t (*int_handler)(int, void*, struct pt_regs*);
+
 };
 
 

@@ -1,17 +1,20 @@
 # Output module basename
 DRIVER_NAME ?= mce_dsp
 
+# Special directories - must be ?= or they get overwritten
+PWD ?= $(shell pwd)/
+FAKEMCE_DIR ?= fake_mce/
+RTAI_DIR   ?= /usr/src/rtai
+
+# Use Makefile.local to set up default configuration options.
+
+include $(PWD)/Makefile.local
+
 # Module configuration options, set to 0 or 1.
 
 FAKEMCE    ?= 0
 REALTIME   ?= 0
 BIGPHYS    ?= 0
-
-
-# Special directories - must be ?= or they get overwritten
-PWD ?= $(shell pwd)/
-FAKEMCE_DIR ?= fake_mce/
-RTAI_DIR   ?= /usr/src/rtai
 
 
 # Compilation options - don't trash CFLAGS, everything breaks.
@@ -88,6 +91,9 @@ endif
 
 
 # General rules
+
+$(PWD)/Makefile.local:
+	touch $(PWD)/Makefile.local
 
 fault:
 	@echo Unknown kernel version $(TARGET_KERNEL) : $(KVER)

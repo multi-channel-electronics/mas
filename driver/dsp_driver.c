@@ -121,6 +121,13 @@ int dsp_int_handler(dsp_message *msg)
 
 		break;
 
+	case DSP_HEY:
+
+		//Fine.
+		PRINT_INFO(SUBNAME "HEY received.\n");
+
+		break;
+
 	default:
 		PRINT_ERR(SUBNAME "unknown message type: %#06x\n", msg->type);
 		return -1;
