@@ -44,6 +44,7 @@ enum {
 	ENUM_SPECIAL_LOW,
 	SPECIAL_HELP,
 	SPECIAL_ACQ,
+	SPECIAL_ACQ_CONFIG,
 	SPECIAL_ACQ_FRAMESIZE,
 	SPECIAL_ACQ_CARDS,
 	SPECIAL_ACQ_FILENAME,
@@ -83,6 +84,21 @@ cmdtree_opt_t command_placeholder_opts[] = {
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
+cmdtree_opt_t acq_config_opts3[] = {
+	{ CMDTREE_INTEGER   , "", 0, -1, 0, NULL },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
+cmdtree_opt_t acq_config_opts2[] = {
+	{ CMDTREE_STRING    , "", 0, -1, 0, acq_config_opts3 },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
+cmdtree_opt_t acq_config_opts1[] = {
+	{ CMDTREE_STRING    , "", 0, -1, 0, acq_config_opts2 },
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
 cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
 	{ CMDTREE_SELECT, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
@@ -96,9 +112,10 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT, "RESET"   , 2,-1, COMMAND_RS, command_placeholder_opts},
 	{ CMDTREE_SELECT, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
 	{ CMDTREE_SELECT, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
-	{ CMDTREE_SELECT, "ACQ_FRAMESIZE", 1, 1, SPECIAL_ACQ_FRAMESIZE, integer_opts},
-	{ CMDTREE_SELECT, "ACQ_FILENAME" , 1, 1, SPECIAL_ACQ_FILENAME , string_opts},
-	{ CMDTREE_SELECT, "ACQ_CARDS"    , 1, 1, SPECIAL_ACQ_CARDS    , string_opts},
+	{ CMDTREE_SELECT, "ACQ_CONFIG", 3, 3, SPECIAL_ACQ_CONFIG, acq_config_opts1},
+/* 	{ CMDTREE_SELECT, "ACQ_FRAMESIZE", 1, 1, SPECIAL_ACQ_FRAMESIZE, integer_opts}, */
+/* 	{ CMDTREE_SELECT, "ACQ_FILENAME" , 1, 1, SPECIAL_ACQ_FILENAME , string_opts}, */
+/* 	{ CMDTREE_SELECT, "ACQ_CARDS"    , 1, 1, SPECIAL_ACQ_CARDS    , string_opts}, */
 	{ CMDTREE_SELECT, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
 	{ CMDTREE_SELECT, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ CMDTREE_SELECT, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
@@ -209,6 +226,8 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 
+	// Zero the acqusition structure
+	mcedata_acq_reset(&acq, &mcedata);
 
 	int line_count = 0;
 
@@ -562,6 +581,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 					acq.fout = NULL;
 				}
 			} else {
+				// If you get here, your data just accumulates
+				//  in the driver's buffer, /dev/mce_data0
 				err = mce_start_application(handle,
 							    card_id, para_id);
 			}
@@ -638,25 +659,49 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case SPECIAL_ACQ:
 			my_acq.n_frames = tokens[1].value;
-			ret_val = do_acq_now(errstr);
+			if (mcedata_acq_go(&acq, my_acq.n_frames) != 0) {
+				sprintf(errmsg, "Acquisition failed.\n");
+				ret_val = -1;
+			}
 			break;
 
-		case SPECIAL_ACQ_FRAMESIZE:
-			my_acq.frame_size = tokens[1].value;
-			break;
+		case SPECIAL_ACQ_CONFIG:
+			cmdtree_token_word( my_acq.filename, tokens+1 );
 
-		case SPECIAL_ACQ_CARDS:
-			cmdtree_token_word( s, tokens+1 );
+			cmdtree_token_word( s, tokens+2 );
 			my_acq.cards = translate_card_string(s);
 			if (my_acq.cards < 0) {
 				sprintf(errmsg, "Bad card option '%s'", s);
 				ret_val = -1;
 			}
+
+			my_acq.frame_size = tokens[3].value;
+
+			if (mcedata_acq_setup(&acq, 0,
+					      my_acq.cards,
+					      my_acq.frame_size,
+					      my_acq.filename) != 0) {
+				sprintf(errmsg, "Could not configure acq");
+				ret_val = -1;
+			}
 			break;
 
-		case SPECIAL_ACQ_FILENAME:			
-			cmdtree_token_word( my_acq.filename, tokens+1 );
-			break;
+/* 		case SPECIAL_ACQ_FRAMESIZE: */
+/* 			my_acq.frame_size = tokens[1].value; */
+/* 			break; */
+
+/* 		case SPECIAL_ACQ_CARDS: */
+/* 			cmdtree_token_word( s, tokens+1 ); */
+/* 			my_acq.cards = translate_card_string(s); */
+/* 			if (my_acq.cards < 0) { */
+/* 				sprintf(errmsg, "Bad card option '%s'", s); */
+/* 				ret_val = -1; */
+/* 			} */
+/* 			break; */
+
+/* 		case SPECIAL_ACQ_FILENAME:			 */
+/* 			cmdtree_token_word( my_acq.filename, tokens+1 ); */
+/* 			break; */
 
 		case SPECIAL_QT_ENABLE:
 			ret_val = mce_qt_enable( data_fd, tokens[1].value );
