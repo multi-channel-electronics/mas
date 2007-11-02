@@ -53,6 +53,7 @@ enum {
 	SPECIAL_FAKESTOP,
 	SPECIAL_EMPTY,
 	SPECIAL_SLEEP,
+	SPECIAL_COMMENT,
 	SPECIAL_FRAME,
 	SPECIAL_DEC,
 	SPECIAL_HEX,
@@ -103,7 +104,9 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
 	{ CMDTREE_SELECT, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
 	{ CMDTREE_SELECT, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
+	{ CMDTREE_SELECT, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
 	{ CMDTREE_SELECT, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
+	{ CMDTREE_SELECT, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
 	{ CMDTREE_SELECT, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
@@ -672,6 +675,9 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			usleep(tokens[1].value);
 			break;
 
+		case SPECIAL_COMMENT:
+			break;
+
 		case SPECIAL_FRAME:
 			ret_val = mce_set_datasize(data_fd, tokens[1].value);
 			if (ret_val != 0) {
@@ -707,8 +713,8 @@ int process_options(int argc, char **argv)
 		case 'h':
 			printf("Usage:\n\t%s [-i] [-q] [-p] [-d devfile] "
 			       "[-c <config file> ] "
-			       "[-f <batch file> | -x <command>] "
-			       "[-C <data file> ]",
+			       "[-f <batch file> |\n"
+			       "\t\t-x <command>] [-C <data file> ]\n",
 			       argv[0]);
 			return -1;
 
