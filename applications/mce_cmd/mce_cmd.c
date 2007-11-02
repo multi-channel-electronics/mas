@@ -57,6 +57,7 @@ enum {
 	SPECIAL_FRAME,
 	SPECIAL_DEC,
 	SPECIAL_HEX,
+	SPECIAL_ECHO,
 	ENUM_SPECIAL_HIGH,
 };   
 
@@ -107,7 +108,7 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
 	{ CMDTREE_SELECT, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
 	{ CMDTREE_SELECT, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
-	{ CMDTREE_SELECT, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
+	{ CMDTREE_SELECT, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 	
@@ -116,6 +117,7 @@ struct {
 	int nonzero_only;
 	int no_prefix;
 	int display;
+	int echo;
 
 	int das_compatible; // horror
 
@@ -129,7 +131,7 @@ struct {
 	char config_file[LINE_LEN];
 
 } options = {
-	0, 0, 0, SPECIAL_HEX, 0, "", 0, "", 0, DEFAULT_DEVICE
+	0, 0, 0, SPECIAL_HEX, 0, 0, "", 0, "", 0, DEFAULT_DEVICE
 };
 
 
@@ -272,6 +274,11 @@ int main(int argc, char **argv)
 			premsg[0] = 0;
 		else
 			sprintf(premsg, "Line %3i : ", line_count);
+
+		if (options.echo) {
+			printf("Cmd  %3i : %s\n", line_count, line);
+		}
+
 		errmsg[0] = 0;
 
 		cmdtree_token_t args[NARGS];
@@ -692,6 +699,10 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case SPECIAL_HEX:
 			options.display = SPECIAL_HEX;
+			break;
+
+		case SPECIAL_ECHO:
+			options.echo = tokens[1].value;
 			break;
 
 		default:
