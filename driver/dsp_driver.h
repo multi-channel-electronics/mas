@@ -6,6 +6,8 @@
 
 #define DSPDEV_NAME "mce_dsp"
 
+#define DSP_DEFAULT_TIMEOUT (HZ*50/100)
+
 typedef int (*dsp_callback)(int, dsp_message*);
 
 

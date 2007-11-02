@@ -144,8 +144,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 
 void dsp_clear_interrupt(dsp_reg_t *dsp)
 {
-
-	// Ensure PCI interrupt flags are clear
+	// Clear interrupt flags
 	dsp_write_hcvr(dsp, HCVR_INT_RST);
 	dsp_write_hcvr(dsp, HCVR_INT_DON);
 }

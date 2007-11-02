@@ -341,7 +341,7 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block)
 	del_timer_sync(&mdat.timer);
 	mdat.timer.function = mce_send_command_timer;
 	mdat.timer.data = (unsigned long)mdat.callback;
-	mdat.timer.expires = jiffies + HZ;
+	mdat.timer.expires = jiffies + MCE_DEFAULT_TIMEOUT;
 	add_timer(&mdat.timer);
 
  up_and_out:

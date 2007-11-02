@@ -205,32 +205,13 @@ int dsp_send_command(dsp_command *cmd,
 {
 	int err = 0;
 
-	// This semaphore protects us from interrupting commanders too.	
+	// This will often be called in atomic context
 	if (down_trylock(&ddat.sem)) {
 		PRINT_ERR(SUBNAME "could not get sem\n");
 		return -DSP_ERR_SYSTEM;
 	}
 	
 	PRINT_INFO(SUBNAME "entry\n");
-
-/* 	// An interrupt that commands will set this flag. */
-/* 	ddat.evil_flag = 0; */
-/* 	barrier(); */
-
-/* 	if (ddat.state != DDAT_IDLE) { */
-/* 		err = -1; */
-/* 		goto up_and_out; */
-/* 	} */
-
-/* 	// After this call we are safe from interrupt routine */
-/* 	ddat.state = DDAT_CMD; */
-/* 	barrier(); */
-	
-/* 	if (ddat.evil_flag) { */
-/* 		// Damn you, interrupt */
-/* 		err = -DSP_ERR_SYSTEM; */
-/* 		goto up_and_out; */
-/* 	} */
 		
 	ddat.callback = callback;
 	ddat.state = DDAT_CMD;
@@ -243,12 +224,11 @@ int dsp_send_command(dsp_command *cmd,
 		del_timer_sync(&ddat.tim);
 		ddat.tim.function = dsp_timeout;
 		ddat.tim.data = (unsigned long)ddat.callback;
-		ddat.tim.expires = jiffies + HZ;
+		ddat.tim.expires = jiffies + DSP_DEFAULT_TIMEOUT;
 		ddat.tim_ignore = 0;
 		add_timer(&ddat.tim);
 	}
 
-up_and_out:
 	PRINT_INFO(SUBNAME "returning [%i]\n", err);
 	up(&ddat.sem);
 	return err;
