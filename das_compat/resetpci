@@ -1,0 +1,3 @@
+#!/bin/bash
+
+odsp_cmd -q -p -x reset

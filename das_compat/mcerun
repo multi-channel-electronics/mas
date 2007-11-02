@@ -1,0 +1,79 @@
+#!/bin/tcsh
+
+# Acquire data from the MCE and create or append to a .run file
+#
+# Run file name is obtained with script mce_runfile_name
+
+if ($#argv != 3) then
+  echo "----------------"
+  echo "Usage:              mcerun <filename> <numpts> <RC>"
+  echo ""
+  echo "     numpts   is the number of frames e.g. 24000"
+  echo "     RC       is the card number e.g. ""3"", or ""s"" for all"
+  echo "----------------"
+  exit 1
+endif
+
+set dest_dir=$DATADIR
+
+set cmd=($argv)
+set filename=${dest_dir}/$cmd[1]
+set runfilename=${filename}.run
+set numpts=$cmd[2]
+set rc_num=$cmd[3]
+
+# make sure we're in good shape
+clear_comms
+check_comms
+if ($status) then
+  echo "check_comms failed; aborting aquisition."
+  exit 1
+endif
+
+
+#RUN FILE CREATION: NO MCE COMMANDS PAST THIS POINT
+
+echo "RUNFILE_NAME=$runfilename"
+
+######mcestatus $runfilename 1
+# Content of mcestatus
+
+mcestatus_text >> $runfilename
+if ($status) then
+  echo "mcerun: MCESTATUS action failed!"
+  exit 1
+endif
+
+# Apply frameacq stamp
+
+echo "# frameacq_stamp output" >> $runfilename
+frameacq_stamp $rc_num ${filename} $numpts >> $runfilename
+if ($status) then
+  echo "frameacq_stamp failed!"
+  exit 1
+endif
+
+
+# Check health
+
+check_comms
+if ($status) then
+  echo "check_comms failed; aborting aquisition."
+  exit 1
+endif
+
+echo "FRAME_BASENAME=$filename"
+
+
+###### mceframetest 1 $numpts 1 ${filename} rc$rc_num
+
+echo "w cc ret_dat_s 1 $numpts\ngo rc$rc_num ret_dat 1" | \
+    mce_cmd -C ${filename} -q -p
+
+if ($status) then
+  echo "failed to start acquisition."
+  exit 1
+endif
+
+exit 0
+

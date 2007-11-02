@@ -1,0 +1,61 @@
+#!/bin/tcsh
+#
+# why do I use csh?
+#
+# The output of this file should be appended to the .run file
+# Use, e.g.
+#    frameacq_stamp 1 outfile 10000 >> outfile.run
+#  OR better
+#    frameacq_stamp 1 outfile 10000 | tee -a outfile.run
+#
+
+set runfile_version=1
+
+if ($#argv != 3) then
+  echo "Invalid frameacq_stamp arguments!  The arguments were:"
+  echo "$argv"
+  echo "Usage:\n"
+  echo "         frameacq_stamp rc_num data_filename num_frames"
+  echo
+  exit 1
+endif
+
+set rc="$argv[1]"
+if ( "$rc" == "s" ) then
+	set rc="1 2 3 4"
+endif
+set data_filename="$argv[2]"
+set data_framecount="$argv[3]"
+
+# This doesn't work in d1!
+#set das_version=`dasversion | head -3 | tail -1 | awk '{print $3}' |sed 's/version=//' `
+
+# This does...
+set das_version=`dasversion | awk '($2=="DAS") {print $3}' | sed 's/version=//' `
+
+set data_format = `cat "$USRCONFIGDIR/mce_dataformat.cfg"`
+
+set fileseq_on=0
+set fileseq_format = `cat "$USRCONFIGDIR/mce_fs_format.cfg"`
+set fileseq_interval = `cat "$USRCONFIGDIR/mce_fs_interval.cfg"`
+
+if ("$fileseq_format" != "") then
+	set fileseq_on=1
+endif
+
+echo "<FRAMEACQ>"
+
+echo "  <RUNFILE_VERSION> $runfile_version"
+echo "  <DAS_VERSION> $das_version"
+echo "  <RC> $rc"
+echo "  <DATA_FILENAME> $data_filename"
+echo "  <DATA_FRAMECOUNT> $data_framecount"
+echo "  <DATA_FORMAT> $data_format"
+
+if ($fileseq_on) then
+  echo "  <FILESEQ_FORMAT> $fileseq_format"
+  echo "  <FILESEQ_INTERVAL> $fileseq_interval"
+endif
+
+echo "</FRAMEACQ>"
+echo

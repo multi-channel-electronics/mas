@@ -1,0 +1,292 @@
+ECHO 1
+# RB sys row_len
+# RB sys num_rows
+RB psc psc_status
+RB cc ret_dat_s
+RB cc array_id
+RB cc box_id
+RB cc box_temp
+RB cc data_rate
+RB cc use_dv
+RB cc use_sync
+RB cc select_clk
+RB cc int_cmd_en
+RB cc crc_err_en
+RB cc num_rows_reported
+RB cc ramp_step_period
+RB cc ramp_min_val
+RB cc ramp_step_size
+RB cc ramp_max_val
+RB cc ramp_param_id
+RB cc ramp_card_addr
+RB cc ramp_step_data_num
+RB cc run_id
+RB cc user_word
+RB cc led
+RB cc fpga_temp
+RB cc card_temp
+RB cc card_id
+RB cc fw_rev
+RB ac row_order
+RB ac on_bias
+RB ac off_bias
+RB ac enbl_mux
+RB ac row_dly
+RB ac led
+RB ac fpga_temp
+RB ac card_temp
+RB ac card_id
+RB ac fw_rev
+RB rc1 sa_bias
+RB rc1 offset
+RB rc1 gainp0
+RB rc1 gainp1
+RB rc1 gainp2
+RB rc1 gainp3
+RB rc1 gainp4
+RB rc1 gainp5
+RB rc1 gainp6
+RB rc1 gainp7
+RB rc1 gaini0
+RB rc1 gaini1
+RB rc1 gaini2
+RB rc1 gaini3
+RB rc1 gaini4
+RB rc1 gaini5
+RB rc1 gaini6
+RB rc1 gaini7
+RB rc1 flx_quanta0
+RB rc1 flx_quanta1
+RB rc1 flx_quanta2
+RB rc1 flx_quanta3
+RB rc1 flx_quanta4
+RB rc1 flx_quanta5
+RB rc1 flx_quanta6
+RB rc1 flx_quanta7
+RB rc1 gaind0
+RB rc1 gaind1
+RB rc1 gaind2
+RB rc1 gaind3
+RB rc1 gaind4
+RB rc1 gaind5
+RB rc1 gaind6
+RB rc1 gaind7
+RB rc1 adc_offset0
+RB rc1 adc_offset1
+RB rc1 adc_offset2
+RB rc1 adc_offset3
+RB rc1 adc_offset4
+RB rc1 adc_offset5
+RB rc1 adc_offset6
+RB rc1 adc_offset7
+RB rc1 en_fb_jump
+RB rc1 data_mode
+RB rc1 servo_mode
+RB rc1 ramp_dly
+RB rc1 ramp_amp
+RB rc1 ramp_step
+RB rc1 fb_const
+RB rc1 sample_dly
+RB rc1 sample_num
+RB rc1 fb_dly
+RB rc1 readout_row_index
+RB rc1 led
+RB rc1 fpga_temp
+RB rc1 card_temp
+RB rc1 card_id
+RB rc1 fw_rev
+RB rc2 sa_bias
+RB rc2 offset
+RB rc2 gainp0
+RB rc2 gainp1
+RB rc2 gainp2
+RB rc2 gainp3
+RB rc2 gainp4
+RB rc2 gainp5
+RB rc2 gainp6
+RB rc2 gainp7
+RB rc2 gaini0
+RB rc2 gaini1
+RB rc2 gaini2
+RB rc2 gaini3
+RB rc2 gaini4
+RB rc2 gaini5
+RB rc2 gaini6
+RB rc2 gaini7
+RB rc2 flx_quanta0
+RB rc2 flx_quanta1
+RB rc2 flx_quanta2
+RB rc2 flx_quanta3
+RB rc2 flx_quanta4
+RB rc2 flx_quanta5
+RB rc2 flx_quanta6
+RB rc2 flx_quanta7
+RB rc2 gaind0
+RB rc2 gaind1
+RB rc2 gaind2
+RB rc2 gaind3
+RB rc2 gaind4
+RB rc2 gaind5
+RB rc2 gaind6
+RB rc2 gaind7
+RB rc2 adc_offset0
+RB rc2 adc_offset1
+RB rc2 adc_offset2
+RB rc2 adc_offset3
+RB rc2 adc_offset4
+RB rc2 adc_offset5
+RB rc2 adc_offset6
+RB rc2 adc_offset7
+RB rc2 en_fb_jump
+RB rc2 data_mode
+RB rc2 servo_mode
+RB rc2 ramp_dly
+RB rc2 ramp_amp
+RB rc2 ramp_step
+RB rc2 fb_const
+RB rc2 sample_dly
+RB rc2 sample_num
+RB rc2 fb_dly
+RB rc2 readout_row_index
+RB rc2 led
+RB rc2 fpga_temp
+RB rc2 card_temp
+RB rc2 card_id
+RB rc2 fw_rev
+# RB rc3 sa_bias
+# RB rc3 offset
+# RB rc3 gainp0
+# RB rc3 gainp1
+# RB rc3 gainp2
+# RB rc3 gainp3
+# RB rc3 gainp4
+# RB rc3 gainp5
+# RB rc3 gainp6
+# RB rc3 gainp7
+# RB rc3 gaini0
+# RB rc3 gaini1
+# RB rc3 gaini2
+# RB rc3 gaini3
+# RB rc3 gaini4
+# RB rc3 gaini5
+# RB rc3 gaini6
+# RB rc3 gaini7
+# RB rc3 flx_quanta0
+# RB rc3 flx_quanta1
+# RB rc3 flx_quanta2
+# RB rc3 flx_quanta3
+# RB rc3 flx_quanta4
+# RB rc3 flx_quanta5
+# RB rc3 flx_quanta6
+# RB rc3 flx_quanta7
+# RB rc3 gaind0
+# RB rc3 gaind1
+# RB rc3 gaind2
+# RB rc3 gaind3
+# RB rc3 gaind4
+# RB rc3 gaind5
+# RB rc3 gaind6
+# RB rc3 gaind7
+# RB rc3 adc_offset0
+# RB rc3 adc_offset1
+# RB rc3 adc_offset2
+# RB rc3 adc_offset3
+# RB rc3 adc_offset4
+# RB rc3 adc_offset5
+# RB rc3 adc_offset6
+# RB rc3 adc_offset7
+# RB rc3 en_fb_jump
+# RB rc3 data_mode
+# RB rc3 servo_mode
+# RB rc3 ramp_dly
+# RB rc3 ramp_amp
+# RB rc3 ramp_step
+# RB rc3 fb_const
+# RB rc3 sample_dly
+# RB rc3 sample_num
+# RB rc3 fb_dly
+# RB rc3 readout_row_index
+# RB rc3 led
+# RB rc3 fpga_temp
+# RB rc3 card_temp
+# RB rc3 card_id
+# RB rc3 fw_rev
+# RB rc4 sa_bias
+# RB rc4 offset
+# RB rc4 gainp0
+# RB rc4 gainp1
+# RB rc4 gainp2
+# RB rc4 gainp3
+# RB rc4 gainp4
+# RB rc4 gainp5
+# RB rc4 gainp6
+# RB rc4 gainp7
+# RB rc4 gaini0
+# RB rc4 gaini1
+# RB rc4 gaini2
+# RB rc4 gaini3
+# RB rc4 gaini4
+# RB rc4 gaini5
+# RB rc4 gaini6
+# RB rc4 gaini7
+# RB rc4 flx_quanta0
+# RB rc4 flx_quanta1
+# RB rc4 flx_quanta2
+# RB rc4 flx_quanta3
+# RB rc4 flx_quanta4
+# RB rc4 flx_quanta5
+# RB rc4 flx_quanta6
+# RB rc4 flx_quanta7
+# RB rc4 gaind0
+# RB rc4 gaind1
+# RB rc4 gaind2
+# RB rc4 gaind3
+# RB rc4 gaind4
+# RB rc4 gaind5
+# RB rc4 gaind6
+# RB rc4 gaind7
+# RB rc4 adc_offset0
+# RB rc4 adc_offset1
+# RB rc4 adc_offset2
+# RB rc4 adc_offset3
+# RB rc4 adc_offset4
+# RB rc4 adc_offset5
+# RB rc4 adc_offset6
+# RB rc4 adc_offset7
+# RB rc4 en_fb_jump
+# RB rc4 data_mode
+# RB rc4 servo_mode
+# RB rc4 ramp_dly
+# RB rc4 ramp_amp
+# RB rc4 ramp_step
+# RB rc4 fb_const
+# RB rc4 sample_dly
+# RB rc4 sample_num
+# RB rc4 fb_dly
+# RB rc4 readout_row_index
+# RB rc4 led
+# RB rc4 fpga_temp
+# RB rc4 card_temp
+# RB rc4 card_id
+# RB rc4 fw_rev
+RB bc1 flux_fb
+RB bc1 bias
+RB bc1 led
+RB bc1 fpga_temp
+RB bc1 card_temp
+RB bc1 card_id
+RB bc1 fw_rev
+RB bc2 flux_fb
+RB bc2 bias
+RB bc2 led
+RB bc2 fpga_temp
+RB bc2 card_temp
+RB bc2 card_id
+RB bc2 fw_rev
+RB bc3 flux_fb
+RB bc3 bias
+RB bc3 led
+RB bc3 fpga_temp
+RB bc3 card_temp
+RB bc3 card_id
+RB bc3 fw_rev
