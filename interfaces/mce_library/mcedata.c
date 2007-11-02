@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -64,7 +66,7 @@ int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size,
 	strcpy(acq->filename, filename);
 
 	if (acq->fout != NULL) fclose(acq->fout);
-	acq->fout = fopen(acq->filename, "a");
+	acq->fout = fopen64(acq->filename, "a");
 	if (acq->fout == NULL) {
 		fprintf(stderr, "Could not open output file '%s'\n",
 			acq->filename);
