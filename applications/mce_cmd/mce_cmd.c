@@ -626,6 +626,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case SPECIAL_ACQ:
+			my_acq.n_frames = tokens[1].value;
 			ret_val = do_acq_now(errstr);
 			break;
 
