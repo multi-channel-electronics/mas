@@ -316,7 +316,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	printf("Processed %i lines, exiting.\n", line_count);
+	if (!options.nonzero_only)
+		printf("Processed %i lines, exiting.\n", line_count);
 
 exit_now:
 	if (line!=NULL) free(line);
