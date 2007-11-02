@@ -420,6 +420,9 @@ int mce_send_command_user(mce_command *cmd, mce_callback callback)
 
 int mce_da_hst_callback(int error, dsp_message *msg)
 {
+	//FIXME: "error" case should be natural and handled smoothly.
+	// What will happen to this "data"?
+
 	if (error || msg==NULL) {
 
 		if (!mce_error_register()) return -1;
@@ -433,6 +436,7 @@ int mce_da_hst_callback(int error, dsp_message *msg)
 				   msg->type, msg->command,
 				   msg->reply, msg->data);
 		}
+		mdat.data_flags &= ~MDAT_HST;
 		return -1;
 	}
 
@@ -440,6 +444,7 @@ int mce_da_hst_callback(int error, dsp_message *msg)
 		if (mce_error_register())
 			PRINT_ERR(SUBNAME "unexpected flags state %#x\n",
 				  mdat.data_flags);
+		mdat.data_flags = 0;
 		return -1;
 	}
 
