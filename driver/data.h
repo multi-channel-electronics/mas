@@ -123,4 +123,6 @@ int data_qt_configure( int qt_interval );
 
 int data_qt_enable(int on);
 
+int data_proc(char *buf, int count);
+
 #endif

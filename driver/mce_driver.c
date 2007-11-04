@@ -825,6 +825,38 @@ int mce_buffer_free(mce_comm_buffer *buffer)
 }
 
 
+int mce_proc(char *buf, int count)
+{
+	int len = 0;
+	if (len < count) {
+		len += sprintf(buf+len, "    state:    ");
+		switch (mdat.state) {
+		case MDAT_IDLE:
+			len += sprintf(buf+len, "idle\n");
+			break;
+		case MDAT_CON:
+			len += sprintf(buf+len, "command initiated\n");
+			break;
+		case MDAT_CONOK:
+			len += sprintf(buf+len, "command sent\n");
+			break;
+		case MDAT_NFY:
+			len += sprintf(buf+len, "reply notified\n");
+			break;
+		case MDAT_HST:
+			len += sprintf(buf+len, "reply queried\n");
+			break;
+		case MDAT_ERR:
+			len += sprintf(buf+len, "error\n");
+			break;
+		}
+	}
+
+/* 	len += sprintf(buf+len, "    virtual: %#010x\n", */
+/* 		       (unsigned)frames.base); */
+	return len;
+}
+
 #define SUBNAME "mce_init_module: "
 
 int mce_init_module()

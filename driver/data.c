@@ -523,6 +523,30 @@ int data_reset()
 }
 
 
+int data_proc(char *buf, int count)
+{
+	int len = 0;
+	if (len < count)
+		len += sprintf(buf+len, "    virtual:  %#010x\n",
+			       (unsigned)frames.base);
+	if (len < count)
+		len += sprintf(buf+len, "    bus:      %#010x\n",
+			       (unsigned)frames.base_busaddr);
+	if (len < count)
+		len += sprintf(buf+len, "    incr:     %#10x\n", frames.frame_size);
+	if (len < count)
+		len += sprintf(buf+len, "    count:    %10i\n", frames.max_index);
+	if (len < count)
+		len += sprintf(buf+len, "    head:     %10i\n", frames.head_index);
+	if (len < count)
+		len += sprintf(buf+len, "    incr:     %10i\n", frames.tail_index);
+	if (len < count)
+		len += sprintf(buf+len, "    drops:    %10i\n", frames.dropped);
+
+	return len;
+}
+
+
 /**************************************************************************
  *                                                                        *
  *      Init and cleanup                                                  *

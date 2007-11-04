@@ -17,6 +17,8 @@ int mce_init_module(void);
 
 int mce_cleanup(void);
 
+int mce_proc(char *buf, int count);
+
 int mce_error_register( void );
 
 void mce_error_reset( void );

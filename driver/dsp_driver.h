@@ -21,6 +21,7 @@ int dsp_send_command_wait(dsp_command *cmd,
 
 int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg);
 
+int dsp_proc(char *buf, int count);
 
 int dsp_int_handler(dsp_message *msg);
 

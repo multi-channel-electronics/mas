@@ -26,4 +26,6 @@ int fake_int_handler(dsp_message *msg);
 
 int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg);
 
+int dsp_pci_proc(char *buf, int count);
+
 #endif

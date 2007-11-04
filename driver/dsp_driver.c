@@ -33,7 +33,7 @@
 
 #include "mce_driver.h"
 #include "dsp_ops.h"
-
+#include "proc.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Matthew Hasselfield"); 
@@ -54,7 +54,6 @@ struct dsp_control {
 	int tim_ignore;
 
 	dsp_state_t state;
-/* 	int evil_flag; */
 
 	dsp_callback callback;
 
@@ -355,6 +354,30 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
 #undef SUBNAME
 
 
+int dsp_proc(char *buf, int count)
+{
+	int len = 0;
+	if (len < count) {
+		len += sprintf(buf+len, "    state:    ");
+		switch (ddat.state) {
+		case DDAT_IDLE:
+			len += sprintf(buf+len, "idle\n");
+			break;
+		case DDAT_CMD:
+			len += sprintf(buf+len, "commanded\n");
+			break;
+		default:
+			len += sprintf(buf+len, "unknown! [%i]\n", ddat.state);
+			break;
+		}
+	}
+
+/* 	len += sprintf(buf+len, "    virtual: %#010x\n", */
+/* 		       (unsigned)frames.base); */
+	return len;
+}
+
+
 /*
  *  Initialization and clean-up
  */
@@ -364,6 +387,8 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
 void driver_cleanup(void)
 {
 	del_timer_sync(&ddat.tim);
+
+	remove_proc_entry("mce_dsp", NULL);
 
 	mce_cleanup();
 
@@ -416,6 +441,9 @@ inline int driver_init(void)
 		err = -1;
 		goto out;
 	}
+
+	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
+
 
 	PRINT_INFO(SUBNAME "driver ok\n");
 	return 0;

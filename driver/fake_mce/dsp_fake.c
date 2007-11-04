@@ -194,3 +194,13 @@ int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg)
 
 	return 0;
 }
+
+int dsp_pci_proc(char *buf, int count)
+{
+	int len = 0;
+	if (len < count) {
+		len += sprintf(buf+len, "    (pci emulator!)\n");
+	}
+	
+	return len;
+}

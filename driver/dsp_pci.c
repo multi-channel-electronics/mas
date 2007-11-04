@@ -118,6 +118,9 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	if (dev_id != dev) return IRQ_NONE;
 #endif
 
+	// Immediately clear interrupt bit
+	dsp_write_hcvr(dsp, HCVR_INT_RST);
+
 	// Read data into dsp_message structure
 	while ( i<n && (dsp_read_hstr(dsp) & HSTR_HRRQ) ) {
 		((u32*)&msg)[i++] = dsp_read_hrxs(dsp) & DSP_DATAMASK;
@@ -133,8 +136,11 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	// Call the generic message handler
 	dsp_int_handler( &msg );
 
-	// Clear DSP interrupt flags
-	dsp_clear_interrupt(dsp);
+	// At end, clear DSP handshake bit
+	dsp_write_hcvr(dsp, HCVR_INT_DON);
+
+/* 	// Clear DSP interrupt flags */
+/* 	dsp_clear_interrupt(dsp); */
 
 	return IRQ_HANDLED;
 }
@@ -514,3 +520,17 @@ int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg)
 }
 
 #undef SUBNAME
+
+
+int dsp_pci_proc(char *buf, int count)
+{
+	int len = 0;
+	if (len < count) {
+		len += sprintf(buf+len, "    hstr:     %#06x\n"
+			                "    hctr:     %#06x\n",
+			       dsp_read_hstr(dev->dsp),
+			       dsp_read_hctr(dev->dsp));
+	}
+	
+	return len;
+}
