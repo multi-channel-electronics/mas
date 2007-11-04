@@ -1,8 +1,9 @@
 #ifndef _MCE_DRIVER_H
 #define _MCE_DRIVER_H
 
-#include "dsp.h"
-#include "mce.h"
+#include "kversion.h"
+#include <dsp.h>
+#include <mce.h>
 
 
 #define MCEDEV_NAME "mce_cmd"
@@ -25,8 +26,7 @@ void mce_error_reset( void );
 
 int mce_int_handler( dsp_message *msg );
 
-
-int mce_send_command_user( __user mce_command *,
+int mce_send_command_user( __user mce_command *cmd,
 			   mce_callback callback );
 
 int mce_send_command( mce_command *cmd,

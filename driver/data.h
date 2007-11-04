@@ -3,6 +3,7 @@
 
 #include <linux/interrupt.h>
 
+#include "kversion.h"
 #include "data_ioctl.h"
 
 /*
