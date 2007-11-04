@@ -539,7 +539,7 @@ int data_proc(char *buf, int count)
 	if (len < count)
 		len += sprintf(buf+len, "    head:     %10i\n", frames.head_index);
 	if (len < count)
-		len += sprintf(buf+len, "    incr:     %10i\n", frames.tail_index);
+		len += sprintf(buf+len, "    tail:     %10i\n", frames.tail_index);
 	if (len < count)
 		len += sprintf(buf+len, "    drops:    %10i\n", frames.dropped);
 

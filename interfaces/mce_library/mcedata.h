@@ -78,6 +78,9 @@ typedef struct {
 } mce_acq_t;
 
 
+#define MCEDATA_PACKET_MAX 4096 /* Maximum frame size in dwords */
+
+
 /*
    API: all functions return a negative error value on failure.  On
    success.
