@@ -188,7 +188,10 @@ int  data_grant_callback( int error, dsp_message *msg )
 void data_grant_task(unsigned long arg)
 {
 	int err;
+
 	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, frames.tail_index, 0 } };
+
+	PRINT_INFO(SUBNAME "trying update to tail=%i\n", frames.tail_index);
 
 	if ( (err=dsp_send_command( &cmd, data_grant_callback )) ) {
 		// FIX ME: discriminate between would-block errors and fatals!
