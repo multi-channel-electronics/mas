@@ -204,7 +204,7 @@ void mce_do_HST_or_schedule(unsigned long data)
 	mdat.state = MDAT_HST;;
 	if ( (err=dsp_send_command( &cmd, mce_HST_dsp_callback )) ) {
 		// FIX ME: discriminate between would-block errors and fatals!
-		PRINT_INFO(SUBNAME "dsp busy; rescheduling.\n");
+		PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
 		mdat.state = MDAT_NFY;
 		tasklet_schedule(&mdat.hst_tasklet);
 		return;

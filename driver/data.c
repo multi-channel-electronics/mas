@@ -21,6 +21,9 @@
 # include "data_watcher.h"
 #endif
 
+#define DSP_INFORM_RATE    10 /* Hz */
+#define DSP_INFORM_COUNTS  (50000000 / DSP_INFORM_RATE) 
+
 
 frame_buffer_t frames;
 
@@ -241,6 +244,9 @@ int data_qt_configure( int qt_interval )
 
 	if (!err)
 		err = data_qt_cmd(DSP_QT_INFORM, qt_interval, 0);
+
+	if (!err)
+		err = data_qt_cmd(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0);
 
 	if (!err)
 		err = data_qt_cmd(DSP_QT_SIZE  , frames.data_size, 0);
