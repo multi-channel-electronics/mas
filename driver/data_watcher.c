@@ -41,8 +41,7 @@ int watcher_dump(int *dest, int user) {
 
 	if (user)
 		n = copy_to_user(dest, watcher.freq,
-				 
-MAX_WATCH * sizeof(int));
+				 MAX_WATCH * sizeof(int));
 	else			     
 		memcpy(dest, watcher.freq,
 		       MAX_WATCH * sizeof(int));

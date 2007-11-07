@@ -285,7 +285,7 @@ int mce_send_command_now (void)
 
 void mce_send_command_timer(unsigned long data)
 {
-	mce_callback callback = (mce_callback)data;
+	mce_callback callback = (mce_callback)data; 
 
 	if (mdat.timer_ignore) {
 		PRINT_INFO(SUBNAME "timer ignored\n");
@@ -412,10 +412,6 @@ int mce_send_command_user(mce_command *cmd, mce_callback callback)
   functions are responsible for immediately 
 */
 
-/* #define HST_FILL(cmd, bus) cmd.command = DSP_HST; \ */
-/*                            cmd.args[0] = (bus >> 16) & 0xffff; \ */
-/*                            cmd.args[1] = bus & 0xffff */
-
 #define SUBNAME "mce_da_hst_callback: "
 
 int mce_da_hst_callback(int error, dsp_message *msg)
@@ -494,89 +490,6 @@ int mce_da_hst_now(void)
 }
 
 #undef SUBNAME
-
-
-/* #define SUBNAME "mce_rp_hst_callback: " */
-
-/* //Note flags checking:  if flags aren't in exactly the right state, */
-/* // the reply the hst is rejected (any waiters will time-out). */
-
-/* int mce_rp_hst_callback(int error, dsp_message *msg) */
-/* { */
-/* 	if (msg==NULL) { */
-/* 		PRINT_ERR(SUBNAME "NULL dsp_message!\n"); */
-/* 		return -1; */
-/* 	} */
-
-/* 	PRINT_INFO(SUBNAME "reply=(%06x, %06x, %06x, %06x)\n", */
-/* 		   msg->type, msg->command, msg->reply, msg->data); */
-
-/* 	if (mdat.state != MDAT_HST) { */
-/* 		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat.state); */
-/* 		return -1; */
-/* 	} */
-
-/* 	memcpy(&mdat.hst_msg, msg, sizeof(mdat.hst_msg)); */
-/* 	mdat.state = MDAT_HSTOK; */
-
-/* 	if (mdat.callback != NULL) { */
-/* 		mdat.callback(0, mdat.buff.reply); */
-/* 	} else { */
-/* 		PRINT_INFO(SUBNAME "no callback specified\n"); */
-/* 	}  */
-
-/* 	PRINT_INFO(SUBNAME "setting timer_ignore = 1\n"); */
-/* 	mdat.timer_ignore = 1; */
-
-/* 	// Clear the buffer for the next reply */
-/* 	memset(mdat.buff.reply, 0, sizeof(*mdat.buff.reply)); */
-
-/* 	mdat.state = MDAT_IDLE; */
-
-/* 	return 0; */
-/* } */
-
-/* #undef SUBNAME */
-
-/* #define SUBNAME "mce_rp_hst_now: " */
-
-/* int mce_rp_hst_now(void) */
-/* { */
-/* 	int err = 0; */
-/* 	dsp_command cmd; */
-/* 	HST_FILL(cmd, (u32)mdat.buff.reply_busaddr); */
-
-/* 	PRINT_INFO(SUBNAME "NFY-RP accepted, sending HST\n"); */
-
-/* 	if (mdat.state != MDAT_CONOK) { */
-/* 		PRINT_ERR(SUBNAME "unsolicited reply NFY! state=%i\n", */
-/* 			  mdat.state); */
-/* 		return -1; */
-/* 	} */
-
-/* 	mdat.state = MDAT_NFY; */
-
-/* 	if ((err = dsp_send_command(&cmd, mce_rp_hst_callback))) { */
-/* 		PRINT_INFO(SUBNAME "dsp_send_command returned %i\n", */
-/* 			  err); */
-		
-/*                 //Notify callback of trouble and clear flags */
-/* 		if (mdat.callback != NULL) { */
-/* 			mdat.callback(-1, NULL); */
-/* 			mdat.timer_ignore = 1; */
-/* 		} else { */
-/* 			PRINT_INFO(SUBNAME "no callback specified\n"); */
-/* 		}  */
-/* 		mdat.state = MDAT_IDLE; */
-/* 		return -1; */
-/* 	} */
-
-/* 	mdat.state = MDAT_HST; */
-
-/* 	return 0; */
-/* } */
-
-/* #undef SUBNAME */
 
 
 #define SUBNAME "mce_int_handler: "
@@ -852,10 +765,9 @@ int mce_proc(char *buf, int count)
 		}
 	}
 
-/* 	len += sprintf(buf+len, "    virtual: %#010x\n", */
-/* 		       (unsigned)frames.base); */
 	return len;
 }
+
 
 #define SUBNAME "mce_init_module: "
 
