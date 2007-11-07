@@ -8,7 +8,7 @@ LINCDIR = /usr/include/
 CC = gcc
 
 DSP_DIR = ../driver
-OBJECTS = mce_library.o mcedata.o mce_xml.o mceconfig.o files.o
+OBJECTS = cmd.o data.o mce_xml.o config.o files.o
 HEADERS = $(LIBHDR) mcedata.h mce_xml.h mceconfig.h
 
 INCLUDE += -I. -I../../include -I../log_library
@@ -30,13 +30,13 @@ install: $(LIBNAME) $(LIBHDR)
 $(LIBNAME) : $(OBJECTS) $(HEADERS)
 	$(AR) rs $@ $(OBJECTS)
 
-mce_library.o : mce_library.c # $(HEADERS)
-	$(CC) $(CFLAGS) mce_library.c -c
+cmd.o : cmd.c # $(HEADERS)
+	$(CC) $(CFLAGS) cmd.c -c
 
-mcedata.o: mcedata.c $(HEADERS)
-	$(CC) $(CFLAGS) mcedata.c -c
+data.o: data.c $(HEADERS)
+	$(CC) $(CFLAGS) data.c -c
 
-mceconfig.o: mceconfig.c mceconfig.h
+config.o: config.c mceconfig.h
 	$(CC) $(CFLAGS) $< -c
 
 files.o: files.c mceconfig.h mcedata.h
@@ -45,8 +45,8 @@ files.o: files.c mceconfig.h mcedata.h
 mce_xml.o: mce_xml.c mce_xml.h
 	$(CC) $(CFLAGS) mce_xml.c -c
 
-cfgtest: cfgtest.c mceconfig.o
-	$(CC) $(CFLAGS) cfgtest.c mceconfig.o -lconfig -o $@
+cfgtest: cfgtest.c config.o
+	$(CC) $(CFLAGS) cfgtest.c config.o -lconfig -o $@
 
 xmltest: $(LIBNAME) xmltest.c
 	$(CC) $(CFLAGS) xmltest.c -o $@ -lexpat -lmcecmd -L.
