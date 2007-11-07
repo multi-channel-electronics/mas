@@ -8,7 +8,7 @@ LINCDIR = /usr/include/
 CC = gcc
 
 DSP_DIR = ../driver
-OBJECTS = mce_library.o mcedata.o mce_xml.o mceconfig.o
+OBJECTS = mce_library.o mcedata.o mce_xml.o mceconfig.o files.o
 HEADERS = $(LIBHDR) mcedata.h mce_xml.h mceconfig.h
 
 INCLUDE += -I. -I../../include -I../log_library
@@ -37,6 +37,9 @@ mcedata.o: mcedata.c $(HEADERS)
 	$(CC) $(CFLAGS) mcedata.c -c
 
 mceconfig.o: mceconfig.c mceconfig.h
+	$(CC) $(CFLAGS) $< -c
+
+files.o: files.c mceconfig.h mcedata.h
 	$(CC) $(CFLAGS) $< -c
 
 mce_xml.o: mce_xml.c mce_xml.h

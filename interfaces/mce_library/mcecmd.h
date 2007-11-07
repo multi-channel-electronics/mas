@@ -132,14 +132,6 @@ int mce_write_block(int handle, int card_id, int para_id,
 int mce_read_block(int handle, int card_id, int para_id,
 		   int n_data, u32 *data, int n_cards);
 
-/* Ioctl related - note argument is fd, not handle (fixme) */
-
-int mce_ioctl(int fd, int key, unsigned long arg);
-int mce_set_datasize(int fd, int datasize);
-int mce_empty_data(int fd);
-int mce_fake_stopframe(int fd);
-int mce_qt_setup(int fd, int frame_index);
-int mce_qt_enable(int fd, int on);
 
 /* XML/config lookup facilities */
 

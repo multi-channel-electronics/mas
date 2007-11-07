@@ -26,7 +26,6 @@
 #define EXIT_COUNT     6 
 
 
-
 /* Data connection */
 
 int mcedata_init(mcedata_t *mcedata, int mcecmd_handle, const char *dev_name)
@@ -53,43 +52,27 @@ int mcedata_acq_reset(mce_acq_t *acq, mcedata_t *mcedata)
 	acq->mcedata = mcedata;
 	return 0;
 }
-	
 
-int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size,
-		      const char *filename)
+
+int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size)
 {
 	int ret_val = 0;
 
 	acq->frame_size = frame_size;
 	acq->cards = cards;
 	acq->options = options;
-	strcpy(acq->filename, filename);
-
-	if (acq->fout != NULL) fclose(acq->fout);
-	acq->fout = fopen64(acq->filename, "a");
-	if (acq->fout == NULL) {
-		fprintf(stderr, "Could not open output file '%s'\n",
-			acq->filename);
-		acq->filename[0] = 0;
-		return -1;
-	}
 
 	// Set frame size in driver.
-	ret_val = mce_set_datasize(acq->mcedata->fd, acq->frame_size);
+	ret_val = mcedata_set_datasize(acq->mcedata,
+				       acq->frame_size * sizeof(u32));
 	if (ret_val != 0) {
  		fprintf(stdout, "Could not set data size [%i]\n", ret_val);
 		return -1;
 	}
 
-	// Configure quiet transfer mode
-
-
-
 	return 0;
 }
 
-
-/* int mcedata_acq_now(mce_acq_t *acq, int n_frames, int cards); */
 
 static int copy_frames(mce_acq_t *acq);
 
@@ -100,13 +83,6 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 	int para_id;
 
 	u32 args[2];
-	if (acq->fout == NULL) {
-		fprintf(stderr, "Acq output file not initialized.\n");
-		return -1;
-	}
-
-	// Configure information interval
-
 
 	// Set number of acq_frames (HOTWIRED)
 	card_id = 0x02; //CC
@@ -157,14 +133,16 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 		fprintf(stderr, "Data write wanted %i frames and got %i\n",
 			acq->n_frames, ret_val);
 	}
+
 	return 0;
 }
+
 
 static int count_bits( int bits )
 {
 	int c = 0;
 	while (bits!=0) {
-		c = (bits & 1);
+		c += (bits & 1);
 		bits = bits >> 1;
 	}
 	return c;
@@ -187,6 +165,13 @@ static int sort_columns( mce_acq_t *acq, u32 *data )
 	int data_size_in = cards_out*rows*columns;
 
 	int c, r, c_in = 0;
+
+/* 	printf("temp=%lu data=%lu, c_bits=%i, r=%i c=%i c_in=%i c_out=%i\n", */
+/* 	       temp, data, acq->cards, rows, columns, cards_in, cards_out); */
+/* 	fflush(stdout); */
+
+	if (cards_out == 1 && cards_in == 1)
+		return 0;
 
 	memcpy(temp, data, header_size*sizeof(*temp));
 	memset(temp + header_size, 0, data_size_out*sizeof(*temp));
@@ -218,7 +203,7 @@ static int copy_frames(mce_acq_t *acq)
 	int done = 0;
 	int count = 0;
 	int index = 0;
-	u32 *data = malloc(acq->frame_size);
+	u32 *data = malloc(acq->frame_size * sizeof(*data));
 	
 	if (data==NULL) {
 		fprintf(stderr, "Could not allocate frame buffer of size %i\n",
@@ -227,9 +212,18 @@ static int copy_frames(mce_acq_t *acq)
 	}
 
 	while (!done) {
+
+		if (acq->actions.pre_frame != NULL) {
+			fprintf(stderr, "I am trying to pre_frame.\n"); fflush(stderr);
+			if (acq->actions.pre_frame(acq)) {
+				fprintf(stderr, "pre_frame action failed\n");
+			}
+		}
+	
 		ret_val = read(acq->mcedata->fd, 
 				   (void*)data + index,
-				   acq->frame_size - index);
+				   acq->frame_size*sizeof(*data) - index);
+
 		if (ret_val<0) {
 			if (errno==EAGAIN) {
 				usleep(1000);
@@ -237,7 +231,8 @@ static int copy_frames(mce_acq_t *acq)
 				// Error: clear rest of frame and quit
 				fprintf(stderr,
 					"read failed with code %i\n", ret_val);
-				memset((void*)data + index, 0, acq->frame_size - index);
+				memset((void*)data + index, 0,
+				       acq->frame_size*sizeof(*data) - index);
 				done = EXIT_READ;
 				break;
 			}
@@ -247,30 +242,54 @@ static int copy_frames(mce_acq_t *acq)
 			index += ret_val;
 
 		// Only dump complete frames to disk
-		if (index >= acq->frame_size) {
+		if (index < acq->frame_size*sizeof(*data))
+			continue;
 
-			sort_columns( acq, data );
+		// Logical formatting
+		sort_columns( acq, data );
 
-			fwrite(data, acq->frame_size, 1, acq->fout);
-			index = 0;
-			if (++count >= acq->n_frames)
-				done = EXIT_COUNT;
+		if ( (acq->actions.post_frame != NULL) &&
+		     acq->actions.post_frame( acq, count, data ) ) {
+			fprintf(stderr, "pre_frame action failed\n");
 		}
-		
+
+		index = 0;
+		if (++count >= acq->n_frames)
+			done = EXIT_COUNT;
 	}
 
 	return count;
 }
 
 
-/* /\* REPATRIATED FROM MCECMD *\/ */
+/* ioctl on data device */
 
-/* /\* Ioctl related - note argument is fd, not handle (fixme) *\/ */
+int mcedata_ioctl(mcedata_t *mcedata, int key, unsigned long arg)
+{
+	return ioctl(mcedata->fd, key, arg);
+}
 
-/* int mcedata_ioctl(mcedata_t *mcedata, int key, unsigned long arg); */
-/* int mcedata_framesize(mcedata_t *mcedata, int datasize); */
-/* int mcedata_clear(mcedata_t *mcedata); */
-/* int mcedata_fakestop(mcedata_t *mcedata); */
+int mcedata_set_datasize(mcedata_t *mcedata, int datasize)
+{
+	return ioctl(mcedata->fd, DATADEV_IOCT_SET_DATASIZE, datasize);
+}
 
-/* int mcedata_qt_setup(mcedata_t *mcedata, int frame_index); */
-/* int mcedata_qt_enable(mcedata_t *mcedata, int on); */
+int mcedata_empty_data(mcedata_t *mcedata)
+{
+	return ioctl(mcedata->fd, DATADEV_IOCT_EMPTY);
+}
+
+int mcedata_fake_stopframe(mcedata_t *mcedata)
+{
+	return ioctl(mcedata->fd, DATADEV_IOCT_FAKE_STOPFRAME);
+}
+
+int mcedata_qt_enable(mcedata_t *mcedata, int on)
+{
+	return ioctl(mcedata->fd, DATADEV_IOCT_QT_ENABLE, on);
+}
+
+int mcedata_qt_setup(mcedata_t *mcedata, int frame_index)
+{
+	return ioctl(mcedata->fd, DATADEV_IOCT_QT_CONFIG, frame_index);
+}

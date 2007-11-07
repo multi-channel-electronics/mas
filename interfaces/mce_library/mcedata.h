@@ -40,7 +40,7 @@
 
 #define MCEDATA_FILESTREAM        (1 <<  0) /* output to file */
 #define MCEDATA_INCREMENT         (1 <<  1) /* keep ret_data_s up to date */
-
+#define MCEDATA_FILESEQUENCE      (1 <<  2) /* switch output files regularly */
 
 /* MCE card bits, why not? */
 
@@ -48,6 +48,16 @@
 #define MCEDATA_RC2               (1 <<  1)
 #define MCEDATA_RC3               (1 <<  2)
 #define MCEDATA_RC4               (1 <<  3)
+
+struct mce_acq_struct;
+typedef struct mce_acq_struct mce_acq_t;
+
+typedef struct mce_frame_actions_t {
+	int (*init)(mce_acq_t*);
+	int (*pre_frame)(mce_acq_t *);
+	int (*post_frame)(mce_acq_t *, int, u32 *);
+	int (*cleanup)(mce_acq_t *);
+} mce_frame_actions_t;
 
 typedef struct {
 
@@ -60,22 +70,31 @@ typedef struct {
 
 } mcedata_t;
 
-typedef struct {
+struct mce_acq_struct {
 
 	mcedata_t *mcedata;
 
 	int n_frames;
-	int frame_size;
-	char filename[1024];
-	
-	FILE *fout;
+	int frame_size;                 // Active frame size
+
+/* 	char filename[1024];            // Filename of current data file, if any. */
+/* 	FILE *fout;                     // File pointer of current data file. */
 
 	int status;
 	int cards;
-	int options;
+
+	mce_frame_actions_t actions;
+	unsigned long action_data;
+
+ 	int options;
 //	u32 *buffer;
 
-} mce_acq_t;
+/* 	int fs_interval; */
+/* 	int fs_target; */
+/* 	char fs_format[1024]; */
+/* 	char fs_basename[1024]; */
+
+};
 
 
 #define MCEDATA_PACKET_MAX 4096 /* Maximum frame size in dwords */
@@ -118,11 +137,19 @@ typedef struct {
 
 int mcedata_acq_reset(mce_acq_t *acq, mcedata_t *mcedata);
 
-int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size,
-		      const char *filename);
+int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size);
 
 int mcedata_acq_go(mce_acq_t *acq, int n_frames);
 
+
+/* Frame data handlers */
+
+int mcedata_flatfile_create(mce_acq_t *acq, const char *filename);
+void mcedata_flatfile_destroy(mce_acq_t *acq);
+
+void mcedata_fileseq_destroy(mce_acq_t *acq);
+int mcedata_fileseq_create(mce_acq_t *acq, const char *basename,
+			   int interval, int digits);
 
 /* Data connection */
 
@@ -134,12 +161,10 @@ int mcedata_init(mcedata_t *mcedata, int mcecmd_handle, const char *dev_name);
 /* Ioctl related - note argument is fd, not handle (fixme) */
 
 int mcedata_ioctl(mcedata_t *mcedata, int key, unsigned long arg);
-int mcedata_framesize(mcedata_t *mcedata, int datasize);
-int mcedata_clear(mcedata_t *mcedata);
-int mcedata_fakestop(mcedata_t *mcedata);
-
-int mcedata_qt_setup(mcedata_t *mcedata, int frame_index);
+int mcedata_set_datasize(mcedata_t *mcedata, int datasize);
+int mcedata_empty_data(mcedata_t *mcedata);
+int mcedata_fake_stopframe(mcedata_t *mcedata);
 int mcedata_qt_enable(mcedata_t *mcedata, int on);
-
+int mcedata_qt_setup(mcedata_t *mcedata, int frame_index);
 
 #endif

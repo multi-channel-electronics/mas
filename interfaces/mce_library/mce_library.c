@@ -35,15 +35,7 @@ struct mce_context {
 	int opened;
 	int fd;
 
-/*   int fd_data; */
-/*   int mode; */
-/* #    MODE_NONE           0 */
-/* #    MODE_CMD            1 */
-/* #    MODE_DATA           2 */
-/* #    MODE_NORMAL         3 */
-
-	char dev_name     [PATH_LENGTH];
-/*   char dev_name_mode[PATH_LENGTH]; */
+	char dev_name[PATH_LENGTH];
 	mce_data_t *mce_data;
 
 	logger_t logger;
@@ -332,14 +324,7 @@ int mce_write_block(int handle, int card_id, int para_id,
 
 	mce_reply rep;
 
-	int err = mce_send_command(handle, &cmd, &rep);
-/* 	if (err<0) return err; */
-
-/* 	err = match_cmd_rep(&cmd, &rep); */
-/* 	if (err<0) return err; */
-
-/* 	return 0; */
-	return err;
+	return mce_send_command(handle, &cmd, &rep);
 }
 
 int mce_read_block(int handle, int card_id, int para_id,
@@ -366,9 +351,6 @@ int mce_read_block(int handle, int card_id, int para_id,
 	int err = mce_send_command(handle, &cmd, &rep);
 	if (err<0) return err;
 
-/* 	err = match_cmd_rep(&cmd, &rep); */
-/* 	if (err<0) return err; */
-
 	// I guess the data must be valid then.
 	memcpy(data, rep.data, n_data*sizeof(u32));
 	
@@ -390,13 +372,7 @@ int mce_send_command_simple(int handle, int card_id, int para_id,
 
 	mce_reply rep;
 
-	int err = mce_send_command(handle, &cmd, &rep);
-/* 	if (err<0) return err; */
-
-/* 	err = match_cmd_rep(&cmd, &rep); */
-/* 	if (err<0) return err; */
-
-	return err;
+	return mce_send_command(handle, &cmd, &rep);
 }
 
 int mce_start_application(int handle, int card_id, int para_id)
@@ -416,7 +392,7 @@ int mce_reset(int handle, int card_id, int para_id)
 
 
 /* Ioctl related */
-
+/*
 int mce_ioctl(int fd, int key, unsigned long arg)
 {
 	return ioctl(fd, key, arg);
@@ -446,7 +422,7 @@ int mce_qt_setup(int fd, int frame_index)
 {
 	return ioctl(fd, DATADEV_IOCT_QT_CONFIG, frame_index);
 }
-
+*/
 
 #ifdef USE_XML
 
