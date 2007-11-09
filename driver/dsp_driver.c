@@ -103,7 +103,8 @@ int dsp_int_handler(dsp_message *msg)
 			ddat.state = DDAT_IDLE;
 		} else {
 			PRINT_ERR(SUBNAME
-				  "unexpected REP received.\n");
+				  "unexpected REP received [state=%i].\n",
+				  ddat.state);
 		}
 		break;
 		
