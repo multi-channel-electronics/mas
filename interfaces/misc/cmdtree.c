@@ -52,7 +52,6 @@ int list_args(char *dest, cmdtree_opt_t *opts)
 {
 	int index = 0;
 	while (opts != NULL) {
-		printf("%s [%i]\n", opts->name, index);
 		index += sprintf(dest+index, "%s", opts->name);
 		opts = opts->sub_opts;
 		if (opts != NULL) {
