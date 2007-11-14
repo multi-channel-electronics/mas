@@ -24,8 +24,6 @@
 #define LINE_LEN 1024
 #define NARGS 64
 
-// #define CASE_INSENSITIVE
-
 #define DEFAULT_DEVICE "/dev/mce_cmd0"
 #define DEFAULT_DATA "/dev/mce_data0"
 #define DEFAULT_XML "/etc/mce.cfg"
@@ -82,66 +80,45 @@ cmdtree_opt_t command_placeholder_opts[] = {
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
-cmdtree_opt_t acq_config_opts3[] = {
-	{ CMDTREE_INTEGER   , "", 0, -1, 0, NULL },
+
+cmdtree_opt_t flat_args[] = {
+	{ CMDTREE_STRING | CMDTREE_ARGS, "filename", 0, -1, 0, flat_args+1 },
+	{ CMDTREE_STRING | CMDTREE_ARGS, "card"    , 0, -1, 0, flat_args+2 },
+	{ CMDTREE_INTEGER| CMDTREE_ARGS, "frame size", 0, -1, 0, NULL },
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
-cmdtree_opt_t acq_config_opts2[] = {
-	{ CMDTREE_STRING    , "", 0, -1, 0, acq_config_opts3 },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
-};
 
-cmdtree_opt_t acq_config_opts1[] = {
-	{ CMDTREE_STRING    , "", 0, -1, 0, acq_config_opts2 },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
-};
-
-cmdtree_opt_t acq_config_fs_opts4[] = {
-	{ CMDTREE_INTEGER   , "", 0, -1, 0, NULL },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
-};
-
-cmdtree_opt_t acq_config_fs_opts3[] = {
-	{ CMDTREE_INTEGER    , "", 0, -1, 0, acq_config_fs_opts4 },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
-};
-
-cmdtree_opt_t acq_config_fs_opts2[] = {
-	{ CMDTREE_STRING    , "", 0, -1, 0, acq_config_fs_opts3 },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
-};
-
-cmdtree_opt_t acq_config_fs_opts1[] = {
-	{ CMDTREE_STRING    , "", 0, -1, 0, acq_config_fs_opts2 },
+cmdtree_opt_t fs_args[] = {
+	{ CMDTREE_STRING | CMDTREE_ARGS, "filename", 0, -1, 0, fs_args+1 },
+	{ CMDTREE_STRING | CMDTREE_ARGS, "card"    , 0, -1, 0, fs_args+2 },
+	{ CMDTREE_INTEGER| CMDTREE_ARGS, "frame size", 0, -1, 0, fs_args+3 },
+	{ CMDTREE_INTEGER| CMDTREE_ARGS, "inform interval", 0, -1, 0, NULL},
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
 cmdtree_opt_t root_opts[] = {
-	{ CMDTREE_SELECT, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
-	{ CMDTREE_SELECT, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
-	{ CMDTREE_SELECT, "rb"      , 2, 3, COMMAND_RB, command_placeholder_opts},
-	{ CMDTREE_SELECT, "wb"      , 3,-1, COMMAND_WB, command_placeholder_opts},
-	{ CMDTREE_SELECT, "r"       , 2, 3, COMMAND_RB, command_placeholder_opts},
-	{ CMDTREE_SELECT, "w"       , 3,-1, COMMAND_WB, command_placeholder_opts},
-	{ CMDTREE_SELECT, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
-	{ CMDTREE_SELECT, "go"      , 2,-1, COMMAND_GO, command_placeholder_opts},
-	{ CMDTREE_SELECT, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
-	{ CMDTREE_SELECT, "RESET"   , 2,-1, COMMAND_RS, command_placeholder_opts},
-	{ CMDTREE_SELECT, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
-	{ CMDTREE_SELECT, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
-	{ CMDTREE_SELECT, "ACQ_CONFIG", 3, 3, SPECIAL_ACQ_CONFIG, acq_config_opts1},
-	{ CMDTREE_SELECT, "ACQ_CONFIG_FS", 4, 4, SPECIAL_ACQ_CONFIG_FS, acq_config_fs_opts1},
-	{ CMDTREE_SELECT, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
-	{ CMDTREE_SELECT, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
-	{ CMDTREE_SELECT, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
-	{ CMDTREE_SELECT, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
-	{ CMDTREE_SELECT, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
-	{ CMDTREE_SELECT, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
-	{ CMDTREE_SELECT, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
-	{ CMDTREE_SELECT, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
-	{ CMDTREE_SELECT, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
-	{ CMDTREE_SELECT, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "r"       , 2, 3, COMMAND_RB, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "w"       , 3,-1, COMMAND_WB, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RESET"   , 2,-1, COMMAND_RS, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG", 3, 3, SPECIAL_ACQ_CONFIG, flat_args},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG_FS", 4, 4, SPECIAL_ACQ_CONFIG_FS, fs_args},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 	
@@ -194,7 +171,7 @@ struct {
 } my_acq;
 
 
-int  load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts);
+int  load_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts);
 
 int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
 
@@ -246,13 +223,7 @@ int main(int argc, char **argv)
 
 	int line_count = 0;
 
-	if (mce_load_config(handle, options.config_file)!=0) {
-		fprintf(ferr, "Could not load file '%s', "
-			"card/para decoding will be unavailable\n",
-			options.config_file);
-	}
-
-	mce_data_t *mce = NULL;
+	mceconfig_t *mce = NULL;
 
 	if (mceconfig_load(options.config_file, &mce)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
@@ -295,9 +266,6 @@ int main(int argc, char **argv)
 			if (line[n-1]=='\n') line[--n]=0;
 			line_count++;
 		}
-#ifdef CASE_INSENSITIVE
-		uppify(line);
-#endif
 
 		if (options.no_prefix)
 			premsg[0] = 0;
@@ -377,75 +345,88 @@ void uppify(char *s)
 	}	
 }
 
-int load_mceconfig( mce_data_t *mce, cmdtree_opt_t *opts)
+int load_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts)
 {
 	cmdtree_opt_t *card_opts;
-	card_t card;
-	int i;
-	int n;
-	for (n=0; mceconfig_get_card(mce, &card, n) == 0; n++);
-
-	card_opts = calloc(n+2, sizeof(*card_opts));
-	if (card_opts==NULL) {
-		printf("Holy, memory.\n");
-		return 1;
-	}
-	for (i=0; mceconfig_get_card(mce, &card, i) == 0; i++) {
-
-		cmdtree_opt_t *par_opts;
-		int j,k,n=0;
+	cmdtree_opt_t *para_opts;
+	char *string_table;
+	int i,j;
+	int n_cards = mce->card_count;
+	int n_params = 0;
+	
+	// Count parameters
+	for (i=0; i<n_cards; i++) {
+		card_t card;
 		cardtype_t ct;
 		paramset_t ps;
-		param_t p;
-		mceconfig_card_cardtype(mce, &card, &ct);
+		if (mceconfig_card(mce, i, &card)) {
+			fprintf(stderr, "Problem loading card data at index %i\n", i);
+			return -1;
+		}
+		if (mceconfig_card_cardtype(mce, &card, &ct)) {
+			fprintf(stderr, "Problem loading cardtype data for '%s'\n", card.name);
+			return -1;
+		}
+		for (j=0; j<ct.paramset_count; j++) {
+			mceconfig_cardtype_paramset(mce, &ct, j, &ps);
+			n_params += ps.param_count;
+		}
+	}
+	
+	string_table = malloc((n_params+n_cards)*MCE_SHORT);
+	card_opts = malloc((n_params + 3 * n_cards + 2)*sizeof(*card_opts));
+	para_opts = card_opts + n_cards + 2;
 		
-		int string_count = strlen(card.name) + 1;
-
-		for (j=0; mceconfig_cardtype_paramset(mce, &ct, j, &ps)==0; j++) {
-			for (k=0; mceconfig_paramset_param(mce, &ps, k, &p)==0; k++) {
-				string_count += strlen(p.name) + 1;
-				n++;
-			}
+	for (i=0; i<n_cards; i++) {
+		card_t card;
+		cardtype_t ct;
+		if (mceconfig_card(mce, i, &card)) {
+			fprintf(stderr, "Problem loading card data at index %i\n", i);
+			return -1;
 		}
-
-		char *string_table = malloc(string_count);
-		par_opts = calloc(n+2, sizeof(*par_opts));
-
-		n = 0;
-		for (j=0; mceconfig_cardtype_paramset(mce, &ct, j, &ps)==0; j++) {
-			for (k=0; mceconfig_paramset_param(mce, &ps, k, &p)==0; k++) {
-				strcpy(string_table, p.name);
-#ifdef CASE_INSENSITIVE
-				uppify(string_table);
-#endif
-				par_opts[n].name = string_table;
-				string_table += strlen(string_table) + 1;
-				par_opts[n].type = CMDTREE_SELECT;
-				par_opts[n].min_args = 0;
-				par_opts[n].max_args = p.count;
-				par_opts[n].sub_opts = integer_opts;
-				par_opts[n].user_cargo = (unsigned long)p.cfg;
-				n++;
-			}
+		if (mceconfig_card_cardtype(mce, &card, &ct)) {
+			fprintf(stderr, "Problem loading cardtype data for '%s'\n", card.name);
+			return -1;
 		}
-
-		memcpy(&(par_opts[n]), integer_opts, sizeof(integer_opts));
-					
+		
+		// Fill out menu entry for card
 		card_opts[i].name = string_table;
  		strcpy(string_table, card.name);
-#ifdef CASE_INSENSITIVE
-		uppify(string_table);
-#endif
+		string_table += strlen(string_table) + 1;
 		card_opts[i].min_args = 1;
 		card_opts[i].max_args = -1;
-		card_opts[i].type = CMDTREE_SELECT;
-		card_opts[i].sub_opts = par_opts;
+		card_opts[i].flags = CMDTREE_SELECT | CMDTREE_NOCASE;
+		card_opts[i].sub_opts = para_opts;
 		card_opts[i].user_cargo = (unsigned long)card.cfg;
+
+
+		int k;
+		paramset_t ps;
+		param_t p;
+
+		for (j=0; j<ct.paramset_count; j++) {
+			mceconfig_cardtype_paramset(mce, &ct, j, &ps);
+			for (k=0; k<ps.param_count; k++) {
+				mceconfig_paramset_param(mce, &ps, k, &p);
+				strcpy(string_table, p.name);
+				para_opts->name = string_table;
+				string_table += strlen(string_table) + 1;
+				para_opts->flags = CMDTREE_SELECT | CMDTREE_NOCASE;
+				para_opts->min_args = 0;
+				para_opts->max_args = p.count;
+				para_opts->sub_opts = integer_opts;
+				para_opts->user_cargo = (unsigned long)p.cfg;
+				para_opts++;
+			}
+		}
+
+		memcpy(para_opts, integer_opts, sizeof(integer_opts));
+		para_opts += 2;
 	}
 
-	memcpy(&(card_opts[i]), integer_opts, sizeof(integer_opts));
+	memcpy(card_opts+n_cards, integer_opts, sizeof(integer_opts));
 
-	for (i=0; opts[i].type != CMDTREE_TERMINATOR; i++) {
+	for (i=0; (opts[i].flags & CMDTREE_TYPE_MASK) != CMDTREE_TERMINATOR; i++) {
 		if (opts[i].sub_opts == command_placeholder_opts)
 			opts[i].sub_opts = card_opts;
 	}
@@ -541,23 +522,25 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		// Allow integer values for card and para.
 
+		int raw_mode = 1;
+
 		to_read = 0;
-		to_write = NARGS;
+		to_write = tokens[3].n;
 		int card_id = tokens[1].value;
 		int para_id = tokens[2].value;
 
 		if ( tokens[1].type == CMDTREE_SELECT ) {
-			mceconfig_cfg_card (&c, (config_setting_t*)tokens[1].value);
+			mceconfig_cfg_card ((config_setting_t*)tokens[1].value, &c);
 			card_id = c.id;
 			
 			if (tokens[2].type == CMDTREE_SELECT ) {
-				mceconfig_cfg_param(&p, (config_setting_t*)tokens[2].value);
+				raw_mode = 0;
+				mceconfig_cfg_param((config_setting_t*)tokens[2].value, &p);
 				para_id = p.id;
-				to_read = p.count;
-				to_write = p.count;
+				to_read = p.count * p.card_count;
 			}
 		}
-	
+
 		if (to_read == 0 && tokens[3].type == CMDTREE_INTEGER)
 			to_read = tokens[3].value;
 
@@ -637,15 +620,17 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 /* 				return -1; */
 /* 			} */
 
-/* 			if (tokens[3].n > to_write) { */
-/* 				sprintf(errmsg, "too many arguments  */
-			to_write = tokens[3].n;
+			if (!raw_mode && to_write > p.count) {
+				sprintf(errmsg, "'%s %s' expects at most %i arguments.",
+					c.name, p.name, p.count);
+			}
+
 			for (i=0; i<to_write; i++) {
 				buf[i] = tokens[3+i].value;
 			}
 			
 			err = mce_write_block(handle,
-					      card_id, para_id, p.count, buf);
+					      card_id, para_id, to_write, buf);
 			break;
 			
 		default:

@@ -4,6 +4,7 @@
 
 ***************************/
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -21,26 +22,16 @@
 #define LOG_LEVEL_REP_OK  LOGGER_DETAIL
 #define LOG_LEVEL_REP_ER  LOGGER_INFO
 
-#ifdef USE_XML
-#  include "mce_xml.h"
-#endif
-
-#ifdef USE_CFG
-#  include "mceconfig.h"
-#endif
-
-#define PATH_LENGTH 1024
 
 struct mce_context {
 	int opened;
 	int fd;
 
-	char dev_name[PATH_LENGTH];
-	mce_data_t *mce_data;
+	char dev_name[MCE_LONG];
 
 	logger_t logger;
 
-	char errstr[PATH_LENGTH];
+	char errstr[MCE_LONG];
 };
 
 #define MAX_CONS 16
@@ -95,17 +86,6 @@ char *mce_error_string(int error)
 }
 
 
-int mce_param_init(param_properties_t *p)
-{
-	memset(p, 0, sizeof(*p));
-
-	p->card_count = 1;
-	p->count = 1;
-
-	return 0;
-}
-
-
 int log_data( logger_t *logger,
 	      u32 *buffer, int count, int min_raw, char *msg,
 	      int level)
@@ -150,7 +130,7 @@ int mce_open(char *dev_name)
 			break;
 	}
 	CHECK_HANDLE(handle);
-	if (strlen(dev_name)>=PATH_LENGTH-1)
+	if (strlen(dev_name)>=MCE_LONG-1)
 		return -MCE_ERR_BOUNDS;
 
 	fd = open(dev_name, O_RDWR);
@@ -171,8 +151,6 @@ int mce_close(int handle)
 {
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
-
-	mce_free_config(handle);
 
 	logger_close(&CON.logger);
 
@@ -389,109 +367,3 @@ int mce_reset(int handle, int card_id, int para_id)
 {
 	return mce_send_command_simple(handle, card_id, para_id, MCE_RS);
 }
-
-
-/* Ioctl related */
-/*
-int mce_ioctl(int fd, int key, unsigned long arg)
-{
-	return ioctl(fd, key, arg);
-}
-
-int mce_set_datasize(int fd, int datasize)
-{
-	return ioctl(fd, DATADEV_IOCT_SET_DATASIZE, datasize);
-}
-
-int mce_empty_data(int fd)
-{
-	return ioctl(fd, DATADEV_IOCT_EMPTY);
-}
-
-int mce_fake_stopframe(int fd)
-{
-	return ioctl(fd, DATADEV_IOCT_FAKE_STOPFRAME);
-}
-
-int mce_qt_enable(int fd, int on)
-{
-	return ioctl(fd, DATADEV_IOCT_QT_ENABLE, on);
-}
-
-int mce_qt_setup(int fd, int frame_index)
-{
-	return ioctl(fd, DATADEV_IOCT_QT_CONFIG, frame_index);
-}
-*/
-
-#ifdef USE_XML
-
-/* XML functionality */
-
-#define CHECK_XML(hndl)    if (cons[hndl].mce_data==NULL) \
-                                   return -MCE_ERR_XML
-
-int mce_free_config(int handle)
-{
-	CHECK_HANDLE(handle);
-
-	if (CON.mce_data!=NULL) {
-		free(CON.mce_data);
-		CON.mce_data = NULL;
-	}
-	return 0;
-}
-
-int mce_load_config(int handle, char *filename)
-{
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-
-	mce_free_config(handle);
-	int err = mcexml_load(filename, &CON.mce_data, 0);
-
-	return err;
-}
-
-int mce_lookup(int handle,
-	       int *card_id, int *para_id, int *para_type, int *para_count,
-	       char *card_str, char *para_str, int para_index)
-{
-	CHECK_HANDLE(handle);
-	CHECK_XML(handle);
-
-	return mcexml_lookup(CON.mce_data,
-			     card_id, para_id, para_type, para_count,
-			     card_str, para_str, para_index);
-
-}
-
-#endif /* USE_XML */
-
-#ifdef USE_CFG
-
-int mce_free_config(int handle)
-{
-	CHECK_HANDLE(handle);
-	return mceconfig_destroy(CON.mce_data);
-}
-
-int mce_load_config(int handle, char *filename)
-{
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-
-	return mceconfig_load(filename, &CON.mce_data);
-}
-
-int mce_lookup(int handle, param_properties_t *props,
-			  char *card_str, char *para_str, int para_index)
-{
-	CHECK_HANDLE(handle);
-
-	return mceconfig_lookup(props, CON.mce_data,
-				card_str, para_str, para_index);
-
-}
-
-#endif /* USE_CFG */

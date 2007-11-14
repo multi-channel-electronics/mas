@@ -19,41 +19,60 @@
 #include <mce.h>
 #include <mcecmd.h>
 
-#define NAME_LENGTH   32
-#define CFG_PATHLEN   1024
 
+
+#define MCE_CMD_INT 0
+#define MCE_CMD_CMD 1
+#define MCE_CMD_RST 2
+
+#define MCE_PARAM_MIN    0x0001 /* Parameter has minimum */
+#define MCE_PARAM_MAX    0x0002 /* Parameter has maximum */
+#define MCE_PARAM_DEF    0x0004
+#define MCE_PARAM_PARAM  0x0010
+#define MCE_PARAM_CARD   0x0020
+#define MCE_PARAM_NOSTAT 0x0040 /* Not to be included in mce status */
+#define MCE_PARAM_WONLY  0x0080 /* Write only */
+#define MCE_PARAM_RONLY  0x0100 /* Read only */
+#define MCE_PARAM_GO
+#define MCE_PARAM_ST
 typedef struct {
 
 	struct config_t cfg;
 
-	config_setting_t *parameter_sets;
-	config_setting_t *card_types;
-	config_setting_t *components;
+	const config_setting_t *parameter_sets;
+	const config_setting_t *card_types;
+	const config_setting_t *components;
 
-} mce_data_t;
+	int card_count;
+	int cardtype_count;
+	int paramset_count;
+
+} mceconfig_t;
 
 
 typedef struct {
 
-	config_setting_t *cfg;
+	const config_setting_t *cfg;
 
 	char name[MCE_SHORT];
 	int param_count;
 
 } paramset_t;
 
+
 typedef struct {
 
-	config_setting_t *cfg;
+	const config_setting_t *cfg;
 
 	char name[MCE_SHORT];
 	int paramset_count;
 
 } cardtype_t;
 
+
 typedef struct {
 	
-	config_setting_t *cfg;
+	const config_setting_t *cfg;
 
 	int id;
 	char name[MCE_SHORT];
@@ -61,6 +80,7 @@ typedef struct {
 
 	int count;
 	int id_count;
+	int card_count;
 
 	int flags;
 	int min;
@@ -69,9 +89,10 @@ typedef struct {
 
 } param_t;
 
+
 typedef struct {
 
-	config_setting_t *cfg;
+	const config_setting_t *cfg;
 
 	int id;
 	char name[MCE_SHORT];
@@ -81,68 +102,58 @@ typedef struct {
 } card_t;
 
 
+/* Loading of children from parents */
 
-/* Pre-prototypes */
+int mceconfig_card_cardtype(const mceconfig_t *mce,
+			    const card_t *c,
+			    cardtype_t *ct);
 
-int mceconfig_get_card(mce_data_t *mce, card_t *card, int idx);
-
-
-
-/* New stuff :) */
-
-int mceconfig_cardtype_paramset(mce_data_t *mce, 
-				cardtype_t *ct,
-				int idx,
+int mceconfig_cardtype_paramset(const mceconfig_t *mce, 
+				const cardtype_t *ct,
+				int index,
 				paramset_t *ps);
 
-int mceconfig_paramset_param(mce_data_t *mce, 
-			     paramset_t *ps,
-			     int idx,
+int mceconfig_paramset_param(const mceconfig_t *mce, 
+			     const paramset_t *ps,
+			     int index,
 			     param_t *p);
 
 
-int mceconfig_cardtype(mce_data_t *mce,
-		       int idx,
+/* Loading of root data from configuration */
+
+int mceconfig_cardtype(const mceconfig_t *mce,
+		       int index,
 		       cardtype_t *ct);
 
-int mceconfig_paramset(mce_data_t *mce,
-		       int idx,
+int mceconfig_paramset(const mceconfig_t *mce,
+		       int index,
 		       paramset_t *ps);
 
-int mceconfig_card(mce_data_t *mce,
-		   int idx,
+int mceconfig_card(const mceconfig_t *mce,
+		   int index,
 		   card_t *c);
 
 
-int mceconfig_card_cardtype(mce_data_t *mce,
-			    card_t *c,
-			    cardtype_t *ct);
-
 /* Prototypes */
 
-int     mceconfig_load(char *filename, mce_data_t **mce);
+int mceconfig_load(const char *filename, mceconfig_t **mce);
 
-int     mceconfig_destroy(mce_data_t *mce);
+int mceconfig_destroy(mceconfig_t *mce);
 
-void    mceconfig_print(FILE *out, mce_data_t* mce);
+void mceconfig_print(const mceconfig_t* mce, FILE *out);
 
-char*   mceconfig_errstr(void);
+char* mceconfig_errstr(void);
 
-/* para_t* mceconfig_lookup_para(card_t *card, char *para_str, */
-/* 			   int *para_id, int index); */
+int mceconfig_lookup(const mceconfig_t *mce,
+		     const char *card_name, const char *para_name,
+		     card_t *c, param_t *p);
 
-/* card_t* mceconfig_lookup_card(mce_data_t *mce, char *card_str, int *card_id); */
+int mceconfig_cfg_cardtype(const config_setting_t *cfg, cardtype_t *ct);
 
-int     mceconfig_lookup(param_properties_t *p, mce_data_t *mce,
-				const char *card_str, const char *para_str,
-				int para_idx);
+int mceconfig_cfg_paramset(const config_setting_t *cfg, paramset_t *ps);
 
-int mceconfig_cfg_cardtype(cardtype_t *ct, config_setting_t *cfg);
+int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p);
 
-int mceconfig_cfg_paramset(paramset_t *ps, config_setting_t *cfg);
-
-int mceconfig_cfg_param(param_t *p, config_setting_t *cfg);
-
-int mceconfig_cfg_card(card_t *card, config_setting_t *cfg);
+int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c);
 
 #endif

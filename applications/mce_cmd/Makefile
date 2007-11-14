@@ -10,7 +10,7 @@ INCLUDE=-I$(INTERFACES)/mce_library -I../../include -I$(MISC)
 
 LIBRARY=-L$(INTERFACES)/mce_library -lmcecmd \
 	-L$(INTERFACES)/log_library -lmaslog \
-	-lexpat -lconfig $(MISC)cmdtree.o
+	-lconfig $(MISC)cmdtree.o
 
 CFLAGS += $(INCLUDE) -Wall
 

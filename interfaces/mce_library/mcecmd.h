@@ -40,59 +40,6 @@
 #define MAX_CONS 16
 
 
-/*! \def MCE_PARAM_*
- *
- * \brief Type of MCE parameter.
- */
-
-#define MCE_PARAM_INT 0
-#define MCE_PARAM_CMD 1
-#define MCE_PARAM_RST 2
-
-/*! \struct param_properties_t;
- *
- *  \brief MCE parameter properties.
- *
- *  This structure contains information that helps in sending data to
- *  a particular MCE parameter location.  The card_id and para_id are
- *  the internal memory addresses for the data.  The Other fields
- *  describe the type of data and limits that software should enforce.
- *
- *  The flags member contains 
- */
-
-
-
-/*! @name PARAM defines
- *
- * PARAM_* are used for param_properties_t::flags
- */
-
-/*! @{ */
-#define PARAM_MIN    0x0001 /** Parameter has minimum */
-#define PARAM_MAX    0x0002 /** Parameter has maximum */
-#define PARAM_DEF    0x0004
-#define PARAM_PARAM  0x0010
-#define PARAM_CARD   0x0020
-/*! @} */
-
-typedef struct {
-
-	int card_id;
-	int para_id;	
-
-	int count;
-	int card_count;
-
-	int flags;
-
-	int minimum;
-	int maximum;
-	int def_val;
-
-} param_properties_t;
-
-
 /*
    API: all functions return a negative error value on failure.  On
    success, the return value is 0 with the exception of the 4
@@ -133,7 +80,7 @@ int mce_read_block(int handle, int card_id, int para_id,
 		   int n_data, u32 *data, int n_cards);
 
 
-/* XML/config lookup facilities */
+/* XML/config lookup facilities
 
 int mce_param_init(param_properties_t *p);
 
@@ -141,5 +88,6 @@ int mce_free_config(int handle);
 int mce_load_config(int handle, char *filename);
 int mce_lookup(int handle, param_properties_t *props,
 	       char *card_str, char *para_str, int para_index);
+*/
 
 #endif

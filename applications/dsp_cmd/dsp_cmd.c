@@ -14,8 +14,6 @@
 #define LINE_LEN 1024
 #define NARGS 64
 
-#define CASE_INSENSITIVE
-
 #define DEFAULT_DEVICE "/dev/mce_dsp0"
 
 int handle;
@@ -49,37 +47,37 @@ cmdtree_opt_t integer_opts[] = {
 };
 
 cmdtree_opt_t mem_opts[] = {
-	{ CMDTREE_SELECT, "X", 0,-1, DSP_MEMX, integer_opts},
-	{ CMDTREE_SELECT, "Y", 0,-1, DSP_MEMY, integer_opts},
-	{ CMDTREE_SELECT, "P", 0,-1, DSP_MEMP, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "X", 0,-1, DSP_MEMX, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "Y", 0,-1, DSP_MEMY, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "P", 0,-1, DSP_MEMP, integer_opts},
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL}
 };
 
 cmdtree_opt_t qt_opts[] = {
-	{ CMDTREE_SELECT, "BASE"  , 1,1, DSP_QT_BASE  , integer_opts},
-	{ CMDTREE_SELECT, "DELTA" , 1,1, DSP_QT_DELTA , integer_opts},
-	{ CMDTREE_SELECT, "NUMBER", 1,1, DSP_QT_NUMBER, integer_opts},
-	{ CMDTREE_SELECT, "INFORM", 1,1, DSP_QT_INFORM, integer_opts},
-	{ CMDTREE_SELECT, "SIZE"  , 1,1, DSP_QT_SIZE  , integer_opts},
-	{ CMDTREE_SELECT, "TAIL"  , 1,1, DSP_QT_TAIL  , integer_opts},
-	{ CMDTREE_SELECT, "HEAD"  , 1,1, DSP_QT_HEAD  , integer_opts},
-	{ CMDTREE_SELECT, "DROPS" , 1,1, DSP_QT_DROPS , integer_opts},
-	{ CMDTREE_SELECT, "FLUSH" , 1,1, DSP_QT_FLUSH , integer_opts},
-	{ CMDTREE_SELECT, "ENABLE", 1,1, DSP_QT_ENABLE, integer_opts},
-	{ CMDTREE_SELECT, "TON" ,0,0, 10, NULL},
-	{ CMDTREE_SELECT, "TOFF",0,0, 11, NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "BASE"  , 1,1, DSP_QT_BASE  , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DELTA" , 1,1, DSP_QT_DELTA , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "NUMBER", 1,1, DSP_QT_NUMBER, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "INFORM", 1,1, DSP_QT_INFORM, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "SIZE"  , 1,1, DSP_QT_SIZE  , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "TAIL"  , 1,1, DSP_QT_TAIL  , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HEAD"  , 1,1, DSP_QT_HEAD  , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DROPS" , 1,1, DSP_QT_DROPS , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "FLUSH" , 1,1, DSP_QT_FLUSH , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ENABLE", 1,1, DSP_QT_ENABLE, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "TON" ,0,0, 10, NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "TOFF",0,0, 11, NULL},
 	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
 
 cmdtree_opt_t root_opts[] = {
-	{ CMDTREE_SELECT, "READ"     , 2,2, COMMAND_RDM, mem_opts},
-	{ CMDTREE_SELECT, "WRITE"    , 3,3, COMMAND_WRM, mem_opts},
-	{ CMDTREE_SELECT, "START"    , 0,0, COMMAND_GOA, integer_opts},
-	{ CMDTREE_SELECT, "STOP"     , 0,0, COMMAND_STP, integer_opts},
-	{ CMDTREE_SELECT, "RESET"    , 0,0, COMMAND_RST, integer_opts},
-	{ CMDTREE_SELECT, "RESET_MCE", 0,0, COMMAND_RCO, integer_opts},
-	{ CMDTREE_SELECT, "QT_SET"   , 0,-1, COMMAND_QTS, qt_opts},
-	{ CMDTREE_SELECT, "#"        , 0,-1, SPECIAL_COMMENT, anything_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "READ"     , 2,2, COMMAND_RDM, mem_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WRITE"    , 3,3, COMMAND_WRM, mem_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "START"    , 0,0, COMMAND_GOA, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "STOP"     , 0,0, COMMAND_STP, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RESET"    , 0,0, COMMAND_RST, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RESET_MCE", 0,0, COMMAND_RCO, integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_SET"   , 0,-1, COMMAND_QTS, qt_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "#"        , 0,-1, SPECIAL_COMMENT, anything_opts},
 	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
 
@@ -144,9 +142,6 @@ int main(int argc, char **argv)
 			if (line[n-1]=='\n') line[--n]=0;
 			line_count++;
 		}
-#ifdef CASE_INSENSITIVE
-		uppify(line);
-#endif
 
 		if (options.no_prefix)
 			premsg[0] = 0;
@@ -270,8 +265,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 {
 	int ret_val = 0;
 	int err;
-
-
 
 	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW && 
 			  tokens[0].value < ENUM_COMMAND_HIGH);

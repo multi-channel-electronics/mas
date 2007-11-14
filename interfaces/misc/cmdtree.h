@@ -8,7 +8,7 @@ struct cmdtree_opt_struct;
 typedef struct cmdtree_opt_struct cmdtree_opt_t;
 
 struct cmdtree_opt_struct {
-	int type;
+	int flags;
 	const char *name;//[32];
 	int min_args;
 	int max_args;
@@ -16,18 +16,17 @@ struct cmdtree_opt_struct {
 	cmdtree_opt_t *sub_opts;
 };
 
-enum {
-	CMDTREE_TERMINATOR = 0,
-	CMDTREE_UNDEF,
-	CMDTREE_SELECT,
-	CMDTREE_INTEGER,
-	CMDTREE_STRING,
+#define CMDTREE_TYPE_MASK  0x000000ff
 
-/* Insert additional enums between here and "CMDTREE_USERBASE" */
+#define	CMDTREE_UNDEF      0
+#define	CMDTREE_TERMINATOR 1
+#define	CMDTREE_SELECT     2
+#define	CMDTREE_INTEGER    3
+#define	CMDTREE_STRING     4
+#define	CMDTREE_USERSTART  5
 
-	CMDTREE_USERBASE
-};
-
+#define CMDTREE_NOCASE     0x00000100
+#define CMDTREE_ARGS       0x00000200
 
 #define MAX_TOKENS 64
 #define WHITESPACE " \t\n\r"
@@ -43,6 +42,7 @@ typedef enum {
 
 typedef struct {
 	int start, stop, type, value;
+	unsigned long data;
 	cmdtree_flag_t viol;
 	int n;
 	char *line;

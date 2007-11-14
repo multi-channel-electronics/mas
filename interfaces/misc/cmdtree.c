@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <errno.h>
 
 #include "cmdtree.h"
@@ -9,17 +10,24 @@ typedef cmdtree_token_t token_t;
 
 int cmdtree_debug = 0;
 
-static int get_int(char *card, int *card_id);
+static int get_int(char *card, long *card_id);
 
 
 int cmdtree_list(char *dest, const cmdtree_opt_t *opts,
 		 const char *intro, const char *delim, const char *outro)
 {
+	int done = 0;
 	int i;
 	char *d = dest;
 	d += sprintf(d, "%s", intro);
-	for (i=0; opts[i].type != CMDTREE_TERMINATOR; i++) {
-		switch(opts[i].type) {
+	for (i=0; !done; i++) {
+		int type = opts[i].flags & CMDTREE_TYPE_MASK;
+		
+		switch(type) {
+		case CMDTREE_TERMINATOR:
+			done = 1;
+			break;
+
 		case CMDTREE_SELECT:
 			d += sprintf(d, "%s%s", opts[i].name, delim);
 			break;
@@ -40,13 +48,39 @@ int cmdtree_list(char *dest, const cmdtree_opt_t *opts,
 	return d-dest;
 }
 
+int list_args(char *dest, cmdtree_opt_t *opts)
+{
+	int index = 0;
+	while (opts != NULL) {
+		printf("%s [%i]\n", opts->name, index);
+		index += sprintf(dest+index, "%s", opts->name);
+		opts = opts->sub_opts;
+		if (opts != NULL) {
+			index += sprintf(dest+index, ", ");
+		}
+	}
+	return index;
+}
+
+
+int nocase_cmp(const char *s1, const char *s2)
+{
+	while (*s1 != 0) {
+		if (*s2==0) return 1;
+		if (toupper(*(s1++)) != toupper(*(s2++))) return -1;
+	}
+
+	if (*s2 != 0) return -1;
+	return 0;
+}
 
 int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 {
 	int i;
 	char arg_s[1024];
-	int  arg_i;
+	long  arg_i;
 	const cmdtree_opt_t *my_opt = opt;
+	int arg = 0;
 
 	t->type = CMDTREE_UNDEF;
 
@@ -56,16 +90,20 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 	for (i = 0; t->type==CMDTREE_UNDEF; i++) {
 
 		my_opt = opt+i;
+		int type = my_opt->flags & CMDTREE_TYPE_MASK;
+		arg = my_opt->flags & CMDTREE_ARGS;
 
-		if (cmdtree_debug) printf(" compare %i %s\n", my_opt->type, my_opt->name);
-		switch (my_opt->type) {
+		if (cmdtree_debug) printf(" compare %i %s\n", type, my_opt->name);
+		switch (type) {
 
 		case CMDTREE_TERMINATOR:
 			t->type = CMDTREE_TERMINATOR;
 			break;
 			
 		case CMDTREE_SELECT:
-			if (strcmp(arg_s, my_opt->name)==0) {
+			if ( ((my_opt->flags & CMDTREE_NOCASE) &&
+			      nocase_cmp(arg_s, my_opt->name)==0) ||
+			     strcmp(arg_s, my_opt->name)==0) {
 				t->value = my_opt->user_cargo;  // We either store this, or i.
 				t->type = CMDTREE_SELECT;
 			}
@@ -75,6 +113,9 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 			if (get_int(arg_s, &arg_i)==0) {
 				t->value = arg_i;
 				t->type = CMDTREE_INTEGER;
+			} else if (arg) {
+				sprintf(errmsg, "Integer argument '%s' expected.", my_opt->name);
+				t->type = CMDTREE_TERMINATOR;
 			}
 			break;
 
@@ -117,8 +158,15 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 
 	// Arg counts checking...
 	if (count < my_opt->min_args) {
-		sprintf(errmsg, "%s expects at least %i arguments",
-			arg_s, my_opt->min_args);
+		if (my_opt->sub_opts == NULL ||
+		    (my_opt->sub_opts->flags & CMDTREE_ARGS)==0 ) {
+			sprintf(errmsg, "%s expects at least %i arguments",
+				arg_s, my_opt->min_args);
+		} else {
+			errmsg += sprintf(errmsg, "%s takes arguments [", arg_s);
+			errmsg += list_args(errmsg, my_opt->sub_opts);
+			errmsg += sprintf(errmsg, " ]");
+		}
 		return -1;
 	}
 	if (my_opt->max_args >=0 && count > my_opt->max_args) {
@@ -146,7 +194,7 @@ int cmdtree_select( token_t *t, const cmdtree_opt_t *opt, char *errmsg )
 }
 
 
-int get_int(char *card, int *card_id) {
+int get_int(char *card, long *card_id) {
 	char *last;
 	errno = 0;
 	if (card==NULL) return -1;
@@ -205,4 +253,63 @@ int cmdtree_tokenize(token_t *t, char *line, int max_tokens)
 	if (n >= max_tokens) return -1;
 
 	return 0;		
+}
+
+int match_menu( cmdtree_token_t *t, const cmdtree_opt_t *menu )
+{
+	int index;
+	char arg[1024];
+	long argi;
+
+	if (t== NULL || t->line == NULL)
+		return -1;
+
+	cmdtree_token_word(arg, t);
+
+	for (index = 0; !(menu[index].flags & CMDTREE_TERMINATOR); index++) {
+
+		const cmdtree_opt_t* opt = menu+index;
+		
+		switch (opt->flags & CMDTREE_TYPE_MASK) {
+
+		case CMDTREE_SELECT:
+			if ( ((opt->flags & CMDTREE_NOCASE) &&
+			      nocase_cmp(arg, opt->name)==0) ||
+			     strcmp(arg, opt->name)==0) {
+				t->data = opt->user_cargo;
+				t->type = CMDTREE_SELECT;
+				return index;
+			}
+			break;
+
+		case CMDTREE_INTEGER:
+			if (get_int(arg, &argi)==0) {
+				t->value = argi;
+				t->type = CMDTREE_INTEGER;
+				return index;
+			}
+		}
+	}
+	return 0;
+}
+
+
+int ee_select( cmdtree_token_t *t, const cmdtree_opt_t *root, char *errmsg )
+{
+	int index = 0;
+	
+	const cmdtree_opt_t *parent = root;
+
+	for (index=0; t[index].line != NULL; index++) {
+		
+
+	}
+		
+	while (t[index].line != NULL) {
+		
+		
+	}
+
+
+	return 0;
 }
