@@ -51,7 +51,6 @@ struct dsp_control {
 	
 	struct semaphore sem;
 	struct timer_list tim;
-	int tim_ignore;
 
 	dsp_state_t state;
 
@@ -99,7 +98,6 @@ int dsp_int_handler(dsp_message *msg)
 			} else {
 				PRINT_ERR(SUBNAME "no handler defined\n");
 			}
-			ddat.tim_ignore = 1;
 			ddat.state = DDAT_IDLE;
 		} else {
 			PRINT_ERR(SUBNAME
@@ -143,38 +141,20 @@ int dsp_int_handler(dsp_message *msg)
 
 void dsp_timeout(unsigned long data)
 {
-	dsp_callback callback = (dsp_callback)data;
+	struct dsp_control *my_ddat = (struct dsp_control*)data;
 
-	if (ddat.tim_ignore) {
+	if (my_ddat->state == DDAT_IDLE) {
 		PRINT_INFO(SUBNAME "timer ignored\n");
-		ddat.tim_ignore = 0;
 		return;
 	}
 
 	PRINT_ERR(SUBNAME "dsp reply timed out!\n");
-	if (callback != NULL)
-		callback(-1, NULL);
-	ddat.state = DDAT_IDLE;
+	if (my_ddat->callback != NULL)
+		my_ddat->callback(-1, NULL);
+	my_ddat->state = DDAT_IDLE;
 }
 
 #undef SUBNAME
-
-
-/* #define SUBNAME "nfy_task: " */
-
-/* void nfy_task(unsigned long data) */
-/* { */
-/* 	if (ddat.state == DDAT_IDLE) { */
-/* 		PRINT_INFO(SUBNAME "NFY being dispatched " */
-/* 			   "to mce_int_handler\n"); */
-/* 		mce_int_handler( &ddat.nfy_storage ); */
-/* 		ddat.nfy_waiting = 0; */
-/* 	} else { */
-/* 		tasklet_schedule(&ddat.nfy_tasklet); */
-/* 	} */
-/* } */
-
-/* #undef SUBNAME */
 
 
 /*
@@ -220,13 +200,7 @@ int dsp_send_command(dsp_command *cmd,
 		ddat.callback = NULL;
 		ddat.state = DDAT_IDLE;
 	} else {
-		//Setup new timeout - there is a race condition here
-		del_timer_sync(&ddat.tim);
-		ddat.tim.function = dsp_timeout;
-		ddat.tim.data = (unsigned long)ddat.callback;
-		ddat.tim.expires = jiffies + DSP_DEFAULT_TIMEOUT;
-		ddat.tim_ignore = 0;
-		add_timer(&ddat.tim);
+		mod_timer(&ddat.tim, jiffies + DSP_DEFAULT_TIMEOUT);
 	}
 
 	PRINT_INFO(SUBNAME "returning [%i]\n", err);
@@ -421,6 +395,8 @@ inline int driver_init(void)
 	init_waitqueue_head(&dsp_local.queue);
 
 	init_timer(&ddat.tim);
+	ddat.tim.function = dsp_timeout;
+	ddat.tim.data = (unsigned long)&ddat;
 
 	ddat.state = DDAT_IDLE;
   

@@ -47,7 +47,6 @@ struct mce_control {
 	struct timer_list timer;
  	struct tasklet_struct hst_tasklet;
 
-	int timer_ignore; //FIXME - not protected properly
 	int initialized;
 
 	mce_state_t state;
@@ -99,6 +98,8 @@ int  mce_HST_dsp_callback( int error, dsp_message *msg );
 
 int mce_command_do_callback( int error, mce_reply *rep )
 {
+	mdat.state = MDAT_IDLE;
+
 	if ( mdat.callback != NULL ) {
 		mdat.callback(error, rep);
 	} else {
@@ -107,10 +108,7 @@ int mce_command_do_callback( int error, mce_reply *rep )
 	
 	// Clear the buffer for the next reply
 	memset(mdat.buff.reply, 0, sizeof(*mdat.buff.reply));
-
-	mdat.state = MDAT_IDLE;
 	mdat.callback = NULL;
-	mdat.timer_ignore = 1;
 
 	return 0;
 }
@@ -285,18 +283,15 @@ int mce_send_command_now (void)
 
 void mce_send_command_timer(unsigned long data)
 {
-	mce_callback callback = (mce_callback)data; 
+	struct mce_control *my_mdat = (struct mce_control *)data;
 
-	if (mdat.timer_ignore) {
+	if (my_mdat->state == MDAT_IDLE) {
 		PRINT_INFO(SUBNAME "timer ignored\n");
-		mdat.timer_ignore = 0;
 		return;
 	}
 
 	PRINT_ERR(SUBNAME "mce reply timed out!\n");
-	if (callback != NULL)
-		callback(-1, NULL);
-	mdat.state = MDAT_IDLE;
+	mce_command_do_callback( -1, NULL);
 }
 
 #undef SUBNAME
@@ -325,24 +320,16 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block)
 	
 	// Register callback, advance state, enable timer.
 	memcpy(mdat.buff.command, cmd, sizeof(*cmd));
-	mdat.timer_ignore = 0;
 	mdat.callback = callback;
 	mdat.state = MDAT_CON;
+	mod_timer(&mdat.timer, jiffies + MCE_DEFAULT_TIMEOUT);
 
+	// Try command
 	if ( (ret_val = mce_send_command_now()) ) {
 		PRINT_INFO(SUBNAME "send now failed [%i]!\n", ret_val);
 		mdat.state = MDAT_IDLE;
 		mdat.callback = NULL;
-		ret_val = -1;
-		goto up_and_out;
 	}
-
-	//Setup new timeout
-	del_timer_sync(&mdat.timer);
-	mdat.timer.function = mce_send_command_timer;
-	mdat.timer.data = (unsigned long)mdat.callback;
-	mdat.timer.expires = jiffies + MCE_DEFAULT_TIMEOUT;
-	add_timer(&mdat.timer);
 
  up_and_out:
 	up(&mdat.sem);
@@ -373,7 +360,6 @@ int mce_send_command_user(mce_command *cmd, mce_callback callback)
 	
 	mdat.callback = callback;
 	mdat.state = MDAT_CONOK;
-	mdat.timer_ignore = 0;
 	
 	if (copy_from_user(mdat.buff.command, cmd, sizeof(*cmd))) {
 		PRINT_ERR(SUBNAME "copy_from_user failed\n");
@@ -388,11 +374,7 @@ int mce_send_command_user(mce_command *cmd, mce_callback callback)
 	}
 
 	//Setup timeout
-	del_timer_sync(&mdat.timer);
-	mdat.timer.function = mce_send_command_timer;
-	mdat.timer.data = (unsigned long)mdat.callback;
-	mdat.timer.expires = jiffies + HZ;
-	add_timer(&mdat.timer);
+	mod_timer(&mdat.timer, jiffies + MCE_DEFAULT_TIMEOUT);
 
  up_and_out:
 	up(&mdat.sem);
@@ -803,6 +785,8 @@ int mce_init_module()
 		     mce_do_HST_or_schedule, 0);
 
 	init_timer(&mdat.timer);
+	mdat.timer.function = mce_send_command_timer;
+	mdat.timer.data = (unsigned long)&mdat;
 
 	mdat.state = MDAT_IDLE;
 	mdat.data_flags = 0;
