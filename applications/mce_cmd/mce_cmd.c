@@ -613,7 +613,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	int i;
 	param_t p;
 	card_t c;
-	int to_read, to_write;
+	int to_read, to_write, card_mul;
 	u32 buf[NARGS];
 	char s[LINE_LEN];
 
@@ -633,6 +633,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		int raw_mode = 1;
 
+		card_mul = 1;
 		to_read = 0;
 		to_write = tokens[3].n;
 		int card_id = tokens[1].value;
@@ -646,12 +647,17 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				raw_mode = 0;
 				mceconfig_cfg_param((config_setting_t*)tokens[2].value, &p);
 				para_id = p.id;
-				to_read = p.count * p.card_count;
+				to_read = p.count;
+				card_mul = c.card_count*p.card_count
 			}
 		}
 
-		if (to_read == 0 && tokens[3].type == CMDTREE_INTEGER)
+		if (to_read == 0 && tokens[3].type == CMDTREE_INTEGER) {
 			to_read = tokens[3].value;
+			if (tokens[4].type = CMDTREE_INTEGER) {
+				card_mul = tokens[4].value;
+			}
+		}
 
 		switch( tokens[0].value ) {
 		
@@ -703,17 +709,17 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case COMMAND_RB:
 			//Check count in bounds; scale if "card" returns multiple data
-			if (to_read<0 || to_read>MCE_REP_DATA_MAX) {
+			if (to_read*card_mul<0 || to_read*card_mul>MCE_REP_DATA_MAX) {
 				sprintf(errstr, "read length out of bounds!");
 				return -1;
 			}
 
 			err = mce_read_block(handle, card_id, para_id,
-					     to_read, buf, 1);
+					     to_read, buf, card_mul);
 			if (err)
 				break;
 
-			for (i=0; i<to_read; i++) {
+			for (i=0; i<to_read*card_mul; i++) {
 				if (options.display == SPECIAL_HEX )
 					errmsg += sprintf(errmsg, "%#x ", buf[i]);
 				else 

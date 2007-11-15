@@ -237,6 +237,7 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 	c->name[0] = 0;
 	c->error_bits = 0;
 	c->id = -1;
+	c->card_count = 1;
 	
 	// Update from key, maybe
 	if (cfg == NULL) return -1;
@@ -245,6 +246,7 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 	get_string(c->type, cfg, "card_type");
 	get_int((int*)&c->error_bits, cfg, "error_bits");
 	get_int(&c->id, cfg, "id");
+	get_int(&c->card_count, cfg, "card_count");
 
 	return 0;
 }

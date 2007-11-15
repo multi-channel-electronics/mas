@@ -101,6 +101,8 @@ typedef struct {
 	char type[MCE_SHORT];
 	u32 error_bits;
 	
+	int card_count;
+
 } card_t;
 
 
