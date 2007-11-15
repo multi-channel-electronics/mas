@@ -28,6 +28,9 @@
 #define DEFAULT_DATA "/dev/mce_data0"
 #define DEFAULT_XML "/etc/mce.cfg"
 
+#define FRAME_HEADER 43
+#define FRAME_FOOTER 1
+#define FRAME_COLUMNS 8
 
 enum {
 	ENUM_COMMAND_LOW,	
@@ -83,8 +86,7 @@ cmdtree_opt_t command_placeholder_opts[] = {
 
 cmdtree_opt_t flat_args[] = {
 	{ CMDTREE_STRING | CMDTREE_ARGS, "filename", 0, -1, 0, flat_args+1 },
-	{ CMDTREE_STRING | CMDTREE_ARGS, "card"    , 0, -1, 0, flat_args+2 },
-	{ CMDTREE_INTEGER| CMDTREE_ARGS, "frame size", 0, -1, 0, NULL },
+	{ CMDTREE_STRING | CMDTREE_ARGS, "card"    , 0, -1, 0, NULL },
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
@@ -92,8 +94,7 @@ cmdtree_opt_t flat_args[] = {
 cmdtree_opt_t fs_args[] = {
 	{ CMDTREE_STRING | CMDTREE_ARGS, "filename", 0, -1, 0, fs_args+1 },
 	{ CMDTREE_STRING | CMDTREE_ARGS, "card"    , 0, -1, 0, fs_args+2 },
-	{ CMDTREE_INTEGER| CMDTREE_ARGS, "frame size", 0, -1, 0, fs_args+3 },
-	{ CMDTREE_INTEGER| CMDTREE_ARGS, "inform interval", 0, -1, 0, NULL},
+	{ CMDTREE_INTEGER| CMDTREE_ARGS, "interval", 0, -1, 0, NULL},
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
@@ -107,8 +108,8 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RESET"   , 2,-1, COMMAND_RS, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG", 3, 3, SPECIAL_ACQ_CONFIG, flat_args},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG_FS", 4, 4, SPECIAL_ACQ_CONFIG_FS, fs_args},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
+ 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
@@ -158,7 +159,7 @@ char errstr[LINE_LEN];
 
 mcedata_t mcedata;
 mce_acq_t acq;
-
+mceconfig_t *mce = NULL;
 
 // This structure is used to cache data which eventually constructs acq.
 
@@ -168,18 +169,34 @@ struct {
 	int  cards;
 	int  rows;
 	int  n_frames;
+	int  interval;
 } my_acq;
 
 
-int  load_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts);
+/* Structure to cache mce parameter id's for items we will often need */
 
-int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
+typedef struct preload_struct {
+	u32 card_id;
+	u32 para_id;
+	int count;
+	int cards;
+} preload_t;
 
+preload_t ret_dat_s;
+preload_t num_rows_reported;
+
+void preload_pair(preload_t *pre, const card_t *c, const param_t *p);
+int  preload_mce_params();
+int  load_mce_param(const preload_t *pre, u32 *data);
+int  calculate_frame_size();
+
+int  bit_count(int k);
+
+int  menuify_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts);
 int  process_options(int argc, char **argv);
 
+int  process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
 void init_options(void);
-
-void uppify(char *s);
 
 
 int main(int argc, char **argv)
@@ -223,15 +240,20 @@ int main(int argc, char **argv)
 
 	int line_count = 0;
 
-	mceconfig_t *mce = NULL;
-
 	if (mceconfig_load(options.config_file, &mce)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
 			options.config_file);
 		err = ERR_MCE;
 		goto exit_now;
 	}
-	load_mceconfig(mce, root_opts);
+	menuify_mceconfig(mce, root_opts);
+
+	// Preload useful MCE parameter id's
+	if (preload_mce_params()) {
+		fprintf(ferr, "Could not pre-load useful MCE parameter id's.\n");
+		err = ERR_MCE;
+		goto exit_now;
+	}
 	
 	//Open batch file, if given
 	if (options.batch_now) {
@@ -336,16 +358,7 @@ void init_options()
 	strcpy(options.device_file, DEFAULT_DEVICE);
 }
 
-void uppify(char *s)
-{
-	if (s==NULL || *(s--)==0) return;
-	while (*(++s)!=0) {
-		if (*s<'a' || *s>'z') continue;
-		*s += 'A' - 'a';
-	}	
-}
-
-int load_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts)
+int menuify_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts)
 {
 	cmdtree_opt_t *card_opts;
 	cmdtree_opt_t *para_opts;
@@ -434,20 +447,67 @@ int load_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts)
 	return 0;
 }
 
-int learn_acq_params()
+void preload_pair(preload_t *pre, const card_t *c, const param_t *p)
+{
+	pre->card_id = c->id;
+	pre->para_id = p->id;
+	pre->count = p->count;
+	pre->cards = p->card_count;
+}
+
+int preload_mce_params()
 {
 	int ret_val = 0;
+	card_t c;
+	param_t p;
+	if ((ret_val=mceconfig_lookup(mce, "cc", "num_rows_reported", &c, &p))!=0) {
+		fprintf(stderr, "Could not decode 'cc num_rows_reported' [%i]\n",
+			ret_val);
+		return -1;
+	}
+	preload_pair(&num_rows_reported, &c, &p);
+	
+	if ((ret_val=mceconfig_lookup(mce, "cc", "ret_dat_s", &c, &p))!=0) {
+		fprintf(stderr, "Could not decode 'cc ret_dat_s' [%i]\n", ret_val);
+		return -1;
+	}
+	preload_pair(&ret_dat_s, &c, &p);
+	return 0;
+}
+
+int load_mce_param(const preload_t *pre, u32 *data)
+{
+	return mce_read_block(handle, pre->card_id, pre->para_id,
+			      pre->count, data, pre->cards);
+}
+
+int learn_acq_params(int get_frame_count, int get_rows)
+{
 	u32 data[64];
 
-	ret_val = mce_read_block(handle, 0x2 /*cc*/, 0x53 /*ret_dat_s*/,
-				 2, data, 1);
-	my_acq.n_frames = data[1]-data[0]+1;
+	if (get_frame_count) {
+		if (load_mce_param(&ret_dat_s, data)) {
+			sprintf(errstr, "Failed to read frame count from MCE");
+			return -1;
+		}
+		my_acq.n_frames = data[1]-data[0]+1;
+	}
 
-	ret_val = mce_read_block(handle, 0x2, 0x55 /*num_rows_reported*/,
-				 1, data, 1);
-	my_acq.rows = data[0];
-	
+	if (get_rows) {
+		if (load_mce_param(&num_rows_reported, data)) {
+			sprintf(errstr, "Failed to read number of reported rows");
+			return -1;
+		}
+		my_acq.rows = data[0];
+	}
 	return 0;
+}
+
+int calculate_frame_size()
+{
+	my_acq.frame_size = FRAME_HEADER + FRAME_FOOTER +
+		my_acq.rows * FRAME_COLUMNS * bit_count(my_acq.cards);
+	return my_acq.frame_size;
 }
 
 int translate_card_string(char *s)
@@ -476,20 +536,69 @@ int bit_count(int k)
 	return count;
 }
 
-
-int do_acq_now(char *errmsg)
+int prepare_outfile(char *errmsg, int file_sequencing)
 {
-	// Unload my_acq into acq and get the frames.
-
-	if (mcedata_acq_reset(&acq, &mcedata)!=0) {
+	// Cleanup last acq
+	if (acq.actions.cleanup!=NULL && acq.actions.cleanup(&acq)) {
+		sprintf(errmsg, "Failed to clean up previous acq.");
 		return -1;
 	}
 
+	// Basic init, including framesize -> driver.
+	if (mcedata_acq_setup(&acq, 0, my_acq.cards,
+			      my_acq.frame_size) != 0) {
+		sprintf(errmsg, "Could not configure acq");
+		return -1;
+	}
+
+	// Output type-specific
+	if (file_sequencing) {
+		if (mcedata_fileseq_create(&acq, my_acq.filename,
+					   my_acq.interval, 3)) {
+			sprintf(errmsg, "Could not set up file sequencer.");
+			return -1;
+		}
+	} else {
+		if (mcedata_flatfile_create(&acq, my_acq.filename) != 0) {
+			sprintf(errmsg, "Could not create flatfile");
+			return -1; 
+		}
+	}
+
+	// Initialize this file type
+	if (acq.actions.init!=NULL && acq.actions.init(&acq)) {
+		sprintf(errmsg, "Failed to clean up previous acq.");
+		return -1;
+	}
+	return 0;
+}
+
+int do_acq_compat(char *errmsg)
+{
+	if (learn_acq_params(1, 1)!=0)
+		return -1;
+	
+	calculate_frame_size();
+	
+	mcedata_acq_reset(&acq, &mcedata);
+
 	if (mcedata_acq_setup(&acq, 0, my_acq.cards, my_acq.frame_size) != 0) {
+		sprintf(errmsg, "Could not setup acq structure.\n");
+		return -1;
+	}
+
+	if (mcedata_flatfile_create(&acq, my_acq.filename) != 0) {
+		sprintf(errmsg, "Could not create flatfile");
+		return -1;
+	}
+
+	if (acq.actions.init!=NULL && acq.actions.init(&acq)) {
+		sprintf(errmsg, "Failed to initialize acquisition");
 		return -1;
 	}
 
 	if (mcedata_acq_go(&acq, my_acq.n_frames) != 0) {
+		sprintf(errmsg, "Acqusition step failed");
 		return -1;
 	}
 
@@ -552,29 +661,36 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case COMMAND_GO:
 			if (options.das_compatible) {
-				if (learn_acq_params()!=0) {
-					sprintf(errmsg, "Failed to learn acq params.\n");
-					ret_val = -1;
-					break;
-				}
-				
 				cmdtree_token_word( s, tokens+1 );
 				my_acq.cards = translate_card_string(s);
 				if (my_acq.cards<0) {
 					sprintf(errmsg, "Bad card name.\n");
 					ret_val = -1;
-				} else {
-					my_acq.frame_size = (44 + my_acq.rows*bit_count(my_acq.cards)*8);
-					ret_val = do_acq_now(errmsg);
-/* 					if (ret_val>0) { */
-/* 						sprintf(errmsg, "Acquired %i frames", ret_val); */
-/* 					} */
-/* 					fclose(acq.fout); */
-/* 					acq.fout = NULL; */
+					break;
 				}
+
+				// Get num_rows and n_frames
+				if (learn_acq_params(1, 1)) {
+					ret_val = -1;
+					break;
+				}
+
+				// Calculate frame size
+				calculate_frame_size();
+				
+				ret_val = prepare_outfile(errmsg, 0);
+				if (ret_val)
+					break;
+
+				ret_val = mcedata_acq_go(&acq, my_acq.n_frames);
+				if (ret_val != 0) {
+					sprintf(errmsg, "Acquisition failed.\n");
+				}
+				
 			} else {
 				// If you get here, your data just accumulates
-				//  in the driver's buffer, /dev/mce_data0
+				//  in the driver's buffer, /dev/mce_data0, assuming that
+				//  the frame size has been set correctly.
 				err = mce_start_application(handle,
 							    card_id, para_id);
 			}
@@ -591,44 +707,32 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				sprintf(errstr, "read length out of bounds!");
 				return -1;
 			}
+
 			err = mce_read_block(handle, card_id, para_id,
 					     to_read, buf, 1);
+			if (err)
+				break;
 
-			if (err==0) {
-				for (i=0; i<to_read; i++) {
-					if (options.display == SPECIAL_HEX )
-						errmsg += sprintf(errmsg, "%#x ", buf[i]);
-					else 
-						errmsg += sprintf(errmsg, "%i ", buf[i]);
-				}
+			for (i=0; i<to_read; i++) {
+				if (options.display == SPECIAL_HEX )
+					errmsg += sprintf(errmsg, "%#x ", buf[i]);
+				else 
+					errmsg += sprintf(errmsg, "%i ", buf[i]);
 			}
 			break;
 
 		case COMMAND_WB:
-			//Check bounds
-/* 			for (i=0; i<p.count; i++) { */
-/* 				if ((props.flags & PARAM_MIN) */
-/* 				    && bufw[i]<props.minimum) break; */
-/* 				if ((props.flags & PARAM_MAX) */
-/* 				    && bufw[i]<props.maximum) break; */
-/* 			} */
-/* 			if (i!=p.count) { */
-/* 				sprintf(errstr,	"command expects values in range " */
-/* 					"[%#x, %#x] = [%i,%i]\n", */
-/* 					props.minimum, props.maximum, */
-/* 					props.minimum, props.maximum); */
-/* 				return -1; */
-/* 			} */
-
-			if (!raw_mode && to_write > p.count) {
-				sprintf(errmsg, "'%s %s' expects at most %i arguments.",
-					c.name, p.name, p.count);
-			}
-
-			for (i=0; i<to_write; i++) {
+			
+			for (i=0; i<tokens[3].n && i<NARGS; i++) {
 				buf[i] = tokens[3+i].value;
 			}
-			
+
+			if (!raw_mode &&
+			    mceconfig_check_data(&c, &p, to_write, buf,
+						 MCE_PARAM_RONLY, errmsg)) {
+				return -1;
+			}
+
 			err = mce_write_block(handle,
 					      card_id, para_id, to_write, buf);
 			break;
@@ -660,15 +764,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case SPECIAL_ACQ_CONFIG:
-
-			// Cleanup, perhaps
-			if (acq.actions.cleanup!=NULL) {
-				if (acq.actions.cleanup(&acq)) {
-					sprintf(errmsg, "Failed to clean up previous acq.");
-					ret_val = -1;
-					break;
-				}
-			}
+			/* Args: filename, card */
 
 			cmdtree_token_word( my_acq.filename, tokens+1 );
 
@@ -679,41 +775,20 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				ret_val = -1;
 			}
 
-			my_acq.frame_size = tokens[3].value;
-
-			if (mcedata_acq_setup(&acq, 0, my_acq.cards,
-					      my_acq.frame_size) != 0) {
-				sprintf(errmsg, "Could not configure acq");
+			// Get num_rows from MCE
+			if (learn_acq_params(0, 1)) {
 				ret_val = -1;
 				break;
 			}
 
-			if (mcedata_flatfile_create(&acq, my_acq.filename) != 0) {
-				sprintf(errmsg, "Could not create flatfile");
-				ret_val = -1;
-				break;
-			}
+			// Calculate frame size
+			calculate_frame_size();
 
-			if (acq.actions.init!=NULL) {
-				if (acq.actions.init(&acq)) {
-					sprintf(errmsg, "Failed to clean up previous acq.");
-					ret_val = -1;
-					break;
-				}
-			}
-
+			ret_val = prepare_outfile(errmsg, 0);
 			break;
 
 		case SPECIAL_ACQ_CONFIG_FS:
-
-			// Cleanup, perhaps
-			if (acq.actions.cleanup!=NULL) {
-				if (acq.actions.cleanup(&acq)) {
-					sprintf(errmsg, "Failed to clean up previous acq.");
-					ret_val = -1;
-					break;
-				}
-			}
+			/* Args: filename, card, interval */
 
 			cmdtree_token_word( my_acq.filename, tokens+1 );
 
@@ -724,30 +799,15 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				ret_val = -1;
 			}
 
-			my_acq.frame_size = tokens[3].value;
-
-			if (mcedata_acq_setup(&acq, 0, my_acq.cards,
-					      my_acq.frame_size) != 0) {
-				sprintf(errmsg, "Could not configure acq");
+			// Get num_rows from MCE
+			if (learn_acq_params(0, 1)) {
 				ret_val = -1;
 				break;
 			}
 
-			if (mcedata_fileseq_create(&acq, my_acq.filename,
-						   tokens[4].value, 3)) {
-				sprintf(errmsg, "Could not set up file sequencer.");
-				ret_val = -1;
-				break;
-			}
-
-			if (acq.actions.init!=NULL && acq.actions.init(&acq) != 0) {
-				sprintf(errmsg,
-					"Could not initialize new acq structure.");
-				ret_val = -1;
-				break;
-			}
-
-
+			calculate_frame_size();
+			
+			ret_val = prepare_outfile(errmsg, 1);
 			break;
 
 		case SPECIAL_QT_ENABLE:
