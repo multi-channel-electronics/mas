@@ -648,13 +648,13 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				mceconfig_cfg_param((config_setting_t*)tokens[2].value, &p);
 				para_id = p.id;
 				to_read = p.count;
-				card_mul = c.card_count*p.card_count
+				card_mul = c.card_count*p.card_count;
 			}
 		}
 
 		if (to_read == 0 && tokens[3].type == CMDTREE_INTEGER) {
 			to_read = tokens[3].value;
-			if (tokens[4].type = CMDTREE_INTEGER) {
+			if (tokens[4].type == CMDTREE_INTEGER) {
 				card_mul = tokens[4].value;
 			}
 		}
