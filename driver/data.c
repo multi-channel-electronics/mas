@@ -542,8 +542,6 @@ int data_proc(char *buf, int count)
 		len += sprintf(buf+len, "    bus:      %#010x\n",
 			       (unsigned)frames.base_busaddr);
 	if (len < count)
-		len += sprintf(buf+len, "    incr:     %#10x\n", frames.frame_size);
-	if (len < count)
 		len += sprintf(buf+len, "    count:    %10i\n", frames.max_index);
 	if (len < count)
 		len += sprintf(buf+len, "    head:     %10i\n", frames.head_index);
@@ -551,6 +549,10 @@ int data_proc(char *buf, int count)
 		len += sprintf(buf+len, "    tail:     %10i\n", frames.tail_index);
 	if (len < count)
 		len += sprintf(buf+len, "    drops:    %10i\n", frames.dropped);
+	if (len < count)
+		len += sprintf(buf+len, "    size:     %#10x\n", frames.frame_size);
+	if (len < count)
+		len += sprintf(buf+len, "    data:     %#10x\n", frames.data_size);
 
 	return len;
 }
