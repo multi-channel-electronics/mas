@@ -25,16 +25,18 @@
 #define MCE_CMD_CMD 1
 #define MCE_CMD_RST 2
 
-#define MCE_PARAM_MIN    0x0001 /* Parameter has minimum */
-#define MCE_PARAM_MAX    0x0002 /* Parameter has maximum */
-#define MCE_PARAM_DEF    0x0004
-#define MCE_PARAM_PARAM  0x0010
-#define MCE_PARAM_CARD   0x0020
-#define MCE_PARAM_NOSTAT 0x0040 /* Not to be included in mce status */
-#define MCE_PARAM_WONLY  0x0080 /* Write only */
-#define MCE_PARAM_RONLY  0x0100 /* Read only */
-#define MCE_PARAM_GO
-#define MCE_PARAM_ST
+#define MCE_PARAM_MIN    0x00000001 /* Parameter has minimum */
+#define MCE_PARAM_MAX    0x00000002 /* Parameter has maximum */
+#define MCE_PARAM_DEF    0x00000004
+#define MCE_PARAM_PARAM  0x00000010
+#define MCE_PARAM_CARD   0x00000020
+#define MCE_PARAM_NOSTAT 0x00000040 /* Not to be included in mce status */
+#define MCE_PARAM_WONLY  0x00000080 /* Write only */
+#define MCE_PARAM_RONLY  0x00000100 /* Read only */
+#define MCE_PARAM_SIGNED 0x00000200
+#define MCE_PARAM_GO     0x00010000
+#define MCE_PARAM_ST     0x00020000
+
 typedef struct {
 
 	struct config_t cfg;
@@ -83,8 +85,8 @@ typedef struct {
 	int card_count;
 
 	int flags;
-	int min;
-	int max;
+	u32 min;
+	u32 max;
 	config_setting_t *defaults;
 
 } param_t;
@@ -147,6 +149,10 @@ char* mceconfig_errstr(void);
 int mceconfig_lookup(const mceconfig_t *mce,
 		     const char *card_name, const char *para_name,
 		     card_t *c, param_t *p);
+
+int mceconfig_check_data(const card_t *c, const param_t *p, int count,
+			 const u32 *data, unsigned block_flags,
+			 char *errmsg);
 
 int mceconfig_cfg_cardtype(const config_setting_t *cfg, cardtype_t *ct);
 

@@ -289,9 +289,9 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	get_int(&p->id_count, cfg, "id_count");
 	get_int(&p->card_count, cfg, "card_count");
 
-	if (get_int(&p->min, cfg, "min")==0)
+	if (get_int((int*)&p->min, cfg, "min")==0)
 		p->flags |= MCE_PARAM_MIN;
-	if (get_int(&p->max, cfg, "max")==0)
+	if (get_int((int*)&p->max, cfg, "max")==0)
 		p->flags |= MCE_PARAM_MAX;
 	p->defaults = config_setting_get_member(cfg, "defaults");
 	if (p->defaults != NULL)
@@ -366,16 +366,63 @@ int mceconfig_lookup(const mceconfig_t *mce,
 		
 	p->flags = 0;
 
-	if (mceconfig_lookup_card(mce, card_name, c)) return -1;
-	if (mceconfig_card_cardtype(mce, c, &ct)) return -1;
+	if (mceconfig_lookup_card(mce, card_name, c)) return -2;
+	if (mceconfig_card_cardtype(mce, c, &ct)) return -3;
 
 	for (index=0; index < ct.paramset_count; index++) {
-		if (mceconfig_paramset(mce, index, &ps)) return -1;
+		if (mceconfig_cardtype_paramset(mce, &ct, index, &ps))
+			return -4;
 
 		if (mceconfig_lookup_param(mce, &ps, para_name, p)==0)
 			return 0;
 	}
-	return -1;
+	return -5;
+}
+
+int mceconfig_check_data(const card_t *c, const param_t *p, int count,
+			 const u32 *data, unsigned block_flags,
+			 char *errmsg)
+{
+	int i;
+
+	int *datai = (int *)data;
+
+	if (count > p->count) {
+		sprintf(errmsg, "too many data");
+		return -1;
+	}
+
+	if ( (block_flags & MCE_PARAM_WONLY) && (p->flags & MCE_PARAM_WONLY) ) {
+		sprintf(errmsg, "parameter is write only");
+		return -1;
+	}
+
+	if ( (block_flags & MCE_PARAM_RONLY) && (p->flags & MCE_PARAM_RONLY) ) {
+		sprintf(errmsg, "parameter is read only");
+		return -1;
+	}
+
+	for (i=0; (p->flags & MCE_PARAM_MIN) && (i < count); i++) {
+		if ( !(p->flags & MCE_PARAM_SIGNED) && (data [i] < p->min) ) {
+			sprintf(errmsg, "minimum of %u exceeded", p->min);
+			return -1;
+		} else if ( (p->flags & MCE_PARAM_SIGNED) && (datai[i] < p->min)) {
+			sprintf(errmsg, "minimum of %u exceeded", p->min);
+			return -1;
+		}
+	}
+
+	for (i=0; (p->flags & MCE_PARAM_MAX) && (i < count); i++) {
+		if ( !(p->flags & MCE_PARAM_SIGNED) && (data [i] > p->max) ) {
+			sprintf(errmsg, "maximum of %u exceeded", p->max);
+			return -1;
+		} else if ( (p->flags & MCE_PARAM_SIGNED) && (datai[i] > p->max)) {
+			sprintf(errmsg, "maximum of %u exceeded", p->max);
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 
@@ -398,6 +445,7 @@ config_setting_t *get_setting_by_name(const config_setting_t *parent,
 			fprintf(stderr, "'name' not found in item %i of list\n", index);
 			return NULL;
 		}
+/* 		printf("%s %s\n", name, child_name); */
 		if (strcmp(name, child_name)==0)
 			return child;
 	}

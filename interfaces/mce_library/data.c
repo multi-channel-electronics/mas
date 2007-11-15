@@ -250,7 +250,7 @@ static int copy_frames(mce_acq_t *acq)
 
 		if ( (acq->actions.post_frame != NULL) &&
 		     acq->actions.post_frame( acq, count, data ) ) {
-			fprintf(stderr, "pre_frame action failed\n");
+			fprintf(stderr, "post_frame action failed\n");
 		}
 
 		index = 0;
