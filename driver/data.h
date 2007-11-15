@@ -37,6 +37,9 @@
  */
 
 
+#define DATAMODE_CLASSIC 0
+#define DATAMODE_QUIET   1
+
 typedef struct {
 
 	void*     bigphys_base;
@@ -50,6 +53,9 @@ typedef struct {
 	int       frame_size;
 	int       data_size;
         int       max_index;
+
+	// Data mode of the DSP
+	unsigned  data_mode;
 
         // New data is written at head, consumer data is read at tail.
 	volatile

@@ -220,7 +220,10 @@ int data_qt_cmd( dsp_qt_code code, int arg1, int arg2)
 
 int data_qt_enable(int on)
 {
-	return data_qt_cmd(DSP_QT_ENABLE, on, 0);
+	int err = data_qt_cmd(DSP_QT_ENABLE, on, 0);
+	if (!err)
+		frames.data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
+	return err;
 }
 
 #undef SUBNAME
@@ -290,6 +293,9 @@ int data_frame_poll( void )
 
 int data_frame_resize(int size)
 {
+	if (size == frames.data_size)
+		return 0;
+	
 	if (frames.tail_index != frames.head_index) {
 		PRINT_ERR(SUBNAME "can't change frame size "
 			  "while buffer not empty\n");
@@ -297,13 +303,19 @@ int data_frame_resize(int size)
 	}
 	if (size<=0) {
 		PRINT_ERR(SUBNAME "can't change frame size "
-			  "to negative number\n");
+			  "to non-positive number\n");
 		return -2;
 	}
 	if (size > frames.frame_size) {
 		PRINT_ERR(SUBNAME "can't change data_size "
 			  "to be larger than frame_size\n");
 		return -3;
+	}
+
+	if (frames.data_mode == DATAMODE_QUIET &&
+	    data_qt_cmd(DSP_QT_SIZE, size, 0)!=0) {
+		PRINT_ERR(SUBNAME "can't set DSP quiet mode frame size\n");
+		return -4;
 	}
 
 	frames.data_size = size;
@@ -553,6 +565,17 @@ int data_proc(char *buf, int count)
 		len += sprintf(buf+len, "    size:     %#10x\n", frames.frame_size);
 	if (len < count)
 		len += sprintf(buf+len, "    data:     %#10x\n", frames.data_size);
+	if (len < count) {
+		len += sprintf(buf+len, "    mode:     ");
+		switch (frames.data_mode) {
+		case DATAMODE_CLASSIC:
+			len += sprintf(buf+len, "classic notify");
+			break;
+		case DATAMODE_QUIET:
+			len += sprintf(buf+len, "quiet mode");
+			break;
+		}
+	}
 
 	return len;
 }
