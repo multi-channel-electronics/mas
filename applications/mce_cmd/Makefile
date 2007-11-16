@@ -1,20 +1,20 @@
-CC=gcc
+default: all
 
-# DSPINC=-I../dsp_library -I../driver -I../mce_library
-# MCELIB= -lmcecmd -L../mce_library -lexpat -L../libmaslog -lmaslog -lconfig
+BASE := ../
+include $(BASE)Makefile.children
 
-INTERFACES=../../interfaces/
-MISC=$(INTERFACES)/misc/
+INCLUDE=-I$(MCELIB_F) -I$(MAS_INCLUDE_F) -I$(MASMISC_F)
 
-INCLUDE=-I$(INTERFACES)/mce_library -I../../include -I$(MISC)
-
-LIBRARY=-L$(INTERFACES)/mce_library -lmcecmd \
-	-L$(INTERFACES)/log_library -lmaslog \
-	-lconfig $(MISC)cmdtree.o
+LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
+	-L$(LOGLIB_F) -l$(LOGLIB) \
+	$(MASMISC_F)cmdtree.o \
+	-lconfig 
 
 CFLAGS += $(INCLUDE) -Wall
 
-default: mce_cmd
+CC=gcc
+
+# targets
 
 all: mce_cmd
 
@@ -26,3 +26,10 @@ tidy:
 
 clean:	tidy
 	-rm mce_cmd
+
+# Make the install__mce_cmd rule
+INSTALL_TARGET=mce_cmd
+include $(MAKERULES)Makefile.install_rule
+
+install: install__mce_cmd
+

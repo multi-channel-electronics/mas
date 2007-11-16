@@ -39,6 +39,7 @@ struct string_pair log_key_pairs[N_LOG_KEY]  = {
 	{LOG_CLIENT_FLUSH, "client_flush"},
 };
 
+int log_command(params_t *p, int client_idx, char *buf);
 
 #define CHECKPTR    if (p==NULL) return -1
 
@@ -72,6 +73,7 @@ int log_reopen(params_t *p)
 	}
 	p->out = fopen(p->filename, "a");
 	if (p->out==NULL) return -1;
+	return 0;
 }
 
 int log_string_now(params_t *p, int client_idx, char *str)
@@ -115,6 +117,7 @@ int log_flush(params_t *p) {
 	CHECKPTR;
 	if (p->out!=NULL)
 		fflush(p->out);
+	return 0;
 }
 
 int log_closefile(params_t *p) {
@@ -160,9 +163,10 @@ int get_int(int *dest, char *src) {
 int log_quit(params_t *p)
 {
 	log_setflag(p, FLAG_QUIT);
+	return 0;
 }
 
-int log_command(params_t *p, int client_idx, char *buf, int length)
+int log_command(params_t *p, int client_idx, char *buf)
 {
 	CHECKPTR;
 
@@ -201,7 +205,8 @@ int log_command(params_t *p, int client_idx, char *buf, int length)
 			       n, client_idx);
 			p->level = n;
 		} else {
-			printf("Invalid level-> command from client[%i]\n");
+			printf("Invalid level-> command from client[%s]\n",
+			       nextword);
 		}
 		break;
 
@@ -242,7 +247,6 @@ int log_client_process(params_t *p, int client_idx)
 
 	char *start = l_client->recv_buf;
 	char *stop  = start;
-	int kk =0;
 	while (stop < buf + size) {
 		if (*stop=='\n') *stop = 0;
 		if ((*stop==0)) {

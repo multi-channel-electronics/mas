@@ -1,0 +1,4 @@
+MAKERULES = $(BASE)makefiles/
+
+include $(MAKERULES)Makefile.paths
+include $(MAKERULES)Makefile.install

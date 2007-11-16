@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 	if (p.daemon) {
 		int err = 0;
 		printf("Launching daemon...\n");
-		if (err=daemon(0,0)) {
+		if ( (err=daemon(0,0)) != 0 ) {
 			printf("Could not spawn daemon: %i\n", errno);
 			exit(1);
 		}

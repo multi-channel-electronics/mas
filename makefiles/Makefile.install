@@ -1,0 +1,13 @@
+# Install destination and configuration information
+
+MAS_DIR ?= /usr/mce/
+MAS_USER ?= mce
+MAS_GROUP ?= mce
+
+MAS_BIN ?= $(MAS_DIR)bin/
+
+mas_base_install:
+	mkdir -p $(MAS_DIR)
+
+mas_bin_install:
+	mkdir -p $(MAS_BIN)
