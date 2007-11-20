@@ -1,4 +1,4 @@
 sub-dirs:
-	make -C driver
+	cd driver; make
 	make -C interfaces
 	make -C applications

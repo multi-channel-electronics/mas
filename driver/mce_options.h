@@ -6,11 +6,24 @@
 
 
 /*
-  DEBUG MESSAGES
+
+  These parameters are passed in from the Makefile; instead of
+  enabling them here, change the default value in Makefile or set a
+  local override in Makefile.local; e.g.
+          FAKEMCE ?= 1
+
+  FAKEMCE - replace PCI card support with the fake_mce emulator
+  REALTIME - use RTAI.  This only affects the PCI card interrupt.
+  BIGPHYS - use bigphysarea.  This allows a larger frame buffer.
+  OPT_VERBOSE - log, a lot
+  OPT_QUIET - don't even log errors
+
 */
 
-//#define OPT_VERBOSE
-//#define OPT_QUIET
+
+/*
+  DEBUG MESSAGES
+*/
 
 #ifdef OPT_QUIET
 #  define PRINT_ERR(A...) //shh(A)
@@ -28,37 +41,16 @@
 
 
 /*
-  FAKEMCE - replace PCI card support with the fake_mce emulator
-*/
-
-//#define FAKEMCE
-
-
-/*
-  REALTIME - use RTAI.  This only affects the PCI card interrupt.
-*/
-
-//#define REALTIME
-
-
-/*
-  BIGPHYS - use bigphysarea.  This allows a larger frame buffer.
-*/
-
-//#define BIGPHYS
-
-
-/*
   FRAME_BUFFER_SIZE - must be reduced if BIGPHYS is not used
 */
 
 #ifndef BIGPHYS
 
-# define FRAME_BUFFER_SIZE 128000
+#  define FRAME_BUFFER_SIZE 128000
 
 #else
 
-# define FRAME_BUFFER_SIZE 10e6
+#  define FRAME_BUFFER_SIZE 10e6
 
 #endif
 

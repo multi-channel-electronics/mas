@@ -18,8 +18,6 @@ typedef struct fileseq_struct {
 	char format[MCE_LONG];
 } fileseq_t;
 
-
-
 static int fileseq_cycle(mce_acq_t *acq, fileseq_t *f, int this_frame)
 {
 	int new_idx = this_frame / f->interval;
@@ -69,10 +67,19 @@ static int fileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
 	return 0;
 }
 
+static int fileseq_flush(mce_acq_t *acq)
+{
+	fileseq_t *f = (fileseq_t*)acq->action_data;
+	if (f->fout != NULL)
+		fflush(f->fout);
+	return 0;
+}
+
 mce_frame_actions_t fileseq_actions = {
 	.init = fileseq_init,
 	.cleanup = fileseq_cleanup,
 	.post_frame = fileseq_post,
+	.flush = fileseq_flush,
 };
 
 typedef struct flatfile_struct {
@@ -118,11 +125,20 @@ static int flatfile_post(mce_acq_t *acq, int frame_index, u32 *data)
 	return 0;
 }
 
+static int flatfile_flush(mce_acq_t *acq)
+{
+	flatfile_t *f = (flatfile_t*)acq->action_data;
+	if (f->fout != NULL)
+		fflush(f->fout);
+	return 0;
+}
+
 mce_frame_actions_t flatfile_actions = {
 	.init = flatfile_init,
 	.cleanup = flatfile_cleanup,
 	.pre_frame = NULL,
 	.post_frame = flatfile_post,
+	.flush = flatfile_flush,
 };
 
 
@@ -166,7 +182,7 @@ int mcedata_fileseq_create(mce_acq_t *acq, const char *basename,
 			   int interval, int digits)
 {
 	fileseq_t *f = (fileseq_t*)malloc(sizeof(fileseq_t));
-	if (f==0) return -1;
+	if (f==NULL) return -1;
 
 	strcpy(f->basename, basename);
 	f->digits = digits;

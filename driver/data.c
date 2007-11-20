@@ -569,10 +569,10 @@ int data_proc(char *buf, int count)
 		len += sprintf(buf+len, "    mode:     ");
 		switch (frames.data_mode) {
 		case DATAMODE_CLASSIC:
-			len += sprintf(buf+len, "classic notify");
+			len += sprintf(buf+len, "classic notify\n");
 			break;
 		case DATAMODE_QUIET:
-			len += sprintf(buf+len, "quiet mode");
+			len += sprintf(buf+len, "quiet mode\n");
 			break;
 		}
 	}

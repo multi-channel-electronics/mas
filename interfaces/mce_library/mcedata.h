@@ -41,6 +41,7 @@
 #define MCEDATA_FILESTREAM        (1 <<  0) /* output to file */
 #define MCEDATA_INCREMENT         (1 <<  1) /* keep ret_data_s up to date */
 #define MCEDATA_FILESEQUENCE      (1 <<  2) /* switch output files regularly */
+#define MCEDATA_THREAD            (1 <<  3) /* use non-blocking data thread */
 
 /* MCE card bits, why not? */
 
@@ -49,12 +50,23 @@
 #define MCEDATA_RC3               (1 <<  2)
 #define MCEDATA_RC4               (1 <<  3)
 
+#define MCEDATA_CARDS             4
+#define MCEDATA_COMBOS            (1 << MCEDATA_CARDS)
+
+struct {
+	char name[MCE_SHORT];
+	unsigned mask;
+	int card_id;
+};
+
+
 struct mce_acq_struct;
 typedef struct mce_acq_struct mce_acq_t;
 
 typedef struct mce_frame_actions_t {
 	int (*init)(mce_acq_t*);
 	int (*pre_frame)(mce_acq_t *);
+	int (*flush)(mce_acq_t *);
 	int (*post_frame)(mce_acq_t *, int, u32 *);
 	int (*cleanup)(mce_acq_t *);
 } mce_frame_actions_t;
@@ -64,6 +76,8 @@ typedef struct {
 	char dev_name[MCE_LONG];
 	int fd;
 	int mcecmd_handle;
+
+	int id_map[
 
 //	logger_t logger;
 	char errstr[MCE_LONG];

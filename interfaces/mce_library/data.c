@@ -13,17 +13,12 @@
 #include "data_ioctl.h"
 #include "mcedata.h"
 
+#include "frame.h"
+#include "data_thread.h"
+
 /* #define LOG_LEVEL_CMD     LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_OK  LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_ER  LOGGER_INFO */
-
-
-#define EXIT_LAST      1
-#define EXIT_READ      2
-#define EXIT_WRITE     3
-#define EXIT_STOP      4
-#define EXIT_EOF       5
-#define EXIT_COUNT     6 
 
 
 /* Data connection */
@@ -72,6 +67,16 @@ int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size)
 
 	return 0;
 }
+
+/* int get_go_card(char *rc_str) */
+/* { */
+/* 	card_t *c; */
+/* 	param_t *p; */
+		
+/* 	int ret_val = mceconfig_lookup( */
+
+/* } */
+
 
 
 static int copy_frames(mce_acq_t *acq);
@@ -128,74 +133,35 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 	}
 
 	acq->n_frames = n_frames;
-	ret_val = copy_frames(acq);
-	if (ret_val != n_frames) {
-		fprintf(stderr, "Data write wanted %i frames and got %i\n",
-			acq->n_frames, ret_val);
+
+	if (acq->options & MCEDATA_THREAD) {
+
+		data_thread_t d;
+		d.state = MCETHREAD_IDLE;
+		d.acq = acq;
+		if (data_thread_launcher(&d)) {
+			fprintf(stderr, "Thread launch failure\n");
+			return -1;
+		}
+
+		while (d.state != MCETHREAD_IDLE) {
+			printf("thread state = %i\n", d.state);
+			sleep(1);
+		}
+
+	} else {
+		/* Block for frames, and return */
+		
+		ret_val = copy_frames(acq);
+		if (ret_val != n_frames) {
+			fprintf(stderr, "Data write wanted %i frames and got %i\n",
+				acq->n_frames, ret_val);
+		}
 	}
 
 	return 0;
 }
 
-
-static int count_bits( int bits )
-{
-	int c = 0;
-	while (bits!=0) {
-		c += (bits & 1);
-		bits = bits >> 1;
-	}
-	return c;
-}
-
-static int sort_columns( mce_acq_t *acq, u32 *data )
-{
-	u32 temp[MCEDATA_PACKET_MAX];
-
-	int header_size = 43;
-	int footer_size = 1;
-
-	int columns = 8;
-	int cards_in = count_bits(acq->cards);
-	int cards_out = cards_in;
-	int rows = (acq->frame_size - header_size - footer_size) /
-		columns / cards_in;
-
-	int data_size_out = cards_out*rows*columns;
-	int data_size_in = cards_out*rows*columns;
-
-	int c, r, c_in = 0;
-
-/* 	printf("temp=%lu data=%lu, c_bits=%i, r=%i c=%i c_in=%i c_out=%i\n", */
-/* 	       temp, data, acq->cards, rows, columns, cards_in, cards_out); */
-/* 	fflush(stdout); */
-
-	if (cards_out == 1 && cards_in == 1)
-		return 0;
-
-	memcpy(temp, data, header_size*sizeof(*temp));
-	memset(temp + header_size, 0, data_size_out*sizeof(*temp));
-	memcpy(temp + header_size + data_size_out,
-	       data + header_size + data_size_in,
-	       footer_size*sizeof(*temp));
-	       
-	for (c=0; c<cards_out; c++) {
-		if ( (acq->cards & (1 << c)) == 0 ) 
-			continue;
-		
-		for (r=0; r<rows; r++) {
-			memcpy(temp+header_size + (r*cards_out + c)*columns,
-			       data+header_size + (rows*c_in + r)*columns,
-			       columns*sizeof(*temp));
-		}
-		c_in++;				
-	}
-	
-	memcpy(data, temp,
-	       (header_size+footer_size+data_size_out)*sizeof(*data));
-
-	return 0;	       
-}
 
 static int copy_frames(mce_acq_t *acq)
 {
@@ -213,16 +179,13 @@ static int copy_frames(mce_acq_t *acq)
 
 	while (!done) {
 
-		if (acq->actions.pre_frame != NULL) {
-			fprintf(stderr, "I am trying to pre_frame.\n"); fflush(stderr);
-			if (acq->actions.pre_frame(acq)) {
+		if (acq->actions.pre_frame != NULL &&
+		    acq->actions.pre_frame(acq)) {
 				fprintf(stderr, "pre_frame action failed\n");
-			}
 		}
 	
-		ret_val = read(acq->mcedata->fd, 
-				   (void*)data + index,
-				   acq->frame_size*sizeof(*data) - index);
+		ret_val = read(acq->mcedata->fd, (void*)data + index,
+			       acq->frame_size*sizeof(*data) - index);
 
 		if (ret_val<0) {
 			if (errno==EAGAIN) {
