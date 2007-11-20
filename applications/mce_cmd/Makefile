@@ -8,7 +8,7 @@ INCLUDE=-I$(MCELIB_F) -I$(MAS_INCLUDE_F) -I$(MASMISC_F)
 LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 	-L$(LOGLIB_F) -l$(LOGLIB) \
 	$(MASMISC_F)cmdtree.o \
-	-lconfig 
+	-lpthread -lconfig 
 
 CFLAGS += $(INCLUDE) -Wall
 

@@ -24,6 +24,8 @@
 #define LINE_LEN 1024
 #define NARGS 64
 
+#define FS_DIGITS 3 /* Number of digits in file sequencing file name */
+
 #define DEFAULT_DEVICE "/dev/mce_cmd0"
 #define DEFAULT_DATA "/dev/mce_data0"
 #define DEFAULT_XML "/etc/mce.cfg"
@@ -45,8 +47,10 @@ enum {
 	ENUM_SPECIAL_LOW,
 	SPECIAL_HELP,
 	SPECIAL_ACQ,
+	SPECIAL_ACQ_PATH,
 	SPECIAL_ACQ_CONFIG,
 	SPECIAL_ACQ_CONFIG_FS,
+	SPECIAL_ACQ_FLUSH,
 	SPECIAL_QT_CONFIG,
 	SPECIAL_QT_ENABLE,
 	SPECIAL_CLEAR,
@@ -110,6 +114,8 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
  	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
+ 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
+ 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
@@ -141,8 +147,10 @@ struct {
 	char device_file[LINE_LEN];
 	char config_file[LINE_LEN];
 
+	char acq_path[LINE_LEN];
+
 } options = {
-	0, 0, 0, SPECIAL_HEX, 0, 0, "", 0, "", 0, DEFAULT_DEVICE
+	0, 0, 0, SPECIAL_HEX, 0, 0, "", 0, "", 0, DEFAULT_DEVICE, ""
 };
 
 
@@ -540,22 +548,22 @@ int prepare_outfile(char *errmsg, int file_sequencing)
 {
 	// Cleanup last acq
 	if (acq.actions.cleanup!=NULL && acq.actions.cleanup(&acq)) {
-		sprintf(errmsg, "Failed to clean up previous acq.");
+		sprintf(errmsg, "Failed to clean up previous acquisition");
 		return -1;
 	}
 
 	// Basic init, including framesize -> driver.
 	if (mcedata_acq_setup(&acq, 0, my_acq.cards,
 			      my_acq.frame_size) != 0) {
-		sprintf(errmsg, "Could not configure acq");
+		sprintf(errmsg, "Could not configure acquisition");
 		return -1;
 	}
 
 	// Output type-specific
 	if (file_sequencing) {
 		if (mcedata_fileseq_create(&acq, my_acq.filename,
-					   my_acq.interval, 3)) {
-			sprintf(errmsg, "Could not set up file sequencer.");
+					   my_acq.interval, FS_DIGITS)) {
+			sprintf(errmsg, "Could not set up file sequencer");
 			return -1;
 		}
 	} else {
@@ -567,7 +575,7 @@ int prepare_outfile(char *errmsg, int file_sequencing)
 
 	// Initialize this file type
 	if (acq.actions.init!=NULL && acq.actions.init(&acq)) {
-		sprintf(errmsg, "Failed to clean up previous acq.");
+		sprintf(errmsg, "Failed to initialize output system");
 		return -1;
 	}
 	return 0;
@@ -772,7 +780,9 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		case SPECIAL_ACQ_CONFIG:
 			/* Args: filename, card */
 
-			cmdtree_token_word( my_acq.filename, tokens+1 );
+			strcpy(my_acq.filename, options.acq_path);
+			cmdtree_token_word( my_acq.filename + strlen(my_acq.filename),
+					    tokens+1 );
 
 			cmdtree_token_word( s, tokens+2 );
 			my_acq.cards = translate_card_string(s);
@@ -796,7 +806,9 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		case SPECIAL_ACQ_CONFIG_FS:
 			/* Args: filename, card, interval */
 
-			cmdtree_token_word( my_acq.filename, tokens+1 );
+			strcpy(my_acq.filename, options.acq_path);
+			cmdtree_token_word( my_acq.filename + strlen(my_acq.filename)
+					    , tokens+1 );
 
 			cmdtree_token_word( s, tokens+2 );
 			my_acq.cards = translate_card_string(s);
@@ -816,6 +828,20 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			ret_val = prepare_outfile(errmsg, 1);
 			break;
 
+		case SPECIAL_ACQ_FLUSH:
+			if (acq.actions.flush != NULL) {
+				acq.actions.flush(&acq);
+			}
+			break;
+
+		case SPECIAL_ACQ_PATH:
+			cmdtree_token_word( options.acq_path, tokens+1 );
+			if (options.acq_path[0] != 0 && 
+			    options.acq_path[strlen(options.acq_path)-1] != '/') {
+				strcat(options.acq_path, "/");
+			}
+			break;
+
 		case SPECIAL_QT_ENABLE:
 			ret_val = mcedata_qt_enable(&mcedata, tokens[1].value);
 			break;
@@ -824,9 +850,9 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			ret_val = mcedata_qt_setup(&mcedata, tokens[1].value);
 			break;
 
-		case SPECIAL_CLEAR:
-			ret_val = mce_reset(handle, tokens[1].value, tokens[2].value);
-			break;
+/* 		case SPECIAL_CLEAR: */
+/* 			ret_val = mce_reset(handle, tokens[1].value, tokens[2].value); */
+/* 			break; */
 
 		case SPECIAL_FAKESTOP:
 			ret_val = mcedata_fake_stopframe(&mcedata);
@@ -871,19 +897,30 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	return ret_val;
 }
 
+#define USAGE_MESSAGE \
+"Usage:\n\t%s [options]\n"\
+"  -i                     interactive mode, don't exit on errors\n"\
+"  -q                     quiet mode, only print errors or output data\n"\
+"  -p                     prefix-supression, don't print line number\n"\
+"\n"\
+"  -d <device file>       choose a particular mce device\n"\
+"  -c <config file>       choose a particular mce config file\n"\
+"  -f <batch file>        run commands from file instead of stdin\n"\
+"  -x <command>           execute a command now\n"\
+"  -C <data file>         DAS compatibility mode\n"\
+"  -o <directory>         data file path\n"\
+""
+
 int process_options(int argc, char **argv)
 {
 	char *s;
 	int option;
-	while ( (option = getopt(argc, argv, "?hiqpf:c:d:C:x")) >=0) {
+	while ( (option = getopt(argc, argv, "?hiqpf:c:d:C:x:o:")) >=0) {
 
 		switch(option) {
 		case '?':
 		case 'h':
-			printf("Usage:\n\t%s [-i] [-q] [-p] [-d devfile] "
-			       "[-c <config file> ] "
-			       "[-f <batch file> |\n"
-			       "\t\t-x <command>] [-C <data file> ]\n",
+			printf(USAGE_MESSAGE,
 			       argv[0]);
 			return -1;
 
@@ -910,6 +947,10 @@ int process_options(int argc, char **argv)
 
 		case 'd':
 			strcpy(options.device_file, optarg);
+			break;
+
+		case 'o':
+			strcpy(options.acq_path, optarg);
 			break;
 
 		case 'C':
