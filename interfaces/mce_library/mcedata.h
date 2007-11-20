@@ -53,11 +53,11 @@
 #define MCEDATA_CARDS             4
 #define MCEDATA_COMBOS            (1 << MCEDATA_CARDS)
 
-struct {
+/*struct {
 	char name[MCE_SHORT];
 	unsigned mask;
 	int card_id;
-};
+	};*/
 
 
 struct mce_acq_struct;
@@ -76,8 +76,6 @@ typedef struct {
 	char dev_name[MCE_LONG];
 	int fd;
 	int mcecmd_handle;
-
-	int id_map[
 
 //	logger_t logger;
 	char errstr[MCE_LONG];
@@ -101,13 +99,6 @@ struct mce_acq_struct {
 	unsigned long action_data;
 
  	int options;
-//	u32 *buffer;
-
-/* 	int fs_interval; */
-/* 	int fs_target; */
-/* 	char fs_format[1024]; */
-/* 	char fs_basename[1024]; */
-
 };
 
 
