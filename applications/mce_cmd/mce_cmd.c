@@ -915,7 +915,7 @@ int process_options(int argc, char **argv)
 {
 	char *s;
 	int option;
-	while ( (option = getopt(argc, argv, "?hiqpf:c:d:C:x:o:")) >=0) {
+	while ( (option = getopt(argc, argv, "?hiqpf:c:d:C:o:x")) >=0) {
 
 		switch(option) {
 		case '?':
