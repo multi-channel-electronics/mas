@@ -203,7 +203,7 @@ int mce_send_command(int handle, mce_command *cmd, mce_reply *rep)
 	}
 	
 	//Check for data integrity
-	if (checksum_data((u32*)rep, sizeof(*rep) / sizeof(u32)) != 0) {
+	if (mce_checksum((u32*)rep, sizeof(*rep) / sizeof(u32)) != 0) {
 		log_data(&CON.logger, (u32*)rep, 60, 2,
 			 "reply [CHECKSUM error] ",
 			 LOG_LEVEL_REP_ER);
@@ -211,7 +211,7 @@ int mce_send_command(int handle, mce_command *cmd, mce_reply *rep)
 	}
 
 	//Check that reply matches command, and command OK
-	err = match_cmd_rep(cmd, rep);
+	err = mce_cmd_match_rep(cmd, rep);
 	if (err == -MCE_ERR_FAILURE) {
 		log_data(&CON.logger, (u32*)rep, 60, 2,
 			 "reply [command failed] ",
@@ -239,7 +239,7 @@ int mce_send_command(int handle, mce_command *cmd, mce_reply *rep)
         .para_id  = para,\
         .count    = n }
 
-u32 calc_checksum( const mce_command *cmd )
+u32 mce_cmd_checksum( const mce_command *cmd )
 {
 	u32 chksum = 0;
 	u32 *p = (u32*) &cmd->command;
@@ -248,7 +248,7 @@ u32 calc_checksum( const mce_command *cmd )
 	return chksum;
 }
 
-u32 checksum_data( const u32 *data, int count )
+u32 mce_checksum( const u32 *data, int count )
 {
 	u32 chksum = 0;
 	while (count>0)
@@ -257,7 +257,7 @@ u32 checksum_data( const u32 *data, int count )
 }
 
 
-int match_cmd_rep( const mce_command *cmd, const mce_reply *rep )
+int mce_cmd_match_rep( const mce_command *cmd, const mce_reply *rep )
 {
 	// Check sanity of response
 	if ( (rep->command | 0x20200000) != cmd->command)
@@ -298,7 +298,7 @@ int mce_write_block(int handle, int card_id, int para_id,
 	for (i=n_data; i<MCE_CMD_DATA_MAX; i++)
 		cmd.data[i] = 0;
 
-	cmd.checksum = calc_checksum(&cmd);
+	cmd.checksum = mce_cmd_checksum(&cmd);
 
 	mce_reply rep;
 
@@ -322,7 +322,7 @@ int mce_read_block(int handle, int card_id, int para_id,
 
 	memset(&cmd.data, 0, MCE_CMD_DATA_MAX * sizeof(u32));
 
-	cmd.checksum = calc_checksum(&cmd);
+	cmd.checksum = mce_cmd_checksum(&cmd);
 
 	mce_reply rep;
 
@@ -343,7 +343,7 @@ int mce_send_command_simple(int handle, int card_id, int para_id,
 {
 	mce_command cmd = QUICK_FILL(cmd_code, card_id, para_id, 1);
 	cmd.data[0] = 1;
-	cmd.checksum = calc_checksum(&cmd);
+	cmd.checksum = mce_cmd_checksum(&cmd);
 
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
@@ -366,4 +366,61 @@ int mce_stop_application(int handle, int card_id, int para_id)
 int mce_reset(int handle, int card_id, int para_id)
 {
 	return mce_send_command_simple(handle, card_id, para_id, MCE_RS);
+}
+
+
+/* MCE special commands - these provide additional logical support */
+
+int mce_write_element(int handle, int card_id, int para_id,
+		      int data_index, u32 datum)
+{
+	int error = 0;
+	u32 data[MCE_CMD_DATA_MAX];
+	if ( (error = mce_read_block(handle, card_id, para_id, data_index, data, 1)) != 0)
+		return error;
+
+	data[data_index - 1] = datum;
+
+	return mce_write_block(handle, card_id, para_id, data_index, data);
+}
+
+int mce_read_element(int handle, int card_id, int para_id,
+		     int data_index, u32 *datum)
+{
+	int error = 0;
+	u32 data[MCE_CMD_DATA_MAX];
+	if ( (error = mce_read_block(handle, card_id, para_id, data_index, data, 1)) != 0)
+		return error;
+	*datum = data[data_index-1];
+	return 0;
+}
+
+int mce_write_block_check(int handle, int card_id, int para_id,
+			  int n_data, const u32 *data, int retries)
+{
+	int i, error;
+	u32 readback[MCE_CMD_DATA_MAX];
+	int done = 0;
+
+	do {
+		error = mce_write_block(handle, card_id, para_id,
+					n_data, data);
+		
+		if (error) return error;
+		
+		error = mce_read_block(handle, card_id, para_id,
+				       n_data, readback, 1);
+		if (error) return error;
+
+		done = 1;
+		for (i=0; i<n_data; i++) {
+			if (data[i] != readback[i]) {
+				done = 0;
+				break;
+			}
+		}
+
+	} while (!done && retries-- > 0);
+
+	return (done ? 0 : -MCE_ERR_READBACK);
 }

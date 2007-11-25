@@ -42,33 +42,18 @@
 
 /*
    API: all functions return a negative error value on failure.  On
-   success, the return value is 0 with the exception of the 4
-   dsp_read_word* commands, which return the 24 bit data found at the
-   specified address.
+   success, the return value is 0.
 
-   Begin a session by calling dsp_open.  The return value is the
+   Begin a session by calling mce_open.  The return value is the
    handle that must be used in subsequent calls.  Connections should
    be closed when a session is finished.
 */
-
-char *mce_error_string(int error);
 
 int mce_open(char *dev_name);
 int mce_close(int handle);
 
 
-int mce_send_command_now(int handle, mce_command *cmd);
-int mce_read_reply_now(int handle, mce_reply *rep);
-int mce_send_command(int handle, mce_command *cmd, mce_reply *rep);
-
-
-u32 calc_checksum( const mce_command *cmd );
-u32 checksum_data( const u32 *data, int count );
-int match_cmd_rep( const mce_command *cmd, const mce_reply *rep );
-
-
-int mce_send_command_simple(int handle, int card_id, int para_id,
-			    u32 cmd_code);
+/* MCE user commands - these are as simple as they look */
 
 int mce_start_application(int handle, int card_id, int para_id);
 int mce_stop_application(int handle, int card_id, int para_id);
@@ -80,14 +65,36 @@ int mce_read_block(int handle, int card_id, int para_id,
 		   int n_data, u32 *data, int n_cards);
 
 
-/* XML/config lookup facilities
+/* MCE special commands - these provide additional logical support */
 
-int mce_param_init(param_properties_t *p);
+int mce_write_element(int handle, int card_id, int para_id,
+		      int data_index, u32 datum);
 
-int mce_free_config(int handle);
-int mce_load_config(int handle, char *filename);
-int mce_lookup(int handle, param_properties_t *props,
-	       char *card_str, char *para_str, int para_index);
-*/
+int mce_read_element(int handle, int card_id, int para_id,
+		     int data_index, u32 *datum);
+
+int mce_write_block_check(int handle, int card_id, int para_id,
+			  int n_data, const u32 *data, int checks);
+
+
+/* Raw i/o routines; roll your own packets */
+
+int mce_send_command_now(int handle, mce_command *cmd);
+int mce_read_reply_now(int handle, mce_reply *rep);
+int mce_send_command(int handle, mce_command *cmd, mce_reply *rep);
+
+
+/* Useful things... */
+
+u32 mce_checksum( const u32 *data, int count );
+u32 mce_cmd_checksum( const mce_command *cmd );
+int mce_cmd_match_rep( const mce_command *cmd, const mce_reply *rep );
+
+
+/* Perhaps you are a human */
+
+char *mce_error_string(int error);
+
+
 
 #endif

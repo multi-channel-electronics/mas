@@ -106,39 +106,7 @@ typedef struct {
 } card_t;
 
 
-/* Loading of children from parents */
-
-int mceconfig_card_cardtype(const mceconfig_t *mce,
-			    const card_t *c,
-			    cardtype_t *ct);
-
-int mceconfig_cardtype_paramset(const mceconfig_t *mce, 
-				const cardtype_t *ct,
-				int index,
-				paramset_t *ps);
-
-int mceconfig_paramset_param(const mceconfig_t *mce, 
-			     const paramset_t *ps,
-			     int index,
-			     param_t *p);
-
-
-/* Loading of root data from configuration */
-
-int mceconfig_cardtype(const mceconfig_t *mce,
-		       int index,
-		       cardtype_t *ct);
-
-int mceconfig_paramset(const mceconfig_t *mce,
-		       int index,
-		       paramset_t *ps);
-
-int mceconfig_card(const mceconfig_t *mce,
-		   int index,
-		   card_t *c);
-
-
-/* Prototypes */
+/* Basic access; most users only need these functions */
 
 int mceconfig_load(const char *filename, mceconfig_t **mce);
 
@@ -156,6 +124,9 @@ int mceconfig_check_data(const card_t *c, const param_t *p, int count,
 			 const u32 *data, unsigned block_flags,
 			 char *errmsg);
 
+
+/* mceconfig_cfg_<T> - attempt to load data into <T> from a config_setting_t */
+
 int mceconfig_cfg_cardtype(const config_setting_t *cfg, cardtype_t *ct);
 
 int mceconfig_cfg_paramset(const config_setting_t *cfg, paramset_t *ps);
@@ -163,5 +134,38 @@ int mceconfig_cfg_paramset(const config_setting_t *cfg, paramset_t *ps);
 int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p);
 
 int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c);
+
+
+/* Loading of root data from configuration */
+
+int mceconfig_cardtype(const mceconfig_t *mce,
+		       int index,
+		       cardtype_t *ct);
+
+int mceconfig_paramset(const mceconfig_t *mce,
+		       int index,
+		       paramset_t *ps);
+
+int mceconfig_card(const mceconfig_t *mce,
+		   int index,
+		   card_t *c);
+
+
+/* Loading of children from parents */
+
+int mceconfig_card_cardtype(const mceconfig_t *mce,
+			    const card_t *c,
+			    cardtype_t *ct);
+
+int mceconfig_cardtype_paramset(const mceconfig_t *mce, 
+				const cardtype_t *ct,
+				int index,
+				paramset_t *ps);
+
+int mceconfig_paramset_param(const mceconfig_t *mce, 
+			     const paramset_t *ps,
+			     int index,
+			     param_t *p);
+
 
 #endif
