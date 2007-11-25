@@ -1,7 +1,7 @@
 LIB     = mcecmd
 LIBNAME = lib$(LIB).a
 LIBHDR  = $(LIB).h
-DESTDIR = /usr/local/share/libmcedsp
+DESTDIR = /usr/local/share/libmcedsp/
 LINKDIR = /usr/lib/
 LINCDIR = /usr/include/
 
