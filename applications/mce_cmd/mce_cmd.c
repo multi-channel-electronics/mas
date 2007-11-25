@@ -38,8 +38,8 @@ enum {
 	ENUM_COMMAND_LOW,	
 	COMMAND_RB,
 	COMMAND_WB,
-	COMMAND_R,
-	COMMAND_W,
+	COMMAND_REL,
+	COMMAND_WEL,
 	COMMAND_GO,
 	COMMAND_ST,
 	COMMAND_RS,
@@ -107,6 +107,8 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "r"       , 2, 3, COMMAND_RB, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "w"       , 3,-1, COMMAND_WB, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RESET"   , 2,-1, COMMAND_RS, command_placeholder_opts},
@@ -735,6 +737,24 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			}
 			break;
 
+		case COMMAND_REL:
+			//Reject REL on multi-card parameters
+			if (card_mul != 1) {
+				sprintf(errstr, "REL not allowed on multi-card parameters!");
+				return -1;
+			}
+			printf("Get element %i\n", tokens[3].value);
+			err = mce_read_element(handle, card_id, para_id,
+					    tokens[3].value, buf);
+			if (err)
+				break;
+
+			if (options.display == SPECIAL_HEX )
+				errmsg += sprintf(errmsg, "%#x ", *buf);
+			else 
+				errmsg += sprintf(errmsg, "%i ", *buf);
+			break;
+
 		case COMMAND_WB:
 			
 			for (i=0; i<tokens[3].n && i<NARGS; i++) {
@@ -749,6 +769,13 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 			err = mce_write_block(handle,
 					      card_id, para_id, to_write, buf);
+			break;
+			
+		case COMMAND_WEL:
+			
+			err = mce_write_element(handle, card_id, para_id,
+						tokens[3].value,
+						tokens[4].value);
 			break;
 			
 		default:
