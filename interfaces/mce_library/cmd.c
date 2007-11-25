@@ -376,12 +376,12 @@ int mce_write_element(int handle, int card_id, int para_id,
 {
 	int error = 0;
 	u32 data[MCE_CMD_DATA_MAX];
-	if ( (error = mce_read_block(handle, card_id, para_id, data_index, data, 1)) != 0)
+	if ( (error = mce_read_block(handle, card_id, para_id, data_index+1, data, 1)) != 0)
 		return error;
 
-	data[data_index - 1] = datum;
+	data[data_index] = datum;
 
-	return mce_write_block(handle, card_id, para_id, data_index, data);
+	return mce_write_block(handle, card_id, para_id, data_index+1, data);
 }
 
 int mce_read_element(int handle, int card_id, int para_id,
@@ -389,9 +389,9 @@ int mce_read_element(int handle, int card_id, int para_id,
 {
 	int error = 0;
 	u32 data[MCE_CMD_DATA_MAX];
-	if ( (error = mce_read_block(handle, card_id, para_id, data_index, data, 1)) != 0)
+	if ( (error = mce_read_block(handle, card_id, para_id, data_index+1, data, 1)) != 0)
 		return error;
-	*datum = data[data_index-1];
+	*datum = data[data_index];
 	return 0;
 }
 
