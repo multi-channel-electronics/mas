@@ -1,6 +1,6 @@
 # Convert this to path tree system!
 
-HEADERS = mce.h
+HEADERS = mce.h mce_errors.h
 LINCDIR = /usr/include/
 
 install: $(HEADERS)
