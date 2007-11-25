@@ -22,7 +22,7 @@ all: $(LIBNAME)
 
 install: $(LIBNAME) $(LIBHDR)
 	-mkdir $(DESTDIR)
-	cp $(LIBNAME) $(LIBHDR) mcedata.h $(DESTDIR)
+	cp $(LIBNAME) $(HEADERS) $(DESTDIR)
 	-ln -s $(DESTDIR)$(LIBNAME) $(LINKDIR)$(LIBNAME)
 	-ln -s $(DESTDIR)$(LIBHDR) $(LINCDIR)$(LIBHDR)
 	-ln -s $(DESTDIR)mcedata.h $(LINCDIR)mcedata.h
