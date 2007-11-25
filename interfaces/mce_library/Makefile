@@ -26,6 +26,7 @@ install: $(LIBNAME) $(LIBHDR)
 	-ln -s $(DESTDIR)$(LIBNAME) $(LINKDIR)$(LIBNAME)
 	-ln -s $(DESTDIR)$(LIBHDR) $(LINCDIR)$(LIBHDR)
 	-ln -s $(DESTDIR)mcedata.h $(LINCDIR)mcedata.h
+	-ln -s $(DESTDIR)mceconfig.h $(LINCDIR)mceconfig.h
 
 $(LIBNAME) : $(OBJECTS) $(HEADERS)
 	$(AR) rs $@ $(OBJECTS)
