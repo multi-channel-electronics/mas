@@ -84,40 +84,44 @@ static int copy_frames(mce_acq_t *acq);
 int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 {
 	int ret_val = 0;
-	int card_id;
-	int para_id;
-
+	mce_param_t ret_dat_s;
+	mce_param_t ret_dat;
 	u32 args[2];
 
 	// Set number of acq_frames (HOTWIRED)
-	card_id = 0x02; //CC
-	para_id = 0x53; //ret_dat_s
+	mce_load_param(acq->mcedata->mcecmd_handle, &ret_dat_s,
+		       "cc", "ret_dat_s");
+
 	args[0] = 0;
 	args[1] = n_frames - 1;
 	ret_val = mce_write_block(acq->mcedata->mcecmd_handle,
-				  card_id, para_id, 2, args);
+				  &ret_dat_s, 2, args);
 	if (ret_val != 0) {
 		fprintf(stderr, "Could not set ret_dat_s! [%#x]\n", ret_val);
 		return -1;
 	}
 
 	// Start acquisition
-	para_id = 0x16; //ret_dat
 	switch (acq->cards) {
 	case MCEDATA_RC1:
-		card_id = 3;
+		mce_load_param(acq->mcedata->mcecmd_handle, &ret_dat,
+			       "rc1", "ret_dat");
 		break;
 	case MCEDATA_RC2:
-		card_id = 4;
+		mce_load_param(acq->mcedata->mcecmd_handle, &ret_dat,
+			       "rc2", "ret_dat");
 		break;
 	case MCEDATA_RC3:
-		card_id = 5;
+		mce_load_param(acq->mcedata->mcecmd_handle, &ret_dat,
+			       "rc3", "ret_dat");
 		break;
 	case MCEDATA_RC4:
-		card_id = 6;
+		mce_load_param(acq->mcedata->mcecmd_handle, &ret_dat,
+			       "rc4", "ret_dat");
 		break;
 	case MCEDATA_RC1 | MCEDATA_RC2 | MCEDATA_RC3 | MCEDATA_RC4:
-		card_id = 0xb;
+		mce_load_param(acq->mcedata->mcecmd_handle, &ret_dat,
+			       "rcs", "ret_dat");
 		break;
 	default:
 		fprintf(stderr, "Invalid card set selection [%#x]\n",
@@ -125,8 +129,9 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 		return -1;
 	}
 
-	ret_val = mce_start_application(acq->mcedata->mcecmd_handle,
-					card_id, para_id);
+	ret_val =
+		mce_start_application(acq->mcedata->mcecmd_handle, &ret_dat);
+
 	if (ret_val != 0) {
 		fprintf(stderr, "Could not set ret_dat_s! [%#x]\n", ret_val);
 		return -1;

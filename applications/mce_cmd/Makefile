@@ -18,8 +18,8 @@ CC=gcc
 
 all: mce_cmd
 
-mce_cmd: mce_cmd.o
-	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY)
+mce_cmd: mce_cmd.o options.o options.h
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 tidy:
 	-rm *~ *.o

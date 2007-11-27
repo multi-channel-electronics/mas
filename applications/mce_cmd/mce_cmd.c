@@ -21,18 +21,8 @@
 
 #include <cmdtree.h>
 
-#define LINE_LEN 1024
-#define NARGS 64
-
-#define FS_DIGITS 3 /* Number of digits in file sequencing file name */
-
-#define DEFAULT_DEVICE "/dev/mce_cmd0"
-#define DEFAULT_DATA "/dev/mce_data0"
-#define DEFAULT_XML "/etc/mce.cfg"
-
-#define FRAME_HEADER 43
-#define FRAME_FOOTER 1
-#define FRAME_COLUMNS 8
+#include "mce_cmd.h"
+#include "options.h"
 
 enum {
 	ENUM_COMMAND_LOW,	
@@ -111,7 +101,7 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RESET"   , 2,-1, COMMAND_RS, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
@@ -131,34 +121,11 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 	
-struct {
-	int interactive;
-	int nonzero_only;
-	int no_prefix;
-	int display;
-	int echo;
-
-	int das_compatible; // horror
-
-	char batch_file[LINE_LEN];
-	int  batch_now;
-
-	char cmd_command[LINE_LEN];
-	int  cmd_now;
-
-	char device_file[LINE_LEN];
-	char config_file[LINE_LEN];
-
-	char acq_path[LINE_LEN];
-
-} options = {
-	0, 0, 0, SPECIAL_HEX, 0, 0, "", 0, "", 0, DEFAULT_DEVICE, ""
+struct option_struct options = {
+	display: SPECIAL_HEX,
+	device_file: DEFAULT_DEVICE,
+	config_file: DEFAULT_XML,
 };
-
-
-enum { ERR_MEM=1,
-       ERR_OPT=2,
-       ERR_MCE=3 };
 
 int handle = -1;
 int  command_now = 0;
@@ -173,49 +140,25 @@ mceconfig_t *mce = NULL;
 
 // This structure is used to cache data which eventually constructs acq.
 
-struct {
-	char filename[LINE_LEN];
-	int  frame_size;
-	int  cards;
-	int  rows;
-	int  n_frames;
-	int  interval;
-} my_acq;
+struct my_acq_struct my_acq;
 
+mce_param_t ret_dat_s;
+mce_param_t num_rows_reported;
 
-/* Structure to cache mce parameter id's for items we will often need */
-
-typedef struct preload_struct {
-	u32 card_id;
-	u32 para_id;
-	int count;
-	int cards;
-} preload_t;
-
-preload_t ret_dat_s;
-preload_t num_rows_reported;
-
-void preload_pair(preload_t *pre, const card_t *c, const param_t *p);
 int  preload_mce_params();
-int  load_mce_param(const preload_t *pre, u32 *data);
 int  calculate_frame_size();
 
 int  bit_count(int k);
 
 int  menuify_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts);
-int  process_options(int argc, char **argv);
 
 int  process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
-void init_options(void);
-
 
 int main(int argc, char **argv)
 {
 	FILE *ferr = stderr;
 	FILE *fin  = stdin;
-
 	int err = 0;
-	//ignore args for now
 
 	line = (char*) malloc(LINE_LEN);
 	if (line==NULL) {
@@ -224,7 +167,6 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	init_options();
 	if (process_options(argc, argv)) {
 		err = ERR_OPT;
 		goto exit_now;
@@ -245,10 +187,8 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	// Zero the acqusition structure
+	// Zero the acquisition structure
 	mcedata_acq_reset(&acq, &mcedata);
-
-	int line_count = 0;
 
 	if (mceconfig_load(options.config_file, &mce)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
@@ -257,6 +197,9 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 	menuify_mceconfig(mce, root_opts);
+
+	// Share config with MCE command library.
+	mce_set_config(handle, mce);
 
 	// Preload useful MCE parameter id's
 	if (preload_mce_params()) {
@@ -279,7 +222,7 @@ int main(int argc, char **argv)
 
 	char errmsg[1024] = "";
 	char premsg[1024] = "";
-
+	int line_count = 0;
 	int done = 0;
 
 	while (!done) {
@@ -360,12 +303,6 @@ exit_now:
 	if (handle>=0)  mce_close(handle);
 
 	return err;
-}
-
-void init_options()
-{
-	strcpy(options.config_file, DEFAULT_XML);
-	strcpy(options.device_file, DEFAULT_DEVICE);
 }
 
 int menuify_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts)
@@ -457,46 +394,30 @@ int menuify_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts)
 	return 0;
 }
 
-void preload_pair(preload_t *pre, const card_t *c, const param_t *p)
-{
-	pre->card_id = c->id;
-	pre->para_id = p->id;
-	pre->count = p->count;
-	pre->cards = p->card_count;
-}
 
 int preload_mce_params()
 {
 	int ret_val = 0;
-	card_t c;
-	param_t p;
-	if ((ret_val=mceconfig_lookup(mce, "cc", "num_rows_reported", &c, &p))!=0) {
+	if ((ret_val=mce_load_param(handle, &num_rows_reported, "cc", "num_rows_reported"))!=0) {
 		fprintf(stderr, "Could not decode 'cc num_rows_reported' [%i]\n",
 			ret_val);
 		return -1;
 	}
-	preload_pair(&num_rows_reported, &c, &p);
 	
-	if ((ret_val=mceconfig_lookup(mce, "cc", "ret_dat_s", &c, &p))!=0) {
+	if ((ret_val=mce_load_param(handle, &ret_dat_s,  "cc", "ret_dat_s"))!=0) {
 		fprintf(stderr, "Could not decode 'cc ret_dat_s' [%i]\n", ret_val);
 		return -1;
 	}
-	preload_pair(&ret_dat_s, &c, &p);
 	return 0;
 }
 
-int load_mce_param(const preload_t *pre, u32 *data)
-{
-	return mce_read_block(handle, pre->card_id, pre->para_id,
-			      pre->count, data, pre->cards);
-}
 
 int learn_acq_params(int get_frame_count, int get_rows)
 {
 	u32 data[64];
 
 	if (get_frame_count) {
-		if (load_mce_param(&ret_dat_s, data)) {
+		if (mce_read_block(handle, &ret_dat_s, 2, data)) {
 			sprintf(errstr, "Failed to read frame count from MCE");
 			return -1;
 		}
@@ -504,7 +425,7 @@ int learn_acq_params(int get_frame_count, int get_rows)
 	}
 
 	if (get_rows) {
-		if (load_mce_param(&num_rows_reported, data)) {
+		if (mce_read_block(handle, &num_rows_reported, 1, data)) {
 			sprintf(errstr, "Failed to read number of reported rows");
 			return -1;
 		}
@@ -616,6 +537,9 @@ int do_acq_compat(char *errmsg)
 }
 
 
+
+
+
 int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 {
 	int ret_val = 0;
@@ -623,6 +547,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	int i;
 	param_t p;
 	card_t c;
+	mce_param_t mcep;
 	int to_read, to_write, card_mul;
 	u32 buf[NARGS];
 	char s[LINE_LEN];
@@ -640,26 +565,30 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		// Token[3+] are the data
 
 		// Allow integer values for card and para.
-
-		int raw_mode = 1;
-
+		int raw_mode = (tokens[1].type != CMDTREE_SELECT) ||
+			(tokens[2].type != CMDTREE_SELECT);
 		card_mul = 1;
 		to_read = 0;
 		to_write = tokens[3].n;
-		int card_id = tokens[1].value;
-		int para_id = tokens[2].value;
 
-		if ( tokens[1].type == CMDTREE_SELECT ) {
-			mceconfig_cfg_card ((config_setting_t*)tokens[1].value, &c);
-			card_id = c.id;
-			
-			if (tokens[2].type == CMDTREE_SELECT ) {
-				raw_mode = 0;
-				mceconfig_cfg_param((config_setting_t*)tokens[2].value, &p);
-				para_id = p.id;
-				to_read = p.count;
-				card_mul = c.card_count*p.card_count;
+		if (!raw_mode) {
+			char card_word[MCE_SHORT];
+			char para_word[MCE_SHORT];
+			cmdtree_token_word(card_word, tokens+1);
+			cmdtree_token_word(para_word, tokens+2);
+			if (mce_load_param(handle, &mcep, card_word, para_word)) {
+				sprintf(errstr, "Could not load parameter '%s %s'",
+					card_word, para_word);
+				return -1;
 			}
+		} else {
+			if ( tokens[1].type == CMDTREE_SELECT ) {
+				mceconfig_cfg_card ((config_setting_t*)tokens[1].value,
+						    &mcep.card);
+			} else {
+				mcep.card.id = tokens[1].value;
+			}
+			mcep.param.id = tokens[2].value;
 		}
 
 		if (to_read == 0 && tokens[3].type == CMDTREE_INTEGER) {
@@ -672,7 +601,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		switch( tokens[0].value ) {
 		
 		case COMMAND_RS:
-			err = mce_reset(handle, card_id, para_id);
+			err = mce_reset(handle, &mcep);
 			break;
 
 		case COMMAND_GO:
@@ -707,14 +636,12 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				// If you get here, your data just accumulates
 				//  in the driver's buffer, /dev/mce_data0, assuming that
 				//  the frame size has been set correctly.
-				err = mce_start_application(handle,
-							    card_id, para_id);
+				err = mce_start_application(handle, &mcep);
 			}
 			break;
 
 		case COMMAND_ST:
-			err = mce_stop_application(handle,
-						   card_id, para_id);
+			err = mce_stop_application(handle, &mcep);
 			break;
 
 		case COMMAND_RB:
@@ -724,8 +651,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				return -1;
 			}
 
-			err = mce_read_block(handle, card_id, para_id,
-					     to_read, buf, card_mul);
+			err = mce_read_block(handle, &mcep, to_read, buf);
 			if (err)
 				break;
 
@@ -744,7 +670,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				return -1;
 			}
 			printf("Get element %i\n", tokens[3].value);
-			err = mce_read_element(handle, card_id, para_id,
+			err = mce_read_element(handle, &mcep,
 					    tokens[3].value, buf);
 			if (err)
 				break;
@@ -767,13 +693,12 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				return -1;
 			}
 
-			err = mce_write_block(handle,
-					      card_id, para_id, to_write, buf);
+			err = mce_write_block(handle, &mcep, to_write, buf);
 			break;
 			
 		case COMMAND_WEL:
 			
-			err = mce_write_element(handle, card_id, para_id,
+			err = mce_write_element(handle, &mcep,
 						tokens[3].value,
 						tokens[4].value);
 			break;
@@ -922,83 +847,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	}
 
 	return ret_val;
-}
-
-#define USAGE_MESSAGE \
-"Usage:\n\t%s [options]\n"\
-"  -i                     interactive mode, don't exit on errors\n"\
-"  -q                     quiet mode, only print errors or output data\n"\
-"  -p                     prefix-supression, don't print line number\n"\
-"\n"\
-"  -d <device file>       choose a particular mce device\n"\
-"  -c <config file>       choose a particular mce config file\n"\
-"  -f <batch file>        run commands from file instead of stdin\n"\
-"  -x <command>           execute a command now\n"\
-"  -C <data file>         DAS compatibility mode\n"\
-"  -o <directory>         data file path\n"\
-""
-
-int process_options(int argc, char **argv)
-{
-	char *s;
-	int option;
-	while ( (option = getopt(argc, argv, "?hiqpf:c:d:C:o:x")) >=0) {
-
-		switch(option) {
-		case '?':
-		case 'h':
-			printf(USAGE_MESSAGE,
-			       argv[0]);
-			return -1;
-
-		case 'i':
-			options.interactive = 1;
-			break;
-
-		case 'q':
-			options.nonzero_only = 1;
-			break;
-
-		case 'p':
-			options.no_prefix = 1;
-			break;
-
-		case 'f':
-			strcpy(options.batch_file, optarg);
-			options.batch_now = 1;
-			break;
-
-		case 'c':
-			strcpy(options.config_file, optarg);
-			break;
-
-		case 'd':
-			strcpy(options.device_file, optarg);
-			break;
-
-		case 'o':
-			strcpy(options.acq_path, optarg);
-			break;
-
-		case 'C':
-			options.das_compatible = 1;
-			strcpy(my_acq.filename, optarg);
-			break;
-
-		case 'x':
-			s = options.cmd_command;
-			while (optind < argc) {
-				s += sprintf(s, "%s ", argv[optind++]);
-			}
-			options.cmd_now = 1;
-			break;
-
-		default:
-			printf("Unimplemented option '-%c'!\n", option);
-		}
-	}
-
-	return 0;
 }
 
 

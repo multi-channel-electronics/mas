@@ -16,21 +16,12 @@
 
 /* mce.h defines the structures used by the dsp driver */
 
-#include <mce.h>
-#include <mce_errors.h>
-
-/*! \def MCE_SHORT
- *  \brief Length of short strings.
- */
-
 #define MCE_SHORT 32
-
-
-/*! \def MCE_LONG
- *  \brief Length of long strings.
- */
-
 #define MCE_LONG 1024
+
+#include <mce.h>
+#include <mceconfig.h>
+#include <mce_errors.h>
 
 
 /*! \def MAX_CONS
@@ -52,28 +43,29 @@
 int mce_open(char *dev_name);
 int mce_close(int handle);
 
+int mce_set_config(int handle, const mceconfig_t *config);
 
 /* MCE user commands - these are as simple as they look */
 
-int mce_start_application(int handle, int card_id, int para_id);
-int mce_stop_application(int handle, int card_id, int para_id);
-int mce_reset(int handle, int card_id, int para_id);
+int mce_start_application(int handle, const mce_param_t *param);
+int mce_stop_application(int handle, const mce_param_t *param);
+int mce_reset(int handle, const mce_param_t *param);
 
-int mce_write_block(int handle, int card_id, int para_id,
+int mce_write_block(int handle, const mce_param_t *param,
 		    int n_data, const u32 *data);
-int mce_read_block(int handle, int card_id, int para_id,
-		   int n_data, u32 *data, int n_cards);
+int mce_read_block(int handle, const mce_param_t *param,
+		   int n_data, u32 *data);
 
 
 /* MCE special commands - these provide additional logical support */
 
-int mce_write_element(int handle, int card_id, int para_id,
+int mce_write_element(int handle, const mce_param_t *param,
 		      int data_index, u32 datum);
 
-int mce_read_element(int handle, int card_id, int para_id,
+int mce_read_element(int handle, const mce_param_t *param,
 		     int data_index, u32 *datum);
 
-int mce_write_block_check(int handle, int card_id, int para_id,
+int mce_write_block_check(int handle, const mce_param_t *param,
 			  int n_data, const u32 *data, int checks);
 
 
@@ -82,6 +74,19 @@ int mce_write_block_check(int handle, int card_id, int para_id,
 int mce_send_command_now(int handle, mce_command *cmd);
 int mce_read_reply_now(int handle, mce_reply *rep);
 int mce_send_command(int handle, mce_command *cmd, mce_reply *rep);
+
+
+/* MCE parameter lookup */
+
+int mce_load_param(int handle, mce_param_t *param,
+		   const char *card_str, const char *param_str);
+
+
+/* Custom packet creation and sending */
+
+int mce_load_command(mce_command *cmd, u32 command,
+		     u32 card_id, u32 para_id, 
+		     int n_data, const u32 *data);
 
 
 /* Useful things... */

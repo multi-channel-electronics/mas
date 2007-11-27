@@ -27,6 +27,7 @@ struct mce_context {
 	int opened;
 	int fd;
 
+	const mceconfig_t *config;
 	char dev_name[MCE_LONG];
 
 	logger_t logger;
@@ -49,6 +50,8 @@ inline int handle_in_bounds(int handle) {
                                    return -MCE_ERR_HANDLE
 #define CHECK_OPEN(hndl)   if (!cons[hndl].opened) \
                                    return -MCE_ERR_HANDLE
+#define CHECK_CONFIG(hndl) if (cons[hndl].config == NULL) \
+                                   return -MCE_ERR_XML
 
 char *mce_error_string(int error)
 {
@@ -162,6 +165,41 @@ int mce_close(int handle)
 }
 
 
+int mce_set_config(int handle, const mceconfig_t *config)
+{
+	CON.config = config;
+	return 0;
+}
+
+
+/* Basic device write/read routines */
+
+int mce_load_command(mce_command *cmd, u32 command,
+		     u32 card_id, u32 para_id, 
+		     int n_data, const u32 *data)
+{
+	int i;
+
+	cmd->preamble[0] = PREAMBLE_0;
+	cmd->preamble[1] = PREAMBLE_1;
+	cmd->command = command;
+	cmd->para_id = para_id;
+	cmd->card_id = card_id;
+	
+	for (i=0; i<n_data && i<MCE_CMD_DATA_MAX; i++)
+		cmd->data[i] = data[i];
+	
+	for (i=n_data; i<MCE_CMD_DATA_MAX; i++)
+		cmd->data[i] = 0;
+	
+	cmd->checksum = mce_cmd_checksum(cmd);
+
+	if (n_data < 0 || n_data >= MCE_CMD_DATA_MAX)
+		return -MCE_ERR_BOUNDS;
+
+	return 0;
+}
+
 int mce_send_command_now(int handle, mce_command *cmd)
 {	
 	if ( sizeof(*cmd) != write(CON.fd, cmd, sizeof(*cmd)) )
@@ -232,13 +270,6 @@ int mce_send_command(int handle, mce_command *cmd, mce_reply *rep)
 
 /* Specialty */
 
-#define QUICK_FILL(cmd, card, para, n) { \
-        .preamble = {PREAMBLE_0, PREAMBLE_1},\
-        .command  = cmd,\
-        .card_id  = card,\
-        .para_id  = para,\
-        .count    = n }
-
 u32 mce_cmd_checksum( const mce_command *cmd )
 {
 	u32 chksum = 0;
@@ -280,63 +311,70 @@ int mce_cmd_match_rep( const mce_command *cmd, const mce_reply *rep )
 	return 0;
 }
 
-int mce_write_block(int handle, int card_id, int para_id,
+int mce_load_param(int handle, mce_param_t *param,
+		   const char *card_str, const char *param_str)
+{
+	return mceconfig_lookup(CON.config, card_str, param_str,
+				&param->card,
+				&param->param);
+}
+
+
+int mce_write_block(int handle, const mce_param_t *param,
 		    int n_data, const u32 *data)
 {
-	mce_command cmd = QUICK_FILL(MCE_WB, card_id, para_id, n_data);
-		
+	mce_command cmd;
+	int error = 0;
+
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
 
-	if (n_data < 0 || n_data >= MCE_CMD_DATA_MAX)
-		return -MCE_ERR_BOUNDS;
-
-	int i;
-	for (i=0; i<n_data; i++)
-		cmd.data[i] = data[i];
-
-	for (i=n_data; i<MCE_CMD_DATA_MAX; i++)
-		cmd.data[i] = 0;
-
-	cmd.checksum = mce_cmd_checksum(&cmd);
+	error = mce_load_command(&cmd, MCE_WB, 
+				 param->card.id, param->param.id,
+				 n_data, data);
+	if (error) return error;
 
 	mce_reply rep;
 
 	return mce_send_command(handle, &cmd, &rep);
 }
 
-int mce_read_block(int handle, int card_id, int para_id,
-		   int n_data, u32 *data, int n_cards)
+int mce_read_block(int handle, const mce_param_t *param,
+		   int n_data, u32 *data)
 {
-	mce_command cmd = QUICK_FILL(MCE_RB, card_id, para_id, n_data);
+	mce_command cmd;
+	mce_reply rep;
+	int error = 0;
 
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
 
-	// Correct n_data to account n_cards
-	if (n_cards <=0) n_cards = 1;
-	n_data *= n_cards;
+	error = mce_load_command(&cmd, MCE_RB, 
+				 param->card.id, param->param.id,
+				 n_data, data);
+	if (error) return error;
 
-	if (n_data < 0 || n_data >= MCE_CMD_DATA_MAX)
-		return -MCE_ERR_BOUNDS;
-
-	memset(&cmd.data, 0, MCE_CMD_DATA_MAX * sizeof(u32));
-
-	cmd.checksum = mce_cmd_checksum(&cmd);
-
-	mce_reply rep;
+	error = mce_send_command(handle, &cmd, &rep);
 
 	int err = mce_send_command(handle, &cmd, &rep);
 	if (err<0) return err;
 
+	// Correct n_data for card_count
+	n_data *= param->card.card_count * param->param.card_count;
+
 	// I guess the data must be valid then.
 	memcpy(data, rep.data, n_data*sizeof(u32));
+
 	
 	return 0;
 }
 
-
-
+#define QUICK_FILL(cmd, card, para, n) { \
+        .preamble = {PREAMBLE_0, PREAMBLE_1},\
+        .command  = cmd,\
+        .card_id  = card,\
+        .para_id  = para,\
+        .count    = n }
 
 int mce_send_command_simple(int handle, int card_id, int para_id,
 			    u32 cmd_code)
@@ -353,49 +391,49 @@ int mce_send_command_simple(int handle, int card_id, int para_id,
 	return mce_send_command(handle, &cmd, &rep);
 }
 
-int mce_start_application(int handle, int card_id, int para_id)
+int mce_start_application(int handle, const mce_param_t *param)
 {
-	return mce_send_command_simple(handle, card_id, para_id, MCE_GO);
+	return mce_send_command_simple(handle, param->card.id, param->param.id, MCE_GO);
 }
 
-int mce_stop_application(int handle, int card_id, int para_id)
+int mce_stop_application(int handle,  const mce_param_t *param)
 {
-	return mce_send_command_simple(handle, card_id, para_id, MCE_ST);
+	return mce_send_command_simple(handle, param->card.id, param->param.id, MCE_ST);
 }
 
-int mce_reset(int handle, int card_id, int para_id)
+int mce_reset(int handle,  const mce_param_t *param)
 {
-	return mce_send_command_simple(handle, card_id, para_id, MCE_RS);
+	return mce_send_command_simple(handle, param->card.id, param->param.id, MCE_RS);
 }
 
 
 /* MCE special commands - these provide additional logical support */
 
-int mce_write_element(int handle, int card_id, int para_id,
+int mce_write_element(int handle, const mce_param_t *param,
 		      int data_index, u32 datum)
 {
 	int error = 0;
 	u32 data[MCE_CMD_DATA_MAX];
-	if ( (error = mce_read_block(handle, card_id, para_id, data_index+1, data, 1)) != 0)
+	if ( (error = mce_read_block(handle, param, data_index+1, data)) != 0)
 		return error;
 
 	data[data_index] = datum;
 
-	return mce_write_block(handle, card_id, para_id, data_index+1, data);
+	return mce_write_block(handle, param, data_index+1, data);
 }
 
-int mce_read_element(int handle, int card_id, int para_id,
+int mce_read_element(int handle, const mce_param_t *param,
 		     int data_index, u32 *datum)
 {
 	int error = 0;
 	u32 data[MCE_CMD_DATA_MAX];
-	if ( (error = mce_read_block(handle, card_id, para_id, data_index+1, data, 1)) != 0)
+	if ( (error = mce_read_block(handle, param, data_index+1, data)) != 0)
 		return error;
 	*datum = data[data_index];
 	return 0;
 }
 
-int mce_write_block_check(int handle, int card_id, int para_id,
+int mce_write_block_check(int handle, const mce_param_t *param,
 			  int n_data, const u32 *data, int retries)
 {
 	int i, error;
@@ -403,13 +441,11 @@ int mce_write_block_check(int handle, int card_id, int para_id,
 	int done = 0;
 
 	do {
-		error = mce_write_block(handle, card_id, para_id,
-					n_data, data);
+		error = mce_write_block(handle, param, n_data, data);
 		
 		if (error) return error;
 		
-		error = mce_read_block(handle, card_id, para_id,
-				       n_data, readback, 1);
+		error = mce_read_block(handle, param, n_data, readback);
 		if (error) return error;
 
 		done = 1;

@@ -106,6 +106,15 @@ typedef struct {
 } card_t;
 
 
+typedef struct {
+
+	card_t card;
+	param_t param;
+
+} mce_param_t;
+
+
+
 /* Basic access; most users only need these functions */
 
 int mceconfig_load(const char *filename, mceconfig_t **mce);
