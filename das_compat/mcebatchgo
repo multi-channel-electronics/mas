@@ -1,9 +1,9 @@
 #!/bin/bash
 
-echo "This script is provided for DAS compatibility!"
-echo
+# echo "This script is provided for DAS compatibility!"
+# echo
 
-if [ $# < 3 ]; then
+if [ $# -lt 3 ]; then
   echo "the usage is: mcebatchgo cmdrepfilename datafilename batch_file"
   echo ie: mcebatchgo  batchcmereply.txt batchdata.txt  mcebatchandgo.txt 
   echo
@@ -19,9 +19,9 @@ if [ $# < 3 ]; then
   echo please modify the script to set svfileFlag=0 or 1 if you do not
   echo want to save the data and cme-reply, or want to save both
   exit 1
-endif  
+fi
 
 data_file="${DATADIR}$2"
 batch_file="${USRCONFIGDIR}$3"
 
-mce_cmd -C "$data_file" -f '$batch_file"
+mce_cmd -q -C "$data_file" -f "$batch_file"

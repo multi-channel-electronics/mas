@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $# < 4 ]; then
+if [ $# -lt 4 ]; then
   echo "the usage is: mcecmd resultfilename command "
   echo ie: mcecmd cmdreply.txt       WB cc sram1_strt 10
   echo or: mcecmd cmdreply.txt       RB cc sram1_strt 10
@@ -8,12 +8,9 @@ if [ $# < 4 ]; then
   echo or: mcecmd cmdreply.txt       RS psc brst
   echo or: mcecmd cmdreply.txt       GO rc1 ret_dat
   exit 1
-endif
+fi
 
 #run mce_cmd in das compat mode, with filename output file "godata.txt"
 
-mce_cmd -C godata.txt -x $@
-
-
-
-
+shift # discard the resultfilename
+mce_cmd -q -C godata.txt -x $@

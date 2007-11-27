@@ -52,9 +52,9 @@ int mce_stop_application(int handle, const mce_param_t *param);
 int mce_reset(int handle, const mce_param_t *param);
 
 int mce_write_block(int handle, const mce_param_t *param,
-		    int n_data, const u32 *data);
+		    int count, const u32 *data);
 int mce_read_block(int handle, const mce_param_t *param,
-		   int n_data, u32 *data);
+		   int count, u32 *data);
 
 
 /* MCE special commands - these provide additional logical support */
@@ -66,7 +66,7 @@ int mce_read_element(int handle, const mce_param_t *param,
 		     int data_index, u32 *datum);
 
 int mce_write_block_check(int handle, const mce_param_t *param,
-			  int n_data, const u32 *data, int checks);
+			  int count, const u32 *data, int checks);
 
 
 /* Raw i/o routines; roll your own packets */
@@ -86,7 +86,7 @@ int mce_load_param(int handle, mce_param_t *param,
 
 int mce_load_command(mce_command *cmd, u32 command,
 		     u32 card_id, u32 para_id, 
-		     int n_data, const u32 *data);
+		     int count, const u32 *data);
 
 
 /* Useful things... */

@@ -417,7 +417,7 @@ int learn_acq_params(int get_frame_count, int get_rows)
 	u32 data[64];
 
 	if (get_frame_count) {
-		if (mce_read_block(handle, &ret_dat_s, 2, data)) {
+		if (mce_read_block(handle, &ret_dat_s, -1, data)) {
 			sprintf(errstr, "Failed to read frame count from MCE");
 			return -1;
 		}
@@ -425,7 +425,7 @@ int learn_acq_params(int get_frame_count, int get_rows)
 	}
 
 	if (get_rows) {
-		if (mce_read_block(handle, &num_rows_reported, 1, data)) {
+		if (mce_read_block(handle, &num_rows_reported, -1, data)) {
 			sprintf(errstr, "Failed to read number of reported rows");
 			return -1;
 		}
@@ -471,7 +471,8 @@ int prepare_outfile(char *errmsg, int file_sequencing)
 {
 	// Cleanup last acq
 	if (acq.actions.cleanup!=NULL && acq.actions.cleanup(&acq)) {
-		sprintf(errmsg, "Failed to clean up previous acquisition");
+		sprintf(errmsg, "Failed to clean up previous acquisition: %s",
+			acq.errstr);
 		return -1;
 	}
 
@@ -498,7 +499,8 @@ int prepare_outfile(char *errmsg, int file_sequencing)
 
 	// Initialize this file type
 	if (acq.actions.init!=NULL && acq.actions.init(&acq)) {
-		sprintf(errmsg, "Failed to initialize output system");
+		sprintf(errmsg, "Failed to initialize output system: %s",
+			acq.errstr);
 		return -1;
 	}
 	return 0;
@@ -524,7 +526,8 @@ int do_acq_compat(char *errmsg)
 	}
 
 	if (acq.actions.init!=NULL && acq.actions.init(&acq)) {
-		sprintf(errmsg, "Failed to initialize acquisition");
+		sprintf(errmsg, "Failed to initialize acquisition: %s",
+			acq.errstr);
 		return -1;
 	}
 
@@ -545,8 +548,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	int ret_val = 0;
 	int err = 0;
 	int i;
-	param_t p;
-	card_t c;
 	mce_param_t mcep;
 	int to_read, to_write, card_mul;
 	u32 buf[NARGS];
@@ -589,6 +590,10 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				mcep.card.id = tokens[1].value;
 			}
 			mcep.param.id = tokens[2].value;
+			mcep.param.count = tokens[3].value;
+			mcep.param.card_count =
+				( tokens[4].type == CMDTREE_INTEGER  ?
+				  tokens[4].value : 1 );
 		}
 
 		if (to_read == 0 && tokens[3].type == CMDTREE_INTEGER) {
@@ -645,17 +650,14 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case COMMAND_RB:
-			//Check count in bounds; scale if "card" returns multiple data
-			if (to_read*card_mul<0 || to_read*card_mul>MCE_REP_DATA_MAX) {
-				sprintf(errstr, "read length out of bounds!");
-				return -1;
-			}
 
-			err = mce_read_block(handle, &mcep, to_read, buf);
+			err = mce_read_block(handle, &mcep, -1, buf);
 			if (err)
 				break;
 
-			for (i=0; i<to_read*card_mul; i++) {
+			for (i=0; i < mcep.param.count *
+				     mcep.param.card_count *
+				     mcep.card.card_count ; i++) {
 				if (options.display == SPECIAL_HEX )
 					errmsg += sprintf(errmsg, "%#x ", buf[i]);
 				else 
@@ -669,7 +671,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				sprintf(errstr, "REL not allowed on multi-card parameters!");
 				return -1;
 			}
-			printf("Get element %i\n", tokens[3].value);
 			err = mce_read_element(handle, &mcep,
 					    tokens[3].value, buf);
 			if (err)
@@ -685,12 +686,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			
 			for (i=0; i<tokens[3].n && i<NARGS; i++) {
 				buf[i] = tokens[3+i].value;
-			}
-
-			if (!raw_mode &&
-			    mceconfig_check_data(&c, &p, to_write, buf,
-						 MCE_PARAM_RONLY, errmsg)) {
-				return -1;
 			}
 
 			err = mce_write_block(handle, &mcep, to_write, buf);

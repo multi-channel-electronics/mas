@@ -53,13 +53,6 @@
 #define MCEDATA_CARDS             4
 #define MCEDATA_COMBOS            (1 << MCEDATA_CARDS)
 
-/*struct {
-	char name[MCE_SHORT];
-	unsigned mask;
-	int card_id;
-	};*/
-
-
 struct mce_acq_struct;
 typedef struct mce_acq_struct mce_acq_t;
 
@@ -89,14 +82,13 @@ struct mce_acq_struct {
 	int n_frames;
 	int frame_size;                 // Active frame size
 
-/* 	char filename[1024];            // Filename of current data file, if any. */
-/* 	FILE *fout;                     // File pointer of current data file. */
-
 	int status;
 	int cards;
 
 	mce_frame_actions_t actions;
 	unsigned long action_data;
+
+	char errstr[MCE_LONG];
 
  	int options;
 };

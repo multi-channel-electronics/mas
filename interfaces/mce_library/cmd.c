@@ -176,7 +176,7 @@ int mce_set_config(int handle, const mceconfig_t *config)
 
 int mce_load_command(mce_command *cmd, u32 command,
 		     u32 card_id, u32 para_id, 
-		     int n_data, const u32 *data)
+		     int count, const u32 *data)
 {
 	int i;
 
@@ -185,16 +185,17 @@ int mce_load_command(mce_command *cmd, u32 command,
 	cmd->command = command;
 	cmd->para_id = para_id;
 	cmd->card_id = card_id;
-	
-	for (i=0; i<n_data && i<MCE_CMD_DATA_MAX; i++)
+	cmd->count = count;
+
+	for (i=0; i<count && i<MCE_CMD_DATA_MAX; i++)
 		cmd->data[i] = data[i];
 	
-	for (i=n_data; i<MCE_CMD_DATA_MAX; i++)
+	for (i=count; i<MCE_CMD_DATA_MAX; i++)
 		cmd->data[i] = 0;
 	
 	cmd->checksum = mce_cmd_checksum(cmd);
 
-	if (n_data < 0 || n_data >= MCE_CMD_DATA_MAX)
+	if (count < 0 || count >= MCE_CMD_DATA_MAX)
 		return -MCE_ERR_BOUNDS;
 
 	return 0;
@@ -220,18 +221,21 @@ int mce_read_reply_now(int handle, mce_reply *rep)
 int mce_send_command(int handle, mce_command *cmd, mce_reply *rep)
 {
 	int err = 0;
+	char errstr[MCE_LONG];
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
-
-	err = mce_send_command_now(handle, cmd);
-	if (err<0) {
-		memset(rep, 0, sizeof(*rep));
-		return err;
-	}
 
 	log_data(&CON.logger, (u32*)cmd + 2, 62, 2, "command",
 		 LOG_LEVEL_CMD);
 	
+	err = mce_send_command_now(handle, cmd);
+	if (err<0) {
+		sprintf(errstr, "command not sent, error %#x.", -err);
+		logger_print_level(&CON.logger, errstr, LOGGER_INFO);
+		memset(rep, 0, sizeof(*rep));
+		return err;
+	}
+
 	err = mce_read_reply_now(handle, rep);
 	if (err != 0) {
 		//Log message "reply! read error."
@@ -321,7 +325,7 @@ int mce_load_param(int handle, mce_param_t *param,
 
 
 int mce_write_block(int handle, const mce_param_t *param,
-		    int n_data, const u32 *data)
+		    int count, const u32 *data)
 {
 	mce_command cmd;
 	int error = 0;
@@ -331,7 +335,7 @@ int mce_write_block(int handle, const mce_param_t *param,
 
 	error = mce_load_command(&cmd, MCE_WB, 
 				 param->card.id, param->param.id,
-				 n_data, data);
+				 count, data);
 	if (error) return error;
 
 	mce_reply rep;
@@ -340,7 +344,7 @@ int mce_write_block(int handle, const mce_param_t *param,
 }
 
 int mce_read_block(int handle, const mce_param_t *param,
-		   int n_data, u32 *data)
+		   int count, u32 *data)
 {
 	mce_command cmd;
 	mce_reply rep;
@@ -349,22 +353,22 @@ int mce_read_block(int handle, const mce_param_t *param,
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
 
+	if (count < 0)
+		count = param->param.count;
+
 	error = mce_load_command(&cmd, MCE_RB, 
 				 param->card.id, param->param.id,
-				 n_data, data);
+				 count, data);
 	if (error) return error;
 
 	error = mce_send_command(handle, &cmd, &rep);
+	if (error) return error;
 
-	int err = mce_send_command(handle, &cmd, &rep);
-	if (err<0) return err;
-
-	// Correct n_data for card_count
-	n_data *= param->card.card_count * param->param.card_count;
+	// Correct count for card_count
+	count *= param->card.card_count * param->param.card_count;
 
 	// I guess the data must be valid then.
-	memcpy(data, rep.data, n_data*sizeof(u32));
-
+	memcpy(data, rep.data, count*sizeof(u32));
 	
 	return 0;
 }
@@ -434,22 +438,22 @@ int mce_read_element(int handle, const mce_param_t *param,
 }
 
 int mce_write_block_check(int handle, const mce_param_t *param,
-			  int n_data, const u32 *data, int retries)
+			  int count, const u32 *data, int retries)
 {
 	int i, error;
 	u32 readback[MCE_CMD_DATA_MAX];
 	int done = 0;
 
 	do {
-		error = mce_write_block(handle, param, n_data, data);
+		error = mce_write_block(handle, param, count, data);
 		
 		if (error) return error;
 		
-		error = mce_read_block(handle, param, n_data, readback);
+		error = mce_read_block(handle, param, count, readback);
 		if (error) return error;
 
 		done = 1;
-		for (i=0; i<n_data; i++) {
+		for (i=0; i<count; i++) {
 			if (data[i] != readback[i]) {
 				done = 0;
 				break;

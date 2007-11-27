@@ -27,7 +27,10 @@ static int fileseq_cycle(mce_acq_t *acq, fileseq_t *f, int this_frame)
 	sprintf(f->filename, f->format, new_idx);
 	f->fout = fopen64(f->filename, "a");
 
-	if (f->fout == NULL) return -1;
+	if (f->fout == NULL) {
+		sprintf(acq->errstr, "Failed to open file '%s'", f->filename);
+		return -1;
+	}
 
 	return 0;
 }
@@ -96,8 +99,10 @@ static int flatfile_init(mce_acq_t *acq)
 	flatfile_t *f = (flatfile_t*)acq->action_data;
 	if (f->fout == NULL) {
 		f->fout = fopen64(f->filename, "a");
-		if (f->fout == NULL)
+		if (f->fout == NULL) {
+			sprintf(acq->errstr, "Failed to open file '%s'", f->filename);
 			return -1;
+		}
 	}
 	return 0;
 }
