@@ -268,6 +268,9 @@ int data_qt_configure( int qt_interval )
 				  ((long)frames.base_busaddr      ) & 0xffff,
 				  ((long)frames.base_busaddr >> 16) & 0xffff);
 	
+	if (!err)
+		err = data_qt_enable(1);
+
 	return err;
 }
 

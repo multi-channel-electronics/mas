@@ -92,6 +92,15 @@ struct mce_acq_struct {
 	char errstr[MCE_LONG];
 
  	int options;
+
+	/* Cached mce info */
+	int know_ret_dat;
+	int know_ret_dat_s;
+	
+	mce_param_t ret_dat;
+	mce_param_t ret_dat_s;
+	int last_n_frames;
+	
 };
 
 
@@ -133,9 +142,8 @@ struct mce_acq_struct {
 
 /* char *mce_error_string(int error); */
 
-int mcedata_acq_reset(mce_acq_t *acq, mcedata_t *mcedata);
-
-int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int rows_reported);
+int mcedata_acq_setup(mce_acq_t *acq, mcedata_t *mcedata,
+		      int options, int cards, int rows_reported);
 
 int mcedata_acq_go(mce_acq_t *acq, int n_frames);
 

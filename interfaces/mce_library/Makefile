@@ -8,7 +8,7 @@ LIBNAME = lib$(LIB).a
 LIBHDR  = $(LIB).h
 
 DSP_DIR = ../driver
-OBJECTS = cmd.o data.o data_thread.o config.o files.o frame.o
+OBJECTS = cmd.o data.o acq.o data_thread.o config.o files.o frame.o
 HEADERS = $(LIBHDR) mcedata.h mceconfig.h
 
 INCLUDE += -I. -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I$(DSP_DIR)

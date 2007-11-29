@@ -186,9 +186,6 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	// Zero the acquisition structure
-	mcedata_acq_reset(&acq, &mcedata);
-
 	if (mceconfig_load(options.config_file, &mce)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
 			options.config_file);
@@ -470,7 +467,7 @@ int prepare_outfile(char *errmsg, int file_sequencing)
 	}
 
 	// Basic init, including framesize -> driver.
-	if (mcedata_acq_setup(&acq, 0, my_acq.cards, my_acq.rows) != 0) {
+	if (mcedata_acq_setup(&acq, &mcedata, 0, my_acq.cards, my_acq.rows) != 0) {
 		sprintf(errmsg, "Could not configure acquisition");
 		return -1;
 	}
@@ -503,9 +500,7 @@ int do_acq_compat(char *errmsg)
 	if (learn_acq_params(1, 1)!=0)
 		return -1;
 	
-	mcedata_acq_reset(&acq, &mcedata);
-
-	if (mcedata_acq_setup(&acq, 0, my_acq.cards, my_acq.rows) != 0) {
+	if (mcedata_acq_setup(&acq, &mcedata, 0, my_acq.cards, my_acq.rows) != 0) {
 		sprintf(errmsg, "Could not setup acq structure.\n");
 		return -1;
 	}
