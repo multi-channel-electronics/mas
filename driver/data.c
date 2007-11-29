@@ -533,6 +533,9 @@ int data_force_escape()
 	return 0;
 }
 
+
+#define SUBNAME "data_alloc: "
+
 int data_reset()
 {
 	frames.head_index = 0;
@@ -540,8 +543,20 @@ int data_reset()
 	frames.partial = 0;
 	frames.flags = 0;
 	frames.dropped = 0;
+	
+	if (frames.data_mode == DATAMODE_QUIET) {
+		if (data_qt_cmd(DSP_QT_TAIL  , frames.tail_index, 0) ||
+		    data_qt_cmd(DSP_QT_HEAD  , frames.head_index, 0) ) {
+			PRINT_ERR(SUBNAME
+				  "Could not reset DSP QT indexes; disabling.");
+			data_qt_enable(0);
+		}
+	}
+
 	return 0;
 }
+
+#undef SUBNAME
 
 
 int data_proc(char *buf, int count)

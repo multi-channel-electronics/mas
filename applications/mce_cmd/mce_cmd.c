@@ -146,7 +146,6 @@ mce_param_t ret_dat_s;
 mce_param_t num_rows_reported;
 
 int  preload_mce_params();
-int  calculate_frame_size();
 
 int  bit_count(int k);
 
@@ -434,12 +433,6 @@ int learn_acq_params(int get_frame_count, int get_rows)
 	return 0;
 }
 
-int calculate_frame_size()
-{
-	my_acq.frame_size = FRAME_HEADER + FRAME_FOOTER +
-		my_acq.rows * FRAME_COLUMNS * bit_count(my_acq.cards);
-	return my_acq.frame_size;
-}
 
 int translate_card_string(char *s)
 {	
@@ -477,8 +470,7 @@ int prepare_outfile(char *errmsg, int file_sequencing)
 	}
 
 	// Basic init, including framesize -> driver.
-	if (mcedata_acq_setup(&acq, 0, my_acq.cards,
-			      my_acq.frame_size) != 0) {
+	if (mcedata_acq_setup(&acq, 0, my_acq.cards, my_acq.rows) != 0) {
 		sprintf(errmsg, "Could not configure acquisition");
 		return -1;
 	}
@@ -511,11 +503,9 @@ int do_acq_compat(char *errmsg)
 	if (learn_acq_params(1, 1)!=0)
 		return -1;
 	
-	calculate_frame_size();
-	
 	mcedata_acq_reset(&acq, &mcedata);
 
-	if (mcedata_acq_setup(&acq, 0, my_acq.cards, my_acq.frame_size) != 0) {
+	if (mcedata_acq_setup(&acq, 0, my_acq.cards, my_acq.rows) != 0) {
 		sprintf(errmsg, "Could not setup acq structure.\n");
 		return -1;
 	}
@@ -625,9 +615,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 					break;
 				}
 
-				// Calculate frame size
-				calculate_frame_size();
-				
 				ret_val = prepare_outfile(errmsg, 0);
 				if (ret_val)
 					break;
@@ -744,9 +731,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				break;
 			}
 
-			// Calculate frame size
-			calculate_frame_size();
-
 			ret_val = prepare_outfile(errmsg, 0);
 			break;
 
@@ -770,8 +754,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				break;
 			}
 
-			calculate_frame_size();
-			
 			ret_val = prepare_outfile(errmsg, 1);
 			break;
 

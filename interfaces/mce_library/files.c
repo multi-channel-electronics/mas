@@ -279,3 +279,26 @@ void mcedata_fileseq_destroy(mce_acq_t *acq)
 	free(f);
 	acq->action_data = 0;
 }
+
+
+int mcedata_rambuff_create(mce_acq_t *acq, rambuff_callback_t callback)
+{
+	rambuff_t *f = (rambuff_t*)malloc(sizeof(rambuff_t));
+	if (f==NULL) return -1;
+
+	f->callback = callback;
+
+	memcpy(&(acq->actions), &rambuff_actions, sizeof(rambuff_actions));
+	acq->action_data = (unsigned long)f;
+
+	return 0;
+}
+      
+void mcedata_rambuff_destroy(mce_acq_t *acq)
+{
+	rambuff_t *f = (rambuff_t*)acq->action_data;
+	free(f);
+
+	memset(&(acq->actions), 0, sizeof(acq->actions));
+	acq->action_data = 0;
+}

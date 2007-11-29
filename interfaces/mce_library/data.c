@@ -21,6 +21,13 @@
 /* #define LOG_LEVEL_REP_ER  LOGGER_INFO */
 
 
+// We'll have to generalize this if the frame structure ever changes.
+
+#define FRAME_HEADER 43
+#define FRAME_COLUMNS 8 /* per card */
+#define FRAME_FOOTER 1
+
+
 /* Data connection */
 
 int mcedata_init(mcedata_t *mcedata, int mcecmd_handle, const char *dev_name)
@@ -48,12 +55,24 @@ int mcedata_acq_reset(mce_acq_t *acq, mcedata_t *mcedata)
 	return 0;
 }
 
+static int bit_count(int k)
+{
+        int i = 32;
+        int count = 0;
+        while (i-- > 0) {
+                count += (k&1);
+                k = k >> 1;
+        }
+        return count;
+}
 
-int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size)
+
+int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int rows_reported)
 {
 	int ret_val = 0;
 
-	acq->frame_size = frame_size;
+	acq->frame_size = rows_reported * FRAME_COLUMNS * bit_count(cards) + 
+		FRAME_HEADER + FRAME_FOOTER;
 	acq->cards = cards;
 	acq->options = options;
 
@@ -64,7 +83,6 @@ int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size)
  		fprintf(stdout, "Could not set data size [%i]\n", ret_val);
 		return -1;
 	}
-
 	return 0;
 }
 

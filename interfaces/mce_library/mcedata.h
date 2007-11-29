@@ -49,6 +49,7 @@
 #define MCEDATA_RC2               (1 <<  1)
 #define MCEDATA_RC3               (1 <<  2)
 #define MCEDATA_RC4               (1 <<  3)
+#define MCEDATA_RCS               0x000f
 
 #define MCEDATA_CARDS             4
 #define MCEDATA_COMBOS            (1 << MCEDATA_CARDS)
@@ -134,7 +135,7 @@ struct mce_acq_struct {
 
 int mcedata_acq_reset(mce_acq_t *acq, mcedata_t *mcedata);
 
-int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int frame_size);
+int mcedata_acq_setup(mce_acq_t *acq, int options, int cards, int rows_reported);
 
 int mcedata_acq_go(mce_acq_t *acq, int n_frames);
 
