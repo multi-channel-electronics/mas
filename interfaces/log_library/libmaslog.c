@@ -171,7 +171,7 @@ int logger_close(logger_t *logger)
 
 	int ret = close(fd);
 	if (ret!=0) {
-		fprintf(stderr, SUBNAME "close error, errno=%i\n");
+		fprintf(stderr, SUBNAME "close error, errno=%i\n", ret);
 	}
 
 	return ret;

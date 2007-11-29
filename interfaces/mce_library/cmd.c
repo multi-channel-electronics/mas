@@ -333,6 +333,9 @@ int mce_write_block(int handle, const mce_param_t *param,
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
 
+	if (count < 0)
+		count = param->param.count;
+
 	error = mce_load_command(&cmd, MCE_WB, 
 				 param->card.id, param->param.id,
 				 count, data);

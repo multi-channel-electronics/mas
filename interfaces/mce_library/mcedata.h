@@ -141,6 +141,11 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames);
 
 /* Frame data handlers */
 
+typedef int (*rambuff_callback_t)(int frame_size, u32 *buffer);
+
+int mcedata_rambuff_create(mce_acq_t *acq, rambuff_callback_t callback);
+void mcedata_rambuff_destroy(mce_acq_t *acq);
+
 int mcedata_flatfile_create(mce_acq_t *acq, const char *filename);
 void mcedata_flatfile_destroy(mce_acq_t *acq);
 

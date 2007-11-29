@@ -1,32 +1,37 @@
+default: all
+
+BASE := ../
+include $(BASE)Makefile.children
+
 LIB     = mcecmd
 LIBNAME = lib$(LIB).a
 LIBHDR  = $(LIB).h
-DESTDIR = /usr/local/share/libmcedsp/
-LINKDIR = /usr/lib/
-LINCDIR = /usr/include/
-
-CC = gcc
 
 DSP_DIR = ../driver
 OBJECTS = cmd.o data.o data_thread.o config.o files.o frame.o
 HEADERS = $(LIBHDR) mcedata.h mceconfig.h
 
-INCLUDE += -I. -I../../include -I../log_library
-LIBRARY += -L../log_libary
+INCLUDE += -I. -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I$(DSP_DIR)
 
-CFLAGS += -O2 -Wall -I$(DSP_DIR) $(LIBRARY) $(INCLUDE) -DUSE_CFG
+CFLAGS += -O2 -Wall $(INCLUDE)
 
-default: $(LIBNAME)
+CC = gcc
 
 all: $(LIBNAME)
 
-install: $(LIBNAME) $(LIBHDR)
-	-mkdir $(DESTDIR)
-	cp $(LIBNAME) $(HEADERS) $(DESTDIR)
-	-ln -s $(DESTDIR)$(LIBNAME) $(LINKDIR)$(LIBNAME)
-	-ln -s $(DESTDIR)$(LIBHDR) $(LINCDIR)$(LIBHDR)
-	-ln -s $(DESTDIR)mcedata.h $(LINCDIR)mcedata.h
-	-ln -s $(DESTDIR)mceconfig.h $(LINCDIR)mceconfig.h
+INSTALL_TARGET=$(LIBNAME)
+include $(MAKERULES)Makefile.install_rule_lib
+
+INSTALL_TARGET=mcecmd.h
+include $(MAKERULES)Makefile.install_rule_inc
+
+INSTALL_TARGET=mcedata.h
+include $(MAKERULES)Makefile.install_rule_inc
+
+INSTALL_TARGET=mceconfig.h
+include $(MAKERULES)Makefile.install_rule_inc
+
+install: install__$(LIBNAME) install__mcecmd.h install__mcedata.h install__mceconfig.h
 
 $(LIBNAME) : $(OBJECTS) $(HEADERS)
 	$(AR) rs $@ $(OBJECTS)
@@ -49,6 +54,9 @@ cfgtest: cfgtest.c config.o
 docs:
 	doxygen
 
-clean:
-	rm -f core.* *~ *.c~ *.h~ core.* *.o *.a
+clean: tidy
+	rm $(LIBNAME)
+
+tidy:
+	rm -f core.* *~ *.c~ *.h~ core.* *.o #*#
 

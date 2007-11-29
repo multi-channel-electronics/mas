@@ -1,27 +1,19 @@
-LIBNAME = libmcedsp.a
-HDRNAME = mcedsp.h
-DESTDIR = /usr/local/share/libmcedsp/
-LINKDIR = /usr/lib/
-LINCDIR = /usr/include/
+default: all
 
-CC = gcc
+BASE := ../
+include $(BASE)Makefile.children
 
-INCLUDE += -I ../../include -I.
+LIB     = mcedsp
+LIBNAME = lib$(LIB).a
+LIBHDR  = $(LIB).h
+
+INCLUDE += -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I.
 
 CFLAGS += -O2 -Wall -fPIC $(INCLUDE)
 
-default: $(LIBNAME)
+CC = gcc
 
 all: $(LIBNAME)
-
-install: $(LIBNAME)
-	-mkdir $(DESTDIR)
-	cp $(LIBNAME) $(HDRNAME) $(DESTDIR)
-	-ln -s $(DESTDIR)$(LIBNAME) $(LINKDIR)$(LIBNAME)
-	-ln -s $(DESTDIR)$(HDRNAME) $(LINCDIR)$(HDRNAME)
-
-shared : dsp_library.o
-	$(LD) -shared -soname libmcedsp.so.1 -o libmcedsp.so.1.0 -lc dsp_library.o
 
 $(LIBNAME): dsp_library.o
 	$(AR) rs $@ $<
@@ -29,5 +21,19 @@ $(LIBNAME): dsp_library.o
 dsp_library.o: dsp_library.c $(HDRNAME)
 	$(CC) $(CFLAGS) dsp_library.c -c
 
-clean:
-	rm -f core.* *~ *.c~ *.h~ core.* *.o *.a
+
+INSTALL_TARGET=$(LIBNAME)
+include $(MAKERULES)Makefile.install_rule_lib
+
+INSTALL_TARGET=$(LIBHDR)
+include $(MAKERULES)Makefile.install_rule_inc
+
+install: install__$(LIBNAME) install__$(LIBHDR)
+
+
+
+clean: tidy
+	rm $(LIBNAME)
+
+tidy:
+	-rm -f core.* *~ *.c~ *.h~ core.* *.o *.a

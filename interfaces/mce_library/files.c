@@ -1,12 +1,15 @@
 #define _GNU_SOURCE
 
-/* File sequencing data handling module */
+/* File sequencing, flat file, ram-based data handling module */
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "mcecmd.h"
 #include "mcedata.h"
+
+
+/* File sequencing structure and operations */
 
 typedef struct fileseq_struct {
 	char filename[MCE_LONG];
@@ -85,6 +88,9 @@ mce_frame_actions_t fileseq_actions = {
 	.flush = fileseq_flush,
 };
 
+
+/* Flat file structure and operations */
+
 typedef struct flatfile_struct {
 
 	char filename[MCE_LONG];
@@ -145,6 +151,63 @@ mce_frame_actions_t flatfile_actions = {
 	.post_frame = flatfile_post,
 	.flush = flatfile_flush,
 };
+
+
+/* Ram buffer structure and operations */
+
+typedef int (*rambuff_callback)(int frame_size, u32 *buffer);
+
+typedef struct rambuff_struct {
+
+	int frame_size;
+	u32 *buffer;
+	
+	rambuff_callback_t callback;
+
+} rambuff_t;
+
+
+static int rambuff_init(mce_acq_t *acq)
+{
+	rambuff_t *f = (rambuff_t*)acq->action_data;
+	int b_size = acq->frame_size*sizeof(f->buffer);
+	if (f->buffer != NULL) free(f->buffer);
+	f->buffer = (u32*) malloc(b_size);
+	if (f->buffer == NULL) {
+		sprintf(acq->errstr, "rambuff could not allocate %i bytes", b_size);
+		return -1;
+	}
+	return 0;
+}
+
+static int rambuff_cleanup(mce_acq_t *acq)
+{
+	rambuff_t *f = (rambuff_t*)acq->action_data;
+	if (f->buffer != NULL) free(f->buffer);
+	f->buffer = NULL;
+
+	return 0;
+}
+
+static int rambuff_post(mce_acq_t *acq, int frame_index, u32 *data)
+{
+	rambuff_t *f = (rambuff_t*)acq->action_data;
+
+	if (f->callback != NULL) {
+		f->callback(acq->frame_size, data);
+	}
+
+	return 0;
+}
+
+mce_frame_actions_t rambuff_actions = {
+	.init = rambuff_init,
+	.cleanup = rambuff_cleanup,
+	.pre_frame = NULL,
+	.post_frame = rambuff_post,
+};
+
+
 
 
 

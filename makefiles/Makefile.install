@@ -7,7 +7,8 @@ MAS_GROUP ?= mce
 MAS_BIN ?= $(MAS_DIR)bin/
 
 mas_base_install:
-	mkdir -p $(MAS_DIR)
+	mkdir -p $(MAS_INSTALL_BIN)
+	mkdir -p $(MAS_INSTALL_LIB)
+	mkdir -p $(MAS_INSTALL_INC)
 
-mas_bin_install:
-	mkdir -p $(MAS_BIN)
+mas_bin_install: mas_base_install

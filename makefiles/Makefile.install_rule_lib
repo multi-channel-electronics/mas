@@ -1,0 +1,8 @@
+# Create install rule for a binary target
+
+install__$(INSTALL_TARGET): mas_base_install
+	cp $(@:install__%=%) $(MAS_INSTALL_LIB)
+	chown $(MAS_USER) $(MAS_INSTALL_LIB)$(@:install__%=%)
+	chgrp $(MAS_GROUP) $(MAS_INSTALL_LIB)$(@:install__%=%)
+	-rm $(MAS_SYS_LIB)$(@:install__%=%)
+	ln -s $(MAS_INSTALL_LIB)$(@:install__%=%) $(MAS_SYS_LIB)
