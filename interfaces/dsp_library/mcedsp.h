@@ -53,6 +53,8 @@ int dsp_write_word_X(int handle, int address, u32 value);
 int dsp_write_word_Y(int handle, int address, u32 value);
 int dsp_write_word_P(int handle, int address, u32 value);
 
+int dsp_version(int handle);
+
 int dsp_reset(int handle);
 
 int dsp_start_application(int handle, int data);

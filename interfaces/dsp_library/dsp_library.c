@@ -146,6 +146,17 @@ int dsp_send_command(int handle, dsp_command *cmd)
 	return dsp_send_command_now(handle, cmd);
 }
 
+int dsp_version(int handle)
+{
+	CHECK_HANDLE(handle);
+	CHECK_OPEN(handle);
+  
+	dsp_command cmd = {DSP_VER, {0, 0, 0 }};
+	return dsp_send_command_now(handle, &cmd);
+}
+
+
+
 int dsp_read_word(int handle, dsp_memory_code mem, int address)
 {
 	CHECK_HANDLE(handle);
