@@ -10,6 +10,7 @@
 "  -i                     interactive mode, don't exit on errors\n"\
 "  -q                     quiet mode, only print errors or output data\n"\
 "  -p                     prefix-supression, don't print line number\n"\
+"  -e                     echo mode, print each command as well as response\n"\
 "\n"\
 "  -d <device file>       choose a particular mce device\n"\
 "  -c <config file>       choose a particular mce config file\n"\
@@ -26,7 +27,7 @@ int process_options(int argc, char **argv)
 {
 	char *s;
 	int option;
-	while ( (option = getopt(argc, argv, "?hiqpf:c:d:C:o:xag:")) >=0) {
+	while ( (option = getopt(argc, argv, "?hiqepf:c:d:C:o:xag:")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -41,6 +42,10 @@ int process_options(int argc, char **argv)
 
 		case 'q':
 			options.nonzero_only = 1;
+			break;
+
+		case 'e':
+			options.echo = 1;
 			break;
 
 		case 'p':

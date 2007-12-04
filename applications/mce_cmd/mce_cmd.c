@@ -686,7 +686,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		}
 		
 		if (err!=0 && errmsg[0] == 0) {
-			sprintf(errmsg, "mce library error %#08x", err);
+			sprintf(errmsg, "mce library error %#08x : %s", err,
+				mce_error_string(err));
 			ret_val = -1;
 		} 
 	} else {
