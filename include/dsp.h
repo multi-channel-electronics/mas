@@ -13,6 +13,7 @@
 typedef enum 
 {
 
+	DSP_VER  = 0x00564552,   // "VER" Version query
 	DSP_RDM  = 0x0052444d,   // "RDM" READ memory 
 	DSP_WRM  = 0x0057524d,   // "WRM" WRITE memory 
 	DSP_GOA  = 0x00474f41,   // "GOA" Application GO 
