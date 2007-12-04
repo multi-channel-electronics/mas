@@ -21,6 +21,7 @@ int handle;
 
 enum {
 	ENUM_COMMAND_LOW,
+	COMMAND_VER,
 	COMMAND_RDM,
 	COMMAND_WRM,
 	COMMAND_GOA,
@@ -70,6 +71,7 @@ cmdtree_opt_t qt_opts[] = {
 };
 
 cmdtree_opt_t root_opts[] = {
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "VERS"     , 0,0, COMMAND_VER, mem_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "READ"     , 2,2, COMMAND_RDM, mem_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WRITE"    , 3,3, COMMAND_WRM, mem_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "START"    , 0,0, COMMAND_GOA, integer_opts},
@@ -273,6 +275,14 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		switch( tokens[0].value ) {
 		
+		case COMMAND_VER:
+			err = dsp_version(handle);
+			if (err >= 0) {
+				sprintf(errmsg, "version = %#x", err);
+				err = 0;
+			}
+			break;
+    
 		case COMMAND_RDM:
 			err = dsp_read_word(handle, tokens[1].value, tokens[2].value);
 			if (err >= 0) {
