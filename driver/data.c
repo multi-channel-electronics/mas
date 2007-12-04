@@ -24,9 +24,7 @@
 #define DSP_INFORM_RATE    10 /* Hz */
 #define DSP_INFORM_COUNTS  (50000000 / DSP_INFORM_RATE) 
 
-
 frame_buffer_t frames;
-
 
 
 /**************************************************************************
@@ -605,18 +603,50 @@ int data_proc(char *buf, int count)
  *                                                                        *
  **************************************************************************/
 
-void* data_init(int mem_size, int data_size, int borrow)
+#define SUBNAME "data_init: "
+
+void* data_init(int dsp_version, int mem_size, int data_size, int borrow)
 {
+	void *addr = NULL;
+
 	init_waitqueue_head(&frames.queue);
 
 	tasklet_init(&frames.grant_tasklet,
 		     data_grant_task, 0);
 
+	
+	addr = data_alloc(mem_size, data_size, borrow);
+	if (addr==NULL) return NULL;
+
 	data_reset();
 
-	return data_alloc(mem_size, data_size, borrow);
+	switch (dsp_version) {
+	case 0:
+		PRINT_ERR(SUBNAME 
+			  "DSP code is old, you'll get checksum errors.\n");
+		break;
+
+	case DSP_U0103:
+		PRINT_ERR(SUBNAME "DSP code wants to be upgraded to U0104!\n");
+		break;
+		
+	case DSP_U0104:
+		if (data_qt_configure(1)) 
+			return NULL;
+		break;
+		
+	default:
+		PRINT_ERR(SUBNAME
+			  "DSP code not recognized, attempting quiet transfer mode...\n");
+		if (data_qt_configure(1))
+			return NULL;
+		break;
+	}
+
+	return addr;
 }
 
+#undef SUBNAME
 
 int data_cleanup()
 {

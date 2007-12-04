@@ -5,8 +5,13 @@
 #include "dsp_errors.h"
 
 #define DSPDEV_NAME "mce_dsp"
-
 #define DSP_DEFAULT_TIMEOUT (HZ*50/100)
+
+
+/* DSP code versions */
+
+#define DSP_U0103          0x550103
+#define DSP_U0104          0x550104
 
 typedef int (*dsp_callback)(int, dsp_message*);
 

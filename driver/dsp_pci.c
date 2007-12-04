@@ -50,11 +50,12 @@ struct dsp_vector {
 	enum dsp_vector_type type;
 };
 
-#define NUM_DSP_CMD 13
+#define NUM_DSP_CMD 14
 
 static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_WRM, 0x8079, VECTOR_STANDARD},
 	{DSP_RDM, 0x807B, VECTOR_STANDARD},
+	{DSP_VER, 0x807B, VECTOR_STANDARD},
 	{DSP_GOA, 0x807D, VECTOR_STANDARD},
 	{DSP_STP, 0x807F, VECTOR_STANDARD},
 	{DSP_RST, 0x8081, VECTOR_STANDARD},

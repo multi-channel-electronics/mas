@@ -14,7 +14,7 @@
 typedef int (*mce_callback)(int err, mce_reply* rep);
 
 
-int mce_init_module(void);
+int mce_init_module(int dsp_version);
 
 int mce_cleanup(void);
 

@@ -53,6 +53,7 @@ struct dsp_control {
 	struct timer_list tim;
 
 	dsp_state_t state;
+	int version;
 
 	dsp_callback callback;
 
@@ -357,6 +358,37 @@ int dsp_proc(char *buf, int count)
  *  Initialization and clean-up
  */
 
+
+#define SUBNAME "dsp_query_version: "
+
+int dsp_query_version(void)
+{
+	dsp_command cmd = { DSP_VER, {0,0,0} };
+	dsp_message msg;
+	char version[8] = "<=U0103";
+	
+	ddat.version = 0;
+	if ( dsp_send_command_wait(&cmd, &msg) != 0 )
+		return -1;
+
+	ddat.version = DSP_U0103;
+
+	if (msg.reply == DSP_ACK) {
+	
+		version[0] = msg.data >> 16;
+		sprintf(version+1, "%02i%02i",
+			(msg.data >> 8) & 0xff, msg.data & 0xff);
+
+		ddat.version = msg.data;
+	}
+		
+	PRINT_ERR(SUBNAME " discovered PCI card DSP code version %s\n", version);
+	return 0;
+}
+
+#undef SUBNAME
+
+
 #define SUBNAME "cleanup_module: "
 
 void driver_cleanup(void)
@@ -409,12 +441,17 @@ inline int driver_init(void)
 	}
 #endif
 
+	if (dsp_query_version()) {
+		err = -1;
+		goto out;
+	}
+
 	if (dsp_ops_init()) {
 		err = -1;
 		goto out;
 	}
 	
-	if (mce_init_module()) {
+	if (mce_init_module(ddat.version)) {
 		err = -1;
 		goto out;
 	}

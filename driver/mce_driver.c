@@ -753,7 +753,7 @@ int mce_proc(char *buf, int count)
 
 #define SUBNAME "mce_init_module: "
 
-int mce_init_module()
+int mce_init_module(int dsp_version)
 {
 	int err = 0;
 	void *borrowed;
@@ -761,7 +761,7 @@ int mce_init_module()
 	mdat.initialized = 1;
 
 	//Init data module
-	borrowed = data_init(FRAME_BUFFER_SIZE, 5424, 4096);
+	borrowed = data_init(dsp_version, FRAME_BUFFER_SIZE, 5424, 4096);
 	if (borrowed==NULL) {
 		PRINT_ERR(SUBNAME "mce data module init failure\n");
 		err = -ENOMEM;

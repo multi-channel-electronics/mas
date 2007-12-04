@@ -103,7 +103,7 @@ extern frame_buffer_t frames;
 
 /* Prototypes */
 
-void* data_init(int mem_size, int data_size, int borrow);
+void* data_init(int dsp_version, int mem_size, int data_size, int borrow);
 int   data_cleanup(void);
 
 
