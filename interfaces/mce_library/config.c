@@ -238,6 +238,8 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 	c->error_bits = 0;
 	c->id = -1;
 	c->card_count = 1;
+	c->flags = 0;
+	int status = 1;
 	
 	// Update from key, maybe
 	if (cfg == NULL) return -1;
@@ -247,6 +249,10 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 	get_int((int*)&c->error_bits, cfg, "error_bits");
 	get_int(&c->id, cfg, "id");
 	get_int(&c->card_count, cfg, "card_count");
+	get_int(&status, cfg, "status");
+	if (!status) {
+		c->flags |= MCE_PARAM_NOSTAT;
+	}
 
 	return 0;
 }
@@ -280,15 +286,14 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	p->id = -1;
 	p->type = 0;
 	p->count = 1;
-	p->id_count = 1;
 	p->card_count = 1;
 	p->flags = 0;
 	p->name[0] = 0;
+	int status = 1;
 
 	get_string(p->name, cfg, "name");
 	get_int(&p->id, cfg, "id");
 	get_int(&p->count, cfg, "count");
-	get_int(&p->id_count, cfg, "id_count");
 	get_int(&p->card_count, cfg, "card_count");
 
 	if (get_int((int*)&p->min, cfg, "min")==0)
@@ -298,6 +303,11 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	p->defaults = config_setting_get_member(cfg, "defaults");
 	if (p->defaults != NULL)
 		p->flags |= MCE_PARAM_DEF;
+
+	get_int(&status, cfg, "status");
+	if (!status)
+		p->flags |= MCE_PARAM_NOSTAT;
+		
 
 	return 0;
 }

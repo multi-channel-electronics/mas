@@ -16,9 +16,6 @@
 
 /* mce.h defines the structures used by the dsp driver */
 
-#define MCE_SHORT 32
-#define MCE_LONG 1024
-
 #include <mce.h>
 #include <mceconfig.h>
 #include <mce_errors.h>

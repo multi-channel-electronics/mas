@@ -17,8 +17,6 @@
 #include <stdio.h>
 #include <libconfig.h>
 #include <mce.h>
-#include <mcecmd.h>
-
 
 
 #define MCE_CMD_INT 0
@@ -81,7 +79,6 @@ typedef struct {
 	int type;
 
 	int count;
-	int id_count;
 	int card_count;
 
 	int flags;
@@ -100,7 +97,8 @@ typedef struct {
 	char name[MCE_SHORT];
 	char type[MCE_SHORT];
 	u32 error_bits;
-	
+
+	int flags;
 	int card_count;
 
 } card_t;

@@ -9,6 +9,11 @@ typedef __u32 u32;
 typedef __u16 u16;
 #endif
 
+/* String lengths... */
+
+#define MCE_SHORT 32
+#define MCE_LONG 1024
+
 
 /* The preamble, for reference */
 
