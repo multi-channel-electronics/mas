@@ -47,6 +47,9 @@ void stat_item(unsigned long data, mce_param_t *p)
 	    (p->param.flags & MCE_PARAM_NOSTAT))
 		return;
 
+	if (p->param.type != MCE_CMD_MEM)
+		return;
+
 	fprintf(s->out, "<RB %s %s>", p->card.name, p->param.name);
 	
 	// Then do a read...

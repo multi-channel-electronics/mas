@@ -19,9 +19,10 @@
 #include <mce.h>
 
 
-#define MCE_CMD_INT 0
+#define MCE_CMD_MEM 0
 #define MCE_CMD_CMD 1
 #define MCE_CMD_RST 2
+#define MCE_CMD_OTH 4
 
 #define MCE_PARAM_MIN    0x00000001 /* Parameter has minimum */
 #define MCE_PARAM_MAX    0x00000002 /* Parameter has maximum */

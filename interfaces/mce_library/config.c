@@ -42,6 +42,28 @@ get_string_elem(char *dest, const config_setting_t *parent, const char *name, in
 static int
 count_elem(const config_setting_t *parent, const char *name);
 
+/* String table functionality */
+
+typedef struct {
+	int id;
+	char *name;
+} string_table_t;
+
+static
+int st_get_id(const string_table_t *st, const char *name, int *id);
+
+static
+int st_index(const string_table_t *st, const char *name);
+
+
+/* String tables */
+
+string_table_t param_types_st[] = {
+	{ MCE_CMD_MEM, "mem" },
+	{ MCE_CMD_CMD, "cmd" },
+	{ MCE_CMD_RST, "rst" },
+	{ -1, NULL }
+};
 
 /*! \fn mceconfig_load(char *filename, mceconfig_t **mce)
  *
@@ -284,7 +306,7 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	// Fill with defaults
 	p->cfg = cfg;
 	p->id = -1;
-	p->type = 0;
+	p->type = MCE_CMD_MEM;
 	p->count = 1;
 	p->card_count = 1;
 	p->flags = 0;
@@ -303,6 +325,14 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	p->defaults = config_setting_get_member(cfg, "defaults");
 	if (p->defaults != NULL)
 		p->flags |= MCE_PARAM_DEF;
+
+	char type_str[MCE_SHORT];
+	if ((get_string(type_str, cfg, "type") == 0) &&
+	    (st_get_id(param_types_st, type_str, &p->type) != 0)) {
+		fprintf(stderr,
+			"parameter '%s' has unrecognized type specifier '%s'\n",
+			p->name, type_str);
+	}
 
 	get_int(&status, cfg, "status");
 	if (!status)
@@ -519,3 +549,22 @@ int count_elem(const config_setting_t *parent, const char *name)
 	return count;
 }
 
+/* String table functions */
+
+int st_index(const string_table_t *st, const char *name)
+{
+	int i = 0;
+	while (st[i].name != NULL)
+		if (strcmp(name, st[i++].name)==0)
+			return i-1;
+	return -1;
+}
+
+int st_get_id(const string_table_t *st, const char *name, int *id)
+{
+	int index = st_index(st, name);
+	if (index < 0) return -1;
+	
+	*id = st[index].id;
+	return 0;
+}
