@@ -23,6 +23,7 @@ int das_crawler(options_t *options, crawler_t *crawler)
 	}
 	memset(das, 0, sizeof(*das));
 	das->options = options;
+	das->echo_only = 0;
 
 	crawler->init = das_init;
 	crawler->cleanup = das_cleanup;
@@ -71,6 +72,7 @@ int  das_item(unsigned user_data, const mce_param_t *p)
 
 	fprintf(das->out, "<RB %s %s>", p->card.name, p->param.name);
 	if (das->echo_only) {
+		
 		fprintf(das->out, "\n");
 		return 0;
 	}

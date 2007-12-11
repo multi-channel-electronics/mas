@@ -64,6 +64,7 @@ int main(int argc, char **argv)
 	crawler_t crawler;
 
 	switch (options.mode) {
+
 	case CRAWLER_DAS:
 		das_crawler(&options, &crawler);
 		break;
