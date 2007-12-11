@@ -23,7 +23,7 @@
 //"  -a <filename> <rc>     configure acquisition\n"
 //"  -g <frames>            go now! (only valid with -a option)\n"
 
-int process_options(int argc, char **argv)
+int process_options(options_t *options, int argc, char **argv)
 {
 	char *s;
 	int option;
@@ -37,54 +37,54 @@ int process_options(int argc, char **argv)
 			return -1;
 
 		case 'i':
-			options.interactive = 1;
+			options->interactive = 1;
 			break;
 
 		case 'q':
-			options.nonzero_only = 1;
+			options->nonzero_only = 1;
 			break;
 
 		case 'e':
-			options.echo = 1;
+			options->echo = 1;
 			break;
 
 		case 'p':
-			options.no_prefix = 1;
+			options->no_prefix = 1;
 			break;
 
 		case 'f':
-			strcpy(options.batch_file, optarg);
-			options.batch_now = 1;
+			strcpy(options->batch_file, optarg);
+			options->batch_now = 1;
 			break;
 
 		case 'c':
-			strcpy(options.config_file, optarg);
+			strcpy(options->config_file, optarg);
 			break;
 
 		case 'd':
-			strcpy(options.device_file, optarg);
+			strcpy(options->cmd_device, optarg);
 			break;
 
 		case 'o':
-			strcpy(options.acq_path, optarg);
+			strcpy(options->acq_path, optarg);
 			break;
 
 		case 'C':
-			options.das_compatible = 1;
+			options->das_compatible = 1;
 			strcpy(my_acq.filename, optarg);
 			break;
 
 /* 		case 'g': */
-/* 			options.acq_now = 1; */
-/* 			options.acq_frames = strtol(optarg, NULL, 0); */
+/* 			options->acq_now = 1; */
+/* 			options->acq_frames = strtol(optarg, NULL, 0); */
 /* 			break; */
 
 		case 'x':
-			s = options.cmd_command;
+			s = options->cmd_command;
 			while (optind < argc) {
 				s += sprintf(s, "%s ", argv[optind++]);
 			}
-			options.cmd_now = 1;
+			options->cmd_now = 1;
 			break;
 
 		default:

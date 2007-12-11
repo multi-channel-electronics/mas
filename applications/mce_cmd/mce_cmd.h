@@ -17,8 +17,6 @@ enum { ERR_MEM=1,
        ERR_OPT=2,
        ERR_MCE=3 };
 
-extern struct option_struct options;
-
 // This structure is used to cache data which eventually constructs acq.
 
 struct my_acq_struct {

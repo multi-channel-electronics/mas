@@ -121,18 +121,18 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 	
-struct option_struct options = {
-	display: SPECIAL_HEX,
-	device_file: DEFAULT_DEVICE,
-	config_file: DEFAULT_XML,
-};
+
+// Lazy old globals...
 
 int handle = -1;
-int  command_now = 0;
-int  interactive = 0;
 char *line;
-
 char errstr[LINE_LEN];
+
+options_t options = {
+	cmd_device: DEFAULT_DEVICE,
+	data_device: DEFAULT_DATA,
+	config_file: DEFAULT_XML,
+};
 
 mcedata_t mcedata;
 mce_acq_t acq;
@@ -166,21 +166,21 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	if (process_options(argc, argv)) {
+	if (process_options(&options, argc, argv)) {
 		err = ERR_OPT;
 		goto exit_now;
 	}
 
-	handle = mce_open(options.device_file);
+	handle = mce_open(options.cmd_device);
 	if (handle<0) {
 		fprintf(ferr, "Could not open mce device '%s'\n",
-			options.device_file);
+			options.cmd_device);
 		err = ERR_MCE;
 		goto exit_now;
 	}
 
-	// Ready data thing
-	if (mcedata_init(&mcedata, handle, DEFAULT_DATA)!=0) {
+	// Ready data
+	if (mcedata_init(&mcedata, handle, options.data_device)!=0) {
 		fprintf(ferr, "No data device connection.\n");
 		err = ERR_MCE;
 		goto exit_now;
@@ -572,11 +572,12 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				mceconfig_cfg_card ((config_setting_t*)tokens[1].value,
 						    &mcep.card);
 			} else {
-				mcep.card.id = tokens[1].value;
+				mcep.card.id[0] = tokens[1].value;
+				mcep.card.card_count = 1;
 			}
 			mcep.param.id = tokens[2].value;
 			mcep.param.count = tokens[3].value;
-			mcep.param.card_count =
+			mcep.card.card_count =
 				( tokens[4].type == CMDTREE_INTEGER  ?
 				  tokens[4].value : 1 );
 		}
@@ -636,10 +637,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			err = mce_read_block(handle, &mcep, -1, buf);
 			if (err)
 				break;
-
 			for (i=0; i < mcep.param.count *
-				     mcep.param.card_count *
-				     mcep.card.card_count ; i++) {
+			       mcep.card.card_count ; i++) {
 				if (options.display == SPECIAL_HEX )
 					errmsg += sprintf(errmsg, "%#x ", buf[i]);
 				else 

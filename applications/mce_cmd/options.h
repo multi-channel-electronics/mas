@@ -3,7 +3,7 @@
 
 #include "mce_cmd.h"
 
-struct option_struct {
+typedef struct {
 
 	int interactive;
 	int nonzero_only;
@@ -19,16 +19,17 @@ struct option_struct {
 	char cmd_command[LINE_LEN];
 	int  cmd_now;
 
-	char device_file[LINE_LEN];
+	char data_device[LINE_LEN];
+	char cmd_device[LINE_LEN];
 	char config_file[LINE_LEN];
 
 	char acq_path[LINE_LEN];
 
 	int acq_frames;
 	int acq_now;
-};
+} options_t;
 
-int process_options(int argc, char **argv);
+int process_options(options_t *options, int argc, char **argv);
 
 
 #endif
