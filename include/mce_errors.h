@@ -14,6 +14,7 @@
 #define MCE_ERR_CHKSUM          (MCE_ERR_BASE + 0x0006)
 #define MCE_ERR_XML             (MCE_ERR_BASE + 0x0007)
 #define MCE_ERR_READBACK        (MCE_ERR_BASE + 0x0008)
+#define MCE_ERR_MULTICARD       (MCE_ERR_BASE + 0x0009)
 
 
 /* #define MCE_ERR_                MCE_ERR_BASE + 0x0001 */
