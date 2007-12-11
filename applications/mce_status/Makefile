@@ -11,20 +11,27 @@ LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 
 CFLAGS += $(INCLUDE) -Wall
 
+OBJECTS = mce_status.o options.o das.o cfg_dump.o
+HEADERS = mce_status.h das.h cfg_dump.h
+
 CC=gcc
 
 # targets
 
 all: mce_status
 
-mce_status: mce_status.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+mce_status: $(OBJECTS) $(HEADERS)
+	$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LIBRARY)
+
+options.o: $(HEADERS)
+
+mce_status.o: $(HEADERS)
 
 tidy:
 	-rm *~ *.o
 
 clean:	tidy
-	-rm mce_cmd
+	-rm mce_status
 
 # Make the install__mce_status rule
 INSTALL_TARGET=mce_status

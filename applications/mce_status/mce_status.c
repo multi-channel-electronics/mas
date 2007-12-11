@@ -14,56 +14,24 @@
 #include <string.h>
 #include <unistd.h>
 
-/* #include <mcecmd.h> */
-#include <mceconfig.h>
-#include <libmaslog.h>
-
-int handle = -1;
-mceconfig_t *mce = NULL;
-
-typedef struct {
-	char device_file[MCE_LONG];
-	char config_file[MCE_LONG];
-	char hardware_file[MCE_LONG];
-} options_t;
+#include "mce_status.h"
+#include "das.h"
+#include "cfg_dump.h"
 
 options_t options = {
-	device_file: "/dev/mce_cmd0",
-	config_file: "/etc/mas.cfg",
+	device_file:   "/dev/mce_cmd0",
+	config_file:   "/etc/mas.cfg",
 	hardware_file: "/etc/mce.cfg",
+	mode:          CRAWLER_DAS,
 };
 
-/* mce_status handler - output in XML like format */
 
-typedef struct {
-	FILE *out;
-} stat_t;
+void error_log_exit(logger_t* logger, const char *msg, int error);
 
-void stat_item(unsigned long data, mce_param_t *p)
-{
-	stat_t *s = (stat_t*) data;
-
-	if ((p->card.flags & MCE_PARAM_NOSTAT) ||
-	    (p->param.flags & MCE_PARAM_NOSTAT))
-		return;
-
-	if (p->param.type != MCE_CMD_MEM)
-		return;
-
-	fprintf(s->out, "<RB %s %s>", p->card.name, p->param.name);
-	
-	// Then do a read...
-
-	fprintf(s->out, "\n");
-}
-
-
-
-int load_settings( mceconfig_t *mce);
+int crawl_festival(crawler_t *crawler);
 
 int main(int argc, char **argv)
 {
-	FILE *ferr = stderr;
 	logger_t logger;
 	char msg[MCE_LONG];
 
@@ -71,60 +39,78 @@ int main(int argc, char **argv)
 	sprintf(msg, "initiated with hardware config '%s'", options.hardware_file);
 	logger_print( &logger, msg );
 
-/* 	if (process_options(argc, argv)) { */
-/* 		err = ERR_OPT; */
-/* 		goto exit_now; */
-/* 	} */
-
-/* 	handle = mce_open(options.device_file); */
-/* 	if (handle<0) { */
-/* 		fprintf(ferr, "Could not open mce device '%s'\n", */
-/* 			options.device_file); */
-/* 		return 1; */
-/* 	} */
-
-	// Ready data thing
-	if (mceconfig_load(options.hardware_file, &mce)!=0) {
-		fprintf(ferr, "Could not load MCE config file '%s'.\n",
-			options.hardware_file);
-		return 3;
+	if (process_options(&options, argc, argv))
+		error_log_exit(&logger, "invalid arguments", 2);
+	
+	// Connect to MCE
+	options.handle = mce_open(options.device_file);
+	if (options.handle<0) {
+		sprintf(msg, "Could not open mce device '%s'\n",
+			options.device_file);
+		error_log_exit(&logger, msg, 3);
 	}
 
-/* 	// Share config with MCE command library. */
-/* 	mce_set_config(handle, mce); */
+	// Load configuration
+	if (mceconfig_load(options.hardware_file, &options.mce)!=0) {
+		sprintf(msg, "Could not load MCE config file '%s'.\n",
+			options.hardware_file);
+		error_log_exit(&logger, msg, 3);
+	}
 
+	// Share config with MCE command library.
+	mce_set_config(options.handle, options.mce);
+
+	// Set up the action handler
+	crawler_t crawler;
+
+	switch (options.mode) {
+	case CRAWLER_DAS:
+		das_crawler(&options, &crawler);
+		break;
+
+	case CRAWLER_CFG:
+		cfg_crawler(&options, &crawler);
+		break;
+
+	default:
+		fprintf(stderr, "Craler not implemented.\n");
+		return 1;
+	}
 
 	// Loop through cards and parameters
-	load_settings(mce);
-
+	if (crawl_festival(&crawler) != 0)
+		error_log_exit(&logger, "failed commands", 3);
+	
+	logger_print(&logger, "successful");
 	return 0;
 }
 
-/* int read_now() */
-/* { */
-/* 	u32 buf[100]; */
-/* 	mce_param_t mcep; */
-/* 	int err = mce_read_block(handle, &mcep, -1, buf); */
-/* 	if (err) */
-/* 		return err; */
-	
-/* 	return 0; */
-/* } */
-
-int load_settings( mceconfig_t *mce)
+int crawl_festival(crawler_t *crawler)
 {
 	int i,j;
-	int n_cards = mce->card_count;
-	
+	int n_cards = options.mce->card_count;
+
+	if (options.output_path[0] != 0 && 
+	    chdir(options.output_path)!=0) {
+		fprintf(stderr, "Failed to move to working directory '%s'\n",
+			options.output_path);
+		return -1;
+	}
+
+	if (crawler->init != NULL &&
+	    crawler->init(crawler->user_data, &options)!=0 ) {
+		fprintf(stderr, "Crawler failed to initialize.\n");
+	}
+
 	for (i=0; i<n_cards; i++) {
 		mce_param_t m;
 		card_t *c = &m.card;
 		cardtype_t ct;
-		if (mceconfig_card(mce, i, c)) {
+		if (mceconfig_card(options.mce, i, c)) {
 			fprintf(stderr, "Problem loading card data at index %i\n", i);
 			return -1;
 		}
-		if (mceconfig_card_cardtype(mce, c, &ct)) {
+		if (mceconfig_card_cardtype(options.mce, c, &ct)) {
 			fprintf(stderr, "Problem loading cardtype data for '%s'\n", c->name);
 			return -1;
 		}
@@ -133,26 +119,29 @@ int load_settings( mceconfig_t *mce)
 		paramset_t ps;
 		param_t *p = &m.param;
 		
-		stat_t s;
-		s.out = stdout;
-
 		for (j=0; j<ct.paramset_count; j++) {
-			mceconfig_cardtype_paramset(mce, &ct, j, &ps);
+			mceconfig_cardtype_paramset(options.mce, &ct, j, &ps);
 			for (k=0; k<ps.param_count; k++) {
-				mceconfig_paramset_param(mce, &ps, k, p);
-				stat_item((unsigned long) &s, &m);
+				mceconfig_paramset_param(options.mce, &ps, k, p);
+				
+				if (crawler->item != NULL)
+					crawler->item(crawler->user_data, &m);
+
 			}
 		}
 	}
+
+	if (crawler->cleanup != NULL &&
+	    crawler->cleanup(crawler->user_data)!= 0) {
+		return 1;
+	}
+
 	return 0;
 }
 
-
-int get_int(char *card, int *card_id)
+void error_log_exit(logger_t* logger, const char *msg, int error)
 {
-	char *end = card;
-	if (end==NULL || *end==0) return -1;
-	*card_id = strtol(card, &end, 0);
-	if (*end!=0) return -1;
-	return 0;
+	logger_print(logger, msg);
+	fprintf(stderr, msg);
+	exit(error);
 }
