@@ -155,13 +155,12 @@ mce_frame_actions_t flatfile_actions = {
 
 /* Ram buffer structure and operations */
 
-typedef int (*rambuff_callback)(int frame_size, u32 *buffer);
-
 typedef struct rambuff_struct {
 
 	int frame_size;
 	u32 *buffer;
 	
+	unsigned user_data;
 	rambuff_callback_t callback;
 
 } rambuff_t;
@@ -194,7 +193,7 @@ static int rambuff_post(mce_acq_t *acq, int frame_index, u32 *data)
 	rambuff_t *f = (rambuff_t*)acq->action_data;
 
 	if (f->callback != NULL) {
-		f->callback(acq->frame_size, data);
+		f->callback(f->user_data, acq->frame_size, data);
 	}
 
 	return 0;
@@ -281,11 +280,13 @@ void mcedata_fileseq_destroy(mce_acq_t *acq)
 }
 
 
-int mcedata_rambuff_create(mce_acq_t *acq, rambuff_callback_t callback)
+int mcedata_rambuff_create(mce_acq_t *acq, rambuff_callback_t callback,
+			   unsigned user_data)
 {
 	rambuff_t *f = (rambuff_t*)malloc(sizeof(rambuff_t));
 	if (f==NULL) return -1;
 
+	f->user_data = user_data;
 	f->callback = callback;
 
 	memcpy(&(acq->actions), &rambuff_actions, sizeof(rambuff_actions));

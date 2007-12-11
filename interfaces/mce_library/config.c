@@ -37,6 +37,10 @@ static int
 get_int_elem(int *dest, const config_setting_t *parent, const char *name, int index);
 
 static int
+get_int_array(int *dest, const config_setting_t *parent,
+	      const char *name, int max);
+
+static int
 get_string_elem(char *dest, const config_setting_t *parent, const char *name, int index);
 
 static int
@@ -258,8 +262,7 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 	c->cfg = cfg;
 	c->name[0] = 0;
 	c->error_bits = 0;
-	c->id = -1;
-	c->card_count = 1;
+	c->card_count = 0;
 	c->flags = 0;
 	int status = 1;
 	
@@ -269,12 +272,21 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 	get_string(c->name, cfg, "name");
 	get_string(c->type, cfg, "card_type");
 	get_int((int*)&c->error_bits, cfg, "error_bits");
-	get_int(&c->id, cfg, "id");
-	get_int(&c->card_count, cfg, "card_count");
-	get_int(&status, cfg, "status");
-	if (!status) {
-		c->flags |= MCE_PARAM_NOSTAT;
+
+	// ID entry is a list.  That's all I've got to say.
+	// Decode the id entry.  This is either a single entry + a
+	// card count (hardware sys, e.g.) or a group entry
+
+	c->card_count = get_int_array(c->id, cfg, "id", MCE_MAX_CARDSET);
+	if (c->card_count < 0) {
+		fprintf(stderr, "card '%s' has invalid 'id' entry.\n",
+			c->name);
+		return 1;
 	}
+	
+	get_int(&status, cfg, "status");
+	c->flags |= 
+		( status ? MCE_PARAM_STAT : 0 );
 
 	return 0;
 }
@@ -303,30 +315,38 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 {
 	if (cfg == NULL) return -1;
 
+	char type_str[MCE_SHORT];
+
 	// Fill with defaults
 	p->cfg = cfg;
 	p->id = -1;
 	p->type = MCE_CMD_MEM;
 	p->count = 1;
-	p->card_count = 1;
 	p->flags = 0;
 	p->name[0] = 0;
-	int status = 1;
 
+	int status = 1;
+	int sign   = 0;
+	int hex    = 0;
+	int wr_only= 0;
+	int rd_only= 0;
+	
 	get_string(p->name, cfg, "name");
 	get_int(&p->id, cfg, "id");
 	get_int(&p->count, cfg, "count");
-	get_int(&p->card_count, cfg, "card_count");
 
+	// Discover maximum and minimum
 	if (get_int((int*)&p->min, cfg, "min")==0)
 		p->flags |= MCE_PARAM_MIN;
 	if (get_int((int*)&p->max, cfg, "max")==0)
 		p->flags |= MCE_PARAM_MAX;
+
+	// Discover defaults
 	p->defaults = config_setting_get_member(cfg, "defaults");
 	if (p->defaults != NULL)
 		p->flags |= MCE_PARAM_DEF;
 
-	char type_str[MCE_SHORT];
+	// Discover parameter type
 	if ((get_string(type_str, cfg, "type") == 0) &&
 	    (st_get_id(param_types_st, type_str, &p->type) != 0)) {
 		fprintf(stderr,
@@ -334,11 +354,20 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 			p->name, type_str);
 	}
 
-	get_int(&status, cfg, "status");
-	if (!status)
-		p->flags |= MCE_PARAM_NOSTAT;
-		
+	// Set additional flags?
+	get_int(&status , cfg, "status");
+	get_int(&sign   , cfg, "signed");
+	get_int(&hex    , cfg, "hex");
+	get_int(&wr_only, cfg, "write_only");
+	get_int(&rd_only, cfg, "read_only");
 
+	p->flags |= 
+		(status  ? MCE_PARAM_STAT   : 0) |
+		(sign    ? MCE_PARAM_SIGNED : 0) |
+		(hex     ? MCE_PARAM_HEX    : 0) |
+		(wr_only ? MCE_PARAM_WONLY  : 0) |
+		(rd_only ? MCE_PARAM_RONLY  : 0);
+		
 	return 0;
 }
 
@@ -511,6 +540,24 @@ int get_int_elem(int *dest, const config_setting_t *parent,
 	return 0;
 }
 
+int get_int_array(int *dest, const config_setting_t *parent,
+		  const char *name, int max)
+{
+	int i, count = 0;
+	config_setting_t *set = get_setting(parent, name);
+	if (set==NULL) return -1;
+
+	count = config_setting_length(set);
+	if (count < 0 || count >= max) {
+		return -1;
+	}
+
+	for (i=0; i<count; i++) {
+		dest[i] = config_setting_get_int_elem(set, i);
+	}
+	return count;
+}
+
 int get_int(int *dest, const config_setting_t *parent, const char *name)
 {
 	config_setting_t *set = get_setting(parent,name);
@@ -540,13 +587,9 @@ int get_string(char *dest, const config_setting_t *parent, const char *name)
 
 int count_elem(const config_setting_t *parent, const char *name)
 {
-	int count = 0;
 	config_setting_t *list = config_setting_get_member(parent, name);
 	if (list==NULL) return 0;
-	
-	while (config_setting_get_elem(list, count)!=NULL)
-		count++;
-	return count;
+	return config_setting_length(list);
 }
 
 /* String table functions */

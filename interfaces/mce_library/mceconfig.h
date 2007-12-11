@@ -19,22 +19,35 @@
 #include <mce.h>
 
 
+/* Parameter type enumerator */
+
 #define MCE_CMD_MEM 0
 #define MCE_CMD_CMD 1
 #define MCE_CMD_RST 2
 #define MCE_CMD_OTH 4
 
-#define MCE_PARAM_MIN    0x00000001 /* Parameter has minimum */
-#define MCE_PARAM_MAX    0x00000002 /* Parameter has maximum */
-#define MCE_PARAM_DEF    0x00000004
+
+/* Parameter flag bits */
+
+#define MCE_PARAM_MIN    0x00000001 /* has minimum */
+#define MCE_PARAM_MAX    0x00000002 /* has maximum */
+#define MCE_PARAM_DEF    0x00000004 /* has defaults */
 #define MCE_PARAM_PARAM  0x00000010
 #define MCE_PARAM_CARD   0x00000020
-#define MCE_PARAM_NOSTAT 0x00000040 /* Not to be included in mce status */
-#define MCE_PARAM_WONLY  0x00000080 /* Write only */
-#define MCE_PARAM_RONLY  0x00000100 /* Read only */
-#define MCE_PARAM_SIGNED 0x00000200
-#define MCE_PARAM_GO     0x00010000
-#define MCE_PARAM_ST     0x00020000
+#define MCE_PARAM_STAT   0x00000040 /* should be included in status */
+#define MCE_PARAM_WONLY  0x00000080 /* write only */
+#define MCE_PARAM_RONLY  0x00000100 /* read only */
+#define MCE_PARAM_SIGNED 0x00000200 /* is naturally signed */
+#define MCE_PARAM_HEX    0x00000400 /* is naturally hexadecimal */
+#define MCE_PARAM_MULTI  0x00000800 /* multi-card alias */
+
+
+/* Maximum number of grouped cards */
+
+#define MCE_MAX_CARDSET  10
+
+
+/* Root configuration structure */
 
 typedef struct {
 
@@ -80,7 +93,6 @@ typedef struct {
 	int type;
 
 	int count;
-	int card_count;
 
 	int flags;
 	u32 min;
@@ -94,7 +106,8 @@ typedef struct {
 
 	const config_setting_t *cfg;
 
-	int id;
+	int id[MCE_MAX_CARDSET];
+
 	char name[MCE_SHORT];
 	char type[MCE_SHORT];
 	u32 error_bits;

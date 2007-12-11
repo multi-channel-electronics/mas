@@ -81,6 +81,9 @@ char *mce_error_string(int error)
 	case MCE_ERR_XML:
 		return "Configuration file not loaded.";
 
+	case MCE_ERR_MULTICARD:
+		return "Function does not have multi-card support.";
+
 	case 0:
 		return "Success.";
 	}
@@ -329,6 +332,7 @@ int mce_write_block(int handle, const mce_param_t *param,
 {
 	mce_command cmd;
 	int error = 0;
+	int i;
 
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
@@ -336,14 +340,17 @@ int mce_write_block(int handle, const mce_param_t *param,
 	if (count < 0)
 		count = param->param.count;
 
-	error = mce_load_command(&cmd, MCE_WB, 
-				 param->card.id, param->param.id,
-				 count, data);
-	if (error) return error;
+	for (i=0; i<param->card.card_count; i++) {
+		error = mce_load_command(&cmd, MCE_WB, 
+					 param->card.id[i], param->param.id,
+					 count, data);
+		if (error) return error;
+		mce_reply rep;
 
-	mce_reply rep;
-
-	return mce_send_command(handle, &cmd, &rep);
+		error = mce_send_command(handle, &cmd, &rep);
+		if (error) return error;
+	}
+	return 0;
 }
 
 int mce_read_block(int handle, const mce_param_t *param,
@@ -352,6 +359,7 @@ int mce_read_block(int handle, const mce_param_t *param,
 	mce_command cmd;
 	mce_reply rep;
 	int error = 0;
+	int i;
 
 	CHECK_HANDLE(handle);
 	CHECK_OPEN(handle);
@@ -359,19 +367,18 @@ int mce_read_block(int handle, const mce_param_t *param,
 	if (count < 0)
 		count = param->param.count;
 
-	error = mce_load_command(&cmd, MCE_RB, 
-				 param->card.id, param->param.id,
-				 count, data);
-	if (error) return error;
+	for (i=0; i<param->card.card_count; i++) {
+		error = mce_load_command(&cmd, MCE_RB, 
+					 param->card.id[i], param->param.id,
+					 count, data);
+		if (error) return error;
 
-	error = mce_send_command(handle, &cmd, &rep);
-	if (error) return error;
+		error = mce_send_command(handle, &cmd, &rep);
+		if (error) return error;
 
-	// Correct count for card_count
-	count *= param->card.card_count * param->param.card_count;
-
-	// I guess the data must be valid then.
-	memcpy(data, rep.data, count*sizeof(u32));
+		// I guess the data must be valid then.
+		memcpy(data+i*count, rep.data, count*sizeof(u32));
+	}
 	
 	return 0;
 }
@@ -400,17 +407,41 @@ int mce_send_command_simple(int handle, int card_id, int para_id,
 
 int mce_start_application(int handle, const mce_param_t *param)
 {
-	return mce_send_command_simple(handle, param->card.id, param->param.id, MCE_GO);
+	int error = 0;
+	int i;
+	for (i=0; i < param->card.card_count && !error; i++) {
+		error = mce_send_command_simple(handle,
+						param->card.id[i],
+						param->param.id,
+						MCE_GO);
+	}
+	return error;
 }
 
 int mce_stop_application(int handle,  const mce_param_t *param)
 {
-	return mce_send_command_simple(handle, param->card.id, param->param.id, MCE_ST);
+	int error = 0;
+	int i;
+	for (i=0; i < param->card.card_count && !error; i++) {
+		error = mce_send_command_simple(handle,
+						param->card.id[i],
+						param->param.id,
+						MCE_ST);
+	}
+	return error;
 }
 
 int mce_reset(int handle,  const mce_param_t *param)
 {
-	return mce_send_command_simple(handle, param->card.id, param->param.id, MCE_RS);
+	int error = 0;
+	int i;
+	for (i=0; i < param->card.card_count && !error; i++) {
+		error = mce_send_command_simple(handle,
+						param->card.id[i],
+						param->param.id,
+						MCE_RS);
+	}
+	return error;
 }
 
 
@@ -421,6 +452,10 @@ int mce_write_element(int handle, const mce_param_t *param,
 {
 	int error = 0;
 	u32 data[MCE_CMD_DATA_MAX];
+
+	if (param->card.card_count != 1)
+		return -MCE_ERR_MULTICARD;
+
 	if ( (error = mce_read_block(handle, param, data_index+1, data)) != 0)
 		return error;
 
@@ -434,6 +469,10 @@ int mce_read_element(int handle, const mce_param_t *param,
 {
 	int error = 0;
 	u32 data[MCE_CMD_DATA_MAX];
+
+	if (param->card.card_count != 1)
+		return -MCE_ERR_MULTICARD;
+
 	if ( (error = mce_read_block(handle, param, data_index+1, data)) != 0)
 		return error;
 	*datum = data[data_index];
@@ -446,6 +485,9 @@ int mce_write_block_check(int handle, const mce_param_t *param,
 	int i, error;
 	u32 readback[MCE_CMD_DATA_MAX];
 	int done = 0;
+
+	if (param->card.card_count != 1)
+		return -MCE_ERR_MULTICARD;
 
 	do {
 		error = mce_write_block(handle, param, count, data);

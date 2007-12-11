@@ -36,7 +36,7 @@ install: install__$(LIBNAME) install__mcecmd.h install__mcedata.h install__mceco
 $(LIBNAME) : $(OBJECTS) $(HEADERS)
 	$(AR) rs $@ $(OBJECTS)
 
-cmd.o : cmd.c # $(HEADERS)
+cmd.o : cmd.c $(HEADERS)
 	$(CC) $(CFLAGS) cmd.c -c
 
 data.o: data.c $(HEADERS)
