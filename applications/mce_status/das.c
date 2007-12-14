@@ -64,7 +64,8 @@ int  das_item(unsigned user_data, const mce_param_t *p)
 	u32 buf[MCE_REP_DATA_MAX];
 
 	if (!(p->card.flags & MCE_PARAM_STAT) ||
-	    !(p->param.flags & MCE_PARAM_STAT))
+	    !(p->param.flags & MCE_PARAM_STAT) ||
+	    (p->param.flags & MCE_PARAM_WONLY) )
 		return 0;
 	
 	if (p->param.type != MCE_CMD_MEM)

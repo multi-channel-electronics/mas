@@ -49,6 +49,7 @@ enum {
 	SPECIAL_SLEEP,
 	SPECIAL_COMMENT,
 	SPECIAL_FRAME,
+	SPECIAL_DEF,
 	SPECIAL_DEC,
 	SPECIAL_HEX,
 	SPECIAL_ECHO,
@@ -114,6 +115,7 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DEF"     , 0, 0, SPECIAL_DEF     , NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
@@ -132,6 +134,7 @@ options_t options = {
 	cmd_device: DEFAULT_DEVICE,
 	data_device: DEFAULT_DATA,
 	config_file: DEFAULT_XML,
+	display: SPECIAL_DEF,
 };
 
 mcedata_t mcedata;
@@ -637,9 +640,14 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			err = mce_read_block(handle, &mcep, -1, buf);
 			if (err)
 				break;
+
+			int hex = (options.display == SPECIAL_HEX || 
+				   ( options.display == SPECIAL_DEF &&
+				     mcep.param.flags & MCE_PARAM_HEX ) );
+
 			for (i=0; i < mcep.param.count *
-			       mcep.card.card_count ; i++) {
-				if (options.display == SPECIAL_HEX )
+				     mcep.card.card_count ; i++) {
+				if (hex)
 					errmsg += sprintf(errmsg, "%#x ", buf[i]);
 				else 
 					errmsg += sprintf(errmsg, "%i ", buf[i]);
@@ -806,6 +814,10 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case SPECIAL_HEX:
 			options.display = SPECIAL_HEX;
+			break;
+
+		case SPECIAL_DEF:
+			options.display = SPECIAL_DEF;
 			break;
 
 		case SPECIAL_ECHO:
