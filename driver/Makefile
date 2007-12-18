@@ -104,3 +104,11 @@ clean: kversion_clean
 ifeq ($(FAKEMCE),1)
 	make -C $(FAKEMCE_DIR) clean
 endif #FAKEMCE=1
+
+
+# Install rule
+
+install: modules
+	install -d $(INSTALLDIR)
+	install $(DRIVER_FILE) $(INSTALLDIR)
+	depmod -v $(KERNELVER)

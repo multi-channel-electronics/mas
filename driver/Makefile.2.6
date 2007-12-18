@@ -4,7 +4,11 @@ else
   MY_CFLAGS += -O2
 endif
 
-KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+KERNELVER ?= $(shell uname -r)
+KERNELDIR ?= /lib/modules/$(KERNELVER)/build
+INSTALLDIR ?= /lib/modules/$(KERNELVER)/kernel/drivers/misc
+
+DRIVER_FILE = $(DRIVER_NAME).ko
 
 ifeq ($(KERNELRELEASE),) # we are in the source folder
 
@@ -32,4 +36,4 @@ include .depend
 endif
 
 kversion_clean:
-	-rm $(DRIVER_NAME).ko
+	-rm $(DRIVER_FILE)
