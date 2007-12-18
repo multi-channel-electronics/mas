@@ -1,19 +1,22 @@
 CC	:= gcc
 
-KERNEL_DIR ?= /usr/src/linux
+KERNELVER ?= $(shell uname -r)
+KERNELDIR ?= /usr/src/linux
+INSTALLDIR ?= /lib/modules/$(KERNELVER)/misc/
 
-INCLUDES += -I${KERNEL_DIR}/include
+DRIVER_FILE = $(DRIVER_NAME).o
+
+INCLUDES += -I${KERNELDIR}/include
 
 CFLAGS	:= -O2 -DMODULE -D__KERNEL__ -DLINUX -Wall \
 	-Wstrict-prototypes  $(DEFS) $(INCLUDES) $(MY_CFLAGS)
 
 default: $(DRIVER_NAME).o
 
-$(DRIVER_NAME).o: $(SOURCE_OBJ)
+$(DRIVER_FILE): $(SOURCE_OBJ)
 	ld -r $(SOURCE_OBJ) -o $@
 
 depend:
 	makedepend -- $(CFLAGS) -- $(SOURCE)
 
 kversion_clean:
-
