@@ -6,6 +6,9 @@ PWD ?= $(shell pwd)/
 FAKEMCE_DIR ?= fake_mce/
 RTAI_DIR   ?= /usr/src/rtai
 
+# Get svn repository version number
+REPO_VERSION   = $(shell svnversion $(PWD))
+
 # Use Makefile.local to set up default configuration options.
 
 include $(PWD)/Makefile.local
@@ -100,10 +103,18 @@ fault:
 	@echo Unknown kernel version $(TARGET_KERNEL) : $(KVER)
 
 clean: kversion_clean
-	-rm -rf *.o *~ core .depend .*.cmd *.mod.c .tmp_versions Modules.symvers
+	-rm -rf *.o *~ core version.h \
+		.depend .*.cmd *.mod.c .tmp_versions Modules.symvers
 ifeq ($(FAKEMCE),1)
 	make -C $(FAKEMCE_DIR) clean
 endif #FAKEMCE=1
+
+
+# Version header file generation
+
+version.h: version.h.template FORCE
+	grep -v '^\/\*-' version.h.template | \
+		sed 's/\$$SVN\./$(REPO_VERSION)/g' > version.h
 
 
 # Install rule
@@ -112,3 +123,5 @@ install: modules
 	install -d $(INSTALLDIR)
 	install $(DRIVER_FILE) $(INSTALLDIR)
 	depmod -v $(KERNELVER)
+
+.PHONY: FORCE

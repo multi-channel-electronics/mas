@@ -5,6 +5,7 @@
 #include "data.h"
 #include "mce_driver.h"
 #include "dsp_driver.h"
+#include "version.h"
 
 #ifdef FAKEMCE
 #  include <dsp_fake.h>
@@ -19,7 +20,8 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 	int limit = count - 80;
 
 	if (len < limit) {
-		len += sprintf(buf+len,"mce_dsp driver version ??\n");
+		len += sprintf(buf+len,"mce_dsp driver version %s\n",
+			       VERSION_STRING);
 		len += sprintf(buf+len,"    fakemce:  "
 #ifdef FAKEMCE
 			       "yes\n"

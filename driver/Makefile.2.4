@@ -11,9 +11,9 @@ INCLUDES += -I${KERNELDIR}/include
 CFLAGS	:= -O2 -DMODULE -D__KERNEL__ -DLINUX -Wall \
 	-Wstrict-prototypes  $(DEFS) $(INCLUDES) $(MY_CFLAGS)
 
-default: $(DRIVER_NAME).o
+default: $(DRIVER_FILE)
 
-$(DRIVER_FILE): $(SOURCE_OBJ)
+$(DRIVER_FILE): $(SOURCE_OBJ) version.h
 	ld -r $(SOURCE_OBJ) -o $@
 
 depend:
