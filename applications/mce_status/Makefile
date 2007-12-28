@@ -3,13 +3,17 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-INCLUDE=-I$(MCELIB_F) -I$(MAS_INCLUDE_F) -I$(MASMISC_F)
+VER_TARGET := .
+include $(MAKERULES)Makefile.version
+DEFS = -DVERSION_STRING="$(REPO_VER)"
+
+INCLUDE=-I$(MCELIB_F) -I$(LOGLIB_F) -I$(MAS_INCLUDE_F) -I$(MASMISC_F)
 
 LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 	-L$(LOGLIB_F) -l$(LOGLIB) \
 	-lpthread -lconfig 
 
-CFLAGS += $(INCLUDE) -Wall
+CFLAGS += $(INCLUDE) $(DEFS) -Wall
 
 OBJECTS = mce_status.o options.o das.o cfg_dump.o
 HEADERS = mce_status.h das.h cfg_dump.h

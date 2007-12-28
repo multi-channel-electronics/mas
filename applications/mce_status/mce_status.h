@@ -7,6 +7,10 @@
 
 #include "mce.h"
 
+
+#define PROGRAM_NAME           "mce_status"
+
+
 enum { CRAWLER_DAS = 0,
        CRAWLER_CFG };
 
