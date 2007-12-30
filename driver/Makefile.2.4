@@ -16,6 +16,8 @@ default: $(DRIVER_FILE)
 $(DRIVER_FILE): $(SOURCE_OBJ) version.h
 	ld -r $(SOURCE_OBJ) -o $@
 
+proc.o: proc.c version.h
+
 depend:
 	makedepend -- $(CFLAGS) -- $(SOURCE)
 

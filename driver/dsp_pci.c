@@ -21,7 +21,12 @@
 
 #ifndef OLD_KERNEL
 #  include <linux/dma-mapping.h>
-#  define IRQ_FLAGS SA_SHIRQ
+/* Newer 2.6 kernels use IRQF_SHARED instead of SA_SHIRQ */
+#  ifdef IRQF_SHARED
+#    define IRQ_FLAGS IRQF_SHARED
+#  else
+#    define IRQ_FLAGS SA_SHIRQ
+#  endif
 #else
 #  define IRQ_FLAGS 0
 #endif
@@ -107,6 +112,10 @@ static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
 
 irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 {
+	/* Note that the regs argument is deprecated in newer kernels,
+	   do not use it.  It is left here for compatibility with
+	   2.6.18-                                                    */
+
 	dsp_message msg;
 	dsp_reg_t *dsp = dev->dsp;
 	int i = 0;
@@ -350,13 +359,11 @@ int dsp_pci_remove_handler(struct pci_dev *pci)
 
  dsp_pci_set_handler
 
- Do not try to change the IRQ.  It's not permitted.
-
 ******/
 
 
 int dsp_pci_set_handler(struct pci_dev *pci,
-			irqreturn_t(*handler)(int,void*,struct pt_regs*),
+			irq_handler_t handler,
 			char *dev_name)
 {
 	int err = 0;
@@ -439,8 +446,8 @@ int dsp_pci_init(char *dev_name)
 	// Set up 32->24 bit communication channels
 	dsp_pci_configure(dev->dsp);
 
-	// Install the interrupt handler
-	if (dsp_pci_set_handler(dev->pci, pci_int_handler, dev_name) < 0) {
+	// Install the interrupt handler (cast on handler is necessary for backward compat.)
+	if (dsp_pci_set_handler(dev->pci, (irq_handler_t)pci_int_handler, dev_name) < 0) {
 		PRINT_ERR(SUBNAME "Could not install interrupt handler!\n");
 		goto out;
 	}
@@ -501,7 +508,8 @@ int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg)
 	case DSPDEV_IOCT_CORE_IRQ:
 		if (arg) {
 			PRINT_IOCT(SUBNAME "Enabling interrupt\n");
-			if (dsp_pci_set_handler(dev->pci, pci_int_handler,
+			/* Cast on handler is necessary for backward compat. */
+			if (dsp_pci_set_handler(dev->pci, (irq_handler_t)pci_int_handler,
 						"mce_hacker") < 0) {
 				PRINT_ERR(SUBNAME "Could not install interrupt handler!\n");
 				return -1;

@@ -2,8 +2,6 @@
  * dsp_driver.c
  */
 
-
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/init.h>
 
@@ -391,7 +389,7 @@ int dsp_query_version(void)
 
 #define SUBNAME "cleanup_module: "
 
-void driver_cleanup(void)
+void dsp_driver_cleanup(void)
 {
 	del_timer_sync(&ddat.tim);
 
@@ -415,7 +413,7 @@ void driver_cleanup(void)
 
 #define SUBNAME "init_module: "
 
-inline int driver_init(void)
+inline int dsp_driver_init(void)
 {
 	int err = 0;
 
@@ -464,13 +462,13 @@ inline int driver_init(void)
 
  out:
   
-	driver_cleanup();
+	dsp_driver_cleanup();
 
 	PRINT_ERR(SUBNAME "exiting with errors!\n");
 	return err;
 }
 
-module_init(driver_init);
-module_exit(driver_cleanup);
+module_init(dsp_driver_init);
+module_exit(dsp_driver_cleanup);
 
 #undef SUBNAME

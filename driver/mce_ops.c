@@ -1,7 +1,7 @@
 #include <linux/module.h>
-
 #include <linux/kernel.h>
 #include <linux/fs.h>
+#include <linux/sched.h>
 #include <asm/uaccess.h>
 
 #include "kversion.h"

@@ -56,7 +56,7 @@ struct dsp_dev_t {
 
 	dsp_reg_t *dsp;
 
-	irqreturn_t (*int_handler)(int, void*, struct pt_regs*);
+	irq_handler_t int_handler;
 
 };
 
@@ -76,7 +76,7 @@ int   dsp_send_command_now( dsp_command *cmd );
 int   dsp_send_command_now_vector( dsp_command *cmd, u32 vector );
 
 int   dsp_pci_set_handler(struct pci_dev *pci,
-			  irqreturn_t(*handler)(int,void*,struct pt_regs*),
+			  irq_handler_t handler,
 			  char *dev_name);
 
 int   dsp_pci_flush(void);
