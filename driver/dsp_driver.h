@@ -15,6 +15,8 @@
 
 typedef int (*dsp_callback)(int, dsp_message*);
 
+typedef int (*dsp_handler)(dsp_message *, unsigned long data);
+
 
 /* Prototypes */
 
@@ -29,5 +31,9 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg);
 int dsp_proc(char *buf, int count);
 
 int dsp_int_handler(dsp_message *msg);
+
+int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data);
+
+int dsp_clear_handler(u32 code);
 
 #endif

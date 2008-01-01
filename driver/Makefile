@@ -55,7 +55,7 @@ endif #BIGPHYS=1
 
 SOURCE_OBJ := mce_driver.o mce_ops.o \
 	dsp_driver.o dsp_ops.o \
-	data.o data_ops.o data_watcher.o \
+	data.o data_qt.o data_ops.o data_watcher.o \
 	proc.o
 
 ifeq ($(FAKEMCE),1)

@@ -191,7 +191,7 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector)
 	// HSTR must be ready to receive
 	if ( !(dsp_read_hstr(dev->dsp) & HSTR_TRDY) ) {
 		PRINT_ERR(SUBNAME "HSTR not ready to transmit!\n");
-		return -1;
+		return -EIO;
 	}
 
 	//Write bytes and interrupt
@@ -201,7 +201,7 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector)
 	if (i<n) {
 		PRINT_ERR(SUBNAME "HTXR filled up during write! HSTR=%#x\n",
 			  dsp_read_hstr(dev->dsp));
-		return -1;
+		return -EIO;
 	}
 	
 	dsp_write_hcvr(dev->dsp, vector);
@@ -248,7 +248,7 @@ int dsp_send_command_now(dsp_command *cmd)
 	struct dsp_vector *vect = dsp_lookup_vector(cmd);
 	PRINT_INFO(SUBNAME "cmd=%06x\n", cmd->command);
 
-	if (vect==NULL) return -1;
+	if (vect==NULL) return -ERESTARTSYS;
 	
 	switch (vect->type) {
 
@@ -258,10 +258,13 @@ int dsp_send_command_now(dsp_command *cmd)
 	case VECTOR_QUICK:
 		// FIXME: these don't reply so they'll always time out.
 		return dsp_quick_command(vect->vector);
+
 	}
 
-	PRINT_ERR(SUBNAME "unimplemented vector command type!\n");
-	return -1;
+	PRINT_ERR(SUBNAME
+		  "unimplemented vector command type %06x for command %06x\n",
+		  vect->type, cmd->command);
+	return -ERESTARTSYS;
 }
 
 #undef SUBNAME
@@ -355,13 +358,6 @@ int dsp_pci_remove_handler(struct pci_dev *pci)
 
 #define SUBNAME "dsp_pci_set_handler: "
 
-/******
-
- dsp_pci_set_handler
-
-******/
-
-
 int dsp_pci_set_handler(struct pci_dev *pci,
 			irq_handler_t handler,
 			char *dev_name)
@@ -371,7 +367,7 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 	if (pci==NULL || dev==NULL) {
 		PRINT_ERR(SUBNAME "Null pointers! pci=%lx dev=%lx\n",
 			  (long unsigned)pci, (long unsigned)dev);
-		return -1;
+		return -ERESTARTSYS;
 	}
 	
 	// Free existing handler
@@ -390,7 +386,7 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 	if (err!=0) {
 		PRINT_ERR(SUBNAME "irq request failed with error code %#x\n",
 			  -err);
-		return -1;
+		return err;
 	}
 
 #ifdef REALTIME
@@ -399,7 +395,6 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 #endif
 
 	dev->int_handler = handler;
-
 	return 0;
 }
 
@@ -410,7 +405,7 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 
 int dsp_pci_init(char *dev_name)
 {
-	int err = -1;
+	int err = 0;
 	PRINT_INFO(SUBNAME "entry\n");
 
 	dev->int_handler = NULL;
@@ -425,7 +420,8 @@ int dsp_pci_init(char *dev_name)
 
 	if (dev->pci==NULL) {
 		PRINT_ERR(SUBNAME "Could not find PCI card!\n");
-		goto out;
+		err = -EPERM;
+		goto fail;
 	}
 
 	// Map i/o registers into a dsp_reg_t structure
@@ -434,27 +430,33 @@ int dsp_pci_init(char *dev_name)
 					sizeof(*dev->dsp));
 	if (dev->dsp==NULL) {
 		PRINT_ERR(SUBNAME "Could not map PCI registers!\n");
-		goto out;
+		err = -EIO;
+		goto fail;
 	}
 
 	// Mark PCI card as bus master
 	pci_set_master(dev->pci);
 	
-	// Enable card burst mode?  Sure!
-	if (pci_set_mwi(dev->pci)) return -3;
+	// Enable memory write-invalidate?  We don't use this...
+	/*
+	if ((err=pci_set_mwi(dev->pci)) != 0) {
+		PRINT_ERR(SUBNAME "Could not set card as PCI master.\n");
+		goto fail;
+	}
+	*/
 
-	// Set up 32->24 bit communication channels
+	// Configure the card for our purposes
 	dsp_pci_configure(dev->dsp);
 
-	// Install the interrupt handler (cast on handler is necessary for backward compat.)
-	if (dsp_pci_set_handler(dev->pci, (irq_handler_t)pci_int_handler, dev_name) < 0) {
-		PRINT_ERR(SUBNAME "Could not install interrupt handler!\n");
-		goto out;
-	}
+	// Install the interrupt handler (cast necessary for backward compat.)
+	err = dsp_pci_set_handler(dev->pci, (irq_handler_t)pci_int_handler,
+				  dev_name);
+	if (err) goto fail;
 
-	err = 0;
- out:
-	if (err==0) PRINT_INFO(SUBNAME "ok\n");
+	PRINT_INFO(SUBNAME "ok\n");
+	return 0;
+
+ fail:
 	return err;
 }
 

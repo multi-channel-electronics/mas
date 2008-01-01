@@ -104,6 +104,11 @@ int dsp_state_message(dsp_message *msg, int schedule)
 {
 	PRINT_INFO(SUBNAME "add message to queue\n");
 
+	if (dsp_state.trigger_timeout) {
+		dsp_state.trigger_timeout = 0;
+		return 0;
+	}
+
 	if (msg==NULL) {
 		PRINT_ERR(SUBNAME "NULL message!\n");
 		return -1;
@@ -174,6 +179,10 @@ int dsp_readmem(dsp_command *cmd, dsp_message *msg)
 		break;
 
 	case DSP_MEMY:
+		// Special handling!  Read from Y[YSIZE] will time-out.
+		if (addr==YSIZE)
+			dsp_state.trigger_timeout = 1;
+
 		if (addr<0 || addr>=YSIZE) msg->reply = DSP_ERR;
 		else val = dsp_state.y[addr];
 		break;

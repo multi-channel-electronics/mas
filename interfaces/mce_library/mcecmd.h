@@ -93,10 +93,14 @@ u32 mce_cmd_checksum( const mce_command *cmd );
 int mce_cmd_match_rep( const mce_command *cmd, const mce_reply *rep );
 
 
+/* Interface (PCI card) control */
+
+int mce_interface_reset(int handle);   // reset PCI card
+int mce_hardware_reset(int handle);    // reset MCE
+
 /* Perhaps you are a human */
 
 char *mce_error_string(int error);
-
 
 
 #endif

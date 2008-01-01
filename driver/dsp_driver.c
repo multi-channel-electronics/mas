@@ -37,6 +37,17 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Matthew Hasselfield"); 
 
 
+typedef struct {
+
+	u32 code;
+	dsp_handler handler;
+	unsigned long data;
+
+} dsp_handler_entry;
+
+#define MAX_HANDLERS 16
+
+
 typedef enum {
 
 	DDAT_IDLE = 0,
@@ -52,11 +63,71 @@ struct dsp_control {
 
 	dsp_state_t state;
 	int version;
+	
+	int n_handlers;
+	dsp_handler_entry handlers[MAX_HANDLERS];
 
 	dsp_callback callback;
 
 } ddat;
 
+
+#define SUBNAME "dsp_set_handler: "
+
+int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data)
+{
+	int i;
+	// Replace handler if it exists
+	for (i=0; i<ddat.n_handlers; i++) {
+		if (ddat.handlers[i].code == code) {
+			ddat.handlers[i].handler = handler;
+			ddat.handlers[i].data = data;
+			return 0;
+		}
+	}
+
+	// Add to end of list
+	if (i < MAX_HANDLERS) {
+		ddat.handlers[i].code = code;
+		ddat.handlers[i].handler = handler;
+		ddat.handlers[i].data = data;
+	        ddat.n_handlers++;
+		return 0;
+	}
+
+	PRINT_ERR(SUBNAME "no available handler slots\n");
+	return -1;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "dsp_clear_handler: "
+
+int dsp_clear_handler(u32 code)
+{
+	int i = 0;
+	for (i=0; i<ddat.n_handlers; i++) {
+		if (ddat.handlers[i].code == code)
+			break;
+	}
+	
+	if (i>=ddat.n_handlers--)
+		return -1;
+	
+	// Move entries i+1 to i.
+	for ( ; i<ddat.n_handlers; i++) {
+		memcpy(ddat.handlers + i, ddat.handlers + i + 1,
+		       sizeof(*ddat.handlers));
+	}
+
+	// Clear the removed entry
+	memset(ddat.handlers + ddat.n_handlers, 0, sizeof(*ddat.handlers));
+
+	return 0;
+}
+
+#undef SUBNAME
 
 
 /*
@@ -76,60 +147,69 @@ struct dsp_control {
 
 int dsp_int_handler(dsp_message *msg)
 {
+	int i;
 	if (msg==NULL) {
 		PRINT_ERR(SUBNAME "called with NULL message pointer!\n");
 		return -1;
 	}
 
-	// Do not dispatch NFY unless pending REP have been handled.
-
-	switch((dsp_message_code)msg->type) {
-		
-	case DSP_REP: // Message is a reply to a DSP command
-		
-		if (ddat.state == DDAT_CMD) {
-			PRINT_INFO(SUBNAME
-				   "REP received, calling back.\n");
-
-			// Call the registered callbacks
-			if (ddat.callback != NULL) {
-				ddat.callback(0, msg);
-			} else {
-				PRINT_ERR(SUBNAME "no handler defined\n");
-			}
-			ddat.state = DDAT_IDLE;
-		} else {
-			PRINT_ERR(SUBNAME
-				  "unexpected REP received [state=%i].\n",
-				  ddat.state);
+	// Discover handler for this message type
+	
+	for (i=0; i < ddat.n_handlers; i++) {
+		if ( (ddat.handlers[i].code == msg->type) &&
+		     (ddat.handlers[i].handler != NULL) ) {
+			ddat.handlers[i].handler(msg, ddat.handlers[i].data);
+			return 0;
 		}
-		break;
-		
-	case DSP_NFY: // Message is notification of MCE packet
-
-		// Register the NFY; may result in HST being issued.
-		mce_int_handler( msg );
-
-		break;
-
-	case DSP_QTI:
-
-		mce_qti_handler( msg );
-
-		break;
-
-	case DSP_HEY:
-
-		//Fine.
-		PRINT_INFO(SUBNAME "HEY received.\n");
-
-		break;
-
-	default:
-		PRINT_ERR(SUBNAME "unknown message type: %#06x\n", msg->type);
-		return -1;
 	}
 
+	PRINT_ERR(SUBNAME "unknown message type: %#06x\n", msg->type);
+	return -1;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "dsp_reply_handler: "
+
+/* This will handle REP interrupts from the DSP, which correspond to
+ * replies to DSP commands.
+ */
+
+int dsp_reply_handler(dsp_message *msg, unsigned long data)
+{
+	if (ddat.state == DDAT_CMD) {
+		PRINT_INFO(SUBNAME
+			   "REP received, calling back.\n");
+
+		// Call the registered callbacks
+		if (ddat.callback != NULL) {
+			ddat.callback(0, msg);
+		} else {
+			PRINT_ERR(SUBNAME "no handler defined\n");
+		}
+		ddat.state = DDAT_IDLE;
+	} else {
+		PRINT_ERR(SUBNAME
+			  "unexpected REP received [state=%i].\n",
+			  ddat.state);
+	}
+	return 0;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "dsp_hey_handler: "
+
+/* This will handle HEY interrupts from the DSP, which are generic
+ * communications from the DSP typically used for debugging.
+ */
+
+int dsp_hey_handler(dsp_message *msg, unsigned long data)
+{
+	PRINT_ERR(SUBNAME "dsp HEY received: %06x %06x %06x\n",
+		  msg->command, msg->reply, msg->data);
 	return 0;
 }
 
@@ -149,7 +229,7 @@ void dsp_timeout(unsigned long data)
 
 	PRINT_ERR(SUBNAME "dsp reply timed out!\n");
 	if (my_ddat->callback != NULL)
-		my_ddat->callback(-1, NULL);
+		my_ddat->callback(-DSP_ERR_TIMEOUT, NULL);
 	my_ddat->state = DDAT_IDLE;
 }
 
@@ -179,6 +259,11 @@ void dsp_timeout(unsigned long data)
 
 #define SUBNAME "dsp_send_command: "
 
+/* For better or worse, this routine returns linux error codes.
+   
+   The callback error codes are 0 (success, msg will be non-null) or
+   DSP_ERR_TIMEOUT (failure, msg will be null).                    */
+
 int dsp_send_command(dsp_command *cmd,
 		     dsp_callback callback)
 {
@@ -187,7 +272,7 @@ int dsp_send_command(dsp_command *cmd,
 	// This will often be called in atomic context
 	if (down_trylock(&ddat.sem)) {
 		PRINT_ERR(SUBNAME "could not get sem\n");
-		return -DSP_ERR_SYSTEM;
+		return -EAGAIN;
 	}
 	
 	PRINT_INFO(SUBNAME "entry\n");
@@ -261,23 +346,16 @@ int dsp_send_command_wait(dsp_command *cmd,
 
 	// Try to get the default sem (spinlock!)
 	if (down_trylock(&dsp_local.sem))
-		return -1;
-
-	PRINT_INFO(SUBNAME "register\n");
+		return -ERESTARTSYS;
 
 	//Register message for our callback to fill
 	dsp_local.msg = msg;
 	dsp_local.flags = LOCAL_CMD;
 	
-	PRINT_INFO(SUBNAME "send\n");
-
-	if (dsp_send_command(cmd, dsp_send_command_wait_callback)) {
-		err = -1;
+	if ((err=dsp_send_command(cmd, dsp_send_command_wait_callback)) != 0)
 		goto up_and_out;
-	}
 
-	PRINT_INFO(SUBNAME "wait\n");
-
+	PRINT_INFO(SUBNAME "commanded, waiting\n");
 	if (wait_event_interruptible(dsp_local.queue,
 				     dsp_local.flags
 				     & (LOCAL_REP | LOCAL_ERR))) {
@@ -286,8 +364,7 @@ int dsp_send_command_wait(dsp_command *cmd,
 		goto up_and_out;
 	}
 	
-	PRINT_INFO(SUBNAME "check success\n");
-	err = (dsp_local.flags & LOCAL_ERR) ? -1 : 0;
+	err = (dsp_local.flags & LOCAL_ERR) ? -EIO : 0;
 	
  up_and_out:
 
@@ -361,13 +438,14 @@ int dsp_proc(char *buf, int count)
 
 int dsp_query_version(void)
 {
+	int err = 0;
 	dsp_command cmd = { DSP_VER, {0,0,0} };
 	dsp_message msg;
 	char version[8] = "<=U0103";
 	
 	ddat.version = 0;
-	if ( dsp_send_command_wait(&cmd, &msg) != 0 )
-		return -1;
+	if ( (err=dsp_send_command_wait(&cmd, &msg)) != 0 )
+		return err;
 
 	ddat.version = DSP_U0103;
 
@@ -438,7 +516,13 @@ inline int dsp_driver_init(void)
 		goto out;
 	}
 #endif
+	
+	// Set up handlers for the DSP interrupts - additional
+	//  handlers will be set up by sub-modules.
+	dsp_set_handler(DSP_REP, dsp_reply_handler, 0);
+	dsp_set_handler(DSP_HEY, dsp_hey_handler, 0);
 
+	// Version can only be obtained after REP handler has been set
 	if (dsp_query_version()) {
 		err = -1;
 		goto out;

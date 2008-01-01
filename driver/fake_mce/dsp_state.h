@@ -33,6 +33,8 @@ typedef struct dsp_state_struct {
 	int msg_r;
 	int msg_w;
 
+	int trigger_timeout;
+
 	void *mce_con;
 
 	struct tasklet_struct msg_tasklet;

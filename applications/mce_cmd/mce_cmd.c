@@ -43,6 +43,8 @@ enum {
 	SPECIAL_ACQ_FLUSH,
 	SPECIAL_QT_CONFIG,
 	SPECIAL_QT_ENABLE,
+	SPECIAL_MRESET,
+	SPECIAL_DRESET,
 	SPECIAL_CLEAR,
 	SPECIAL_FAKESTOP,
 	SPECIAL_EMPTY,
@@ -103,6 +105,8 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "MCE_RESET", 0,0, SPECIAL_MRESET, NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DSP_RESET", 0,0, SPECIAL_DRESET, NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
@@ -693,7 +697,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		}
 		
 		if (err!=0 && errmsg[0] == 0) {
-			sprintf(errmsg, "mce library error %#08x : %s", err,
+			sprintf(errmsg, "mce library error -%#08x : %s", -err,
 				mce_error_string(err));
 			ret_val = -1;
 		} 
@@ -780,6 +784,14 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case SPECIAL_QT_CONFIG:
 			ret_val = mcedata_qt_setup(&mcedata, tokens[1].value);
+			break;
+
+		case SPECIAL_MRESET:
+			ret_val = mce_hardware_reset(handle);
+			break;
+
+		case SPECIAL_DRESET:
+			ret_val = mce_interface_reset(handle);
 			break;
 
 /* 		case SPECIAL_CLEAR: */

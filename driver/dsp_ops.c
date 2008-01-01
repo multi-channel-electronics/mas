@@ -164,6 +164,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
 	int ret_val = 0;
+	int err = 0;
 
 	PRINT_INFO("write: state=%#x\n", dsp_ops.state);
 
@@ -175,17 +176,21 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 			return -ERESTARTSYS;
 	}		
 
+	dsp_ops.error = 0;
+
 	switch (dsp_ops.state) {
 	case OPS_IDLE:
 		break;
 
 	case OPS_CMD:
 	case OPS_REP:
-		ret_val = -EBUSY;
+		ret_val = 0;
+		dsp_ops.error = -DSP_ERR_ACTIVE;
 		goto out;
 
 	default:
-		ret_val = -EBADRQC;
+		ret_val = 0;
+		dsp_ops.error = -DSP_ERR_STATE;
 		goto out;
 	}
 
@@ -199,15 +204,17 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 
 	if (copy_from_user(&dsp_ops.cmd, buf, sizeof(dsp_ops.cmd))) {
 		PRINT_ERR(SUBNAME "copy_from_user incomplete\n");
-		ret_val = -EIO;
+		ret_val = 0;
+		dsp_ops.error = -DSP_ERR_KERNEL;
 		goto out;
 	}
 
 	dsp_ops.state = OPS_CMD;
-	if (dsp_send_command(&dsp_ops.cmd, dsp_write_callback)) {
+	if ((err=dsp_send_command(&dsp_ops.cmd, dsp_write_callback))!=0) {
 		dsp_ops.state = OPS_IDLE;
-		PRINT_ERR(SUBNAME "dsp_send_command failed\n");
-		ret_val = -EIO;
+		PRINT_ERR(SUBNAME "dsp_send_command failed [%#0x]\n", err);
+		ret_val = 0;
+		dsp_ops.error = err;
 		goto out;
 	}
 
@@ -245,6 +252,7 @@ int dsp_write_callback( int error, dsp_message* msg )
 		PRINT_ERR(SUBNAME "called with error\n");
 		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
 		dsp_ops.state = OPS_ERR;
+		dsp_ops.error = error;
 		return 0;
 	}
 
@@ -252,6 +260,7 @@ int dsp_write_callback( int error, dsp_message* msg )
 		PRINT_ERR(SUBNAME "called with null message\n");
 		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
 		dsp_ops.state = OPS_ERR;
+		dsp_ops.error = -DSP_ERR_UNKNOWN;
 		return 0;
 	}
 
@@ -267,6 +276,8 @@ int dsp_write_callback( int error, dsp_message* msg )
 int dsp_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
+	int x;
+
 	switch(iocmd) {
 
 	case DSPDEV_IOCT_RESET:
@@ -281,7 +292,9 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 		break;
 
 	case DSPDEV_IOCT_ERROR:
-		return dsp_ops.error;
+		x = dsp_ops.error;
+		dsp_ops.error = 0;
+		return x;
 
 	default:
 		return dsp_driver_ioctl(iocmd, arg);

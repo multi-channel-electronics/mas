@@ -12,6 +12,7 @@
 
 #include "mce_driver.h"
 #include "mce_ops.h"
+#include "mce_errors.h"
 #include "data.h"
 #include "data_ops.h"
 #include "dsp_driver.h"
@@ -130,19 +131,23 @@ int mce_CON_dsp_callback( int error, dsp_message *msg )
 
 	if (error<0 || msg==NULL) {
 		PRINT_ERR(SUBNAME "called with error %i\n", error);
-		mce_command_do_callback(-1, NULL);
+		if (error == DSP_ERR_TIMEOUT) {
+			mce_command_do_callback(-MCE_ERR_INT_TIMEOUT, NULL);
+		} else {
+			mce_command_do_callback(-MCE_ERR_INT_UNKNOWN, NULL);
+		}
 		return 0;
 	}
 
 	if (msg->command != DSP_CON) {
 		PRINT_ERR(SUBNAME "dsp command was not CON!\n");
-		mce_command_do_callback(-1, NULL);
+		mce_command_do_callback(-MCE_ERR_INT_PROTO, NULL);
 		return 0;
 	}
 
 	if (msg->reply != DSP_ACK) {
 		PRINT_ERR(SUBNAME "dsp reply was not ACK!\n");
-		mce_command_do_callback(-1, NULL);
+		mce_command_do_callback(-MCE_ERR_INT_FAILURE, NULL);
 		return 0;
 	}
 
@@ -163,7 +168,7 @@ int mce_NFY_RP_handler( int error, dsp_message *msg )
 	if ( error || (msg==NULL) ) {
 		PRINT_ERR(SUBNAME "called error=%i, msg=%lx\n",
 			  error, (unsigned long)msg);
-		mce_command_do_callback(-1, NULL);
+		mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL);
 		return 0;
 	}
 
@@ -226,19 +231,23 @@ int mce_HST_dsp_callback( int error, dsp_message *msg )
 
 	if (error<0 || msg==NULL) {
 		PRINT_ERR(SUBNAME "called with error %i\n", error);
-		mce_command_do_callback(-1, NULL);
+		if (error == DSP_ERR_TIMEOUT) {
+			mce_command_do_callback(-MCE_ERR_INT_TIMEOUT, NULL);
+		} else {
+			mce_command_do_callback(-MCE_ERR_INT_UNKNOWN, NULL);
+		}
 		return 0;
 	}
 
 	if (msg->command != DSP_HST) {
 		PRINT_ERR(SUBNAME "dsp command was not HST!\n");
-		mce_command_do_callback(-1, NULL);
+		mce_command_do_callback(-MCE_ERR_INT_PROTO, NULL);
 		return 0;
 	}
 
 	if (msg->reply != DSP_ACK) {
 		PRINT_ERR(SUBNAME "dsp reply was not ACK!\n");
-		mce_command_do_callback(-1, NULL);
+		mce_command_do_callback(-MCE_ERR_INT_FAILURE, NULL);
 		return 0;
 	}
 
@@ -269,9 +278,16 @@ int mce_send_command_now (void)
 		   (int)mdat.buff.command->card_id);
 	
 	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback ))) {
-		PRINT_INFO(SUBNAME "dsp_send_command_wait failed (%#x)\n",
+		PRINT_INFO(SUBNAME "dsp_send_command failed (%#x)\n",
 			  err);
-		return -1;
+		switch(-err) {
+		case EAGAIN:
+			return -MCE_ERR_INT_BUSY;
+		//case EIO:
+		//case ERESTARTSYS:
+		default:
+			return -MCE_ERR_INT_UNKNOWN;
+		}
 	}
 
 	return 0;
@@ -291,7 +307,7 @@ void mce_send_command_timer(unsigned long data)
 	}
 
 	PRINT_ERR(SUBNAME "mce reply timed out!\n");
-	mce_command_do_callback( -1, NULL);
+	mce_command_do_callback( -MCE_ERR_TIMEOUT, NULL);
 }
 
 #undef SUBNAME
@@ -305,16 +321,16 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block)
 	
 	if (non_block) {
 		if (down_trylock(&mdat.sem))
-			return -1;
+			return -EAGAIN;
 	} else {
 		if (down_interruptible(&mdat.sem))
-			return -1;
+			return -ERESTARTSYS;
 	}
 	
 	if (mdat.state != MDAT_IDLE) {
 		PRINT_INFO(SUBNAME "transaction in progress (state=%i)\n",
 			   mdat.state);
-		ret_val = -1;
+		ret_val = -MCE_ERR_ACTIVE;
 		goto up_and_out;
 	}
 	
@@ -476,7 +492,7 @@ int mce_da_hst_now(void)
 
 #define SUBNAME "mce_int_handler: "
 
-int mce_int_handler( dsp_message *msg )
+int mce_int_handler( dsp_message *msg, unsigned long data )
 {
 	dsp_notification *note = (dsp_notification*) msg;
 	int packet_size = (note->size_lo | (note->size_hi << 16)) * 4;
@@ -510,29 +526,6 @@ int mce_int_handler( dsp_message *msg )
 	default:
 		PRINT_ERR(SUBNAME "unknown packet type, ignoring\n");
 	}
-
-	return 0;
-}
-
-#undef SUBNAME
-
-
-#define SUBNAME "mce_qti_handler: "
-
-int mce_qti_handler ( dsp_message *msg )
-{
-	dsp_qtinform *qti = (dsp_qtinform*)msg;
-
-	PRINT_INFO(SUBNAME
-		   "update head to %u with %u drops; active tail is %u\n",
-		   qti->dsp_head, qti->dsp_drops,
-		   qti->dsp_tail);
-
-	/* Check consistency of buffer_index */
-
- 	data_frame_contribute( qti->dsp_head );
-	
-	// Schedule a grant update
 
 	return 0;
 }
@@ -751,6 +744,23 @@ int mce_proc(char *buf, int count)
 }
 
 
+/* Special DSP functionality */
+
+int mce_hardware_reset()
+{
+	dsp_command cmd = { DSP_RCO, {0,0,0} };
+	dsp_message msg;
+	return dsp_send_command_wait(&cmd, &msg);
+}
+
+int mce_interface_reset()
+{
+	dsp_command cmd = { DSP_RST, {0,0,0} };
+	dsp_message msg;
+	return dsp_send_command_wait(&cmd, &msg);
+}
+
+
 #define SUBNAME "mce_init_module: "
 
 int mce_init_module(int dsp_version)
@@ -791,6 +801,10 @@ int mce_init_module(int dsp_version)
 	mdat.state = MDAT_IDLE;
 	mdat.data_flags = 0;
 
+	// Set up command and quiet transfer handlers
+	dsp_set_handler(DSP_QTI, mce_qti_handler, 0);
+	dsp_set_handler(DSP_NFY, mce_int_handler, 0);
+
 	PRINT_INFO(SUBNAME "init ok.\n");
 
 	return 0;
@@ -822,3 +836,4 @@ int mce_cleanup()
 
 	return 0;
 }
+

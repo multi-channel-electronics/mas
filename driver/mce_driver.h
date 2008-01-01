@@ -24,8 +24,6 @@ int mce_error_register( void );
 
 void mce_error_reset( void );
 
-int mce_int_handler( dsp_message *msg );
-
 int mce_send_command_user( __user mce_command *cmd,
 			   mce_callback callback );
 
@@ -38,11 +36,8 @@ int mce_get_reply( __user void* reply_user,
 
 int mce_clear_commflags(void);
 
+int mce_interface_reset(void);
 
-int mce_int_handler( dsp_message *msg );
-
-
-int mce_qti_handler ( dsp_message *msg );
-
+int mce_hardware_reset(void);
 
 #endif

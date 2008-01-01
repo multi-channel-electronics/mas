@@ -331,10 +331,9 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			return -1;
 		}
 
-		if (err==0)
-			ret_val = 1;
-		else {
-			sprintf(errmsg, "dsp library error %#06x", err);
+		if (err!=0 && errmsg[0] == 0) {
+			sprintf(errmsg, "dsp library error -%#08x : %s", -err,
+				dsp_error_string(err));
 			ret_val = -1;
 		} 
 

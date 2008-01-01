@@ -17,6 +17,7 @@
 
 #include "data_ioctl.h"
 #include "mcecmd.h"
+#include "mce_ioctl.h"
 
 #define LOG_LEVEL_CMD     LOGGER_DETAIL
 #define LOG_LEVEL_REP_OK  LOGGER_DETAIL
@@ -40,10 +41,6 @@ struct mce_context {
 struct mce_context cons[MAX_CONS];
 int n_cons = 0;
 
-inline int handle_in_bounds(int handle) {
-	return (handle>=0) && (handle<MAX_CONS);
-}
-
 #define CON cons[handle]
 
 #define CHECK_HANDLE(hndl) if (!handle_in_bounds(hndl)) \
@@ -53,42 +50,14 @@ inline int handle_in_bounds(int handle) {
 #define CHECK_CONFIG(hndl) if (cons[hndl].config == NULL) \
                                    return -MCE_ERR_XML
 
-char *mce_error_string(int error)
+
+inline int handle_in_bounds(int handle) {
+	return (handle>=0) && (handle<MAX_CONS);
+}
+
+inline int get_last_error(int handle)
 {
-	switch (-error) {
-
-	case MCE_ERR_FAILURE:
-		return "MCE could not complete command.";
-
-	case MCE_ERR_HANDLE:
-		return "Bad mce_library handle.";
-
-	case MCE_ERR_DEVICE:
-		return "I/O error on driver device file.";
-
-	case MCE_ERR_FORMAT:
-		return "Bad packet structure.";
-
-	case MCE_ERR_REPLY:
-		return "Reply does not match command.";
-
-	case MCE_ERR_BOUNDS:
-		return "Data size is out of bounds.";
-
-	case MCE_ERR_CHKSUM:
-		return "Checksum failure.";
-
-	case MCE_ERR_XML:
-		return "Configuration file not loaded.";
-
-	case MCE_ERR_MULTICARD:
-		return "Function does not have multi-card support.";
-
-	case 0:
-		return "Success.";
-	}
-
-	return "Unknown mce_library error.";
+	return ioctl(CON.fd, MCEDEV_IOCT_LAST_ERROR);
 }
 
 
@@ -206,17 +175,23 @@ int mce_load_command(mce_command *cmd, u32 command,
 
 int mce_send_command_now(int handle, mce_command *cmd)
 {	
-	if ( sizeof(*cmd) != write(CON.fd, cmd, sizeof(*cmd)) )
+	int error = write(CON.fd, cmd, sizeof(*cmd));
+	if (error < 0) {
 		return -MCE_ERR_DEVICE;
-
+	} else if (error != sizeof(*cmd)) {
+		return get_last_error(handle);
+	}
 	return 0;
 }
 
 int mce_read_reply_now(int handle, mce_reply *rep)
 {
-	if ( sizeof(*rep) != read(CON.fd, rep, sizeof(*rep)) )
+	int error = read(CON.fd, rep, sizeof(*rep));
+	if (error < 0) {
 		return -MCE_ERR_DEVICE;
-
+	} else if (error != sizeof(*rep)) {
+		return get_last_error(handle);
+	}
 	return 0;
 }
 
@@ -241,38 +216,51 @@ int mce_send_command(int handle, mce_command *cmd, mce_reply *rep)
 
 	err = mce_read_reply_now(handle, rep);
 	if (err != 0) {
-		//Log message "reply! read error."
-		logger_print_level(&CON.logger, "reply! read error.",
-				   LOG_LEVEL_REP_ER);
+		sprintf(errstr, "reply [communication error] %s", mce_error_string(err));
+		logger_print_level(&CON.logger, errstr, LOG_LEVEL_REP_ER);
 		return err;
 	}
 	
-	//Check for data integrity
-	if (mce_checksum((u32*)rep, sizeof(*rep) / sizeof(u32)) != 0) {
-		log_data(&CON.logger, (u32*)rep, 60, 2,
-			 "reply [CHECKSUM error] ",
-			 LOG_LEVEL_REP_ER);
-		return -MCE_ERR_CHKSUM;
-	}
+	// Analysis of received packet
+	err = mce_checksum((u32*)rep, sizeof(*rep) / sizeof(u32)) ?
+		-MCE_ERR_CHKSUM : 0;
+	
+	if (!err) err = mce_cmd_match_rep(cmd, rep);
 
-	//Check that reply matches command, and command OK
-	err = mce_cmd_match_rep(cmd, rep);
-	if (err == -MCE_ERR_FAILURE) {
+
+	switch (-err) {
+		
+	case MCE_ERR_CHKSUM:
+		log_data(&CON.logger, (u32*)rep, 60, 2,
+			 "reply [checksum error] ",
+			 LOG_LEVEL_REP_ER);
+		break;
+		
+	case MCE_ERR_FAILURE:
 		log_data(&CON.logger, (u32*)rep, 60, 2,
 			 "reply [command failed] ",
 			 LOG_LEVEL_REP_ER);
-		return -MCE_ERR_FAILURE;
-	} else if (err != 0)  {
+		break;
+
+	case MCE_ERR_REPLY:
 		log_data(&CON.logger, (u32*)rep, 60, 2,
-			 "reply [CONSISTENCY error] ",
+			 "reply [consistency error] ",
 			 LOG_LEVEL_REP_ER);
-		return -MCE_ERR_REPLY;
+		break;
+
+	case 0:
+		log_data(&CON.logger, (u32*)rep, 60, 2, "reply  ",
+			 LOG_LEVEL_REP_OK);
+		break;
+		
+	default:
+		sprintf(errstr, "reply [strange error '%s'] ",
+			mce_error_string(err));
+		log_data(&CON.logger, (u32*)rep, 60, 2,
+			 errstr, LOG_LEVEL_REP_ER);
 	}
 
-	log_data(&CON.logger, (u32*)rep, 60, 2, "reply  ",
-		 LOG_LEVEL_REP_OK);
-
-	return 0;
+	return err;
 }
 
 /* Specialty */
@@ -509,3 +497,16 @@ int mce_write_block_check(int handle, const mce_param_t *param,
 
 	return (done ? 0 : -MCE_ERR_READBACK);
 }
+
+
+int mce_interface_reset(int handle)
+{
+	return ioctl(CON.fd, MCEDEV_IOCT_INTERFACE_RESET);
+}
+
+int mce_hardware_reset(int handle)
+{
+	return ioctl(CON.fd, MCEDEV_IOCT_HARDWARE_RESET);
+}
+
+

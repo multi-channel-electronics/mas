@@ -15,8 +15,8 @@ CC = gcc
 
 all: $(LIBNAME)
 
-$(LIBNAME): dsp_library.o
-	$(AR) rs $@ $<
+$(LIBNAME): dsp_library.o errors.o
+	$(AR) rs $@ $^
 
 dsp_library.o: dsp_library.c $(HDRNAME)
 	$(CC) $(CFLAGS) dsp_library.c -c

@@ -14,15 +14,13 @@
 
 #include "dsp_driver.h"
 #include "data.h"
+#include "data_qt.h"
 #include "mce_driver.h"
 #include "memory.h"
 
 #ifdef OPT_WATCHER
 # include "data_watcher.h"
 #endif
-
-#define DSP_INFORM_RATE    10 /* Hz */
-#define DSP_INFORM_COUNTS  (50000000 / DSP_INFORM_RATE) 
 
 frame_buffer_t frames;
 
@@ -113,22 +111,6 @@ int data_frame_increment()
 
 #undef SUBNAME
 
-/*
-
-  Quiet Transfer Mode support
-
-  Information interrupts from DSP are directed to
-  data_frame_contribute, which checks for consistency of the informed
-  value and then updates tail_index in the driver.
-
-  Following information, a tasklet is scheduled to update the head
-  index on the DSP.
-
-  QT configuration is achieved with calls to data_qt_setup and
-  data_qt_enable.
-
-*/
-
 
 #define SUBNAME "data_frame_contribute: "
 
@@ -171,110 +153,6 @@ int data_frame_contribute(int new_head)
 #undef SUBNAME
 
 
-#define SUBNAME "data_grant_callback: "
-
-int  data_grant_callback( int error, dsp_message *msg )
-{
-	if (error != 0 || msg==NULL) {
-		PRINT_ERR(SUBNAME "error or NULL message.\n");
-	}
-	return 0;		
-}
-
-#undef SUBNAME
-
-
-#define SUBNAME "data_grant_task: "
-
-void data_grant_task(unsigned long arg)
-{
-	int err;
-
-	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, frames.tail_index, 0 } };
-
-	PRINT_INFO(SUBNAME "trying update to tail=%i\n", frames.tail_index);
-
-	if ( (err=dsp_send_command( &cmd, data_grant_callback )) ) {
-		// FIX ME: discriminate between would-block errors and fatals!
-		PRINT_INFO(SUBNAME "dsp busy; rescheduling.\n");
-		tasklet_schedule(&frames.grant_tasklet);
-		return;
-	}
-	
-
-}
-
-#undef SUBNAME
-
-int data_qt_cmd( dsp_qt_code code, int arg1, int arg2)
-{
-	dsp_command cmd = { DSP_QTS, {code,arg1,arg2} };
-	dsp_message reply;
-	return dsp_send_command_wait( &cmd, &reply );
-}	
-
-
-#define SUBNAME "data_qt_enable: "
-
-int data_qt_enable(int on)
-{
-	int err = data_qt_cmd(DSP_QT_ENABLE, on, 0);
-	if (!err)
-		frames.data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
-	return err;
-}
-
-#undef SUBNAME
-
-
-#define SUBNAME "data_qt_setup: "
-
-int data_qt_configure( int qt_interval )
-{
-	int err = 0;
-	PRINT_INFO(SUBNAME "entry\n");
-
-	if ( data_qt_enable(0) || data_reset() )
-		err = -1;
-
-	if (!err)
-		err = data_qt_cmd(DSP_QT_DELTA , frames.frame_size, 0);
-	
-	if (!err)
-		err = data_qt_cmd(DSP_QT_NUMBER, frames.max_index, 0);
-
-	if (!err)
-		err = data_qt_cmd(DSP_QT_INFORM, qt_interval, 0);
-
-	if (!err)
-		err = data_qt_cmd(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0);
-
-	if (!err)
-		err = data_qt_cmd(DSP_QT_SIZE  , frames.data_size, 0);
-
-	if (!err)
-		err = data_qt_cmd(DSP_QT_TAIL  , frames.tail_index, 0);
-
-	if (!err)
-		err = data_qt_cmd(DSP_QT_HEAD  , frames.head_index, 0);
-
-	if (!err)
-		err = data_qt_cmd(DSP_QT_DROPS , 0, 0);
-
-	if (!err)
-		err = data_qt_cmd(DSP_QT_BASE,
-				  ((long)frames.base_busaddr      ) & 0xffff,
-				  ((long)frames.base_busaddr >> 16) & 0xffff);
-	
-	if (!err)
-		err = data_qt_enable(1);
-
-	return err;
-}
-
-#undef SUBNAME
-
-
 /* data_frame_poll
  *
  * This function can be used by data distributors to check for full
@@ -286,8 +164,6 @@ int data_frame_poll( void )
 {
 	return (frames.tail_index != frames.head_index);
 }
-
-
 
 
 #define SUBNAME "data_frame_resize: "

@@ -78,4 +78,8 @@ int dsp_atomem(char *mem_type);
 
 char *dsp_memtoa(int mem);
 
+
+char *dsp_error_string(int error);
+
+
 #endif
