@@ -33,7 +33,7 @@ install: install__$(LIBNAME) install__$(LIBHDR)
 
 
 clean: tidy
-	rm $(LIBNAME)
+	-rm $(LIBNAME)
 
 tidy:
 	-rm -f core.* *~ *.c~ *.h~ core.* *.o *.a

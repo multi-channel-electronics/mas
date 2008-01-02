@@ -1,10 +1,14 @@
-# Convert this to path tree system!
+default: install
 
-HEADERS = mce.h mce_errors.h
-LINCDIR = /usr/local/include/
+BASE = ../
+include $(BASE)Makefile.children
+
+HEADERS = mce.h mce_errors.h dsp.h dsp_errors.h
 
 install: $(HEADERS)
-	cp $(HEADERS) $(LINCDIR)
+	@for h in $(HEADERS); do \
+		cp $$h $(MAS_INSTALL_INC); \
+	done
 
 clean:
 	rm -f core.* *~ *.c~ *.h~ core.* *.o *.a

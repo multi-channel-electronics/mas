@@ -22,7 +22,7 @@ dsp_cmd: dsp_cmd.o
 	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY)
 
 tidy:
-	rm dsp_cmd
+	-rm dsp_cmd
 clean: tidy
 	-rm *.o *~
 

@@ -122,6 +122,6 @@ version.h: version.h.template FORCE
 install: modules
 	install -d $(INSTALLDIR)
 	install $(DRIVER_FILE) $(INSTALLDIR)
-	depmod -v $(KERNELVER)
+	depmod -v $(KERNELVER) > /dev/null
 
 .PHONY: FORCE

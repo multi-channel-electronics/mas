@@ -55,8 +55,8 @@ docs:
 	doxygen
 
 clean: tidy
-	rm $(LIBNAME)
+	-rm $(LIBNAME)
 
 tidy:
-	rm -f core.* *~ *.c~ *.h~ core.* *.o #*#
+	-rm -f core.* *~ *.c~ *.h~ core.* *.o #*#
 
