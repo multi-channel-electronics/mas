@@ -5,11 +5,11 @@ include $(BASE)Makefile.children
 
 LIB     = mcecmd
 LIBNAME = lib$(LIB).a
-LIBHDR  = $(LIB).h
 
 DSP_DIR = ../driver
 OBJECTS = cmd.o data.o acq.o data_thread.o config.o files.o frame.o errors.o
-HEADERS = $(LIBHDR) mcedata.h mceconfig.h
+HEADERS = data_thread.h frame.h \
+	$(MAS_INCLUDE_F)mcecmd.h $(MAS_INCLUDE_F)mcedata.h $(MAS_INCLUDE_F)mceconfig.h
 
 INCLUDE += -I. -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I$(DSP_DIR)
 
@@ -22,16 +22,7 @@ all: $(LIBNAME)
 INSTALL_TARGET=$(LIBNAME)
 include $(MAKERULES)Makefile.install_rule_lib
 
-INSTALL_TARGET=mcecmd.h
-include $(MAKERULES)Makefile.install_rule_inc
-
-INSTALL_TARGET=mcedata.h
-include $(MAKERULES)Makefile.install_rule_inc
-
-INSTALL_TARGET=mceconfig.h
-include $(MAKERULES)Makefile.install_rule_inc
-
-install: install__$(LIBNAME) install__mcecmd.h install__mcedata.h install__mceconfig.h
+install: install__$(LIBNAME)
 
 $(LIBNAME) : $(OBJECTS) $(HEADERS)
 	$(AR) rs $@ $(OBJECTS)
@@ -42,10 +33,10 @@ cmd.o : cmd.c $(HEADERS)
 data.o: data.c $(HEADERS)
 	$(CC) $(CFLAGS) data.c -c
 
-config.o: config.c mceconfig.h
+config.o: config.c $(HEADERS)
 	$(CC) $(CFLAGS) $< -c
 
-files.o: files.c mceconfig.h mcedata.h
+files.o: files.c $(HEADERS)
 	$(CC) $(CFLAGS) $< -c
 
 cfgtest: cfgtest.c config.o

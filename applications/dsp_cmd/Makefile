@@ -3,7 +3,7 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-INCLUDE=-I$(DSPLIB_F) -I$(MAS_INCLUDE_F) -I$(MASMISC_F)
+INCLUDE=-I$(MAS_INCLUDE_F)
 
 LIBRARY=-L$(DSPLIB_F) -l$(DSPLIB) \
 	-L$(LOGLIB_F) -l$(LOGLIB) \

@@ -10,7 +10,7 @@ SOCK = $(MASMISC_F)/socks.o
 SOURCE = logger.c main.c init.c
 HEADER = logger.h init.h
 
-INCLUDE += -I$(MASMISC_F) -I$(LOGLIB_F)
+INCLUDE += -I$(MAS_INCLUDE_F)
 
 CFLAGS += -Wall $(INCLUDE)
 

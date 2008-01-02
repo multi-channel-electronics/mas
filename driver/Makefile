@@ -104,7 +104,7 @@ fault:
 
 clean: kversion_clean
 	-rm -rf *.o *~ core version.h \
-		.depend .*.cmd *.mod.c .tmp_versions Modules.symvers
+		.depend .*.cmd *.mod.c .tmp_versions Module.symvers
 ifeq ($(FAKEMCE),1)
 	make -C $(FAKEMCE_DIR) clean
 endif #FAKEMCE=1

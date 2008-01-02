@@ -1,24 +1,26 @@
 TARGET ?= all
+default: $(TARGET)
+
+BASE = ../
+include $(BASE)Makefile.children
 
 OBJECTS = socks.o cmdtree.o
-
+HEADERS = $(MAS_INCLUDE_F)socks.h $(MAS_INCLUDE_F)cmdtree.h
 CC = gcc
 
-CFLAGS += -Wall
-
-default: $(TARGET)
+CFLAGS += -Wall -I$(MAS_INCLUDE_F)
 
 all: $(OBJECTS)
 
-socks.o: socks.c socks.h
+socks.o: socks.c $(MAS_INCLUDE_F)socks.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
-cmdtree.o: cmdtree.c cmdtree.h
+cmdtree.o: cmdtree.c $(MAS_INCLUDE_F)cmdtree.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
-test.o: test.c cmdtree.o cmdtree.h
+test.o: test.c $(HEADERS)
 
-test: test.o cmdtree.o cmdtree.h
+test: test.o cmdtree.o $(HEADERS)
 	$(CC) $(CFLAGS) test.o cmdtree.o -o test
 
 tidy:
