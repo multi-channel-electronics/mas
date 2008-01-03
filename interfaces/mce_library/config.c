@@ -2,21 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <libconfig.h>
 
-#include "mcecmd.h"
-#include "mceconfig.h"
-
-/*
-  With this library you have to be able to:
-
-  - raw lookup by name (load any card, cardtype, paramset, param)
-
-  - traverse cards, cardtypes, paramsets, params one-by-one
-
-  - quick load of "card", "param" pairs.
-
-*/
+#include <mce_library.h>
    
 
 /* Local prototypes... */
@@ -69,75 +56,105 @@ string_table_t param_types_st[] = {
 	{ -1, NULL }
 };
 
-/*! \fn mceconfig_load(char *filename, mceconfig_t **mce)
- *
- *  \brief Loads hardware configuration data from the given filename
- *  into the given mceconfig_t structure.
- *
- *  The call fails if filename is not a valid libconfig file, and also
- *  if the basic elements (hardware group and 3 sub-lists) are not
-3~ *  found.
- *
- *  Returns 0 on success, non-zero on failure.
- */
 
-int mceconfig_load(const char *filename, mceconfig_t **mce)
+/*
+  mceconfig_open
+  mceconfig_close
+
+  Make and break connections on the config module.
+*/
+
+int mceconfig_open(mce_context_t* context,
+		   const char *filename, const char *keyname)
 {
-	(*mce) = (mceconfig_t*)malloc(sizeof(mceconfig_t));
-	struct config_t *cfg = &(*mce)->cfg;
-	mceconfig_t *_mce = *mce;
+	const char* key = MCECFG_HARDWARE;
+	struct config_t *cfg = &C_config.cfg;
 
 	config_init(cfg);
 	if (!config_read_file(cfg, filename)) {
-		printf("config_read_file '%s': line %i: %s\n",
-		       filename, config_error_line(cfg),
-		       config_error_text(cfg));
+		fprintf(stderr, "config_read_file '%s': line %i: %s\n",
+			filename, config_error_line(cfg),
+			config_error_text(cfg));
 		return -1;
 	}
 		
 	//Find hardware group
-	config_setting_t *hardware = config_lookup(cfg, "hardware");
+	if (keyname != NULL) key = keyname;
+	config_setting_t *hardware = config_lookup(cfg, key);
 	if (hardware == NULL) {
-		printf("Could not find hardware.\n");
+		fprintf(stderr, "Could not find key '%s' in file '%s'.\n",
+			filename, key);
 		return 1;
 	}
 	
-	_mce->parameter_sets =
-		config_setting_get_member(hardware, "parameter_sets");
-	_mce->card_types =
-		config_setting_get_member(hardware, "card_types");
+	C_config.parameter_sets =
+		config_setting_get_member(hardware, MCECFG_PARAMSETS);
+	C_config.card_types =
+		config_setting_get_member(hardware, MCECFG_CARDTYPES);
 	config_setting_t *system =
-		config_setting_get_member(hardware, "system");
+		config_setting_get_member(hardware, MCECFG_SYSTEM);
 
-	if (_mce->parameter_sets==NULL ||
-	    _mce->card_types==NULL || system==NULL) {
+	if (C_config.parameter_sets==NULL ||
+	    C_config.card_types==NULL || system==NULL) {
 		printf("Configuration file incomplete.\n");
 		return 1;
 	}
 
-	_mce->components = config_setting_get_member(system, "components");
-	if (_mce->components==NULL) {
+	C_config.components = 
+		config_setting_get_member(system, MCECFG_COMPONENTS);
+	if (C_config.components==NULL) {
 		printf("System has no components!\n");
 		return 1;
 	}
 
-	_mce->paramset_count = count_elem(hardware, "parameter_sets");
-	_mce->cardtype_count = count_elem(hardware, "card_types");
-	_mce->card_count = count_elem(system, "components");
-	
+	C_config.paramset_count = count_elem(hardware, MCECFG_PARAMSETS);
+	C_config.cardtype_count = count_elem(hardware, MCECFG_CARDTYPES);
+	C_config.card_count = count_elem(system, MCECFG_COMPONENTS);
+
+	C_config.connected = 1;
 	return 0;
 }
 
-int mceconfig_destroy(mceconfig_t *mce)
+int mceconfig_close(mce_context_t* context)
 {
-	config_destroy(&mce->cfg);
+	C_config_check;
+	
+	config_destroy(&C_config.cfg);
+	C_config.connected = 0;
+
 	return 0;
 }
 
 
 /*
 
-  mceconfig_<type>(mceconfig_t *mce, int index, <type>_t *d)
+  mceconfig_<type>_count(mce_context_t *context)
+
+   - Return a count of basic elements in hardware configuration
+
+*/
+
+int mceconfig_cardtype_count(const mce_context_t* context)
+{
+	C_config_check;
+	return C_config.cardtype_count;
+}
+
+int mceconfig_paramset_count(const mce_context_t* context)
+{
+	C_config_check;
+	return C_config.paramset_count;
+}
+
+int mceconfig_card_count    (const mce_context_t* context)
+{
+	C_config_check;
+	return C_config.card_count;
+}
+
+
+/*
+  mceconfig_<type>(mce_context_t *context, int index, <type>_t *d)
 
    - Loads basic elements from the configuration "mce"
    - The element at index "index" is loaded.
@@ -145,34 +162,34 @@ int mceconfig_destroy(mceconfig_t *mce)
 
 */
 
-int mceconfig_cardtype(const mceconfig_t *mce,
+int mceconfig_cardtype(const mce_context_t* context,
 		       int index,
 		       cardtype_t *ct)
 {
 	config_setting_t *cfg =
-		config_setting_get_elem(mce->parameter_sets, index);
+		config_setting_get_elem(C_config.parameter_sets, index);
 	if (cfg==NULL) return -1;
 
 	return mceconfig_cfg_cardtype(cfg, ct);
 }
 
-int mceconfig_paramset(const mceconfig_t *mce,
+int mceconfig_paramset(const mce_context_t* context,
 		       int index,
 		       paramset_t *ps)
 {
 	config_setting_t *cfg =
-		config_setting_get_elem(mce->parameter_sets, index);
+		config_setting_get_elem(C_config.parameter_sets, index);
 	if (cfg==NULL) return -1;
 
 	return mceconfig_cfg_paramset(cfg, ps);
 }
 
-int mceconfig_card(const mceconfig_t *mce,
+int mceconfig_card(const mce_context_t* context,
 		   int index,
 		   card_t *c)
 {
 	config_setting_t *cfg =
-		config_setting_get_elem(mce->components, index);
+		config_setting_get_elem(C_config.components, index);
 	if (cfg==NULL) return -1;
 
 	return mceconfig_cfg_card(cfg, c);
@@ -181,7 +198,7 @@ int mceconfig_card(const mceconfig_t *mce,
 
 /*
 
-  mceconfig_<parent>_<child>(mceconfig_t *mce, <parent>_t *p, [int index,] <child>_t *c)
+  mceconfig_<parent>_<child>(mce_context_t* context, <parent>_t *p, [int index,] <child>_t *c)
 
    - Loads children of type <child> from the parent of type <parent>
    - Parent : child relationships are:
@@ -191,7 +208,7 @@ int mceconfig_card(const mceconfig_t *mce,
 
 */
 
-int mceconfig_card_cardtype(const mceconfig_t *mce,
+int mceconfig_card_cardtype(const mce_context_t* context,
 			    const card_t *c,
 			    cardtype_t *ct)
 {
@@ -203,7 +220,7 @@ int mceconfig_card_cardtype(const mceconfig_t *mce,
 	}
 
 	config_setting_t* cfg =
-		get_setting_by_name(mce->card_types, child_name);
+		get_setting_by_name(C_config.card_types, child_name);
 	if (cfg==NULL)  {
 		fprintf(stderr, "Card type '%s' not found.\n", child_name);
 		return -1;
@@ -212,7 +229,7 @@ int mceconfig_card_cardtype(const mceconfig_t *mce,
 	return mceconfig_cfg_cardtype(cfg, ct);
 }
 
-int mceconfig_cardtype_paramset(const mceconfig_t *mce, 
+int mceconfig_cardtype_paramset(const mce_context_t* context, 
 				const cardtype_t *ct,
 				int index,
 				paramset_t *ps)
@@ -223,13 +240,13 @@ int mceconfig_cardtype_paramset(const mceconfig_t *mce,
 
 	// Find parameter set called child_name
 	config_setting_t *cfg = 
-		get_setting_by_name(mce->parameter_sets, child_name);
+		get_setting_by_name(C_config.parameter_sets, child_name);
 	if (cfg==NULL) return -1;
 
 	return mceconfig_cfg_paramset(cfg, ps);
 }
 
-int mceconfig_paramset_param(const mceconfig_t *mce, 
+int mceconfig_paramset_param(const mce_context_t* context, 
 			     const paramset_t *ps,
 			     int index,
 			     param_t *p)
@@ -374,7 +391,7 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 
 /*
 
-  mceconfig_lookup_<child>(const mceconfig_t *mce, [const <parent>_t *p, ]
+  mceconfig_lookup_<child>(const mce_context_t* context, [const <parent>_t *p, ]
                            const char *child_name, <child>_t *c)
 
   - Lookup a config setting by name
@@ -382,31 +399,31 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 
 */
 
-int  mceconfig_lookup_card(const mceconfig_t *mce, const char *card_name,
+int  mceconfig_lookup_card(const mce_context_t* context, const char *card_name,
 			   card_t *card)
 {
 	return mceconfig_cfg_card(
-		get_setting_by_name(mce->components, card_name),
+		get_setting_by_name(C_config.components, card_name),
 		card );
 }
 
-int  mceconfig_lookup_cardtype(const mceconfig_t *mce, const char *cardtype_name,
+int  mceconfig_lookup_cardtype(const mce_context_t* context, const char *cardtype_name,
 			       cardtype_t *cardtype)
 {
 	return mceconfig_cfg_cardtype(
-		get_setting_by_name(mce->card_types, cardtype_name),
+		get_setting_by_name(C_config.card_types, cardtype_name),
 		cardtype );
 }
 
-int  mceconfig_lookup_paramset(const mceconfig_t *mce, const char *paramset_name,
+int  mceconfig_lookup_paramset(const mce_context_t* context, const char *paramset_name,
 			       paramset_t *paramset)
 {
 	return mceconfig_cfg_paramset(
-		get_setting_by_name(mce->parameter_sets, paramset_name),
+		get_setting_by_name(C_config.parameter_sets, paramset_name),
 		paramset );
 }
 
-int  mceconfig_lookup_param(const mceconfig_t *mce, const paramset_t *paramset,
+int  mceconfig_lookup_param(const mce_context_t* context, const paramset_t *paramset,
 			    const char *param_name, param_t *param)
 {
 	config_setting_t *p_list =
@@ -425,7 +442,7 @@ int  mceconfig_lookup_param(const mceconfig_t *mce, const paramset_t *paramset,
 
 */
 
-int mceconfig_lookup(const mceconfig_t *mce,
+int mceconfig_lookup(const mce_context_t* context,
 		     const char *card_name, const char *para_name,
 		     card_t *c, param_t *p)
 {
@@ -433,18 +450,20 @@ int mceconfig_lookup(const mceconfig_t *mce,
 	paramset_t ps;
 	int index;
 
-	if ((p==NULL) || (mce==NULL)) return -1;
-		
+	C_config_check;
+
+	if ((p==NULL) || (c==NULL)) return -1;
+	
 	p->flags = 0;
 
-	if (mceconfig_lookup_card(mce, card_name, c)) return -2;
-	if (mceconfig_card_cardtype(mce, c, &ct)) return -3;
+	if (mceconfig_lookup_card(context, card_name, c)) return -2;
+	if (mceconfig_card_cardtype(context, c, &ct)) return -3;
 
 	for (index=0; index < ct.paramset_count; index++) {
-		if (mceconfig_cardtype_paramset(mce, &ct, index, &ps))
+		if (mceconfig_cardtype_paramset(context, &ct, index, &ps))
 			return -4;
 
-		if (mceconfig_lookup_param(mce, &ps, para_name, p)==0)
+		if (mceconfig_lookup_param(context, &ps, para_name, p)==0)
 			return 0;
 	}
 	return -5;

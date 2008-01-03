@@ -16,10 +16,14 @@ CC=gcc
 
 # targets
 
+HEADERS = options.h cmd.h
+
 all: mce_cmd
 
-mce_cmd: mce_cmd.o options.o options.h mce_cmd.h
+mce_cmd: mce_cmd.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+
+.c.o: 	$(HEADERS)
 
 tidy:
 	-rm *~ *.o

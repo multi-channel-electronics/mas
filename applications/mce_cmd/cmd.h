@@ -1,8 +1,5 @@
-#ifndef _MCE_CMD_H_
-#define _MCE_CMD_H_
-
-#include <mce.h>
-#include <mcecmd.h>
+#ifndef _CMD_H_
+#define _CMD_H_
 
 #define LINE_LEN 1024
 #define NARGS 64

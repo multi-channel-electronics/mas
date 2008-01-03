@@ -1,7 +1,7 @@
 #ifndef _OPTIONS_H_
 #define _OPTIONS_H_
 
-#include "mce_cmd.h"
+#include "cmd.h"
 
 typedef struct {
 

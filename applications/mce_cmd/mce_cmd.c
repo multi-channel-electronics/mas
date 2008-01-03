@@ -15,13 +15,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <mcecmd.h>
-#include <mcedata.h>
-#include <mceconfig.h>
+#include <mce_library.h>
 
 #include <cmdtree.h>
 
-#include "mce_cmd.h"
+#include "cmd.h"
 #include "options.h"
 
 enum {
@@ -130,7 +128,8 @@ cmdtree_opt_t root_opts[] = {
 
 // Lazy old globals...
 
-int handle = -1;
+mce_context_t* mce;
+
 char *line;
 char errstr[LINE_LEN];
 
@@ -141,9 +140,7 @@ options_t options = {
 	display: SPECIAL_DEF,
 };
 
-mcedata_t mcedata;
 mce_acq_t acq;
-mceconfig_t *mce = NULL;
 
 // This structure is used to cache data which eventually constructs acq.
 
@@ -156,11 +153,11 @@ int  preload_mce_params();
 
 int  bit_count(int k);
 
-int  menuify_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts);
+int  menuify_mceconfig(cmdtree_opt_t *opts);
 
 int  process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
 
-int main(int argc, char **argv)
+int  main(int argc, char **argv)
 {
 	FILE *ferr = stderr;
 	FILE *fin  = stdin;
@@ -178,31 +175,36 @@ int main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	handle = mce_open(options.cmd_device);
-	if (handle<0) {
+	if ((mce = mcelib_create()) == NULL) {
+		fprintf(ferr, "Could not create mce library context.\n");
+		err = ERR_MEM;
+		goto exit_now;
+	}
+
+	// Connect command, data, and configuration modules.
+
+	if (mcecmd_open(mce, options.cmd_device) != 0) {
 		fprintf(ferr, "Could not open mce device '%s'\n",
 			options.cmd_device);
 		err = ERR_MCE;
 		goto exit_now;
 	}
 
-	// Ready data
-	if (mcedata_init(&mcedata, handle, options.data_device)!=0) {
-		fprintf(ferr, "No data device connection.\n");
+	if (mcedata_open(mce, options.data_device) != 0) {
+		fprintf(ferr, "Could not open data device '%s'.\n",
+			options.data_device);
 		err = ERR_MCE;
 		goto exit_now;
 	}
-
-	if (mceconfig_load(options.config_file, &mce)!=0) {
+	
+	if (mceconfig_open(mce, options.config_file, NULL)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
 			options.config_file);
 		err = ERR_MCE;
 		goto exit_now;
 	}
-	menuify_mceconfig(mce, root_opts);
 
-	// Share config with MCE command library.
-	mce_set_config(handle, mce);
+	menuify_mceconfig(root_opts);
 
 	// Preload useful MCE parameter id's
 	if (preload_mce_params()) {
@@ -303,18 +305,19 @@ int main(int argc, char **argv)
 
 exit_now:
 	if (line!=NULL) free(line);
-	if (handle>=0)  mce_close(handle);
+
+	mcelib_destroy(mce);
 
 	return err;
 }
 
-int menuify_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts)
+int menuify_mceconfig(cmdtree_opt_t *opts)
 {
 	cmdtree_opt_t *card_opts;
 	cmdtree_opt_t *para_opts;
 	char *string_table;
 	int i,j;
-	int n_cards = mce->card_count;
+	int n_cards = mceconfig_card_count(mce);
 	int n_params = 0;
 	
 	// Count parameters
@@ -401,13 +404,13 @@ int menuify_mceconfig( mceconfig_t *mce, cmdtree_opt_t *opts)
 int preload_mce_params()
 {
 	int ret_val = 0;
-	if ((ret_val=mce_load_param(handle, &num_rows_reported, "cc", "num_rows_reported"))!=0) {
+	if ((ret_val=mcecmd_load_param(mce, &num_rows_reported, "cc", "num_rows_reported"))!=0) {
 		fprintf(stderr, "Could not decode 'cc num_rows_reported' [%i]\n",
 			ret_val);
 		return -1;
 	}
 	
-	if ((ret_val=mce_load_param(handle, &ret_dat_s,  "cc", "ret_dat_s"))!=0) {
+	if ((ret_val=mcecmd_load_param(mce, &ret_dat_s,  "cc", "ret_dat_s"))!=0) {
 		fprintf(stderr, "Could not decode 'cc ret_dat_s' [%i]\n", ret_val);
 		return -1;
 	}
@@ -420,7 +423,7 @@ int learn_acq_params(int get_frame_count, int get_rows)
 	u32 data[64];
 
 	if (get_frame_count) {
-		if (mce_read_block(handle, &ret_dat_s, -1, data)) {
+		if (mcecmd_read_block(mce, &ret_dat_s, -1, data)) {
 			sprintf(errstr, "Failed to read frame count from MCE");
 			return -1;
 		}
@@ -428,7 +431,7 @@ int learn_acq_params(int get_frame_count, int get_rows)
 	}
 
 	if (get_rows) {
-		if (mce_read_block(handle, &num_rows_reported, -1, data)) {
+		if (mcecmd_read_block(mce, &num_rows_reported, -1, data)) {
 			sprintf(errstr, "Failed to read number of reported rows");
 			return -1;
 		}
@@ -474,7 +477,7 @@ int prepare_outfile(char *errmsg, int file_sequencing)
 	}
 
 	// Basic init, including framesize -> driver.
-	if (mcedata_acq_setup(&acq, &mcedata, 0, my_acq.cards, my_acq.rows) != 0) {
+	if (mcedata_acq_setup(&acq, mce, 0, my_acq.cards, my_acq.rows) != 0) {
 		sprintf(errmsg, "Could not configure acquisition");
 		return -1;
 	}
@@ -507,7 +510,7 @@ int do_acq_compat(char *errmsg)
 	if (learn_acq_params(1, 1)!=0)
 		return -1;
 	
-	if (mcedata_acq_setup(&acq, &mcedata, 0, my_acq.cards, my_acq.rows) != 0) {
+	if (mcedata_acq_setup(&acq, mce, 0, my_acq.cards, my_acq.rows) != 0) {
 		sprintf(errmsg, "Could not setup acq structure.\n");
 		return -1;
 	}
@@ -569,7 +572,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			char para_word[MCE_SHORT];
 			cmdtree_token_word(card_word, tokens+1);
 			cmdtree_token_word(para_word, tokens+2);
-			if (mce_load_param(handle, &mcep, card_word, para_word)) {
+			if (mcecmd_load_param(mce, &mcep, card_word, para_word)) {
 				sprintf(errstr, "Could not load parameter '%s %s'",
 					card_word, para_word);
 				return -1;
@@ -599,7 +602,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		switch( tokens[0].value ) {
 		
 		case COMMAND_RS:
-			err = mce_reset(handle, &mcep);
+			err = mcecmd_reset(mce, &mcep);
 			break;
 
 		case COMMAND_GO:
@@ -631,17 +634,17 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				// If you get here, your data just accumulates
 				//  in the driver's buffer, /dev/mce_data0, assuming that
 				//  the frame size has been set correctly.
-				err = mce_start_application(handle, &mcep);
+				err = mcecmd_start_application(mce, &mcep);
 			}
 			break;
 
 		case COMMAND_ST:
-			err = mce_stop_application(handle, &mcep);
+			err = mcecmd_stop_application(mce, &mcep);
 			break;
 
 		case COMMAND_RB:
 
-			err = mce_read_block(handle, &mcep, -1, buf);
+			err = mcecmd_read_block(mce, &mcep, -1, buf);
 			if (err)
 				break;
 
@@ -664,7 +667,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				sprintf(errstr, "REL not allowed on multi-card parameters!");
 				return -1;
 			}
-			err = mce_read_element(handle, &mcep,
+			err = mcecmd_read_element(mce, &mcep,
 					    tokens[3].value, buf);
 			if (err)
 				break;
@@ -681,12 +684,12 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				buf[i] = tokens[3+i].value;
 			}
 
-			err = mce_write_block(handle, &mcep, to_write, buf);
+			err = mcecmd_write_block(mce, &mcep, to_write, buf);
 			break;
 			
 		case COMMAND_WEL:
 			
-			err = mce_write_element(handle, &mcep,
+			err = mcecmd_write_element(mce, &mcep,
 						tokens[3].value,
 						tokens[4].value);
 			break;
@@ -698,7 +701,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		
 		if (err!=0 && errmsg[0] == 0) {
 			sprintf(errmsg, "mce library error -%#08x : %s", -err,
-				mce_error_string(err));
+				mcelib_error_string(err));
 			ret_val = -1;
 		} 
 	} else {
@@ -779,31 +782,31 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case SPECIAL_QT_ENABLE:
-			ret_val = mcedata_qt_enable(&mcedata, tokens[1].value);
+			ret_val = mcedata_qt_enable(mce, tokens[1].value);
 			break;
 
 		case SPECIAL_QT_CONFIG:
-			ret_val = mcedata_qt_setup(&mcedata, tokens[1].value);
+			ret_val = mcedata_qt_setup(mce, tokens[1].value);
 			break;
 
 		case SPECIAL_MRESET:
-			ret_val = mce_hardware_reset(handle);
+			ret_val = mcecmd_hardware_reset(mce);
 			break;
 
 		case SPECIAL_DRESET:
-			ret_val = mce_interface_reset(handle);
+			ret_val = mcecmd_interface_reset(mce);
 			break;
 
 /* 		case SPECIAL_CLEAR: */
-/* 			ret_val = mce_reset(handle, tokens[1].value, tokens[2].value); */
+/* 			ret_val = mcecmd_reset(mce, tokens[1].value, tokens[2].value); */
 /* 			break; */
 
 		case SPECIAL_FAKESTOP:
-			ret_val = mcedata_fake_stopframe(&mcedata);
+			ret_val = mcedata_fake_stopframe(mce);
 			break;
 
 		case SPECIAL_EMPTY:
-			ret_val = mcedata_empty_data(&mcedata);
+			ret_val = mcedata_empty_data(mce);
 			break;
 
 		case SPECIAL_SLEEP:
@@ -814,7 +817,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case SPECIAL_FRAME:
-			ret_val = mcedata_set_datasize(&mcedata, tokens[1].value);
+			ret_val = mcedata_set_datasize(mce, tokens[1].value);
 			if (ret_val != 0) {
 				sprintf(errmsg, "mce_library error %i", ret_val);
 			}

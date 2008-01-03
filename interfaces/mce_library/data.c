@@ -8,10 +8,10 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <libmaslog.h>
-
+#include "mce_library.h"
 #include "data_ioctl.h"
-#include "mcedata.h"
+
+/* Local header files */
 
 #include "frame.h"
 #include "data_thread.h"
@@ -23,52 +23,62 @@
 
 /* Data connection */
 
-int mcedata_init(mcedata_t *mcedata, int mcecmd_handle, const char *dev_name)
+int mcedata_open(mce_context_t *context, const char *dev_name)
 {
-	if (mcedata==NULL) return -1;
-	mcedata->mcecmd_handle = mcecmd_handle;
+	if (C_data.connected) mcedata_close(context);
 
-	strcpy(mcedata->dev_name, dev_name);
+	if (strlen(dev_name)>=MCE_LONG-1)
+		return -MCE_ERR_BOUNDS;
 
-	mcedata->fd = open(mcedata->dev_name, 0);
-	if (mcedata->fd <= 0) {
-		fprintf(stderr, "Could not open mce data '%s'\n",
-			mcedata->dev_name);
-		return -1;
-	}		
-	
+	C_data.fd = open(dev_name, O_RDWR);
+	if (C_data.fd<0) return -MCE_ERR_DEVICE;
+
+	C_data.connected = 1;
+	strcpy(C_data.dev_name, dev_name);
+
 	return 0;
 }
 
+int mcedata_close(mce_context_t *context)
+{
+	C_data_check;
+
+	if (close(C_data.fd) < 0)
+		return -MCE_ERR_DEVICE;
+
+	C_data.connected = 0;
+
+	return 0;
+}
 
 /* ioctl on data device */
 
-int mcedata_ioctl(mcedata_t *mcedata, int key, unsigned long arg)
+int mcedata_ioctl(mce_context_t* context, int key, unsigned long arg)
 {
-	return ioctl(mcedata->fd, key, arg);
+	return ioctl(C_data.fd, key, arg);
 }
 
-int mcedata_set_datasize(mcedata_t *mcedata, int datasize)
+int mcedata_set_datasize(mce_context_t* context, int datasize)
 {
-	return ioctl(mcedata->fd, DATADEV_IOCT_SET_DATASIZE, datasize);
+	return ioctl(C_data.fd, DATADEV_IOCT_SET_DATASIZE, datasize);
 }
 
-int mcedata_empty_data(mcedata_t *mcedata)
+int mcedata_empty_data(mce_context_t* context)
 {
-	return ioctl(mcedata->fd, DATADEV_IOCT_EMPTY);
+	return ioctl(C_data.fd, DATADEV_IOCT_EMPTY);
 }
 
-int mcedata_fake_stopframe(mcedata_t *mcedata)
+int mcedata_fake_stopframe(mce_context_t* context)
 {
-	return ioctl(mcedata->fd, DATADEV_IOCT_FAKE_STOPFRAME);
+	return ioctl(C_data.fd, DATADEV_IOCT_FAKE_STOPFRAME);
 }
 
-int mcedata_qt_enable(mcedata_t *mcedata, int on)
+int mcedata_qt_enable(mce_context_t* context, int on)
 {
-	return ioctl(mcedata->fd, DATADEV_IOCT_QT_ENABLE, on);
+	return ioctl(C_data.fd, DATADEV_IOCT_QT_ENABLE, on);
 }
 
-int mcedata_qt_setup(mcedata_t *mcedata, int frame_count)
+int mcedata_qt_setup(mce_context_t* context, int frame_count)
 {
-	return ioctl(mcedata->fd, DATADEV_IOCT_QT_CONFIG, frame_count);
+	return ioctl(C_data.fd, DATADEV_IOCT_QT_CONFIG, frame_count);
 }

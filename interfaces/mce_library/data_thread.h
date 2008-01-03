@@ -1,10 +1,9 @@
 #ifndef __DATA_THREAD_H__
 #define __DATA_THREAD_H__
 
-#include <mcecmd.h>
-#include <mcedata.h>
-
 #include <pthread.h>
+
+#include <mce_library.h>
 
 typedef struct data_thread_struct {
 	

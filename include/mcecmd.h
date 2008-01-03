@@ -1,106 +1,115 @@
-/***************************************************
-  mcecmd.h - header file for MCE API
+/******************************************************
+  mcecmd.h - header file for MCE API, command module
 
-  Matthew Hasselfield, 07.06.11
+  Matthew Hasselfield, 08.01.02
 
-***************************************************/
+******************************************************/
 
 #ifndef _MCECMD_H_
 #define _MCECMD_H_
 
 /*! \file mcecmd.h
- *  \brief Header file for libmce
  *
- *  Projects linking to libmce should include this header file.
+ *  \brief Main header file for command module.
+ *
+ *  Contains routines for managing MCE command/reply.  Works with
+ *  config module to translate command strings and to ensure data is
+ *  in bounds.
+ *
+ *  This module is intended to connect to an mce_cmd character driver
+ *  device file.
  */
 
-/* mce.h defines the structures used by the dsp driver */
 
-#include <mce.h>
-#include <mceconfig.h>
-#include <mce_errors.h>
+/* Module information structure */
 
+typedef struct mcecmd {
 
-/*! \def MAX_CONS
- *  \brief Number of MCE handles available
- */
+	int connected;
+	int fd;
 
-#define MAX_CONS 16
+	char dev_name[MCE_LONG];
+	char errstr[MCE_LONG];
+
+} mcecmd_t;
 
 
 /*
-   API: all functions return a negative error value on failure.  On
-   success, the return value is 0.
-
-   Begin a session by calling mce_open.  The return value is the
-   handle that must be used in subsequent calls.  Connections should
-   be closed when a session is finished.
+  Function prototypes
 */
 
-int mce_open(char *dev_name);
-int mce_close(int handle);
 
-int mce_set_config(int handle, const mceconfig_t *config);
+/* Connection management */
+
+int mcecmd_open (mce_context_t *context, char *dev_name);
+
+int mcecmd_close(mce_context_t *context);
+
 
 /* MCE user commands - these are as simple as they look */
 
-int mce_start_application(int handle, const mce_param_t *param);
-int mce_stop_application(int handle, const mce_param_t *param);
-int mce_reset(int handle, const mce_param_t *param);
+int mcecmd_start_application(mce_context_t* context, const mce_param_t *param);
 
-int mce_write_block(int handle, const mce_param_t *param,
-		    int count, const u32 *data);
-int mce_read_block(int handle, const mce_param_t *param,
-		   int count, u32 *data);
+int mcecmd_stop_application (mce_context_t* context, const mce_param_t *param);
+
+int mcecmd_reset            (mce_context_t* context, const mce_param_t *param);
+
+int mcecmd_write_block      (mce_context_t* context, const mce_param_t *param,
+			  int count, const u32 *data);
+
+int mcecmd_read_block       (mce_context_t* context, const mce_param_t *param,
+			  int count, u32 *data);
 
 
 /* MCE special commands - these provide additional logical support */
 
-int mce_write_element(int handle, const mce_param_t *param,
-		      int data_index, u32 datum);
+int mcecmd_write_element    (mce_context_t* context, const mce_param_t *param,
+			  int data_index, u32 datum);
 
-int mce_read_element(int handle, const mce_param_t *param,
-		     int data_index, u32 *datum);
+int mcecmd_read_element     (mce_context_t* context, const mce_param_t *param,
+			  int data_index, u32 *datum);
 
-int mce_write_block_check(int handle, const mce_param_t *param,
+int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
 			  int count, const u32 *data, int checks);
 
 
 /* Raw i/o routines; roll your own packets */
 
-int mce_send_command_now(int handle, mce_command *cmd);
-int mce_read_reply_now(int handle, mce_reply *rep);
-int mce_send_command(int handle, mce_command *cmd, mce_reply *rep);
+int mcecmd_send_command_now (mce_context_t* context, mce_command *cmd);
+
+int mcecmd_read_reply_now   (mce_context_t* context, mce_reply *rep);
+
+int mcecmd_send_command     (mce_context_t* context,
+			     mce_command *cmd, mce_reply *rep);
 
 
 /* MCE parameter lookup */
 
-int mce_load_param(int handle, mce_param_t *param,
-		   const char *card_str, const char *param_str);
-
-
-/* Custom packet creation and sending */
-
-int mce_load_command(mce_command *cmd, u32 command,
-		     u32 card_id, u32 para_id, 
-		     int count, const u32 *data);
-
-
-/* Useful things... */
-
-u32 mce_checksum( const u32 *data, int count );
-u32 mce_cmd_checksum( const mce_command *cmd );
-int mce_cmd_match_rep( const mce_command *cmd, const mce_reply *rep );
+int mcecmd_load_param       (mce_context_t* context, mce_param_t *param,
+			  const char *card_str, const char *param_str);
 
 
 /* Interface (PCI card) control */
 
-int mce_interface_reset(int handle);   // reset PCI card
-int mce_hardware_reset(int handle);    // reset MCE
+int mcecmd_interface_reset  (mce_context_t* context);   // reset PCI card
+int mcecmd_hardware_reset   (mce_context_t* context);    // reset MCE
 
-/* Perhaps you are a human */
 
-char *mce_error_string(int error);
+/*
+  Static members... no context required
+*/
+
+/* Custom packet creation */
+
+int mcecmd_load_command(mce_command *cmd, u32 command,
+		     u32 card_id, u32 para_id, 
+		     int count, const u32 *data);
+
+/* Packet examination */
+
+u32 mcecmd_checksum( const u32 *data, int count );
+u32 mcecmd_cmd_checksum( const mce_command *cmd );
+int mcecmd_cmd_match_rep( const mce_command *cmd, const mce_reply *rep );
 
 
 #endif

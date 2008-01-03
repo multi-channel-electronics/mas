@@ -53,8 +53,8 @@ int process_options(options_t* options, int argc, char **argv)
 			break;
 
 		case 'v':
-			printf("This is %s, version %s\n",
-			       PROGRAM_NAME, VERSION_STRING);
+			printf("This is %s, version %s, using mce library version %s\n",
+			       PROGRAM_NAME, VERSION_STRING, mcelib_version());
 			break;
 
 		default:

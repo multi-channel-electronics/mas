@@ -1,39 +1,36 @@
-/***************************************************
-  mcedata.h - header file for MCE DATA ACQ API
+/******************************************************
+  mcedata.h - header file for MCE API, data module
 
-  Matthew Hasselfield, 07.10.28
+  Matthew Hasselfield, 08.01.02
 
-***************************************************/
+******************************************************/
 
 #ifndef _MCEDATA_H_
 #define _MCEDATA_H_
 
 /*! \file mcedata.h
- *  \brief Data acq header file for libmce
+ *
+ *  \brief Main header file for data module.
  *
  *  Contains routines for managing frame data acquisition (rather than
- *  just command/reply)
+ *  just command/reply).
  *
+ *  This module is intended to connect to an mce_data character driver
+ *  device file.
  */
 
-#include <stdio.h>
 
-#include <mce.h>
-#include <mce_errors.h>
-#include <mcecmd.h>
+/* Module information structure */
 
+typedef struct mcedata {
 
-/* Modes:
-    - auto-save to file via a blocking call
-    - auto-save to file via data thread? (later...)
-    - data available to user buffer on request (user's own thread)
-*/
+	int connected;
+	int fd;
 
-/* Status:
-    - State: Idle, ready, going, done
-    - Frames available/ no frames available
-    - Error / no error.
-*/
+	char dev_name[MCE_LONG];
+	char errstr[MCE_LONG];
+
+} mcedata_t;
 
 
 /* MCE data acquisition modes. */
@@ -43,13 +40,14 @@
 #define MCEDATA_FILESEQUENCE      (1 <<  2) /* switch output files regularly */
 #define MCEDATA_THREAD            (1 <<  3) /* use non-blocking data thread */
 
-/* MCE card bits, why not? */
+
+/* MCE card bits - fix this! */
 
 #define MCEDATA_RC1               (1 <<  0)
 #define MCEDATA_RC2               (1 <<  1)
 #define MCEDATA_RC3               (1 <<  2)
 #define MCEDATA_RC4               (1 <<  3)
-#define MCEDATA_RCS               0x000f
+#define MCEDATA_RCS               (MCEDATA_RC1 | MCEDATA_RC2 | MCEDATA_RC3 | MCEDATA_RC4)
 
 #define MCEDATA_CARDS             4
 #define MCEDATA_COMBOS            (1 << MCEDATA_CARDS)
@@ -58,27 +56,18 @@ struct mce_acq_struct;
 typedef struct mce_acq_struct mce_acq_t;
 
 typedef struct mce_frame_actions_t {
+
 	int (*init)(mce_acq_t*);
 	int (*pre_frame)(mce_acq_t *);
 	int (*flush)(mce_acq_t *);
 	int (*post_frame)(mce_acq_t *, int, u32 *);
 	int (*cleanup)(mce_acq_t *);
+
 } mce_frame_actions_t;
-
-typedef struct {
-
-	char dev_name[MCE_LONG];
-	int fd;
-	int mcecmd_handle;
-
-//	logger_t logger;
-	char errstr[MCE_LONG];
-
-} mcedata_t;
 
 struct mce_acq_struct {
 
-	mcedata_t *mcedata;
+	mce_context_t *context;
 
 	int n_frames;
 	int frame_size;                 // Active frame size
@@ -107,77 +96,58 @@ struct mce_acq_struct {
 #define MCEDATA_PACKET_MAX 4096 /* Maximum frame size in dwords */
 
 
-/*
-   API: all functions return a negative error value on failure.  On
-   success.
+/* Data connection */
 
-   Two parts: generic interfacing with data device (replaces many
-   parts of mcecmd that deal with frame size, etc.), and acquisition
-   managment (file management, automatic timeout/inform configuration,
-   etc.)
-
-*/
+int mcedata_open(mce_context_t *context, const char *dev_name);
+int mcedata_close(mce_context_t *context);
 
 
-/* Operations for prep steps (args: frame_size, total frames, increment mode)
+/* ioctl access to driver */
 
- - set total_frames, but not frames_per_go, which is acq specific.
- - set frame size in driver, DSP
- - set timeouts in DSP (but not inform)
- - initialize ret_dat_s or internal counter, depending on increment mode.
- - prepare output file, if necessary
-
-*/
-
-/* Operations for go (args: frames, cards)
-
- - set up inform interval in DSP
- - update MCE ret_dat_s if in that increment mode
- - issue MCE go
- - if outputting to file, dump the data.
- - exit and report success code
-
-*/
-
-
-/* char *mce_error_string(int error); */
-
-int mcedata_acq_setup(mce_acq_t *acq, mcedata_t *mcedata,
-		      int options, int cards, int rows_reported);
-
-int mcedata_acq_go(mce_acq_t *acq, int n_frames);
+int mcedata_ioctl(mce_context_t* context, int key, unsigned long arg);
+int mcedata_set_datasize(mce_context_t* context, int datasize);
+int mcedata_empty_data(mce_context_t* context);
+int mcedata_fake_stopframe(mce_context_t* context);
+int mcedata_qt_enable(mce_context_t* context, int on);
+int mcedata_qt_setup(mce_context_t* context, int frame_index);
 
 
 /* Frame data handlers */
+
+/* rambuff: a user-defined callback routine services each frame */
 
 typedef int (*rambuff_callback_t)(unsigned user_data,
 				  int frame_size, u32 *buffer);
 
 int mcedata_rambuff_create(mce_acq_t *acq, rambuff_callback_t callback,
 			   unsigned user_data);
+
 void mcedata_rambuff_destroy(mce_acq_t *acq);
 
+
+/* flatfile: frames are stored in a single data file */
+
 int mcedata_flatfile_create(mce_acq_t *acq, const char *filename);
+
 void mcedata_flatfile_destroy(mce_acq_t *acq);
 
-void mcedata_fileseq_destroy(mce_acq_t *acq);
+
+/* fileseq: frames are stored in a set of files, numbered sequentially */
+
 int mcedata_fileseq_create(mce_acq_t *acq, const char *basename,
 			   int interval, int digits);
 
-/* Data connection */
-
-int mcedata_init(mcedata_t *mcedata, int mcecmd_handle, const char *dev_name);
+void mcedata_fileseq_destroy(mce_acq_t *acq);
 
 
-/* REPATRIATED FROM MCECMD */
+/* Acquisition sessions - once the mce_acq_t is ready, setup the
+   acquisition and go. */
 
-/* Ioctl related - note argument is fd, not handle (fixme) */
+int mcedata_acq_setup(mce_acq_t *acq, mce_context_t *context,
+		      int options, int cards, int rows_reported);
 
-int mcedata_ioctl(mcedata_t *mcedata, int key, unsigned long arg);
-int mcedata_set_datasize(mcedata_t *mcedata, int datasize);
-int mcedata_empty_data(mcedata_t *mcedata);
-int mcedata_fake_stopframe(mcedata_t *mcedata);
-int mcedata_qt_enable(mcedata_t *mcedata, int on);
-int mcedata_qt_setup(mcedata_t *mcedata, int frame_index);
+int mcedata_acq_go(mce_acq_t *acq, int n_frames);
+
+
 
 #endif

@@ -1,8 +1,8 @@
-/***************************
+/*******************************************************
 
-  API for MCE
+ cmd.c - most command module routines live here
 
-***************************/
+*******************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,10 +13,8 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <libmaslog.h>
+#include <mce_library.h>
 
-#include "data_ioctl.h"
-#include "mcecmd.h"
 #include "mce_ioctl.h"
 
 #define LOG_LEVEL_CMD     LOGGER_DETAIL
@@ -24,40 +22,9 @@
 #define LOG_LEVEL_REP_ER  LOGGER_INFO
 
 
-struct mce_context {
-	int opened;
-	int fd;
-
-	const mceconfig_t *config;
-	char dev_name[MCE_LONG];
-
-	logger_t logger;
-
-	char errstr[MCE_LONG];
-};
-
-#define MAX_CONS 16
-
-struct mce_context cons[MAX_CONS];
-int n_cons = 0;
-
-#define CON cons[handle]
-
-#define CHECK_HANDLE(hndl) if (!handle_in_bounds(hndl)) \
-                                   return -MCE_ERR_HANDLE
-#define CHECK_OPEN(hndl)   if (!cons[hndl].opened) \
-                                   return -MCE_ERR_HANDLE
-#define CHECK_CONFIG(hndl) if (cons[hndl].config == NULL) \
-                                   return -MCE_ERR_XML
-
-
-inline int handle_in_bounds(int handle) {
-	return (handle>=0) && (handle<MAX_CONS);
-}
-
-inline int get_last_error(int handle)
+inline int get_last_error(mce_context_t *context)
 {
-	return ioctl(CON.fd, MCEDEV_IOCT_LAST_ERROR);
+	return ioctl(C_cmd.fd, MCEDEV_IOCT_LAST_ERROR);
 }
 
 
@@ -96,272 +63,180 @@ int log_data( logger_t *logger,
 }
 
 
-int mce_open(char *dev_name)
+int mcecmd_open (mce_context_t *context, char *dev_name)
 {
-	int handle, fd;
+	if (C_cmd.connected) mcecmd_close(context);
 
-	for (handle=0; handle<MAX_CONS; handle++) {
-		if (!CON.opened)
-			break;
-	}
-	CHECK_HANDLE(handle);
 	if (strlen(dev_name)>=MCE_LONG-1)
 		return -MCE_ERR_BOUNDS;
 
-	fd = open(dev_name, O_RDWR);
-	if (fd<0) return -MCE_ERR_DEVICE;
+	C_cmd.fd = open(dev_name, O_RDWR);
+	if (C_cmd.fd<0) return -MCE_ERR_DEVICE;
 
-	CON.fd = fd;
-	CON.opened = 1;
-	strcpy(CON.dev_name, dev_name);
-
-	// No error if logger_connect fails
-	logger_connect(&CON.logger, NULL, "lib_mce");
-
-	return handle;
-}
-
-
-int mce_close(int handle)
-{
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-
-	logger_close(&CON.logger);
-
-	if (close(CON.fd)<0) return -MCE_ERR_DEVICE;
-	CON.opened = 0;
-	CON.fd = -1;
+	C_cmd.connected = 1;
+	strcpy(C_cmd.dev_name, dev_name);
 
 	return 0;
 }
 
 
-int mce_set_config(int handle, const mceconfig_t *config)
+int mcecmd_close(mce_context_t *context)
 {
-	CON.config = config;
+	C_cmd_check;
+
+	if (close(C_cmd.fd) < 0)
+		return -MCE_ERR_DEVICE;
+
+	C_cmd.connected = 0;
+
 	return 0;
 }
 
 
 /* Basic device write/read routines */
 
-int mce_load_command(mce_command *cmd, u32 command,
-		     u32 card_id, u32 para_id, 
-		     int count, const u32 *data)
-{
-	int i;
-
-	cmd->preamble[0] = PREAMBLE_0;
-	cmd->preamble[1] = PREAMBLE_1;
-	cmd->command = command;
-	cmd->para_id = para_id;
-	cmd->card_id = card_id;
-	cmd->count = count;
-
-	for (i=0; i<count && i<MCE_CMD_DATA_MAX; i++)
-		cmd->data[i] = data[i];
-	
-	for (i=count; i<MCE_CMD_DATA_MAX; i++)
-		cmd->data[i] = 0;
-	
-	cmd->checksum = mce_cmd_checksum(cmd);
-
-	if (count < 0 || count >= MCE_CMD_DATA_MAX)
-		return -MCE_ERR_BOUNDS;
-
-	return 0;
-}
-
-int mce_send_command_now(int handle, mce_command *cmd)
+int mcecmd_send_command_now(mce_context_t* context, mce_command *cmd)
 {	
-	int error = write(CON.fd, cmd, sizeof(*cmd));
+	int error = write(C_cmd.fd, cmd, sizeof(*cmd));
 	if (error < 0) {
 		return -MCE_ERR_DEVICE;
 	} else if (error != sizeof(*cmd)) {
-		return get_last_error(handle);
+		return get_last_error(context);
 	}
 	return 0;
 }
 
-int mce_read_reply_now(int handle, mce_reply *rep)
+int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
 {
-	int error = read(CON.fd, rep, sizeof(*rep));
+	int error = read(C_cmd.fd, rep, sizeof(*rep));
 	if (error < 0) {
 		return -MCE_ERR_DEVICE;
 	} else if (error != sizeof(*rep)) {
-		return get_last_error(handle);
+		return get_last_error(context);
 	}
 	return 0;
 }
 
 
-int mce_send_command(int handle, mce_command *cmd, mce_reply *rep)
+int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep)
 {
 	int err = 0;
 	char errstr[MCE_LONG];
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
+	C_cmd_check;
 
-	log_data(&CON.logger, (u32*)cmd + 2, 62, 2, "command",
+	log_data(&C_logger, (u32*)cmd + 2, 62, 2, "command",
 		 LOG_LEVEL_CMD);
-	
-	err = mce_send_command_now(handle, cmd);
+
+	err = mcecmd_send_command_now(context, cmd);
 	if (err<0) {
 		sprintf(errstr, "command not sent, error %#x.", -err);
-		logger_print_level(&CON.logger, errstr, LOGGER_INFO);
+		logger_print_level(&C_logger, errstr, LOGGER_INFO);
 		memset(rep, 0, sizeof(*rep));
 		return err;
 	}
 
-	err = mce_read_reply_now(handle, rep);
+	err = mcecmd_read_reply_now(context, rep);
 	if (err != 0) {
-		sprintf(errstr, "reply [communication error] %s", mce_error_string(err));
-		logger_print_level(&CON.logger, errstr, LOG_LEVEL_REP_ER);
+		sprintf(errstr, "reply [communication error] %s", mcelib_error_string(err));
+		logger_print_level(&C_logger, errstr, LOG_LEVEL_REP_ER);
 		return err;
 	}
-	
+
 	// Analysis of received packet
-	err = mce_checksum((u32*)rep, sizeof(*rep) / sizeof(u32)) ?
+	err = mcecmd_checksum((u32*)rep, sizeof(*rep) / sizeof(u32)) ?
 		-MCE_ERR_CHKSUM : 0;
-	
-	if (!err) err = mce_cmd_match_rep(cmd, rep);
+
+	if (!err) err = mcecmd_cmd_match_rep(cmd, rep);
 
 
 	switch (-err) {
-		
+
 	case MCE_ERR_CHKSUM:
-		log_data(&CON.logger, (u32*)rep, 60, 2,
+		log_data(&C_logger, (u32*)rep, 60, 2,
 			 "reply [checksum error] ",
 			 LOG_LEVEL_REP_ER);
 		break;
-		
+
 	case MCE_ERR_FAILURE:
-		log_data(&CON.logger, (u32*)rep, 60, 2,
+		log_data(&C_logger, (u32*)rep, 60, 2,
 			 "reply [command failed] ",
 			 LOG_LEVEL_REP_ER);
 		break;
 
 	case MCE_ERR_REPLY:
-		log_data(&CON.logger, (u32*)rep, 60, 2,
+		log_data(&C_logger, (u32*)rep, 60, 2,
 			 "reply [consistency error] ",
 			 LOG_LEVEL_REP_ER);
 		break;
 
 	case 0:
-		log_data(&CON.logger, (u32*)rep, 60, 2, "reply  ",
+		log_data(&C_logger, (u32*)rep, 60, 2, "reply  ",
 			 LOG_LEVEL_REP_OK);
 		break;
-		
+
 	default:
 		sprintf(errstr, "reply [strange error '%s'] ",
-			mce_error_string(err));
-		log_data(&CON.logger, (u32*)rep, 60, 2,
+			mcelib_error_string(err));
+		log_data(&C_logger, (u32*)rep, 60, 2,
 			 errstr, LOG_LEVEL_REP_ER);
 	}
 
 	return err;
 }
 
-/* Specialty */
-
-u32 mce_cmd_checksum( const mce_command *cmd )
+int mcecmd_load_param(mce_context_t* context, mce_param_t *param,
+		      const char *card_str, const char *param_str)
 {
-	u32 chksum = 0;
-	u32 *p = (u32*) &cmd->command;
-	while (p < (u32*) &cmd->checksum )
-		chksum ^= *p++;
-	return chksum;
-}
-
-u32 mce_checksum( const u32 *data, int count )
-{
-	u32 chksum = 0;
-	while (count>0)
-		chksum ^= data[--count];	
-	return chksum;
+	return mceconfig_lookup(context, card_str, param_str,
+				&param->card, &param->param);
 }
 
 
-int mce_cmd_match_rep( const mce_command *cmd, const mce_reply *rep )
-{
-	// Check sanity of response
-	if ( (rep->command | 0x20200000) != cmd->command)
-		return -MCE_ERR_REPLY;
-	if (rep->para_id != cmd->para_id)
-		return -MCE_ERR_REPLY;
-	if (rep->card_id != cmd->card_id)
-		return -MCE_ERR_REPLY;
-
-	// Check success of command
-	switch (rep->ok_er) {
-	case MCE_OK:
-		break;
-	case MCE_ER:
-		// Error code should be extracted; checksum; ...
-		return -MCE_ERR_FAILURE;
-	default:
-		return -MCE_ERR_REPLY;
-	}
-	return 0;
-}
-
-int mce_load_param(int handle, mce_param_t *param,
-		   const char *card_str, const char *param_str)
-{
-	return mceconfig_lookup(CON.config, card_str, param_str,
-				&param->card,
-				&param->param);
-}
-
-
-int mce_write_block(int handle, const mce_param_t *param,
-		    int count, const u32 *data)
+int mcecmd_write_block(mce_context_t* context, const mce_param_t *param,
+		       int count, const u32 *data)
 {
 	mce_command cmd;
 	int error = 0;
 	int i;
-
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-
+	 
+	C_cmd_check;
+	 
 	if (count < 0)
 		count = param->param.count;
 
 	for (i=0; i<param->card.card_count; i++) {
-		error = mce_load_command(&cmd, MCE_WB, 
+		error = mcecmd_load_command(&cmd, MCE_WB, 
 					 param->card.id[i], param->param.id,
 					 count, data);
 		if (error) return error;
 		mce_reply rep;
 
-		error = mce_send_command(handle, &cmd, &rep);
+		error = mcecmd_send_command(context, &cmd, &rep);
 		if (error) return error;
 	}
 	return 0;
 }
 
-int mce_read_block(int handle, const mce_param_t *param,
-		   int count, u32 *data)
+int mcecmd_read_block(mce_context_t* context, const mce_param_t *param,
+		      int count, u32 *data)
 {
 	mce_command cmd;
 	mce_reply rep;
 	int error = 0;
 	int i;
 
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
+	C_cmd_check;
 
 	if (count < 0)
 		count = param->param.count;
 
 	for (i=0; i<param->card.card_count; i++) {
-		error = mce_load_command(&cmd, MCE_RB, 
+		error = mcecmd_load_command(&cmd, MCE_RB, 
 					 param->card.id[i], param->param.id,
 					 count, data);
 		if (error) return error;
 
-		error = mce_send_command(handle, &cmd, &rep);
+		error = mcecmd_send_command(context, &cmd, &rep);
 		if (error) return error;
 
 		// I guess the data must be valid then.
@@ -371,34 +246,31 @@ int mce_read_block(int handle, const mce_param_t *param,
 	return 0;
 }
 
-#define QUICK_FILL(cmd, card, para, n) { \
-        .preamble = {PREAMBLE_0, PREAMBLE_1},\
-        .command  = cmd,\
-        .card_id  = card,\
-        .para_id  = para,\
-        .count    = n }
+#define QUICK_FILL(cmd, card, para, n) {		\
+		.preamble = {PREAMBLE_0, PREAMBLE_1},	\
+			.command  = cmd,		\
+				 .card_id  = card,	\
+				 .para_id  = para,	\
+				 .count    = n }
 
-int mce_send_command_simple(int handle, int card_id, int para_id,
-			    u32 cmd_code)
+int mcecmd_send_command_simple(mce_context_t* context, int card_id, int para_id,
+			       u32 cmd_code)
 {
 	mce_command cmd = QUICK_FILL(cmd_code, card_id, para_id, 1);
 	cmd.data[0] = 1;
-	cmd.checksum = mce_cmd_checksum(&cmd);
-
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
+	cmd.checksum = mcecmd_cmd_checksum(&cmd);
 
 	mce_reply rep;
-
-	return mce_send_command(handle, &cmd, &rep);
+	
+	return mcecmd_send_command(context, &cmd, &rep);
 }
 
-int mce_start_application(int handle, const mce_param_t *param)
+int mcecmd_start_application(mce_context_t* context, const mce_param_t *param)
 {
 	int error = 0;
 	int i;
 	for (i=0; i < param->card.card_count && !error; i++) {
-		error = mce_send_command_simple(handle,
+		error = mcecmd_send_command_simple(context,
 						param->card.id[i],
 						param->param.id,
 						MCE_GO);
@@ -406,12 +278,12 @@ int mce_start_application(int handle, const mce_param_t *param)
 	return error;
 }
 
-int mce_stop_application(int handle,  const mce_param_t *param)
+int mcecmd_stop_application(mce_context_t* context,  const mce_param_t *param)
 {
 	int error = 0;
 	int i;
 	for (i=0; i < param->card.card_count && !error; i++) {
-		error = mce_send_command_simple(handle,
+		error = mcecmd_send_command_simple(context,
 						param->card.id[i],
 						param->param.id,
 						MCE_ST);
@@ -419,12 +291,12 @@ int mce_stop_application(int handle,  const mce_param_t *param)
 	return error;
 }
 
-int mce_reset(int handle,  const mce_param_t *param)
+int mcecmd_reset(mce_context_t* context,  const mce_param_t *param)
 {
 	int error = 0;
 	int i;
 	for (i=0; i < param->card.card_count && !error; i++) {
-		error = mce_send_command_simple(handle,
+		error = mcecmd_send_command_simple(context,
 						param->card.id[i],
 						param->param.id,
 						MCE_RS);
@@ -435,8 +307,8 @@ int mce_reset(int handle,  const mce_param_t *param)
 
 /* MCE special commands - these provide additional logical support */
 
-int mce_write_element(int handle, const mce_param_t *param,
-		      int data_index, u32 datum)
+int mcecmd_write_element(mce_context_t* context, const mce_param_t *param,
+			 int data_index, u32 datum)
 {
 	int error = 0;
 	u32 data[MCE_CMD_DATA_MAX];
@@ -444,16 +316,16 @@ int mce_write_element(int handle, const mce_param_t *param,
 	if (param->card.card_count != 1)
 		return -MCE_ERR_MULTICARD;
 
-	if ( (error = mce_read_block(handle, param, data_index+1, data)) != 0)
+	if ( (error = mcecmd_read_block(context, param, data_index+1, data)) != 0)
 		return error;
 
 	data[data_index] = datum;
 
-	return mce_write_block(handle, param, data_index+1, data);
+	return mcecmd_write_block(context, param, data_index+1, data);
 }
 
-int mce_read_element(int handle, const mce_param_t *param,
-		     int data_index, u32 *datum)
+int mcecmd_read_element(mce_context_t* context, const mce_param_t *param,
+			int data_index, u32 *datum)
 {
 	int error = 0;
 	u32 data[MCE_CMD_DATA_MAX];
@@ -461,14 +333,14 @@ int mce_read_element(int handle, const mce_param_t *param,
 	if (param->card.card_count != 1)
 		return -MCE_ERR_MULTICARD;
 
-	if ( (error = mce_read_block(handle, param, data_index+1, data)) != 0)
+	if ( (error = mcecmd_read_block(context, param, data_index+1, data)) != 0)
 		return error;
 	*datum = data[data_index];
 	return 0;
 }
 
-int mce_write_block_check(int handle, const mce_param_t *param,
-			  int count, const u32 *data, int retries)
+int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
+			     int count, const u32 *data, int retries)
 {
 	int i, error;
 	u32 readback[MCE_CMD_DATA_MAX];
@@ -478,11 +350,11 @@ int mce_write_block_check(int handle, const mce_param_t *param,
 		return -MCE_ERR_MULTICARD;
 
 	do {
-		error = mce_write_block(handle, param, count, data);
+		error = mcecmd_write_block(context, param, count, data);
 		
 		if (error) return error;
 		
-		error = mce_read_block(handle, param, count, readback);
+		error = mcecmd_read_block(context, param, count, readback);
 		if (error) return error;
 
 		done = 1;
@@ -499,14 +371,12 @@ int mce_write_block_check(int handle, const mce_param_t *param,
 }
 
 
-int mce_interface_reset(int handle)
+int mcecmd_interface_reset(mce_context_t* context)
 {
-	return ioctl(CON.fd, MCEDEV_IOCT_INTERFACE_RESET);
+	return ioctl(C_cmd.fd, MCEDEV_IOCT_INTERFACE_RESET);
 }
 
-int mce_hardware_reset(int handle)
+int mcecmd_hardware_reset(mce_context_t* context)
 {
-	return ioctl(CON.fd, MCEDEV_IOCT_HARDWARE_RESET);
+	return ioctl(C_cmd.fd, MCEDEV_IOCT_HARDWARE_RESET);
 }
-
-

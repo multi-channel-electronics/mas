@@ -1,12 +1,7 @@
 #ifndef _MCE_STATUS_H_
 #define _MCE_STATUS_H_
 
-#include <mcecmd.h>
-#include <mceconfig.h>
-#include <libmaslog.h>
-
-#include "mce.h"
-
+#include <mce_library.h>
 
 #define PROGRAM_NAME           "mce_status"
 
@@ -28,8 +23,7 @@ typedef struct {
 
 	int mode;
 
-	int handle;
-	mceconfig_t *mce;
+	mce_context_t* context;
 
 } options_t;
 

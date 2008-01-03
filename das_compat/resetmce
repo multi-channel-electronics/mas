@@ -1,3 +1,0 @@
-#!/bin/bash
-
-dsp_cmd -q -p -x reset_mce

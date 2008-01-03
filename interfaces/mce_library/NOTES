@@ -1,0 +1,92 @@
+ MCE API - interface level between MCE driver and applications
+---------------------------------------------------------------
+Matthew Hasselfield - 08.01.02
+
+
+The API contains three main modules
+
+    - command module: attaches to an mce_cmd device and facilitates
+      issuing of commands and reception of replies.
+
+    - data module: attaches to an mce_data device and facilitates
+      acquisition and storage of MCE frame data.
+
+    - config module: interprets an MCE hardware configuration file and
+      helps associate descriptive strings with MCE hardware addresses.
+
+Applications making calls to the API may use some modules and not
+others.  When an application has successfully configured a module in
+order to interface with a particular device or configuration file, it
+is said to have established a connection on that module.
+
+The details of the connection are stored in the application's memory
+space, and the connection can be closed by a subsequent library call
+to that effect or by terminating the application.
+
+
+API model
+---------
+
+Almost all functions have return type "int".  For functions whose
+return value indicates success or failure, a return value of 0
+indicates success and negative return values are error codes.  Many
+functions follow the convention of non-negative values carrying
+information back to the user while negative values correspond to error
+codes.
+
+The prototypes and definitions needed to access the API are obtained
+from the header file mce_library.h.
+
+     	#include <mce_library.h>
+
+Function names are grouped by module, with a small number of functions
+belonging to the library in general rather than a specific module.
+
+Certain routines in each module depend on the presence of a connection
+in other modules.  A generic type is used to store the details of all
+connections in all three modules, and modules routines will check for
+the presence of the connections they need and return an error if the
+connections are not present.
+
+
+Starting sessions and establishing connections
+----------------------------------------------
+
+An API session is started with a call to mcelib_create, which returns
+a pointer to an mce_context_t that is used in most other library
+calls:
+
+	mce_context_t* mce = mcelib_create();
+
+A NULL value indicates failure, but this is unlikely.
+
+Once the context is obtained, connections on each of the three modules
+can be established separately, using the functions
+
+	mcecmd_open(mce_context_t* context, const char* dev_name)
+
+	mcedata_open(mce_context_t* context, const char* dev_name)
+
+	mceconfig_open(mce_context_t* context,
+                       const char* filename, const char *keyname)
+
+Each of these returns a non-zero mce library error code on failure,
+and zero otherwise.  An open connection can be closed by calling, for
+example mcecmd_close(context).
+
+
+Command module
+--------------
+
+The command module must be connected to an mce_cmd character driver
+device file to function properly.  This is the sort of device exposed
+in the file mce_ops.c.  (In the default configuration, this file would
+have a name like /dev/mce_cmd0.)
+
+In most cases, it will work in association with the config module,
+which is a description of the commands that the MCE can cope with.
+The config module is used to translate an address string such as "cc
+fw_rev" into an MCE hardware address.
+
+
+

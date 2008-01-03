@@ -1,6 +1,6 @@
 #include "mce_errors.h"
 
-char *mce_error_string(int error)
+char *mcelib_error_string(int error)
 {
 	switch (-error) {
 
@@ -33,6 +33,15 @@ char *mce_error_string(int error)
 
 	case MCE_ERR_MULTICARD:
 		return "Function does not have multi-card support.";
+
+	case MCE_ERR_NEED_CMD:
+		return "Command connection not established.";
+
+	case MCE_ERR_NEED_DATA:
+		return "Data connection not established.";
+
+	case MCE_ERR_NEED_CONFIG:
+		return "Config connection not established.";
 
 	case MCE_ERR_ACTIVE:
 		return "Command not issued because previous command is outstanding.";
