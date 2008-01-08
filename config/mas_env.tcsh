@@ -11,4 +11,5 @@ setenv MAS_DATA /data/cryo/current_data/
 setenv MAS_TEMPLATE ${MAS_ROOT}template/
 setenv MAS_SCRIPT ${MAS_ROOT}script/
 setenv MAS_TEMP ${MAS_ROOT}tmp/
+setenv MAS_IDL ${MAS_ROOT}idl_pro/
 setenv PATH ${PATH}:${MAS_BIN}:${MAS_SCRIPT}
