@@ -11,6 +11,8 @@
 
 #include <cmdtree.h>
 
+#define PROGRAM_NAME "dsp_cmd"
+
 #define LINE_LEN 1024
 #define NARGS 64
 
@@ -83,7 +85,7 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
 
-struct {
+typedef struct option_struct {
 	int interactive;
 	int nonzero_only;
 	int no_prefix;
@@ -96,8 +98,10 @@ struct {
 
 	char device_file[LINE_LEN];
 
-} options = {
-	0, 0, 0, "", 0, "", 0, DEFAULT_DEVICE
+} option_t;
+
+option_t options = {
+	device_file:  DEFAULT_DEVICE,
 };
 
 
@@ -119,6 +123,11 @@ int main(int argc, char **argv)
 	char *line = (char*) malloc(LINE_LEN);
 
 	if (process_options(argc, argv)) return 1;
+
+	if (!options.nonzero_only) {
+		printf("This is %s version %s\n",
+		       PROGRAM_NAME, VERSION_STRING);
+	}
 
 	handle = dsp_open(options.device_file);
 	if (handle<0) {
@@ -331,10 +340,9 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			return -1;
 		}
 
-		if (err==0)
-			ret_val = 1;
-		else {
-			sprintf(errmsg, "dsp library error %#06x", err);
+		if (err!=0 && errmsg[0] == 0) {
+			sprintf(errmsg, "dsp library error -%#08x : %s", -err,
+				dsp_error_string(err));
 			ret_val = -1;
 		} 
 

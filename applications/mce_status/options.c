@@ -12,12 +12,14 @@
 "  -o <output directory>  destination folder for output\n"\
 "  -f <output filename>   filename for output (stdout by default)\n"\
 "  -g                     dump parameter mapping\n"\
+"\n"\
+"  -v                     print version string and exit\n"\
 ""
 
 int process_options(options_t* options, int argc, char **argv)
 {
 	int option;
-	while ( (option = getopt(argc, argv, "?hd:c:m:o:f:g")) >=0) {
+	while ( (option = getopt(argc, argv, "?hd:c:m:o:f:gv")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -48,6 +50,11 @@ int process_options(options_t* options, int argc, char **argv)
 
 		case 'g':
 			options->mode = CRAWLER_CFG;
+			break;
+
+		case 'v':
+			printf("This is %s, version %s, using mce library version %s\n",
+			       PROGRAM_NAME, VERSION_STRING, mcelib_version());
 			break;
 
 		default:

@@ -11,4 +11,5 @@ export MAS_DATA=/data/cryo/current_data/
 export MAS_TEMPLATE=${MAS_ROOT}/mce_script/clover/template/
 export MAS_SCRIPT=${MAS_ROOT}/mce_script/clover/script/
 export MAS_TEMP=${MAS_ROOT}/mce_script/tmp/
+export MAS_IDL=${MAS_ROOT}idl_pro/
 export PATH=${PATH}:${MAS_BIN}:${MAS_SCRIPT}

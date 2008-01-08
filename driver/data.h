@@ -1,11 +1,6 @@
 #ifndef _DATA_H_
 #define _DATA_H_
 
-#include <linux/interrupt.h>
-
-#include "kversion.h"
-#include "data_ioctl.h"
-
 /*
  * MCE data frames model
  *
@@ -35,6 +30,12 @@
  * buffer has been totally consumed, tail_index should be incremented
  * and partial should be reset to 0.
  */
+
+#include <linux/interrupt.h>
+
+#include "kversion.h"
+#include "data_ioctl.h"
+#include "data_qt.h"
 
 
 #define DATAMODE_CLASSIC 0
@@ -110,11 +111,11 @@ int   data_cleanup(void);
 int data_force_escape( void );
 int data_reset( void );
 
-void  data_report(void);
+void data_report(void);
 
-int   data_frame_address(u32 *dest);
-int   data_frame_increment(void);
-int   data_frame_contribute(int count);
+int  data_frame_address(u32 *dest);
+int  data_frame_increment(void);
+int  data_frame_contribute(int count);
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
 		    int count);
@@ -125,10 +126,6 @@ int data_frame_resize(int size);
 int data_frame_empty_buffers( void );
 
 int data_frame_poll( void );
-
-int data_qt_configure( int qt_interval );
-
-int data_qt_enable(int on);
 
 int data_proc(char *buf, int count);
 

@@ -8,10 +8,8 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <libmaslog.h>
-
+#include <mce_library.h>
 #include "data_ioctl.h"
-#include "mcedata.h"
 
 #include "frame.h"
 #include "data_thread.h"
@@ -37,7 +35,7 @@ static int card_count(int cards);
 static int load_ret_dat(mce_acq_t *acq);
 
 
-int mcedata_acq_setup(mce_acq_t *acq, mcedata_t *mcedata,
+int mcedata_acq_setup(mce_acq_t *acq, mce_context_t* context,
 		      int options, int cards, int rows_reported)
 {
 	int ret_val = 0;
@@ -55,10 +53,10 @@ int mcedata_acq_setup(mce_acq_t *acq, mcedata_t *mcedata,
 		FRAME_HEADER + FRAME_FOOTER;
 	acq->cards = cards;
 	acq->options = options;
-	acq->mcedata = mcedata;
+	acq->context = context;
 
 	// Set frame size in driver.
-	ret_val = mcedata_set_datasize(acq->mcedata,
+	ret_val = mcedata_set_datasize(acq->context,
 				       acq->frame_size * sizeof(u32));
 	if (ret_val != 0) {
  		fprintf(stdout, "Could not set data size [%i]\n", ret_val);
@@ -86,7 +84,7 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 		return ret_val;
 		
 	ret_val =
-		mce_start_application(acq->mcedata->mcecmd_handle, &acq->ret_dat);
+		mcecmd_start_application(acq->context, &acq->ret_dat);
 
 	if (ret_val != 0) {
 		fprintf(stderr, "Could not set ret_dat_s! [%#x]\n", ret_val);
@@ -132,7 +130,7 @@ static int set_n_frames(mce_acq_t *acq, int n_frames)
 	int ret_val;
 	u32 args[2];
 	acq->know_ret_dat_s = acq->know_ret_dat_s || 
-		(mce_load_param(acq->mcedata->mcecmd_handle,
+		(mcecmd_load_param(acq->context,
 				&acq->ret_dat_s, "cc", "ret_dat_s")==0);
 
 	if (!acq->know_ret_dat_s) {
@@ -142,7 +140,7 @@ static int set_n_frames(mce_acq_t *acq, int n_frames)
 	
 	args[0] = 0;
 	args[1] = n_frames - 1;
-	ret_val = mce_write_block(acq->mcedata->mcecmd_handle,
+	ret_val = mcecmd_write_block(acq->context,
 				  &acq->ret_dat_s, 2, args);
 	if (ret_val != 0) {
 		fprintf(stderr, "Could not set ret_dat_s! [%#x]\n", ret_val);
@@ -152,7 +150,7 @@ static int set_n_frames(mce_acq_t *acq, int n_frames)
 	}
 
 	// Inform DSP/driver, also.
-	if (mcedata_qt_setup(acq->mcedata, n_frames)) {
+	if (mcedata_qt_setup(acq->context, n_frames)) {
 		fprintf(stderr, "Failed to set quiet transfer interval!\n");
 		return -MCE_ERR_DEVICE;
 	}
@@ -166,24 +164,19 @@ int load_ret_dat(mce_acq_t *acq)
 	// Start acquisition
 	switch (acq->cards) {
 	case MCEDATA_RC1:
-		mce_load_param(acq->mcedata->mcecmd_handle, &acq->ret_dat,
-			       "rc1", "ret_dat");
+		mcecmd_load_param(acq->context, &acq->ret_dat, "rc1", "ret_dat");
 		break;
 	case MCEDATA_RC2:
-		mce_load_param(acq->mcedata->mcecmd_handle, &acq->ret_dat,
-			       "rc2", "ret_dat");
+		mcecmd_load_param(acq->context, &acq->ret_dat, "rc2", "ret_dat");
 		break;
 	case MCEDATA_RC3:
-		mce_load_param(acq->mcedata->mcecmd_handle, &acq->ret_dat,
-			       "rc3", "ret_dat");
+		mcecmd_load_param(acq->context, &acq->ret_dat, "rc3", "ret_dat");
 		break;
 	case MCEDATA_RC4:
-		mce_load_param(acq->mcedata->mcecmd_handle, &acq->ret_dat,
-			       "rc4", "ret_dat");
+		mcecmd_load_param(acq->context, &acq->ret_dat, "rc4", "ret_dat");
 		break;
 	case MCEDATA_RCS:
-		mce_load_param(acq->mcedata->mcecmd_handle, &acq->ret_dat,
-			       "rcs", "ret_dat");
+		mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
 		break;
 	default:
 		fprintf(stderr, "Invalid card set selection [%#x]\n",
@@ -217,7 +210,7 @@ int copy_frames(mce_acq_t *acq)
 				fprintf(stderr, "pre_frame action failed\n");
 		}
 	
-		ret_val = read(acq->mcedata->fd, (void*)data + index,
+		ret_val = read(acq->context->data.fd, (void*)data + index,
 			       acq->frame_size*sizeof(*data) - index);
 
 		if (ret_val<0) {

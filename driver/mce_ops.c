@@ -1,7 +1,7 @@
 #include <linux/module.h>
-
 #include <linux/kernel.h>
 #include <linux/fs.h>
+#include <linux/sched.h>
 #include <asm/uaccess.h>
 
 #include "kversion.h"
@@ -9,6 +9,8 @@
 
 #include "mce_ops.h"
 #include "mce_driver.h"
+#include "mce_ioctl.h"
+#include "mce_errors.h"
 
 struct file_operations mce_fops = 
 {
@@ -17,7 +19,7 @@ struct file_operations mce_fops =
 	.read=    mce_read,
  	.release= mce_release,
 	.write=   mce_write,
-// 	.ioctl=   mce_ioctl,
+ 	.ioctl=   mce_ioctl,
 };
 
 typedef enum {
@@ -35,35 +37,73 @@ struct mce_ops_t {
 	wait_queue_head_t queue;
 
 	mce_ops_state_t state;
-
-/* 	int flags; */
-/* #define   OPS_COMMANDED  0x1 */
-/* #define   OPS_REPLIED    0x2 */
-/* #define   OPS_ERROR      0x8 */
+	int error;
 
 	mce_reply   rep;
 	mce_command cmd;
 
 } mce_ops;
 
-/* The behaviour of the flags shall be as follows:
 
-OPS_ERROR indicates a failed command/reply, and blocks further
-    commands and reply notifications. OPS_ERROR should be cleared as
-    soon as the user is informed of the error by calling the read
-    method.
+/* The operations states are defined as follows:
 
-OPS_COMMANDED indicates that a command has been sent and that we are
-    awaiting a reply.  No other commands are permitted while this flag
-    is set, and these will fail without changing the flags.
+OPS_IDLE indicates the device is available for a new write operation.
+  In this state, writing data to the device will initiate a command,
+  and reading from the device will return 0.  Successors to this state
+  are CMD and ERR.
 
-OPS_REPLIED indicates that a reply has been received.  It is set by
-    the interrupt handler only if OPS_COMMANDED is set and OPS_ERROR
-    is not.  It is cleared simultaneously with OPS_COMMANDED when the
-    reply is passed out via the read method.
+OPS_CMD indicates that a command has been initiated.  If a write to
+  the device succeeds (i.e. does not return 0 or an error code) then
+  the driver will be but into this state.
+
+OPS_REP indicates that a reply to a command has been received
+  successfully and is waiting to be read.
+
+OPS_ERR indicates that the command / reply sequence failed at some
+  step.  The error state is cleared by reading from the device, which
+  will return 0 bytes.
+
+The behaviour of the device files in each of the states is as follows:
+
+Method State          Blocking                 Non-blocking
+------------------------------------------------------------------
+read   IDLE           return 0                 return 0
+read   CMD            wait for state!=CMD      return -EAGAIN
+read   REP            [copy reply to the user, returning number
+                        of bytes in the reply]
+read   ERR            return 0                 return 0
+
+write  IDLE           [copy command from user and initiate it;
+                        return size of command or 0 on failure]
+write  CMD            return 0                 return 0
+write  REP            return 0                 return 0
+write  ERR            return 0                 return 0
+
+In non-blocking mode, both methods immediately return -EAGAIN if they
+cannot obtain the operations semaphore.
+
+
+The state update rules are as follows:
+
+IDLE -> CMD   a command was initiated successfully.
+CMD  -> REP   the reply to the command was received
+CMD  -> ERR   the driver indicated an error in receiving the command
+REP  -> IDLE  the reply has been copied to the user
+ERR  -> IDLE  the error has been communicated to the user
+
+
+Note that the state ERR does not represent a problem with driver use;
+it represents a failure of the hardware for some reason.  ERR state is
+different from the errors when device operations return 0.  The cause
+of device operations returning 0 can be obtained by calling ioctl
+operation MCEDEV_IOCT_LAST_ERROR.  This error is cleared on the next
+read/write operation.
+
+So anyway, we're going to get rid of the ERR state and instead just
+return an error packet as the reply.  That way mce_ops doesn't need to
+know if the MCE works or not.
 
 */
-
 
 
 #define SUBNAME "mce_read: "
@@ -103,11 +143,13 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 
 	case OPS_IDLE:
 		ret_val = 0;
+		mce_ops.error = -MCE_ERR_ACTIVE;
 		goto out;
 		
 	case OPS_CMD:
 		// Not possible in blocking calls
 		ret_val = -EAGAIN;
+		mce_ops.error = 0;
 		goto out;
 			
 	case OPS_REP:
@@ -117,16 +159,19 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 	
 		err = copy_to_user(buf, (void*)&mce_ops.rep, ret_val);
 		ret_val -= err;
-		if (err)
+		if (err) {
 			PRINT_ERR(SUBNAME
 				  "could not copy %#x bytes to user\n", err );
-
+			mce_ops.error = -MCE_ERR_KERNEL;
+		}
 		mce_ops.state = OPS_IDLE;
+		mce_ops.error = 0;
 		break;
 		
 	case OPS_ERR:
 	default:
 		ret_val = 0;
+		// mce_ops.error is set when state <= OPS_ERR
 		mce_ops.state = OPS_IDLE;
 	}
 		
@@ -153,10 +198,11 @@ int mce_write_callback( int error, mce_reply* rep )
 
 	// Change state to REP or ERR, awaken readers, exit with success.
 	if (error || rep==NULL) {
-		PRINT_ERR(SUBNAME "called with error=%i, rep=%lx\n",
-			  error, (unsigned long)rep);
+		PRINT_ERR(SUBNAME "called with error=-%#x, rep=%lx\n",
+			  -error, (unsigned long)rep);
 		memset(&mce_ops.rep, 0, sizeof(mce_ops.rep));
 		mce_ops.state = OPS_ERR;
+		mce_ops.error = error ? error : -MCE_ERR_INT_UNKNOWN;
 	} else {
 		PRINT_INFO(SUBNAME "type=%#x\n", rep->ok_er);
 		memcpy(&mce_ops.rep, rep, sizeof(mce_ops.rep));
@@ -191,6 +237,9 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 			return -ERESTARTSYS;
 	}
 
+	// Reset error flag
+	mce_ops.error = 0;
+
 	switch (mce_ops.state) {
 
 	case OPS_IDLE:
@@ -201,6 +250,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	case OPS_ERR:
 	default:
 		ret_val = 0;
+		mce_ops.error = -MCE_ERR_ACTIVE;
 		goto out;
 	}
 
@@ -224,9 +274,10 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	//  - the alternative risks losing expected interrupts
 
 	mce_ops.state = OPS_CMD;
-	if (mce_send_command(&mce_ops.cmd, mce_write_callback, 1)) {
+	if ((err=mce_send_command(&mce_ops.cmd, mce_write_callback, 1))!=0) {
 		PRINT_ERR(SUBNAME "mce_send_command failed\n");
 		mce_ops.state = OPS_IDLE;
+		mce_ops.error = err;
 		ret_val = 0;
 		goto out;
 	}
@@ -237,6 +288,41 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 
 	PRINT_INFO(SUBNAME "exiting [%#x]\n", ret_val);
 	return ret_val;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "mce_ioctl: "
+
+int mce_ioctl(struct inode *inode, struct file *filp,
+	      unsigned int iocmd, unsigned long arg)
+{
+	int x;
+
+	switch(iocmd) {
+
+	case MCEDEV_IOCT_RESET:
+	case MCEDEV_IOCT_QUERY:
+		PRINT_ERR("ioctl: not yet implemented!\n");
+		return -1;
+
+	case MCEDEV_IOCT_HARDWARE_RESET:
+		return mce_hardware_reset();
+	       
+	case MCEDEV_IOCT_INTERFACE_RESET:
+		return mce_interface_reset();
+
+	case MCEDEV_IOCT_LAST_ERROR:
+		x = mce_ops.error;
+		mce_ops.error = 0;
+		return x;
+
+	default:
+		PRINT_ERR("ioctl: unknown command (%#x)\n", iocmd );
+	}
+
+	return -1;
 }
 
 #undef SUBNAME

@@ -12,6 +12,9 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos);
 
+int      mce_ioctl(struct inode *inode, struct file *filp,
+		   unsigned int iocmd, unsigned long arg);
+
 int     mce_open(struct inode *inode, struct file *filp);
 
 int     mce_release(struct inode *inode, struct file *filp);

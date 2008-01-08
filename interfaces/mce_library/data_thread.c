@@ -2,10 +2,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include <libmaslog.h>
 
-#include <mcecmd.h>
-#include <mcedata.h>
 #include "data_thread.h"
 #include "frame.h"
 
@@ -72,7 +69,7 @@ void *data_thread(void *p_void)
 	int ret_val;
 	data_thread_t *d =(data_thread_t*) p_void;
 	int size = d->acq->frame_size*sizeof(u32);
-	int fd = d->acq->mcedata->fd;
+	int fd = d->acq->context->data.fd;
 	mce_frame_actions_t *acts = &d->acq->actions;
 	u32 *data = malloc(size);
 	int done = 0;

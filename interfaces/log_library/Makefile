@@ -4,7 +4,7 @@ BASE := ../
 include $(BASE)Makefile.children
 
 EXTRA = $(MASMISC_F)socks.o
-INCLUDE = -I$(MASMISC_F)
+INCLUDE = -I$(MAS_INCLUDE_F)
 
 CFLAGS += $(INCLUDE) -Wall
 
@@ -13,27 +13,17 @@ CC=gcc
 # Target name for logger client library
 LOGLIB = libmaslog.a
 
-SOCK = ../misc/socks.o
-INCLUDE = -I ../misc
-
-CC = gcc
-
-CFLAGS += $(INCLUDE)
 
 all: $(LOGLIB)
 
-$(LOGLIB): $(EXTRA) libmaslog.o libmaslog.h
+$(LOGLIB): $(EXTRA) libmaslog.o $(MAS_INCLUDE_F)libmaslog.h
 	$(AR) rs $@ $(EXTRA) libmaslog.o
 
-# Make the install__libmaslog.a and install__libmaslog.h rules
+# Make the install__libmaslog.a
 INSTALL_TARGET=$(LOGLIB)
 include $(MAKERULES)Makefile.install_rule_lib
 
-INSTALL_TARGET=libmaslog.h
-include $(MAKERULES)Makefile.install_rule_inc
-
-
-install: install__$(LOGLIB) install__libmaslog.h
+install: install__$(LOGLIB)
 
 tidy:
 	-rm *~ *.o

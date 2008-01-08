@@ -103,17 +103,17 @@ int dsp_ioctl(int handle, unsigned int iocmd, unsigned long arg)
 
 int dsp_reset_flags(int handle)
 {
-	return ioctl(handle, DSPDEV_IOCT_RESET, 0);
+	return dsp_ioctl(handle, DSPDEV_IOCT_RESET, 0);
 }
 
 int dsp_error(int handle)
 {
-	return ioctl(handle, DSPDEV_IOCT_ERROR, 0);
+	return dsp_ioctl(handle, DSPDEV_IOCT_ERROR, 0);
 }
 
 int dsp_speak(int handle, unsigned long arg)
 {
-	return ioctl(handle, DSPDEV_IOCT_SPEAK, arg);
+	return dsp_ioctl(handle, DSPDEV_IOCT_SPEAK, arg);
 }
 
 
@@ -130,9 +130,9 @@ int dsp_send_command_now(int handle, dsp_command *cmd)
 	if ( sizeof(msg) != read(cons[handle].fd, &msg, sizeof(msg)) )
 		return ioctl(cons[handle].fd, DSPDEV_IOCT_ERROR);
 
-	if ( msg.type != DSP_REP ) return -DSP_ERR_FAILURE;
+	if ( msg.type != DSP_REP ) return -DSP_ERR_UNKNOWN;
 	if ( msg.command != cmd->command ) return -DSP_ERR_REPLY;
-	if ( msg.reply != DSP_ACK ) return -DSP_ERR_REPLY;
+	if ( msg.reply != DSP_ACK ) return -DSP_ERR_FAILURE;
     
 	return (int) (msg.data & DSP_DATAMASK);
 }

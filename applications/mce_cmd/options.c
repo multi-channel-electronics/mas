@@ -2,7 +2,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "mce_cmd.h"
 #include "options.h"
 
 #define USAGE_MESSAGE \

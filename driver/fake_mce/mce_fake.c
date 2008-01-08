@@ -34,7 +34,7 @@
 #define ROW_LEN           0x50
 #define RUN_ID            0x56
 #define USER_WORD         0x57
-
+#define TIMER_OUT         0xA2 /* select_clk :) */
 
 /* Other stuff... */
 
@@ -155,6 +155,8 @@ struct mce_state_struct {
 	int data_ready;
 	int notification;
 
+	int timeout_trigger;
+
 	mce_reply reply;
 	int reply_data_count;
 
@@ -221,6 +223,11 @@ int mce_fake_reset( void )
 
 int fake_notify( int packet_type )
 {
+	if (mce_state.timeout_trigger) {
+		mce_state.timeout_trigger = 0;
+		return 0;
+	}
+
 	switch (packet_type) {
 
 	case PACKET_DATA:
@@ -525,6 +532,10 @@ int fake_writeblock(const mce_command *cmd, mce_reply *rep)
 		mce_state.run_id = cmd->data[0];
 		break;
 
+	case TIMER_OUT: /* select_clk ! */
+		/* This will cause the command to timeout, useful for testing */
+		mce_state.timeout_trigger = 1;
+		break;
 
 /* 	default: */
 /* 		//Who am I to stop you? */

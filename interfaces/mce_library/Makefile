@@ -5,11 +5,15 @@ include $(BASE)Makefile.children
 
 LIB     = mcecmd
 LIBNAME = lib$(LIB).a
-LIBHDR  = $(LIB).h
 
 DSP_DIR = ../driver
-OBJECTS = cmd.o data.o acq.o data_thread.o config.o files.o frame.o
-HEADERS = $(LIBHDR) mcedata.h mceconfig.h
+
+OBJECTS = context.o errors.o \
+	cmd.o packet.o \
+	data.o acq.o data_thread.o files.o frame.o \
+	config.o
+
+HEADERS = data_thread.h frame.h version.h
 
 INCLUDE += -I. -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I$(DSP_DIR)
 
@@ -17,46 +21,31 @@ CFLAGS += -O2 -Wall $(INCLUDE)
 
 CC = gcc
 
+REPO_VERSION=$(shell svnversion)
+
 all: $(LIBNAME)
 
 INSTALL_TARGET=$(LIBNAME)
 include $(MAKERULES)Makefile.install_rule_lib
 
-INSTALL_TARGET=mcecmd.h
-include $(MAKERULES)Makefile.install_rule_inc
+install: install__$(LIBNAME)
 
-INSTALL_TARGET=mcedata.h
-include $(MAKERULES)Makefile.install_rule_inc
-
-INSTALL_TARGET=mceconfig.h
-include $(MAKERULES)Makefile.install_rule_inc
-
-install: install__$(LIBNAME) install__mcecmd.h install__mcedata.h install__mceconfig.h
-
-$(LIBNAME) : $(OBJECTS) $(HEADERS)
+$(LIBNAME) : $(OBJECTS)
 	$(AR) rs $@ $(OBJECTS)
 
-cmd.o : cmd.c $(HEADERS)
-	$(CC) $(CFLAGS) cmd.c -c
+$(OBJECTS): $(HEADERS)
 
-data.o: data.c $(HEADERS)
-	$(CC) $(CFLAGS) data.c -c
-
-config.o: config.c mceconfig.h
-	$(CC) $(CFLAGS) $< -c
-
-files.o: files.c mceconfig.h mcedata.h
-	$(CC) $(CFLAGS) $< -c
-
-cfgtest: cfgtest.c config.o
-	$(CC) $(CFLAGS) cfgtest.c config.o -lconfig -o $@
+version.h: version.h.template FORCE
+	grep -v '^\/\*-' version.h.template | \
+		sed 's/\$$SVN\./$(REPO_VERSION)/g' > version.h
 
 docs:
 	doxygen
 
 clean: tidy
-	rm $(LIBNAME)
+	-rm $(LIBNAME) version.h
 
 tidy:
-	rm -f core.* *~ *.c~ *.h~ core.* *.o #*#
+	-rm -f core.* *~ *.c~ *.h~ core.* *.o #*#
 
+.PHONY: FORCE

@@ -5,8 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mcecmd.h"
-#include "mcedata.h"
+#include <mce_library.h>
 
 
 /* File sequencing structure and operations */

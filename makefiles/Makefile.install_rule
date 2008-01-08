@@ -1,7 +1,5 @@
 # Create install rule for a binary target
 
 install__$(INSTALL_TARGET): mas_bin_install
-	cp $(@:install__%=%) $(MAS_INSTALL_BIN)
-	chown $(MAS_USER) $(MAS_INSTALL_BIN)$(@:install__%=%)
-	chgrp $(MAS_GROUP) $(MAS_INSTALL_BIN)$(@:install__%=%)
-	chmod g+s $(MAS_INSTALL_BIN)$(@:install__%=%)
+	install -m u+rwx,g+rwxs,o+rx --owner=$(MAS_USER) --group=$(MAS_GROUP) \
+		 $(@:install__%=%) $(MAS_INSTALL_BIN)

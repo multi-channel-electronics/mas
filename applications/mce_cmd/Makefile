@@ -3,23 +3,31 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-INCLUDE=-I$(MCELIB_F) -I$(MAS_INCLUDE_F) -I$(MASMISC_F)
+VER_TARGET := .
+include $(MAKERULES)Makefile.version
+DEFS += -DVERSION_STRING="$(REPO_VER)"
+
+INCLUDE=-I$(MAS_INCLUDE_F)
 
 LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 	-L$(LOGLIB_F) -l$(LOGLIB) \
 	$(MASMISC_F)cmdtree.o \
 	-lpthread -lconfig 
 
-CFLAGS += $(INCLUDE) -Wall
+CFLAGS += $(INCLUDE) -Wall $(DEFS)
 
 CC=gcc
 
 # targets
 
+HEADERS = options.h cmd.h
+
 all: mce_cmd
 
-mce_cmd: mce_cmd.o options.o options.h mce_cmd.h
+mce_cmd: mce_cmd.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+
+.c.o: 	$(HEADERS)
 
 tidy:
 	-rm *~ *.o

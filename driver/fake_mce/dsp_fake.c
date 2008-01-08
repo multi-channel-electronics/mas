@@ -9,7 +9,6 @@
 
 */
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 
@@ -35,49 +34,6 @@
 #include "dsp_state.h"
 #include "mce_fake.h"
 #include <dsp_ioctl.h>
-
-#define SUBNAME "fake_int_handler: "
-
-int fake_int_handler(dsp_message *msg)
-{	
-	PRINT_INFO(SUBNAME "fake interrupt entry\n");
-
-	if (msg==NULL) {
-		PRINT_ERR(SUBNAME "NULL message pointer!\n");
-		return -1;
-	}		
-
-	PRINT_INFO(SUBNAME "dsp_message= (%6x %6x %6x %6x)\n",
-		  msg->type, msg->reply, msg->command, msg->data);
-
-	// Dispatch the appropriate handler for this message type
-	switch((dsp_message_code)msg->type) {
-
-	case DSP_REP: // Message is a reply to a DSP command
-		
-		PRINT_INFO(SUBNAME
-			   "REP being dispatched to dsp_int_handler\n");
-		dsp_int_handler( msg );
-
-	  	break;
-		
-	case DSP_NFY: // Message is notification of MCE packet
-
-		PRINT_INFO(SUBNAME
-			   "NFY being dispatched to mce_int_handler\n");
-		mce_int_handler( msg );
-		
-		break;
-
-	default:
-		
-		PRINT_ERR(SUBNAME "unknown message type\n");
-	}
-	
-	return 0;
-}
-
-#undef SUBNAME
 
 
 /*
@@ -151,7 +107,7 @@ int dsp_fake_init(char *dev_name)
 
 	mce_fake_init();
 	dsp_state_init();
-	dsp_state_set_handler(fake_int_handler);
+	dsp_state_set_handler(dsp_int_handler);
 
 	err = 0;
 // out:

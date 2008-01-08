@@ -43,22 +43,26 @@ int main(int argc, char **argv)
 		error_log_exit(&logger, "invalid arguments", 2);
 	
 	// Connect to MCE
-	options.handle = mce_open(options.device_file);
-	if (options.handle<0) {
+	if ((options.context = mcelib_create())==NULL) {
+		error_log_exit(&logger,
+			       "failed to create mce library structure", 3);
+	}
+
+
+	if (mcecmd_open(options.context, options.device_file) != 0) {
 		sprintf(msg, "Could not open mce device '%s'\n",
 			options.device_file);
 		error_log_exit(&logger, msg, 3);
 	}
 
 	// Load configuration
-	if (mceconfig_load(options.hardware_file, &options.mce)!=0) {
+	if (mceconfig_open(options.context, 
+			   options.hardware_file, "hardware")!=0) {
 		sprintf(msg, "Could not load MCE config file '%s'.\n",
 			options.hardware_file);
 		error_log_exit(&logger, msg, 3);
 	}
 
-	// Share config with MCE command library.
-	mce_set_config(options.handle, options.mce);
 
 	// Set up the action handler
 	crawler_t crawler;
@@ -89,7 +93,7 @@ int main(int argc, char **argv)
 int crawl_festival(crawler_t *crawler)
 {
 	int i,j;
-	int n_cards = options.mce->card_count;
+	int n_cards = mceconfig_card_count(options.context);
 
 	if (options.output_path[0] != 0 && 
 	    chdir(options.output_path)!=0) {
@@ -107,11 +111,11 @@ int crawl_festival(crawler_t *crawler)
 		mce_param_t m;
 		card_t *c = &m.card;
 		cardtype_t ct;
-		if (mceconfig_card(options.mce, i, c)) {
+		if (mceconfig_card(options.context, i, c)) {
 			fprintf(stderr, "Problem loading card data at index %i\n", i);
 			return -1;
 		}
-		if (mceconfig_card_cardtype(options.mce, c, &ct)) {
+		if (mceconfig_card_cardtype(options.context, c, &ct)) {
 			fprintf(stderr, "Problem loading cardtype data for '%s'\n", c->name);
 			return -1;
 		}
@@ -121,9 +125,9 @@ int crawl_festival(crawler_t *crawler)
 		param_t *p = &m.param;
 		
 		for (j=0; j<ct.paramset_count; j++) {
-			mceconfig_cardtype_paramset(options.mce, &ct, j, &ps);
+			mceconfig_cardtype_paramset(options.context, &ct, j, &ps);
 			for (k=0; k<ps.param_count; k++) {
-				mceconfig_paramset_param(options.mce, &ps, k, p);
+				mceconfig_paramset_param(options.context, &ps, k, p);
 				
 				if (crawler->item != NULL)
 					crawler->item(crawler->user_data, &m);

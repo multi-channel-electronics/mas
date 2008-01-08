@@ -79,7 +79,8 @@ int  das_item(unsigned user_data, const mce_param_t *p)
 	}
 
 	// Read some data
- 	int err = mce_read_block(das->options->handle, p, p->param.count, buf);
+ 	int err = mcecmd_read_block(das->options->context,
+				    p, p->param.count, buf);
 	if ( err ) {
 		fprintf(das->out, " ERROR");
 		das->error_count++;
