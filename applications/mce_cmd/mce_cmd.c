@@ -163,15 +163,20 @@ int  main(int argc, char **argv)
 	FILE *fin  = stdin;
 	int err = 0;
 
+	if (process_options(&options, argc, argv)) {
+		err = ERR_OPT;
+		goto exit_now;
+	}
+
+	if (!options.nonzero_only) {
+		printf("This is %s version %s\n",
+		       PROGRAM_NAME, VERSION_STRING);
+	}
+
 	line = (char*) malloc(LINE_LEN);
 	if (line==NULL) {
 		fprintf(ferr, "memory error!\n");
 		err = ERR_MEM;
-		goto exit_now;
-	}
-
-	if (process_options(&options, argc, argv)) {
-		err = ERR_OPT;
 		goto exit_now;
 	}
 

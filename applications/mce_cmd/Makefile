@@ -3,6 +3,10 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
+VER_TARGET := .
+include $(MAKERULES)Makefile.version
+DEFS += -DVERSION_STRING="$(REPO_VER)"
+
 INCLUDE=-I$(MAS_INCLUDE_F)
 
 LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
@@ -10,7 +14,7 @@ LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 	$(MASMISC_F)cmdtree.o \
 	-lpthread -lconfig 
 
-CFLAGS += $(INCLUDE) -Wall
+CFLAGS += $(INCLUDE) -Wall $(DEFS)
 
 CC=gcc
 

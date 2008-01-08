@@ -3,6 +3,9 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
+VER_TARGET := .
+include $(MAKERULES)Makefile.version
+
 INCLUDE=-I$(MAS_INCLUDE_F)
 
 LIBRARY=-L$(DSPLIB_F) -l$(DSPLIB) \
@@ -10,7 +13,7 @@ LIBRARY=-L$(DSPLIB_F) -l$(DSPLIB) \
 	$(MASMISC_F)cmdtree.o \
 	-lconfig 
 
-CFLAGS += $(INCLUDE) -Wall
+CFLAGS += $(INCLUDE) -Wall -DVERSION_STRING="$(REPO_VER)"
 
 CC=gcc
 
@@ -23,6 +26,7 @@ dsp_cmd: dsp_cmd.o
 
 tidy:
 	-rm dsp_cmd
+
 clean: tidy
 	-rm *.o *~
 
