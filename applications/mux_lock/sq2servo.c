@@ -87,7 +87,7 @@ int main ( int argc, char **argv )
 /* check command-line arguments */
    if ( argc != 11 && argc != 12)
    {  
-      printf ( "Rev. 2.1\n");
+      printf ( "Rev. 2.1clover\n");
       printf ( "usage: sq2servo outfile sq2bias sq2bstep nbias\n" );
       printf ( "sq2feed sq2fstep nfeed N target gain skip_sq2bias\n" );
       printf ( "   outfile = name of file for output data\n" );
