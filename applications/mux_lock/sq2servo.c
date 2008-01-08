@@ -123,50 +123,49 @@ int main ( int argc, char **argv )
    else
       skip_sq2bias = 0;
    
+   
+   // Create MCE context
+   mce_context_t *mce = mcelib_create();
+
    // Load MCE config information ("xml")
-   mceconfig_t *conf;
-   if (mceconfig_load(CONFIG_FILE, &conf) != 0) {
+   if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {
      sprintf(errmsg_temp, "Load MCE configuration file %s", CONFIG_FILE);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_LCFG;
    }
 
    // Connect to an mce_cmd device.
-   int handle = mce_open(CMD_DEVICE);
-   if (handle < 0) {
+   if (mcecmd_open(mce, CMD_DEVICE)) {
      sprintf(errmsg_temp, "Failed to open %s.\n", CMD_DEVICE);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_OPEN;
    }
 
-   // Share the config information with the mce_cmd device
-   mce_set_config(handle, conf);
-
    // Open data device
-   mcedata_t mcedata;
-   if ((error=mcedata_init(&mcedata, handle, DATA_DEVICE))!= 0) {
+   if ((error=mcedata_open(mce, DATA_DEVICE))!= 0) {
      sprintf(errmsg_temp, "could not open '%s'", DATA_DEVICE);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_DATA;
-   }     
-   
+   }
+
+
    // Lookup "bc1 flux_fb"
    mce_param_t m_safb;
-   if ((error=mce_load_param(handle, &m_safb, SAFB_CARD, "flux_fb")) != 0) {
+   if ((error=mcecmd_load_param(mce, &m_safb, SAFB_CARD, "flux_fb")) != 0) {
      sprintf(errmsg_temp, "lookup of %s flux_fb failed with %d", SAFB_CARD, error); 
      ERRPRINT(errmsg_temp);
      return ERR_MCE_PARA;
    }     
    // Lookup "bc1 flux_fb"
    mce_param_t m_sq2fb;
-   if ((error=mce_load_param(handle, &m_sq2fb, SQ2FB_CARD, "flux_fb")) != 0) {
+   if ((error=mcecmd_load_param(mce, &m_sq2fb, SQ2FB_CARD, "flux_fb")) != 0) {
      sprintf(errmsg_temp, "lookup of %s flux_fb failed with %d", SQ2FB_CARD, error); 
      ERRPRINT(errmsg_temp);
      return ERR_MCE_PARA;
    }     
    // Lookup "bc3 flux_fb"
    mce_param_t m_sq2bias;
-   if ((error=mce_load_param(handle, &m_sq2bias, SQ2BIAS_CARD, SQ2BIAS_CMD)) != 0) {
+   if ((error=mcecmd_load_param(mce, &m_sq2bias, SQ2BIAS_CARD, SQ2BIAS_CMD)) != 0) {
      sprintf(errmsg_temp, "lookup of %s %s failed with %d", SQ2BIAS_CARD, SQ2BIAS_CMD, error); 
      ERRPRINT(errmsg_temp);
      return ERR_MCE_PARA;
@@ -174,13 +173,13 @@ int main ( int argc, char **argv )
    // now setup a single-frame acquisition 
    // Read back num_rows_reported
    mce_param_t m_nrows_rep;
-   if ((error=mce_load_param(handle, &m_nrows_rep, "cc", "num_rows_reported")) != 0) {
+   if ((error=mcecmd_load_param(mce, &m_nrows_rep, "cc", "num_rows_reported")) != 0) {
      sprintf(errmsg_temp, "lookup of cc num_rows_reported failed with %d code", error);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_PARA;
    }     
    //int nrows_rep;
-   if ((error=mce_read_element(handle, &m_nrows_rep, 0, &nrows_rep)) != 0){
+   if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0){
      sprintf(errmsg_temp, "rb cc num_rows_reported failed with %d", error);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_RB;     
@@ -189,7 +188,7 @@ int main ( int argc, char **argv )
    int cards=(1<<(which_rc-1));
    printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
    mce_acq_t acq;
-   mcedata_acq_setup(&acq, &mcedata, 0, cards, (int) nrows_rep);
+   mcedata_acq_setup(&acq, mce, 0, cards, (int) nrows_rep);
    // Our callback will update the counter in this structure
    servo_t sq2servo; 
    sq2servo.fcount = 0;
@@ -258,12 +257,12 @@ int main ( int argc, char **argv )
   
    /* write the initial ssafb values, do not apply any bias, 
       Execute a go command to take one frame of data to start the algorithm */
-   if ((error = mce_write_block(handle, &m_safb, MAXVOLTS, (u32 *)ssafb)) != 0) /*array*/
-     error_action("mce_write_block safb", error);
+   if ((error = mcecmd_write_block(mce, &m_safb, MAXVOLTS, (u32 *)ssafb)) != 0) /*array*/
+     error_action("mcecmd_write_block safb", error);
 
    for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ ){
-     if ((error = mce_write_element(handle, &m_sq2fb, snum, sq2feed)) != 0)
-       error_action("mce_write_element sq2fb", error);
+     if ((error = mcecmd_write_element(mce, &m_sq2fb, snum, sq2feed)) != 0)
+       error_action("mcecmd_write_element sq2fb", error);
    }
    if ( (error=mcedata_acq_go(&acq, 1)) != 0) 
      error_action("data acquisition failed", error);
@@ -273,8 +272,8 @@ int main ( int argc, char **argv )
       sq2bias += sq2bstep;
       if (!skip_sq2bias){
         for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ )
-          if ((error = mce_write_element(handle, &m_sq2bias, snum, sq2bias)) != 0)
-            error_action("mce_write_element sq2bias", error);
+          if ((error = mcecmd_write_element(mce, &m_sq2bias, snum, sq2bias)) != 0)
+            error_action("mcecmd_write_element sq2bias", error);
       }
 
       for ( i=0; i<nfeed; i++ ){
@@ -291,14 +290,14 @@ int main ( int argc, char **argv )
          fprintf ( fd, "\n" );
          
 	 /* change voltages and trigguer more data acquisition */
-         if ((error = mce_write_block(handle, &m_safb, MAXVOLTS, (u32 *)ssafb)) != 0) /*array*/
-           error_action("mce_write_block safb", error);
+         if ((error = mcecmd_write_block(mce, &m_safb, MAXVOLTS, (u32 *)ssafb)) != 0) /*array*/
+           error_action("mcecmd_write_block safb", error);
          for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ ){
-           //if ((error = mce_write_element(handle, &m_safb, snum, ssafb[snum])) != 0) 
-           //  error_action("mce_write_element safb", error); 
+           //if ((error = mcecmd_write_element(mce, &m_safb, snum, ssafb[snum])) != 0) 
+           //  error_action("mcecmd_write_element safb", error); 
 		 
-           if ((error = mce_write_element(handle, &m_sq2fb, snum, sq2feed)) != 0)
-             error_action("mce_write_element sq2fb", error);
+           if ((error = mcecmd_write_element(mce, &m_sq2fb, snum, sq2feed)) != 0)
+             error_action("mcecmd_write_element sq2fb", error);
 	 }
 	 /* if this is the last iteration, skip_go */
          if ( (j != nbias-1) || (i != nfeed-1)) 
@@ -311,24 +310,23 @@ int main ( int argc, char **argv )
    /* reset biases back to 0*/
    for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ ){
      ssafb[snum] = 0;
-     if ((error = mce_write_element(handle, &m_sq2fb, snum, 0)) != 0)
-       error_action("mce_write_element sq2fb", error);
+     if ((error = mcecmd_write_element(mce, &m_sq2fb, snum, 0)) != 0)
+       error_action("mcecmd_write_element sq2fb", error);
    }
-   if ((error = mce_write_block(handle, &m_safb, MAXVOLTS, (u32 *)ssafb)) != 0) /*array*/
-     error_action("mce_write_block safb failed", error);
+   if ((error = mcecmd_write_block(mce, &m_safb, MAXVOLTS, (u32 *)ssafb)) != 0) /*array*/
+     error_action("mcecmd_write_block safb failed", error);
 
    if (!skip_sq2bias){
      for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ )
-       if ((error = mce_write_element(handle, &m_sq2bias, snum, sq2bias)) != 0)
-         error_action("mce_write_element sq2bias", error);
+       if ((error = mcecmd_write_element(mce, &m_sq2bias, snum, sq2bias)) != 0)
+         error_action("mcecmd_write_element sq2bias", error);
    }  
    else
      printf("This script did not apply SQ2 bias, you may need to turn biases off manually!\n");
    
    fclose(fd);
    fclose(sq2servo.df);
-   mceconfig_destroy(conf);
-   mce_close(handle);
+   mcelib_destroy(mce);
 
    time(&finish);
    //elapsed = ((double) (end - start))/CLOCKS_PER_SEC;

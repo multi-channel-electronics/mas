@@ -15,6 +15,9 @@ example: example.o
 example_data: example_data.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIB) $(INC)
 
+install:
+	@echo "The examples don't install!"
+
 tidy:
 	-rm *.o *~ #*
 

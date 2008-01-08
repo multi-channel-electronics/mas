@@ -6,7 +6,8 @@ include $(BASE)Makefile.children
 HEADERS = mcecmd.h mceconfig.h mcedata.h \
 	libmaslog.h mcedsp.h \
 	mce.h mce_errors.h \
-	dsp.h dsp_errors.h
+	dsp.h dsp_errors.h \
+	mce_library.h
 
 install: $(HEADERS) mas_base_install
 	@for h in $(HEADERS); do \

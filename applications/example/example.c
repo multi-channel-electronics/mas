@@ -1,11 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* These are the MCE include files; they should all be in /usr/include */
+/* This is the MCE include file; it should be in /usr/local/include or something */
 
-#include <mcecmd.h>
-#include <mceconfig.h>
-#include <mcedata.h>
+#include <mce_library.h>
 
 
 /* Default device, config files */
@@ -39,23 +37,21 @@ int main()
 	  Initialization example
 	*/
 
+	// Get a library context structure (cheap)
+	mce_context_t *mce = mcelib_create();
+
 	// Load MCE config information ("xml")
-	mceconfig_t *conf;
-	if (mceconfig_load(CONFIG_FILE, &conf) != 0) {
+	if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {
 		fprintf(stderr, "Failed to load MCE configuration file %s.\n",
 			CONFIG_FILE);
 		return 1;
 	}
 
 	// Connect to an mce_cmd device.
-	int handle = mce_open(CMD_DEVICE);
-	if (handle < 0) {
+	if (mcecmd_open(mce, CMD_DEVICE) != 0) {
 		fprintf(stderr, "Failed to open %s.\n", CMD_DEVICE);;
 		return 1;
 	}
-
-	// Share the config information with the mce_cmd device
-	mce_set_config(handle, conf);
 
 
         /*
@@ -64,19 +60,19 @@ int main()
 
 	// Lookup "rc1 fw_rev"
 	mce_param_t rc1_fw_rev;
-	if ((error=mce_load_param(handle, &rc1_fw_rev, "rc1", "fw_rev")) != 0) {
+	if ((error=mcecmd_load_param(mce, &rc1_fw_rev, "rc1", "fw_rev")) != 0) {
 		fprintf(stderr, "Lookup failed.\n");
 		return 1;
 	}
 
 	// Read.
-	error = mce_read_block(handle,
+	error = mcecmd_read_block(mce,
 			       &rc1_fw_rev  /* mce_param_t for the card/para */,
 			       1            /* number of words to read, per card */,
 			       data         /* buffer for the words */);
 	if (error != 0) {
 		fprintf(stderr, "MCE command failed: '%s'\n",
-			mce_error_string(error));
+			mcelib_error_string(error));
 		return 1;
 	}
 
@@ -85,25 +81,25 @@ int main()
 	// Try to read 2 words, this will fail.
 	// Note that we are re-using rc1_fw_rev; it remains valid.
 
-	error = mce_read_block(handle,
+	error = mcecmd_read_block(mce,
 			       &rc1_fw_rev  /* mce_param_t for the card/para */,
 			       2            /* number of words to read, per card */,
 			       data         /* buffer for the words */);
 
 	printf("Reading 2 words from rc1 fw_rev returns error -%#x and message '%s'\n",
-	       -error, mce_error_string(error));
+	       -error, mcelib_error_string(error));
 
 	// Multi-value read:
 
 	mce_param_t gainp0;
-	if ( mce_load_param(handle, &gainp0, "rc1", "gainp0") != 0) {
+	if ( mcecmd_load_param(mce, &gainp0, "rc1", "gainp0") != 0) {
 		fprintf(stdout, "Couldn't load gainp0.\n");
 		return 1;
 	}
 
 	// Number of values in in gainp0.param.count
 	n = gainp0.param.count;
-	error = mce_read_block(handle, &gainp0, n, data);
+	error = mcecmd_read_block(mce, &gainp0, n, data);
 	printf("rc1 gainp0: ");
 	print_u32(data, n);
 
@@ -112,18 +108,18 @@ int main()
 	for (int i=0; i<n; i++) {
 		data[i] = 10*i;
 	}
-	error = mce_write_block(handle, &gainp0, n, data);
+	error = mcecmd_write_block(mce, &gainp0, n, data);
 
-	error = mce_read_block(handle, &gainp0, n, data);
+	error = mcecmd_read_block(mce, &gainp0, n, data);
 	printf("rc1 gainp0: ");
 	print_u32(data, n);
 
 	// Manipulate single elements
 	printf("Setting elements 3 and 12...\n");
-	error = mce_write_element(handle, &gainp0, 3, 66);
-	error = mce_write_element(handle, &gainp0, 12, 88);
+	error = mcecmd_write_element(mce, &gainp0, 3, 66);
+	error = mcecmd_write_element(mce, &gainp0, 12, 88);
 
-	error = mce_read_block(handle, &gainp0, n, data);
+	error = mcecmd_read_block(mce, &gainp0, n, data);
 	printf("rc1 gainp0: ");
 	print_u32(data, n);
 
@@ -133,7 +129,7 @@ int main()
 	*/
 	
 	mce_param_t sys_row_len;
-	if (mce_load_param(handle, &sys_row_len, "sys", "row_len") != 0) {
+	if (mcecmd_load_param(mce, &sys_row_len, "sys", "row_len") != 0) {
 		fprintf(stderr, "Couldn't load 'sys row_len'\n");
 		return 1;
 	}
@@ -149,24 +145,24 @@ int main()
 
 	// Note that we can pass "-1" as the count to query for all data
 	//  (i.e. -1 should return the same number of data as n_write)
-	error = mce_read_block(handle, &sys_row_len, -1, data);
+	error = mcecmd_read_block(mce, &sys_row_len, -1, data);
 	printf(" data: ");
 	print_u32(data, n_read);
 
 	// Let's change those
 	printf("Set to 50...\n");
 	more_data[0] = 50;
-	error = mce_write_block(handle, &sys_row_len, -1, more_data);
+	error = mcecmd_write_block(mce, &sys_row_len, -1, more_data);
 
-	error = mce_read_block(handle, &sys_row_len, -1, more_data);
+	error = mcecmd_read_block(mce, &sys_row_len, -1, more_data);
 	printf(" data: ");
 	print_u32(more_data, n_read);
 
 	// Restore...
 	printf("Restore...\n");
-	error = mce_write_block(handle, &sys_row_len, -1, data);
+	error = mcecmd_write_block(mce, &sys_row_len, -1, data);
 
-	error = mce_read_block(handle, &sys_row_len, -1, more_data);
+	error = mcecmd_read_block(mce, &sys_row_len, -1, more_data);
 	printf(" data: ");
 	print_u32(more_data, n_read);
 
@@ -175,8 +171,7 @@ int main()
 	  Clean-up - only really necessary if the program is not about to end...
 	*/
 
-	mceconfig_destroy(conf);
-	mce_close(handle);
+	mcelib_destroy(mce);
 
 	return 0;
 }

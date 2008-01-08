@@ -1,7 +1,5 @@
 #include <stdio.h>
-#include <mcecmd.h>
-#include <mceconfig.h>
-#include <mcedata.h>
+#include <mce_library.h>
 
 #define CMD_DEVICE "/dev/mce_cmd0"
 #define DATA_DEVICE "/dev/mce_data0"

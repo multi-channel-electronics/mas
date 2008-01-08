@@ -1,22 +1,21 @@
 
+SUB_DIRS = dsp_cmd mce_cmd mce_status maslog mux_lock example
+
 sub-dirs:
-	make -C dsp_cmd
-	make -C mce_cmd
-	make -C mce_status
-	make -C maslog
+	@for d in ${SUB_DIRS}; do	\
+		make -C $$d;		\
+	done
 
 install:
-	make -C dsp_cmd    install
-	make -C mce_cmd    install
-	make -C mce_status install
-	echo -e "\n Make sure you stop maslog_server before re-installing, or "\
+	@for d in ${SUB_DIRS}; do	\
+		make -C $$d install;	\
+	done
+	@echo -e "\n Make sure you stop maslog_server before re-installing, or "\
 		"the install will fail.\n"
-	make -C maslog     install
 
 clean:
-	make -C dsp_cmd    clean
-	make -C mce_cmd    clean
-	make -C mce_status clean
-	make -C maslog     clean
+	@for d in ${SUB_DIRS}; do	\
+		make -C $$d clean;	\
+	done
 
 .PHONY: sub-dirs clean

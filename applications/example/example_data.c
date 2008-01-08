@@ -1,11 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* These are the MCE include files; they should all be in /usr/include */
+/* This is the MCE include file; it should be in /usr/local/include or something */
 
-#include <mcecmd.h>
-#include <mceconfig.h>
-#include <mcedata.h>
+#include <mce_library.h>
 
 
 /* Default device, config files */
@@ -55,40 +53,36 @@ int main()
 	  Initialization example
 	*/
 
+	// Get a library context structure (cheap)
+	mce_context_t *mce = mcelib_create();
+
 	// Load MCE config information ("xml")
-	mceconfig_t *conf;
-	if (mceconfig_load(CONFIG_FILE, &conf) != 0) {
+	if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {
 		fprintf(stderr, "Failed to load MCE configuration file %s.\n",
 			CONFIG_FILE);
 		return 1;
 	}
 
 	// Connect to an mce_cmd device.
-	int handle = mce_open(CMD_DEVICE);
-	if (handle < 0) {
+	if (mcecmd_open(mce, CMD_DEVICE) != 0) {
 		fprintf(stderr, "Failed to open %s.\n", CMD_DEVICE);;
 		return 1;
 	}
 
-	// Share the config information with the mce_cmd device
-	mce_set_config(handle, conf);
-
-
 	// Open data device
-	mcedata_t mcedata;
-	if (mcedata_init(&mcedata, handle, DATA_DEVICE)) {
+	if (mcedata_open(mce, DATA_DEVICE) != 0) {
 		fprintf(stderr, "Could not open '%s'\n", DATA_DEVICE);
 		return 1;
 	}
 		
 	// Determine current num_rows_reported
 	mce_param_t rows_rep;
-	if (mce_load_param(handle, &rows_rep, "cc", "num_rows_reported")) {
+	if (mcecmd_load_param(mce, &rows_rep, "cc", "num_rows_reported")) {
 		fprintf(stderr, "Failed to laod num_rows_reported\n");
 		return 1;
 	}
 	u32 num_rows;
-	if (mce_read_element(handle, &rows_rep, 0, &num_rows)) {
+	if (mcecmd_read_element(mce, &rows_rep, 0, &num_rows)) {
 		fprintf(stderr, "Reading of num_rows_reported failed!\n");
 		return 1;
 	}
@@ -101,7 +95,7 @@ int main()
 
 	// Setup an acqusition structure, associated with this data device.
 	mce_acq_t acq;
-	mcedata_acq_setup(&acq, &mcedata, 0, cards, (int)num_rows);
+	mcedata_acq_setup(&acq, mce, 0, cards, (int)num_rows);
 
 	// Our callback will update the counter in this structure
 	my_counter_t counter = {
@@ -127,8 +121,7 @@ int main()
 	  Clean-up - only really necessary if the program is not about to end...
 	*/
 
-	mceconfig_destroy(conf);
-	mce_close(handle);
+	mcelib_destroy(mce);
 
 	return 0;
 }
