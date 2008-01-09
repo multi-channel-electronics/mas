@@ -28,6 +28,8 @@ enum {
 	COMMAND_WB,
 	COMMAND_REL,
 	COMMAND_WEL,
+	COMMAND_RRA,
+	COMMAND_WRA,
 	COMMAND_GO,
 	COMMAND_ST,
 	COMMAND_RS,
@@ -96,10 +98,10 @@ cmdtree_opt_t fs_args[] = {
 cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "r"       , 2, 3, COMMAND_RB, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "w"       , 3,-1, COMMAND_WB, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RRA"     , 4, 4, COMMAND_RRA, command_placeholder_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WRA"     , 4,-1, COMMAND_WRA, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
@@ -384,7 +386,7 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 				string_table += strlen(string_table) + 1;
 				para_opts->flags = CMDTREE_SELECT | CMDTREE_NOCASE;
 				para_opts->min_args = 0;
-				para_opts->max_args = p.count;
+				para_opts->max_args = -1; //p.count;
 				para_opts->sub_opts = integer_opts;
 				para_opts->user_cargo = (unsigned long)p.cfg;
 				para_opts++;
@@ -539,7 +541,20 @@ int do_acq_compat(char *errmsg)
 	return 0;
 }
 
+int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
+{
+	int i;
+	int offset = 0;
+	int hex = (options.display == SPECIAL_HEX || 
+		   ( options.display == SPECIAL_DEF &&
+		     p->param.flags & MCE_PARAM_HEX ) );
 
+	for (i=0; i<count ; i++) {
+		if (hex) offset += sprintf(dest + offset, "%#x ", buf[i]);
+		else     offset += sprintf(dest + offset, "%i ", buf[i]);
+	}
+	return offset;
+}
 
 
 
@@ -648,55 +663,51 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case COMMAND_RB:
-
 			err = mcecmd_read_block(mce, &mcep, -1, buf);
-			if (err)
-				break;
+			if (err) break;
 
-			int hex = (options.display == SPECIAL_HEX || 
-				   ( options.display == SPECIAL_DEF &&
-				     mcep.param.flags & MCE_PARAM_HEX ) );
+			errmsg += data_string(errmsg, buf, mcep.param.count * 
+					      mcep.card.card_count, &mcep);
 
-			for (i=0; i < mcep.param.count *
-				     mcep.card.card_count ; i++) {
-				if (hex)
-					errmsg += sprintf(errmsg, "%#x ", buf[i]);
-				else 
-					errmsg += sprintf(errmsg, "%i ", buf[i]);
-			}
 			break;
 
 		case COMMAND_REL:
-			//Reject REL on multi-card parameters
-			if (card_mul != 1) {
-				sprintf(errstr, "REL not allowed on multi-card parameters!");
-				return -1;
-			}
 			err = mcecmd_read_element(mce, &mcep,
-					    tokens[3].value, buf);
-			if (err)
-				break;
+						  tokens[3].value, buf);
+			if (err) break;
 
-			if (options.display == SPECIAL_HEX )
-				errmsg += sprintf(errmsg, "%#x ", *buf);
-			else 
-				errmsg += sprintf(errmsg, "%i ", *buf);
+			errmsg += data_string(errmsg, buf, 1, &mcep);
+
+			break;
+
+		case COMMAND_RRA:
+			err = mcecmd_read_range(mce, &mcep, tokens[3].value,
+						buf, tokens[4].value);
+			if (err) break;
+
+			errmsg += data_string(errmsg, buf, tokens[4].value, &mcep);
+
 			break;
 
 		case COMMAND_WB:
-			
-			for (i=0; i<tokens[3].n && i<NARGS; i++) {
+			for (i=0; i<tokens[3].n && i<NARGS; i++)
 				buf[i] = tokens[3+i].value;
-			}
 
 			err = mcecmd_write_block(mce, &mcep, to_write, buf);
 			break;
 			
 		case COMMAND_WEL:
-			
 			err = mcecmd_write_element(mce, &mcep,
 						tokens[3].value,
 						tokens[4].value);
+			break;
+			
+		case COMMAND_WRA:
+			for (i=0; i<tokens[4].n && i<NARGS; i++)
+				buf[i] = tokens[4+i].value;
+
+			err = mcecmd_write_range(mce, &mcep, tokens[3].value,
+						 buf, tokens[4].n);
 			break;
 			
 		default:
