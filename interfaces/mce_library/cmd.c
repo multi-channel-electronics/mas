@@ -207,7 +207,7 @@ int mcecmd_write_block(mce_context_t* context, const mce_param_t *param,
 	for (i=0; i<param->card.card_count; i++) {
 		error = mcecmd_load_command(&cmd, MCE_WB, 
 					 param->card.id[i], param->param.id,
-					 count, data);
+					 count, count, data);
 		if (error) return error;
 		mce_reply rep;
 
@@ -233,7 +233,7 @@ int mcecmd_read_block(mce_context_t* context, const mce_param_t *param,
 	for (i=0; i<param->card.card_count; i++) {
 		error = mcecmd_load_command(&cmd, MCE_RB, 
 					 param->card.id[i], param->param.id,
-					 count, data);
+					 count, 0, data);
 		if (error) return error;
 
 		error = mcecmd_send_command(context, &cmd, &rep);
@@ -307,36 +307,49 @@ int mcecmd_reset(mce_context_t* context,  const mce_param_t *param)
 
 /* MCE special commands - these provide additional logical support */
 
-int mcecmd_write_element(mce_context_t* context, const mce_param_t *param,
-			 int data_index, u32 datum)
+int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
+		       int data_index, const u32 *data, int count)
 {
 	int error = 0;
-	u32 data[MCE_CMD_DATA_MAX];
+	u32 block[MCE_CMD_DATA_MAX];
 
 	if (param->card.card_count != 1)
 		return -MCE_ERR_MULTICARD;
 
-	if ( (error = mcecmd_read_block(context, param, data_index+1, data)) != 0)
-		return error;
+	error =  mcecmd_read_block(context, param, data_index+count, block);
+	if (error != 0)	return error;
 
-	data[data_index] = datum;
+	memcpy(block+data_index, data, count*sizeof(*block));
 
-	return mcecmd_write_block(context, param, data_index+1, data);
+	return mcecmd_write_block(context, param, data_index+count, block);
+}
+
+int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
+		      int data_index, u32 *data, int count)
+{
+	int error = 0;
+	u32 block[MCE_CMD_DATA_MAX];
+
+	if (param->card.card_count != 1)
+		return -MCE_ERR_MULTICARD;
+
+	error = mcecmd_read_block(context, param, data_index+count, block);
+	if (error != 0) return error;
+
+	memcpy(data, block + data_index, count*sizeof(*data));
+	return 0;
+}
+
+int mcecmd_write_element(mce_context_t* context, const mce_param_t *param,
+			 int data_index, u32 datum)
+{
+	return mcecmd_write_range(context, param, data_index, &datum, 1);
 }
 
 int mcecmd_read_element(mce_context_t* context, const mce_param_t *param,
 			int data_index, u32 *datum)
 {
-	int error = 0;
-	u32 data[MCE_CMD_DATA_MAX];
-
-	if (param->card.card_count != 1)
-		return -MCE_ERR_MULTICARD;
-
-	if ( (error = mcecmd_read_block(context, param, data_index+1, data)) != 0)
-		return error;
-	*datum = data[data_index];
-	return 0;
+	return mcecmd_read_range(context, param, data_index, datum, 1);
 }
 
 int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,

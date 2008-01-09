@@ -55,22 +55,28 @@ int mcecmd_stop_application (mce_context_t* context, const mce_param_t *param);
 int mcecmd_reset            (mce_context_t* context, const mce_param_t *param);
 
 int mcecmd_write_block      (mce_context_t* context, const mce_param_t *param,
-			  int count, const u32 *data);
+			     int count, const u32 *data);
 
 int mcecmd_read_block       (mce_context_t* context, const mce_param_t *param,
-			  int count, u32 *data);
+			     int count, u32 *data);
 
 
 /* MCE special commands - these provide additional logical support */
 
 int mcecmd_write_element    (mce_context_t* context, const mce_param_t *param,
-			  int data_index, u32 datum);
+			     int data_index, u32 datum);
 
 int mcecmd_read_element     (mce_context_t* context, const mce_param_t *param,
-			  int data_index, u32 *datum);
+			     int data_index, u32 *datum);
+
+int mcecmd_write_range      (mce_context_t* context, const mce_param_t *param,
+			     int data_index, const u32 *data, int count);
+
+int mcecmd_read_range       (mce_context_t* context, const mce_param_t *param,
+			     int data_index, u32 *data, int count);
 
 int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
-			  int count, const u32 *data, int checks);
+			     int count, const u32 *data, int checks);
 
 
 /* Raw i/o routines; roll your own packets */
@@ -103,7 +109,7 @@ int mcecmd_hardware_reset   (mce_context_t* context);    // reset MCE
 
 int mcecmd_load_command(mce_command *cmd, u32 command,
 		     u32 card_id, u32 para_id, 
-		     int count, const u32 *data);
+		     int count, int data_count, const u32 *data);
 
 /* Packet examination */
 
