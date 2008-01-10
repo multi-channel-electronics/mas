@@ -1,5 +1,6 @@
 /* Production and analysis of MCE command and reply packets. */
 
+#include <string.h>
 #include <mce_library.h>
 
 int mcecmd_load_command(mce_command *cmd, u32 command,

@@ -95,35 +95,38 @@ cmdtree_opt_t fs_args[] = {
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
+#define SEL_NO   (CMDTREE_SELECT | CMDTREE_NOCASE)
+
 cmdtree_opt_t root_opts[] = {
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RRA"     , 4, 4, COMMAND_RRA, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "WRA"     , 4,-1, COMMAND_WRA, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "MCE_RESET", 0,0, SPECIAL_MRESET, NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DSP_RESET", 0,0, SPECIAL_DRESET, NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
- 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
- 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
- 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DEF"     , 0, 0, SPECIAL_DEF     , NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
-	{ CMDTREE_SELECT | CMDTREE_NOCASE, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
+	{ SEL_NO, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
+	{ SEL_NO, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
+	{ SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts},
+	{ SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts},
+	{ SEL_NO, "RRA"     , 4, 4, COMMAND_RRA, command_placeholder_opts},
+	{ SEL_NO, "WRA"     , 4,-1, COMMAND_WRA, command_placeholder_opts},
+	{ SEL_NO, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
+	{ SEL_NO, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
+	{ SEL_NO, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
+	{ SEL_NO, "MCE_RESET", 0,0, SPECIAL_MRESET, NULL},
+	{ SEL_NO, "DSP_RESET", 0,0, SPECIAL_DRESET, NULL},
+	{ SEL_NO, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
+	{ SEL_NO, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
+	{ SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
+ 	{ SEL_NO, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
+ 	{ SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
+ 	{ SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
+	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
+	{ SEL_NO, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
+	{ SEL_NO, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
+	{ SEL_NO, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
+	{ SEL_NO, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
+	{ SEL_NO, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
+	{ SEL_NO, "DEF"     , 0, 0, SPECIAL_DEF     , NULL},
+	{ SEL_NO, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
+	{ SEL_NO, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
+	{ SEL_NO, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
+	{ SEL_NO, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
+	{ SEL_NO, "##"      , 0,-1, SPECIAL_COMMENT , anything_opts},
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 	
@@ -318,79 +321,66 @@ exit_now:
 	return err;
 }
 
+#define FILL_MENU(m, _name, min, max, data, opts ) \
+        m.name = _name; \
+        m.min_args = min; \
+        m.max_args = max; \
+        m.flags = CMDTREE_SELECT | CMDTREE_NOCASE; \
+        m.sub_opts = opts; \
+        m.user_cargo = (unsigned long)data;
+
+
 int menuify_mceconfig(cmdtree_opt_t *opts)
 {
 	cmdtree_opt_t *card_opts;
 	cmdtree_opt_t *para_opts;
 	char *string_table;
-	int i,j;
+	int i,j, error;
 	int n_cards = mceconfig_card_count(mce);
 	int n_params = 0;
 	
 	// Count parameters
 	for (i=0; i<n_cards; i++) {
 		card_t card;
-		cardtype_t ct;
-		paramset_t ps;
 		if (mceconfig_card(mce, i, &card)) {
 			fprintf(stderr, "Problem loading card data at index %i\n", i);
 			return -1;
 		}
-		if (mceconfig_card_cardtype(mce, &card, &ct)) {
-			fprintf(stderr, "Problem loading cardtype data for '%s'\n", card.name);
+
+		error = mceconfig_card_paramcount(mce, &card);
+		if (error < 0) {
+			fprintf(stderr, "Problem counting parameters of '%s'\n", card.name);
 			return -1;
 		}
-		for (j=0; j<ct.paramset_count; j++) {
-			mceconfig_cardtype_paramset(mce, &ct, j, &ps);
-			n_params += ps.param_count;
-		}
+		n_params += error;
 	}
 	
 	string_table = malloc((n_params+n_cards)*MCE_SHORT);
 	card_opts = malloc((n_params + 3 * n_cards + 2)*sizeof(*card_opts));
 	para_opts = card_opts + n_cards + 2;
-		
+
 	for (i=0; i<n_cards; i++) {
 		card_t card;
-		cardtype_t ct;
+		param_t p;
+		int count;
+
 		if (mceconfig_card(mce, i, &card)) {
 			fprintf(stderr, "Problem loading card data at index %i\n", i);
 			return -1;
 		}
-		if (mceconfig_card_cardtype(mce, &card, &ct)) {
-			fprintf(stderr, "Problem loading cardtype data for '%s'\n", card.name);
-			return -1;
-		}
-		
+
 		// Fill out menu entry for card
-		card_opts[i].name = string_table;
- 		strcpy(string_table, card.name);
+		FILL_MENU( card_opts[i], string_table, 1, -1, card.cfg, para_opts );
+		strcpy(string_table, card.name);
 		string_table += strlen(string_table) + 1;
-		card_opts[i].min_args = 1;
-		card_opts[i].max_args = -1;
-		card_opts[i].flags = CMDTREE_SELECT | CMDTREE_NOCASE;
-		card_opts[i].sub_opts = para_opts;
-		card_opts[i].user_cargo = (unsigned long)card.cfg;
-
-
-		int k;
-		paramset_t ps;
-		param_t p;
-
-		for (j=0; j<ct.paramset_count; j++) {
-			mceconfig_cardtype_paramset(mce, &ct, j, &ps);
-			for (k=0; k<ps.param_count; k++) {
-				mceconfig_paramset_param(mce, &ps, k, &p);
-				strcpy(string_table, p.name);
-				para_opts->name = string_table;
-				string_table += strlen(string_table) + 1;
-				para_opts->flags = CMDTREE_SELECT | CMDTREE_NOCASE;
-				para_opts->min_args = 0;
-				para_opts->max_args = -1; //p.count;
-				para_opts->sub_opts = integer_opts;
-				para_opts->user_cargo = (unsigned long)p.cfg;
-				para_opts++;
-			}
+		
+		count = mceconfig_card_paramcount(mce, &card);
+		for (j=0; j<count; j++) {
+			mceconfig_card_param(mce, &card, j, &p);
+			FILL_MENU( (*para_opts), string_table, 0, -1, p.cfg, integer_opts);
+			para_opts++;
+			strcpy(string_table, p.name);
+			string_table += strlen(string_table) + 1;
 		}
 
 		memcpy(para_opts, integer_opts, sizeof(integer_opts));
@@ -398,7 +388,7 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 	}
 
 	memcpy(card_opts+n_cards, integer_opts, sizeof(integer_opts));
-
+		
 	for (i=0; (opts[i].flags & CMDTREE_TYPE_MASK) != CMDTREE_TERMINATOR; i++) {
 		if (opts[i].sub_opts == command_placeholder_opts)
 			opts[i].sub_opts = card_opts;
@@ -565,7 +555,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	int i;
 	mce_param_t mcep;
 	int to_read, to_write, card_mul;
-	u32 buf[NARGS];
+	u32 buf[DATA_SIZE];
 	char s[LINE_LEN];
 
 	errmsg[0] = 0;
@@ -593,7 +583,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			cmdtree_token_word(card_word, tokens+1);
 			cmdtree_token_word(para_word, tokens+2);
 			if (mcecmd_load_param(mce, &mcep, card_word, para_word)) {
-				sprintf(errstr, "Could not load parameter '%s %s'",
+				sprintf(errmsg, "Could not load parameter '%s %s'",
 					card_word, para_word);
 				return -1;
 			}

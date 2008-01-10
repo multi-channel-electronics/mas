@@ -11,7 +11,7 @@
 static config_setting_t*
 get_setting_by_name(const config_setting_t *parent, const char *name);
 
-static config_setting_t*
+inline config_setting_t*
 get_setting(const config_setting_t *parent, const char *name);
 
 static int
@@ -57,12 +57,33 @@ string_table_t param_types_st[] = {
 };
 
 
+string_table_t card_natures_st[] = {
+	{ MCE_NATURE_PHYSICAL, "physical" },
+	{ MCE_NATURE_VIRTUAL , "virtual" },
+	{ -1, NULL }
+};
+
+
 /*
   mceconfig_open
   mceconfig_close
 
   Make and break connections on the config module.
 */
+
+static
+int try_get_child(config_setting_t *parent, const char* name,
+		  config_setting_t **child)
+{
+	*(child) = config_setting_get_member(parent, name);
+	if (*(child)==NULL) {
+		fprintf(stderr,
+			"Section '%s' missing in config file.\n", name);
+		return 1;
+	}
+	return 0;
+}
+
 
 int mceconfig_open(mce_context_t* context,
 		   const char *filename, const char *keyname)
@@ -86,29 +107,24 @@ int mceconfig_open(mce_context_t* context,
 			filename, key);
 		return 1;
 	}
-	
-	C_config.parameter_sets =
-		config_setting_get_member(hardware, MCECFG_PARAMSETS);
-	C_config.card_types =
-		config_setting_get_member(hardware, MCECFG_CARDTYPES);
-	config_setting_t *system =
-		config_setting_get_member(hardware, MCECFG_SYSTEM);
 
-	if (C_config.parameter_sets==NULL ||
-	    C_config.card_types==NULL || system==NULL) {
-		printf("Configuration file incomplete.\n");
+	config_setting_t *system;
+
+	if (try_get_child(hardware, MCECFG_PARAMSETS, &C_config.parameter_sets) ||
+	    try_get_child(hardware, MCECFG_CARDTYPES, &C_config.card_types) ||
+	    try_get_child(hardware, MCECFG_MAPPINGS , &C_config.mappings) ||
+	    try_get_child(hardware, MCECFG_SYSTEM, &system)) {
 		return 1;
 	}
 
-	C_config.components = 
-		config_setting_get_member(system, MCECFG_COMPONENTS);
-	if (C_config.components==NULL) {
+	if (try_get_child(system, MCECFG_COMPONENTS, &C_config.components)) {
 		printf("System has no components!\n");
 		return 1;
 	}
 
 	C_config.paramset_count = count_elem(hardware, MCECFG_PARAMSETS);
 	C_config.cardtype_count = count_elem(hardware, MCECFG_CARDTYPES);
+	C_config.mapping_count = count_elem(hardware, MCECFG_MAPPINGS);
 	C_config.card_count = count_elem(system, MCECFG_COMPONENTS);
 
 	C_config.connected = 1;
@@ -162,12 +178,21 @@ int mceconfig_card_count    (const mce_context_t* context)
 
 */
 
+int mceconfig_mapping(const mce_context_t* context,
+		      int index, mapping_t *mapping)
+{
+	config_setting_t *cfg =
+		config_setting_get_elem(C_config.mappings, index);
+	if (cfg==NULL) return -1;
+	return mceconfig_cfg_mapping(cfg, mapping);
+}
+
 int mceconfig_cardtype(const mce_context_t* context,
 		       int index,
 		       cardtype_t *ct)
 {
 	config_setting_t *cfg =
-		config_setting_get_elem(C_config.parameter_sets, index);
+		config_setting_get_elem(C_config.card_types, index);
 	if (cfg==NULL) return -1;
 
 	return mceconfig_cfg_cardtype(cfg, ct);
@@ -207,6 +232,61 @@ int mceconfig_card(const mce_context_t* context,
       paramset : param
 
 */
+
+int mceconfig_card_mapping(const mce_context_t* context,
+			   const card_t *c,
+			   mapping_t *m)
+{
+	char child_name[MCE_SHORT];
+
+	if (get_string(child_name, c->cfg, "mapping")!=0) {
+		fprintf(stderr, "Card does not have 'mapping' entry.\n");
+		return -1;
+	}
+
+	config_setting_t* cfg =
+		get_setting_by_name(C_config.mappings, child_name);
+	if (cfg==NULL)  {
+		fprintf(stderr, "Mapping '%s' not found.\n", child_name);
+		return -1;
+	}
+
+	return mceconfig_cfg_mapping(cfg, m);
+}
+
+int mceconfig_mapping_param(const mce_context_t* context, 
+			    const mapping_t *m,
+			    int index,
+			    param_t *p)
+{
+	config_setting_t *list =
+		config_setting_get_member(m->cfg, "parameters");
+	if (list==NULL) return -1;
+	
+	// Seek index
+	config_setting_t *cfg = config_setting_get_elem(list, index);
+	if (cfg==NULL) return -1;
+	
+	// Copy p data for user
+	return mceconfig_cfg_param(cfg, p);
+}
+
+int mceconfig_param_maprange(const mce_context_t* context, 
+			     const param_t *p,
+			     int index,
+			     maprange_t *mr)
+{
+	config_setting_t *list =
+		config_setting_get_member(p->cfg, "maps");
+	if (list==NULL) return -1;
+	
+	// Seek index
+	config_setting_t *cfg = config_setting_get_elem(list, index);
+	if (cfg==NULL) return -1;
+	
+	// Copy p data for user
+	return mceconfig_cfg_maprange(cfg, mr);
+}
 
 int mceconfig_card_cardtype(const mce_context_t* context,
 			    const card_t *c,
@@ -251,16 +331,93 @@ int mceconfig_paramset_param(const mce_context_t* context,
 			     int index,
 			     param_t *p)
 {
-	config_setting_t *plist =
+	config_setting_t *list =
 		config_setting_get_member(ps->cfg, "parameters");
-	if (plist==NULL) return -1;
+	if (list==NULL) return -1;
 	
 	// Seek index
-	config_setting_t *cfg = config_setting_get_elem(plist, index);
+	config_setting_t *cfg = config_setting_get_elem(list, index);
 	if (cfg==NULL) return -1;
 	
 	// Copy p data for user
 	return mceconfig_cfg_param(cfg, p);
+}
+
+int mceconfig_card_param(const mce_context_t *context,
+			 const card_t *c, int index,
+			 param_t *p)
+{
+	int i;
+	C_config_check;
+	cardtype_t ct;
+	paramset_t ps;
+	mapping_t m;
+
+	switch(c->nature) {
+
+	case MCE_NATURE_PHYSICAL:
+
+		if (mceconfig_card_cardtype(context, c, &ct)) return -3;
+		
+		for (i=0; i < ct.paramset_count; i++) {
+			if (mceconfig_cardtype_paramset(context, &ct, i, &ps))
+				return -4;
+
+			if (index < ps.param_count) {
+				return mceconfig_paramset_param(
+					context, &ps, index, p);
+			}
+			index -= ps.param_count;
+		}
+		return -1;
+
+	case MCE_NATURE_VIRTUAL:
+
+		if (mceconfig_card_mapping(context, c, &m)) return -3;
+		
+		return mceconfig_mapping_param(context, &m, index, p);
+		
+	default:
+		fprintf(stderr, "Unhandled card nature!\n");
+		return -1;
+	}
+
+}
+
+
+int mceconfig_card_paramcount(const mce_context_t *context,
+			      const card_t *c)
+{
+	int i;
+	C_config_check;
+	cardtype_t ct;
+	paramset_t ps;
+	mapping_t m;
+	int count = 0;
+
+	switch(c->nature) {
+
+	case MCE_NATURE_PHYSICAL:
+
+		if (mceconfig_card_cardtype(context, c, &ct)) return -3;
+		for (i=0; i < ct.paramset_count; i++) {
+			if (mceconfig_cardtype_paramset(context, &ct, i, &ps))
+				return -4;
+			count += ps.param_count;
+		}
+		break;
+
+	case MCE_NATURE_VIRTUAL:
+
+		if (mceconfig_card_mapping(context, c, &m)) return -3;
+		count += m.param_count;
+		break;
+		
+	default:
+		fprintf(stderr, "Unhandled card nature!\n");
+		return -1;
+	}
+	return count;
 }
 
 
@@ -287,18 +444,38 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 	if (cfg == NULL) return -1;
 
 	get_string(c->name, cfg, "name");
-	get_string(c->type, cfg, "card_type");
-	get_int((int*)&c->error_bits, cfg, "error_bits");
-
-	// ID entry is a list.  That's all I've got to say.
-	// Decode the id entry.  This is either a single entry + a
-	// card count (hardware sys, e.g.) or a group entry
-
-	c->card_count = get_int_array(c->id, cfg, "id", MCE_MAX_CARDSET);
-	if (c->card_count < 0) {
-		fprintf(stderr, "card '%s' has invalid 'id' entry.\n",
+	
+	int nature = MCE_NATURE_PHYSICAL;
+	char nature_s[MCE_SHORT];
+	if ((get_string(nature_s, cfg, "nature") == 0) &&
+	    (st_get_id(card_natures_st, nature_s, &nature) != 0)) {
+		fprintf(stderr, "card '%s' has invalid 'nature'!\n",
 			c->name);
-		return 1;
+		return -1;
+	}
+
+	c->nature = nature;
+	switch(c->nature) {
+	case MCE_NATURE_PHYSICAL:
+		get_string(c->type, cfg, "card_type");
+		get_int((int*)&c->error_bits, cfg, "error_bits");
+
+		c->card_count =	get_int_array(c->id, cfg, "id", MCE_MAX_CARDSET);
+		if (c->card_count < 0) {
+			fprintf(stderr, "card '%s' has invalid 'id' entry.\n",
+				c->name);
+			return -1;
+		}
+		break;
+
+	case MCE_NATURE_VIRTUAL:
+		get_string(c->type, cfg, "mapping");
+		c->card_count = 1;
+		break;
+
+	default:
+		fprintf(stderr, "Unhandled card nature '%s'!\n", nature_s);
+		return -1;
 	}
 	
 	get_int(&status, cfg, "status");
@@ -306,6 +483,26 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 		( status ? MCE_PARAM_STAT : 0 );
 
 	return 0;
+}
+
+int mceconfig_cfg_mapping(const config_setting_t *cfg, mapping_t *m)
+{
+	m->cfg = cfg;
+	m->name[0] = 0;
+	get_string(m->name, cfg, "name");
+	m->param_count = count_elem(cfg, "parameters");
+
+	return 0;
+}
+
+int mceconfig_cfg_maprange(const config_setting_t *cfg, maprange_t *mr)
+{
+	return ( get_int(&mr->start, cfg, "start") ||
+		 get_int(&mr->count, cfg, "count") ||
+		 get_int(&mr->offset, cfg, "offset") ||
+		 get_string(mr->card_name, cfg, "card") ||
+		 get_string(mr->param_name, cfg, "param") ) ?
+		-1 : 0;
 }
 
 int mceconfig_cfg_cardtype(const config_setting_t *cfg, cardtype_t *ct)
@@ -362,6 +559,13 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	p->defaults = config_setting_get_member(cfg, "defaults");
 	if (p->defaults != NULL)
 		p->flags |= MCE_PARAM_DEF;
+
+	// Maybe this is a mapped parameter...
+	p->maps = config_setting_get_member(cfg, "maps");
+	if (p->maps != NULL) {
+		p->flags |= MCE_PARAM_MAPPED;		
+		p->map_count = config_setting_length(p->maps);
+	}
 
 	// Discover parameter type
 	if ((get_string(type_str, cfg, "type") == 0) &&
@@ -448,6 +652,7 @@ int mceconfig_lookup(const mce_context_t* context,
 {
 	cardtype_t ct;
 	paramset_t ps;
+	mapping_t m;
 	int index;
 
 	C_config_check;
@@ -457,15 +662,42 @@ int mceconfig_lookup(const mce_context_t* context,
 	p->flags = 0;
 
 	if (mceconfig_lookup_card(context, card_name, c)) return -2;
-	if (mceconfig_card_cardtype(context, c, &ct)) return -3;
 
-	for (index=0; index < ct.paramset_count; index++) {
-		if (mceconfig_cardtype_paramset(context, &ct, index, &ps))
-			return -4;
+	switch(c->nature) {
 
-		if (mceconfig_lookup_param(context, &ps, para_name, p)==0)
-			return 0;
+	case MCE_NATURE_PHYSICAL:
+
+		if (mceconfig_card_cardtype(context, c, &ct)) return -3;
+		
+		for (index=0; index < ct.paramset_count; index++) {
+			if (mceconfig_cardtype_paramset(context, &ct, index, &ps))
+				return -4;
+			
+			if (mceconfig_lookup_param(context, &ps, para_name, p)==0)
+				return 0;
+		}
+		break;
+
+	case MCE_NATURE_VIRTUAL:
+
+		if (mceconfig_card_mapping(context, c, &m)) return -3;
+		
+		config_setting_t *pcfg = get_setting(m.cfg, "parameters");
+		if (pcfg == NULL) return -2;
+
+		config_setting_t *cfg = get_setting_by_name(pcfg, para_name);
+		if (cfg == NULL) return -1;
+
+		if (mceconfig_cfg_param(cfg, p) != 0)
+			return -1;
+
+		return 0;
+		
+	default:
+		fprintf(stderr, "Unhandled card nature!\n");
+		return -1;
 	}
+			    
 	return -5;
 }
 

@@ -17,6 +17,8 @@
 
 #include "mce_ioctl.h"
 
+#include "virtual.h"
+
 #define LOG_LEVEL_CMD     LOGGER_DETAIL
 #define LOG_LEVEL_REP_OK  LOGGER_DETAIL
 #define LOG_LEVEL_REP_ER  LOGGER_INFO
@@ -204,13 +206,19 @@ int mcecmd_write_block(mce_context_t* context, const mce_param_t *param,
 	if (count < 0)
 		count = param->param.count;
 
+	// Redirect Virtual cards, though virtual system will recurse here
+	if (param->card.nature == MCE_NATURE_VIRTUAL)
+		return mcecmd_write_virtual(context, param, 0, data, count);
+	
+	// Separate writes for each target card.
 	for (i=0; i<param->card.card_count; i++) {
-		error = mcecmd_load_command(&cmd, MCE_WB, 
-					 param->card.id[i], param->param.id,
-					 count, count, data);
+		error = mcecmd_load_command(
+			&cmd, MCE_WB,
+			param->card.id[i], param->param.id,
+			count, count, data);
 		if (error) return error;
 		mce_reply rep;
-
+		
 		error = mcecmd_send_command(context, &cmd, &rep);
 		if (error) return error;
 	}
@@ -230,6 +238,10 @@ int mcecmd_read_block(mce_context_t* context, const mce_param_t *param,
 	if (count < 0)
 		count = param->param.count;
 
+	// Redirect Virtual cards, though virtual system will recurse here
+	if (param->card.nature == MCE_NATURE_VIRTUAL)
+		return mcecmd_read_virtual(context, param, 0, data, count);
+	
 	for (i=0; i<param->card.card_count; i++) {
 		error = mcecmd_load_command(&cmd, MCE_RB, 
 					 param->card.id[i], param->param.id,
@@ -313,6 +325,10 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 	int error = 0;
 	u32 block[MCE_CMD_DATA_MAX];
 
+	// Redirect Virtual cards, though virtual system will recurse here
+	if (param->card.nature == MCE_NATURE_VIRTUAL)
+		return mcecmd_write_virtual(context, param, data_index, data, count);
+	
 	if (param->card.card_count != 1)
 		return -MCE_ERR_MULTICARD;
 
@@ -330,6 +346,10 @@ int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
 	int error = 0;
 	u32 block[MCE_CMD_DATA_MAX];
 
+	// Redirect Virtual cards, though virtual system will recurse here
+	if (param->card.nature == MCE_NATURE_VIRTUAL)
+		return mcecmd_read_virtual(context, param, data_index, data, count);
+	
 	if (param->card.card_count != 1)
 		return -MCE_ERR_MULTICARD;
 

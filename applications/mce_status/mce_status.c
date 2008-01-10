@@ -110,29 +110,16 @@ int crawl_festival(crawler_t *crawler)
 	for (i=0; i<n_cards; i++) {
 		mce_param_t m;
 		card_t *c = &m.card;
-		cardtype_t ct;
+		param_t *p = &m.param;
+
 		if (mceconfig_card(options.context, i, c)) {
 			fprintf(stderr, "Problem loading card data at index %i\n", i);
 			return -1;
 		}
-		if (mceconfig_card_cardtype(options.context, c, &ct)) {
-			fprintf(stderr, "Problem loading cardtype data for '%s'\n", c->name);
-			return -1;
-		}
-		
-		int k;
-		paramset_t ps;
-		param_t *p = &m.param;
-		
-		for (j=0; j<ct.paramset_count; j++) {
-			mceconfig_cardtype_paramset(options.context, &ct, j, &ps);
-			for (k=0; k<ps.param_count; k++) {
-				mceconfig_paramset_param(options.context, &ps, k, p);
-				
-				if (crawler->item != NULL)
-					crawler->item(crawler->user_data, &m);
 
-			}
+		for (j=0; mceconfig_card_param(options.context, c, j, p)==0; j++) {
+			if (crawler->item != NULL)
+				crawler->item(crawler->user_data, &m);
 		}
 	}
 

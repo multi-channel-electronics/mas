@@ -32,6 +32,13 @@
 #define MCE_CMD_OTH 4
 
 
+/* Card nature enumerator */
+typedef enum {
+	MCE_NATURE_PHYSICAL,
+	MCE_NATURE_VIRTUAL
+} mce_cardnature_t;
+
+
 /* Parameter flag bits */
 
 #define MCE_PARAM_MIN    0x00000001 /* has minimum */
@@ -45,6 +52,7 @@
 #define MCE_PARAM_SIGNED 0x00000200 /* is naturally signed */
 #define MCE_PARAM_HEX    0x00000400 /* is naturally hexadecimal */
 #define MCE_PARAM_MULTI  0x00000800 /* multi-card alias */
+#define MCE_PARAM_MAPPED 0x00001000 /* virtual parameter */
 
 
 /* Maximum number of grouped cards */
@@ -58,6 +66,7 @@
 
 #define MCECFG_PARAMSETS          "parameter_sets"    /* 2nd level */
 #define MCECFG_CARDTYPES          "card_types"        /* 2nd level */
+#define MCECFG_MAPPINGS           "mappings"          /* 2nd level */
 #define MCECFG_SYSTEM             "system"            /* 2nd level */
 
 #define MCECFG_COMPONENTS         "components"        /* Child of SYSTEM */
@@ -71,13 +80,15 @@ typedef struct mceconfig {
 
 	struct config_t cfg;
 
-	const config_setting_t *parameter_sets;
-	const config_setting_t *card_types;
-	const config_setting_t *components;
+	config_setting_t *parameter_sets;
+	config_setting_t *card_types;
+	config_setting_t *components;
+	config_setting_t *mappings;
 
 	int card_count;
 	int cardtype_count;
 	int paramset_count;
+	int mapping_count;
 
 } mceconfig_t;
 
@@ -108,6 +119,26 @@ typedef struct {
 	
 	const config_setting_t *cfg;
 
+	char name[MCE_SHORT];
+	int param_count;
+
+} mapping_t;
+
+
+typedef struct {
+
+	int start;
+	int count;
+	char card_name[MCE_SHORT];
+	char param_name[MCE_SHORT];
+	int offset;
+
+} maprange_t;
+
+typedef struct {
+	
+	const config_setting_t *cfg;
+
 	int id;
 	char name[MCE_SHORT];
 	int type;
@@ -119,6 +150,8 @@ typedef struct {
 	u32 max;
 	config_setting_t *defaults;
 
+	int map_count;
+	config_setting_t *maps;
 } param_t;
 
 
@@ -127,6 +160,7 @@ typedef struct {
 	const config_setting_t *cfg;
 
 	int id[MCE_MAX_CARDSET];
+	mce_cardnature_t nature;
 
 	char name[MCE_SHORT];
 	char type[MCE_SHORT];
@@ -191,6 +225,20 @@ int mceconfig_card    (const mce_context_t *context, int index,
 
 /* Loading of children from parents */
 
+int mceconfig_card_mapping     (const mce_context_t *context,
+			        const card_t *c,
+				mapping_t *m);
+
+int mceconfig_mapping_param    (const mce_context_t* context, 
+			        const mapping_t *m,
+				int index,
+				param_t *p);
+
+int mceconfig_param_maprange   (const mce_context_t* context, 
+			        const param_t *p,
+				int index,
+				maprange_t *mr);
+
 int mceconfig_card_cardtype    (const mce_context_t *context,
 			        const card_t *c,
 				cardtype_t *ct);
@@ -203,8 +251,17 @@ int mceconfig_paramset_param   (const mce_context_t *context,
 				const paramset_t *ps, int index,
 				param_t *p);
 
+int mceconfig_card_param       (const mce_context_t *context,
+				const card_t *c, int index,
+				param_t *p);
+				
+int mceconfig_card_paramcount(const mce_context_t *context,
+			      const card_t *c);
+
 
 /* mceconfig_cfg_<T> - attempt to load data into <T> from a config_setting_t */
+
+int mceconfig_cfg_mapping (const config_setting_t *cfg, mapping_t  *m);
 
 int mceconfig_cfg_cardtype(const config_setting_t *cfg, cardtype_t *ct);
 
@@ -213,6 +270,8 @@ int mceconfig_cfg_paramset(const config_setting_t *cfg, paramset_t *ps);
 int mceconfig_cfg_param   (const config_setting_t *cfg, param_t    *p);
 
 int mceconfig_cfg_card    (const config_setting_t *cfg, card_t     *c);
+
+int mceconfig_cfg_maprange(const config_setting_t *cfg, maprange_t *mr);
 
 
 #endif

@@ -4,7 +4,8 @@
 #define PROGRAM_NAME "mce_cmd"
 
 #define LINE_LEN 1024
-#define NARGS 64
+#define NARGS 256
+#define DATA_SIZE 2048
 
 #define FS_DIGITS 3 /* Number of digits in file sequencing file name */
 
