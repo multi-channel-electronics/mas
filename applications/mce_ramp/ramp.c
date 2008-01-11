@@ -50,3 +50,24 @@ int print_ambles(amble_t *ambles, int count)
 		printf("%s\n", *(ambles++));
 	return 0;
 }
+
+int print_status_block(loop_t *loop, const char *prefix)
+{
+	int v, p;
+	char new_prefix[AMBLE_LEN];
+
+	if (loop == NULL) return 0;
+
+	sprintf(new_prefix, "%s    ", prefix);
+
+	printf("%s<loop> %i\n", prefix, loop->count);
+
+	for (v=0; v<loop->value_count; v++) {
+		printf("%s  <value> %i %i\n", prefix,
+		       loop->values[v].start, loop->values[v].step);
+		for (p=0; p<loop->values[v].operation_count; p++) {
+			printf("%s    <operation> %s\n", prefix, loop->values[v].operations[p].command);
+		}
+	}
+	return print_status_block(loop->sub_loop, new_prefix);
+}

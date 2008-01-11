@@ -11,6 +11,7 @@
 "  -L <iters>             new loop\n"\
 "  -V <start> <incr>      new incrementing value (associated to last -L)\n"\
 "  -P <string> <repeat>   new output string (associated to last -V)\n"\
+"  -s                     output a status block describing the ramp instead of the ramp itself\n"\
 "\n"\
 "  -d <device file>       choose a particular mce device\n"\
 "  -c <config file>       choose a particular mce config file\n"\
@@ -22,7 +23,6 @@
 
 int process_options(options_t *options, int argc, char **argv)
 {
-	char *s;
 	int option;
 
 	amble_t* amble = NULL;
@@ -30,7 +30,7 @@ int process_options(options_t *options, int argc, char **argv)
 	value_t* value = NULL;
 	operation_t* operation = NULL;
 
-	while ( (option = getopt(argc, argv, "?hf:c:d:o:M:L:VP")) >=0) {
+	while ( (option = getopt(argc, argv, "?hf:c:d:o:M:L:VPs")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -38,12 +38,7 @@ int process_options(options_t *options, int argc, char **argv)
 			printf(USAGE_MESSAGE,
 			       argv[0]);
 			return -1;
-
-		case 'f':
-			strcpy(options->batch_file, optarg);
-			options->batch_now = 1;
-			break;
-
+/*
 		case 'c':
 			strcpy(options->config_file, optarg);
 			break;
@@ -51,19 +46,16 @@ int process_options(options_t *options, int argc, char **argv)
 		case 'd':
 			strcpy(options->cmd_device, optarg);
 			break;
-
+*/
 		case 'o':
-			strcpy(options->acq_path, optarg);
+			options->output_file_now = 1;
+			strcpy(options->output_file, optarg);
 			break;
 
-		case 'x':
-			s = options->cmd_command;
-			while (optind < argc) {
-				s += sprintf(s, "%s ", argv[optind++]);
-			}
-			options->cmd_now = 1;
+		case 's':
+			options->status_block = 1;
 			break;
-			
+
 		case 'M':
 			if (amble==NULL) amble = options->ambles;
 			else amble++;
@@ -82,12 +74,14 @@ int process_options(options_t *options, int argc, char **argv)
 
 		case 'L':
 			if (options->postambles!=NULL) {
-				fprintf(stderr, "-L error: new loop after preamble\n");
+				fprintf(stderr, "-L error: new loop after postamble\n");
 				exit(1);
 			}
 			if (loop==NULL) loop=options->loops;
-			else loop++;
-			loop->sub_loop = loop+1;
+			else {
+				loop->sub_loop = loop+1;
+				loop++;
+			}
 			loop->count = atoi(optarg);
 			break;
 

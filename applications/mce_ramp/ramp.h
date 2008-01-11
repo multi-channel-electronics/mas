@@ -47,5 +47,7 @@ struct loop_struct {
 int run_ramp(loop_t* loop);
 int process_operation(operation_t *op, int value);
 int print_ambles(amble_t *ambles, int count);
+int print_status_block(loop_t *loop, const char *prefix);
+
 
 #endif

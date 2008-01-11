@@ -23,7 +23,12 @@ int main(int argc, char** argv)
 	process_options(&options, argc, argv);
 
 	print_ambles(options.preambles, options.preamble_count);
-	run_ramp(loops);
+
+	if (options.status_block) {
+		print_status_block(loops, "  ");
+	} else {
+		run_ramp(loops);
+	}
 	print_ambles(options.postambles, options.postamble_count);
 
 	return 0;

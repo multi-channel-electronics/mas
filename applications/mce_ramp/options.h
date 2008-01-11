@@ -6,20 +6,14 @@
 
 typedef struct {
 
-	char batch_file[LINE_LEN];
-	int  batch_now;
-
-	char cmd_command[LINE_LEN];
-	int  cmd_now;
+	char output_file[LINE_LEN];
+	int  output_file_now;
 
 	char data_device[LINE_LEN];
 	char cmd_device[LINE_LEN];
 	char config_file[LINE_LEN];
 
-	char acq_path[LINE_LEN];
-
-	int acq_frames;
-	int acq_now;
+	int status_block;
 
 	amble_t* ambles;
 	loop_t* loops;
