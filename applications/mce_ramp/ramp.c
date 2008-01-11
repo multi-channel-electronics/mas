@@ -33,6 +33,7 @@ char buf[1024];
 char* repeat_integer(int value, int count)
 {
 	char* s = buf;
+	*s = 0;
 	while (count--) s += sprintf(s, " %i", value);
 	return buf;
 }

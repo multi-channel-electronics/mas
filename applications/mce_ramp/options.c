@@ -10,7 +10,7 @@
 "  -M <msg>               preamble/postable output\n"\
 "  -L <iters>             new loop\n"\
 "  -V <start> <incr>      new incrementing value (associated to last -L)\n"\
-"  -O <string> <repeat>   new output string (associated to last -V)\n"\
+"  -P <string> <repeat>   new output string (associated to last -V)\n"\
 "\n"\
 "  -d <device file>       choose a particular mce device\n"\
 "  -c <config file>       choose a particular mce config file\n"\
@@ -30,7 +30,7 @@ int process_options(options_t *options, int argc, char **argv)
 	value_t* value = NULL;
 	operation_t* operation = NULL;
 
-	while ( (option = getopt(argc, argv, "?hf:c:d:o:M:L:VO")) >=0) {
+	while ( (option = getopt(argc, argv, "?hf:c:d:o:M:L:VP")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -104,9 +104,9 @@ int process_options(options_t *options, int argc, char **argv)
 			loop->value_count++;
 			break;
 
-		case 'O':
+		case 'P':
 			if (loop==NULL || loop->values==NULL) {
-				fprintf(stderr, "-O error: no value defined\n");
+				fprintf(stderr, "-P error: no value defined\n");
 				exit(1);
 			}
 			if (operation==NULL) operation=options->operations;
