@@ -1,25 +1,29 @@
 #include <stdio.h>
 #include <mce_library.h>
 
+#include "options.h"
+
+#define CONFIG_FILE "/etc/mas.cfg"
 #define CMD_DEVICE "/dev/mce_cmd0"
 #define DATA_DEVICE "/dev/mce_data0"
-#define CONFIG_FILE "/etc/mce.cfg"
+#define HARDWARE_FILE "/etc/mce.cfg"
 
 #define HEADER_OFFSET 43
 
 #define MAXLINE 1024
-#define MAXVOLTS 16 
+#define MAXVOLTS 32     /* use 32 even on a small subrack! */
 #define MAXCHANNELS 8
 #define MAXROWS 41
 
-#define SAFB_CARD "bc1"
-#define SQ2FB_CARD "bc2"
+#define SA_CARD  "sa"
+#define SQ2_CARD "sq2"
+#define SQ1_CARD "sq1"
 
-#define SQ2BIAS_CARD "bc2"
-#define SQ2BIAS_CMD "flux_fb_upper"
-
-#define SQ1BIAS_CARD "ac"
-#define SQ1BIAS_CMD "on_bias"
+#define SQ2_BIAS "bias"
+#define SQ1_BIAS "bias"
+#define SA_FB    "fb"
+#define SQ2_FB   "fb"
+#define SQ1_FB   "fb_const"
 
 typedef struct {
   int fcount;
@@ -36,6 +40,15 @@ int sq1bias_set(int value);
 int gengofile(char *datafile, char *workfile, int which_rc);
 int acq(char *filename);
 int error_action(char *msg, int errcode);
+
+mce_context_t* connect_mce_or_exit(option_t* options);
+void load_param_or_exit(mce_context_t* mce, mce_param_t* p,
+			const char *card, const char *para);
+void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
+			 int start, u32 *data, int count,
+			 const char *opmsg);
+void duplicate_fill(u32 value, u32 *data, int count);
+
 
 int genrunfile (
 char *full_datafilename, /* datafilename including the path*/

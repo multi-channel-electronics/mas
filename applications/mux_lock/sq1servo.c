@@ -16,6 +16,7 @@
  *   * EB: MH fixed a bug
  *   * MA added <> to .bias header line
  *   * MA renamed .fb to .bias and creates a merger-friendly format of .bias file
+ *   * MA+MFH: repair multi-bias bug
  *
  ***********************************************************/
 /***********************************************************
@@ -70,14 +71,14 @@ int main ( int argc, char **argv )
    char *endptr;
    int nbias;
    int nfeed;
-   int sq2fb[MAXVOLTS];     /* sq2 feedback voltages */
+   u32 sq2fb[MAXVOLTS];     /* sq2 feedback voltages */
    int sq1bias;             /* SQ2 bias voltage */
    int sq1bstep;            /* SQ2 bias voltage step */
    int sq1feed;             /* SQ2 feedback voltage */
    int sq1fstep;            /* SQ2 feedback voltage step */
    double z;                /* servo feedback offset */
-   int  which_rc;
-   char which_rc_name[5];
+   int which_rc;
+   int soffset;
    int total_row;
    int skip_sq1bias = 0;
    
@@ -85,8 +86,26 @@ int main ( int argc, char **argv )
    char errmsg_temp[256];
    
    time_t start, finish;
+
+   /* Define default MAS options */
+   option_t options = {
+     config_file:   CONFIG_FILE,
+     cmd_device:    CMD_DEVICE,
+     data_device:   DATA_DEVICE,
+     hardware_file: HARDWARE_FILE,
+   };
+   int arg_offset = 0;
    
    time(&start);
+
+   /* Process MAS config file options first (-x style) */
+   arg_offset = process_options(&options, argc, argv) - 1;
+   if (arg_offset < 0)
+     exit(ERR_NUM_ARGS);
+   
+   // Correct argc and argv for the remaining options (hack!)
+   argc -= arg_offset;
+   argv += arg_offset;
 
    /* check command-line arguments */
    if ( argc != 12 && argc != 13){  
@@ -131,59 +150,20 @@ int main ( int argc, char **argv )
      skip_sq1bias = 0;
    
    // Create MCE context
-   mce_context_t *mce = mcelib_create();
+   mce_context_t *mce = connect_mce_or_exit(&options);
 
-   // Load MCE config information ("xml")
-   if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {
-     sprintf(errmsg_temp, "Load MCE configuration file %s", CONFIG_FILE);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_LCFG;
-   }
+   // Lookup MCE parameters, or exit with error message.
+   mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_nrows_rep, m_retdat;
 
-   // Connect to an mce_cmd device.
-   if (mcecmd_open(mce, CMD_DEVICE)) {
-     sprintf(errmsg_temp, "Failed to open %s.\n", CMD_DEVICE);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_OPEN;
-   }
+   load_param_or_exit(mce, &m_sq2fb,   SQ2_CARD, SQ2_FB);
+   load_param_or_exit(mce, &m_sq1fb,   SQ1_CARD, SQ1_FB);
+   load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS);
+   load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported");
 
-   // Open data device
-   if ((error=mcedata_open(mce, DATA_DEVICE))!= 0) {
-     sprintf(errmsg_temp, "could not open '%s'", DATA_DEVICE);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_DATA;
-   }
+   // Make sure this card can go!
+   sprintf(tempbuf, "rc%i", which_rc);
+   load_param_or_exit(mce, &m_retdat, tempbuf, "ret_dat");
 
-   // Lookup "bc1 flux_fb"
-   mce_param_t m_sq2fb;
-   if ((error=mcecmd_load_param(mce, &m_sq2fb, SQ2FB_CARD, "flux_fb")) != 0) {
-     sprintf(errmsg_temp, "lookup of %s flux_fb failed with %d", SQ2FB_CARD, error);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_PARA;
-   }
-   // Lookup "rc1 fb_const"
-   mce_param_t m_sq1fb;
-   sprintf(which_rc_name,"rc%d",which_rc);
-   if ((error=mcecmd_load_param(mce, &m_sq1fb, which_rc_name, "fb_const")) != 0) {
-     sprintf(errmsg_temp, "lookup of %s fb_const failed with %d", which_rc_name, error);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_PARA;
-   }
-   // Lookup "ac on_bias"
-   mce_param_t m_sq1bias;
-   if ((error=mcecmd_load_param(mce, &m_sq1bias, SQ1BIAS_CARD, SQ1BIAS_CMD)) != 0) {
-     sprintf(errmsg_temp, "lookup of %s %s failed with %d", SQ1BIAS_CARD, SQ1BIAS_CMD, error);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_PARA;
-   } 
-   // now setup a single-frame acquisition 
-   // Read back num_rows_reported
-   mce_param_t m_nrows_rep;
-   if ((error=mcecmd_load_param(mce, &m_nrows_rep, "cc", "num_rows_reported")) != 0) {
-     sprintf(errmsg_temp, "lookup of cc num_rows_reported failed with %d code", error);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_PARA;
-   }
    u32 nrows_rep;
    if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0){
      sprintf(errmsg_temp, "rb cc num_rows_reported failed with %d", error);
@@ -194,7 +174,13 @@ int main ( int argc, char **argv )
    int cards=(1<<(which_rc-1));
    printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
    mce_acq_t acq;
-   mcedata_acq_setup(&acq, mce, 0, cards, (int) nrows_rep);
+   error = mcedata_acq_setup(&acq, mce, 0, cards, (int) nrows_rep);
+   if (error != 0) {
+     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
+     ERRPRINT(errmsg_temp);
+     return ERR_MCE_GO;
+   }
+
    // Our callback will update the counter in this structure
    servo_t sq1servo;
    sq1servo.fcount = 0;
@@ -230,7 +216,7 @@ int main ( int argc, char **argv )
    }
    /*prepare a line of init values for runfile*/
    sprintf(init_line1, "<sq2fb.init> ");
-   for ( j=0; j<MAXVOLTS; j++ ){
+   for ( j=0; j< which_rc*MAXCHANNELS; j++ ){
      if (fgets (line, MAXLINE, tempf) == NULL){
        ERRPRINT ("reading sq2fb.init quitting....");
        return ERR_INI_READ;
@@ -251,7 +237,7 @@ int main ( int argc, char **argv )
    }
    /*prepare a line of init values for runfile*/
    sprintf(init_line2, "<row.init> ");
-   for ( j=0; j<MAXVOLTS; j++ ) {
+   for ( j=0; j< which_rc*MAXCHANNELS; j++ ) {
      if (fgets (line, MAXLINE, tempf) == NULL){
        ERRPRINT("reading row.init quitting....");
        return ERR_INI_READ;
@@ -260,8 +246,9 @@ int main ( int argc, char **argv )
      sprintf(tempbuf, "%d ", sq1servo.row_num[j]);
      strcat(init_line2, tempbuf);
      if (sq1servo.row_num[j] < 0 || sq1servo.row_num[j] > nrows_rep){ //formerly compared with 40!
-       sprintf (errmsg_temp, "out-of-range entry in row.init: %d\n Valid range is: 0<row_num<%d (num_rows_reported)", 
-		                                            sq1servo.row_num[j], nrows_rep); 
+       sprintf (errmsg_temp, "out-of-range entry in row.init: %d\n"
+		" Valid range is: 0<row_num<%d (num_rows_reported)", 
+		sq1servo.row_num[j], nrows_rep); 
        ERRPRINT(errmsg_temp);
        return ERR_INI_READ;
      } 
@@ -278,88 +265,60 @@ int main ( int argc, char **argv )
      return ERR_RUN_FILE;
    }
 
+   // All of our per-column parameters must be written at the right index
+   soffset = (which_rc-1)*MAXCHANNELS;
+
    /* generate the header line for the bias file*/
-   for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ )
-      fprintf ( fd, "  <error%02d> ", snum);
+   for ( snum=0; snum<MAXCHANNELS; snum++)
+     fprintf ( fd, "  <error%02d> ", snum + soffset);
          
-   for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ )
-      fprintf ( fd, "  <sq2fb%02d> ", snum); 
+   for ( snum=0; snum<MAXCHANNELS; snum++)
+      fprintf ( fd, "  <sq2fb%02d> ", snum + soffset); 
    fprintf ( fd, "\n");
 
-   /* apply the sq2fb starting values (as specified in sq2fb.init) and sq1bias starting value
-      and trigger one-frame data acqusition*/
-   for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ )
-     if ((error = mcecmd_write_element(mce, &m_sq2fb, snum, sq2fb[snum])) != 0)
-       error_action("mcecmd_write_element sq2fb", error);
-
-   for ( snum=0; snum<MAXCHANNELS; snum++ )
-     temparr[snum] = (u32) sq1feed;	   
-   if ((error = mcecmd_write_block(mce, &m_sq1fb, MAXCHANNELS, temparr)) != 0)
-     error_action("mcecmd_write_block sq1fb", error);	
-		   
-   if (!skip_sq1bias){
-     for (snum=0; snum<MAXROWS; snum++)
-       temparr[snum] = (u32) sq1bias;	     
-     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, temparr)) != 0) 
-       error_action("mcecmd_write_block sq1bias", error);
-   }	   
-   
-   if ((error=mcedata_acq_go(&acq, 1)) != 0)
-     error_action("data acquisition failed", error);
-   
    /* start the servo*/
    for ( j=0; j<nbias; j++ ){
-      sq1bias += sq1bstep;
+
       if (!skip_sq1bias){
-        for (snum=0; snum<MAXROWS; snum++)
-          temparr[snum] = (u32) sq1bias;	     
+	duplicate_fill(sq1bias + j*sq1bstep, temparr, MAXROWS);
         if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, temparr)) != 0) 
           error_action("mcecmd_write_block sq1bias", error);
-      }	   
+      }
+
       for ( i=0; i<nfeed; i++ ){
-         sq1feed += sq1fstep;
 
-         //for (col=0; col<MAXCHANNELS; col++) //incompatible with rcs!
-         for (snum=(which_rc-1)*8; snum<which_rc*8; snum++)	 
-           fprintf(fd, "%11d ", sq1servo.row_data[snum]);
-         
-         /* get the right columns, change voltages and trigger more data acquisition*/
-         for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ ){
-           sq2fb[snum] += gain * ( sq1servo.row_data [snum] - z );
-           fprintf ( fd, "%11d ", sq2fb[snum]);
-           if ((error = mcecmd_write_element(mce, &m_sq2fb, snum, (u32) sq2fb[snum])) != 0) 
-             error_action("mcecmd_write_element sq2fb", error);
-         }
-         fprintf ( fd, "\n" );
-         fflush (fd);
+	write_range_or_exit(mce, &m_sq2fb, soffset, sq2fb + soffset, MAXCHANNELS, "sq2fb");
+	duplicate_fill(sq1feed + i*sq1fstep, temparr, MAXCHANNELS);
+	write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");	
+	
+	if ((error=mcedata_acq_go(&acq, 1)) != 0)
+	  error_action("data acquisition failed", error);
 
-         for ( snum=0; snum<MAXCHANNELS; snum++ )
-           temparr[snum] = (u32) sq1feed;	   
-         if ((error = mcecmd_write_block(mce, &m_sq1fb, MAXCHANNELS, temparr)) != 0)
-           error_action("mcecmd_write_block sq1fb", error);	
-	 
-         /* if this is the last iteration, skip_go */
-         if ((j!=nbias-1) || (i!=nfeed-1))
-           if ((error=mcedata_acq_go(&acq, 1)) != 0)
-             error_action("data acquisition failed", error);
+	for (snum=0; snum<MAXCHANNELS; snum++)	 
+	  fprintf(fd, "%11d ", sq1servo.row_data[snum+soffset]);
+
+	/* get the right columns, change voltages and trigger more data acquisition*/
+	for ( snum=0; snum<MAXCHANNELS; snum++) {
+	  sq2fb[snum + soffset] += gain * ( sq1servo.row_data [snum + soffset] - z );
+	  fprintf ( fd, "%11d ", sq2fb[snum + soffset]);
+	}
+	fprintf ( fd, "\n" );
+
       }
    }
-   /* reset values back to 0*/
-   for ( snum=(which_rc-1)*8; snum<which_rc*8; snum++ )
-     if ((error = mcecmd_write_element(mce, &m_sq2fb, snum, 0)) != 0) 
-       error_action("mcecmd_write_element sq2fb", error);
-   
-   for ( snum=0; snum<MAXCHANNELS; snum++ )
-     temparr[snum] = (u32) (-8192);	   
-   if ((error = mcecmd_write_block(mce, &m_sq1fb, MAXCHANNELS, temparr)) != 0)
-     error_action("mcecmd_write_block sq1fb", error);	
+
+   /* reset values back to 0 */
+   duplicate_fill(0, temparr, MAXCHANNELS);
+   write_range_or_exit(mce, &m_sq2fb, soffset, temparr, MAXCHANNELS, "sq2fb");
+ 
+   duplicate_fill((u32)(-8192), temparr, MAXCHANNELS);
+   write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");	
    
    if (!skip_sq1bias){
-     for (snum=0; snum<MAXROWS; snum++)
-       temparr[snum] = 0;	     
+     duplicate_fill((u32)(-8192), temparr, MAXROWS);
      if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, temparr)) != 0) 
        error_action("mcecmd_write_block sq1bias", error);
-   }  
+   }
    else
       printf("No SQ1 bias is applied!\n"); 
 

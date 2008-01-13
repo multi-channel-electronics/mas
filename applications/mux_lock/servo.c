@@ -1,8 +1,9 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include"servo_err.h"
-#include"servo.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "servo_err.h"
+#include "servo.h"
+#include "options.h"
 
 /******************************************************************
  * servo.c contains subroutines called by sq1servo.c and sq2servo.c
@@ -80,5 +81,71 @@ FILE *runfile;
     return sysret;
   }
   return 0;
+}
+
+
+mce_context_t* connect_mce_or_exit(option_t* options)
+{
+  char errmsg[1024];
+
+  mce_context_t* mce = mcelib_create();
+  
+  // Load MCE hardware information ("xml")
+  if (mceconfig_open(mce, options->hardware_file, NULL) != 0) {
+    sprintf(errmsg, "Failed to open %s as hardware configuration file.", options->config_file);
+    ERRPRINT(errmsg);
+    exit(ERR_MCE_LCFG);
+  }
+  
+  // Connect to an mce_cmd device.
+  if (mcecmd_open(mce, options->cmd_device)) {
+    sprintf(errmsg, "Failed to open %s as command device.", options->cmd_device);
+    ERRPRINT(errmsg);
+    exit(ERR_MCE_OPEN);
+  }
+
+   // Open data device
+   if (mcedata_open(mce, options->data_device) != 0) {
+     sprintf(errmsg, "Failed to open %s as data device.", options->data_device);
+     ERRPRINT(errmsg);
+     exit(ERR_MCE_DATA);
+   }
+
+   return mce;
+}
+
+
+void load_param_or_exit(mce_context_t* mce, mce_param_t* p,
+			const char *card, const char *para)
+{
+  char errmsg[1024];
+  int error = mcecmd_load_param(mce, p, card, para);
+  if (error != 0) {
+    sprintf(errmsg, "lookup of %s %s failed with %d (%s)",
+	    card, para, error, mcelib_error_string(error)); 
+    ERRPRINT(errmsg);
+    exit(ERR_MCE_PARA);
+  }
+}
+
+
+void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
+			 int start, u32 *data, int count,
+			 const char *opmsg)
+{
+  char temp[1024];
+  int error = mcecmd_write_range(mce, p, start, data, count);
+  if (error != 0) {
+
+    sprintf (temp, "mcecmd_write_range %s with code %d", opmsg, error);
+    ERRPRINT(temp);
+    exit (error);  
+  }
+}
+
+void duplicate_fill(u32 value, u32 *data, int count)
+{
+  int i;
+  for (i=0; i<count; i++) data[i] = value;
 }
 
