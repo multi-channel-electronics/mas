@@ -3,10 +3,10 @@
 
 #include "options.h"
 
-#define CONFIG_FILE "/etc/mas.cfg"
+#define CONFIG_FILE "/etc/mce/mas.cfg"
 #define CMD_DEVICE "/dev/mce_cmd0"
 #define DATA_DEVICE "/dev/mce_data0"
-#define HARDWARE_FILE "/etc/mce.cfg"
+#define HARDWARE_FILE "/etc/mce/mce.cfg"
 
 #define HEADER_OFFSET 43
 

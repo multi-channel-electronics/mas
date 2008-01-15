@@ -10,7 +10,7 @@
 
 #define CMD_DEVICE "/dev/mce_cmd0"
 #define DATA_DEVICE "/dev/mce_data0"
-#define CONFIG_FILE "/etc/mce.cfg"
+#define CONFIG_FILE "/etc/mce/mce.cfg"
 
 /* Our buffer size */
 

@@ -20,8 +20,8 @@
 
 options_t options = {
 	device_file:   "/dev/mce_cmd0",
-	config_file:   "/etc/mas.cfg",
-	hardware_file: "/etc/mce.cfg",
+	config_file:   "/etc/mce/mas.cfg",
+	hardware_file: "/etc/mce/mce.cfg",
 	mode:          CRAWLER_DAS,
 };
 

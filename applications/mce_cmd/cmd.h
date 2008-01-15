@@ -11,7 +11,7 @@
 
 #define DEFAULT_DEVICE "/dev/mce_cmd0"
 #define DEFAULT_DATA "/dev/mce_data0"
-#define DEFAULT_XML "/etc/mce.cfg"
+#define DEFAULT_XML "/etc/mce/mce.cfg"
 
 enum { ERR_MEM=1,
        ERR_OPT=2,
