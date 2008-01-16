@@ -3,7 +3,7 @@
 
 #include "options.h"
 
-#define CONFIG_FILE "/etc/mce/mas.cfg"
+#define MASCONFIG_FILE "/etc/mce/mas.cfg"
 #define CMD_DEVICE "/dev/mce_cmd0"
 #define DATA_DEVICE "/dev/mce_data0"
 #define HARDWARE_FILE "/etc/mce/mce.cfg"
@@ -24,6 +24,7 @@
 #define SA_FB    "fb"
 #define SQ2_FB   "fb"
 #define SQ1_FB   "fb_const"
+#define SQ2_FB_COL   "fb_col"
 
 typedef struct {
   int fcount;
@@ -42,8 +43,8 @@ int acq(char *filename);
 int error_action(char *msg, int errcode);
 
 mce_context_t* connect_mce_or_exit(option_t* options);
-void load_param_or_exit(mce_context_t* mce, mce_param_t* p,
-			const char *card, const char *para);
+int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
+			const char *card, const char *para, int no_exit);
 void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
 			 int start, u32 *data, int count,
 			 const char *opmsg);

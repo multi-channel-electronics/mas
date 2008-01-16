@@ -81,6 +81,7 @@ int main ( int argc, char **argv )
    int soffset;
    int total_row;
    int skip_sq1bias = 0;
+   int biasing_ac = 0;      /* does MCE have a biasing address card? */
    
    int error=0;
    char errmsg_temp[256];
@@ -89,7 +90,7 @@ int main ( int argc, char **argv )
 
    /* Define default MAS options */
    option_t options = {
-     config_file:   CONFIG_FILE,
+     config_file:   MASCONFIG_FILE,
      cmd_device:    CMD_DEVICE,
      data_device:   DATA_DEVICE,
      hardware_file: HARDWARE_FILE,
@@ -149,20 +150,42 @@ int main ( int argc, char **argv )
    else 
      skip_sq1bias = 0;
    
+   // All of our per-column parameters must be written at the right index
+   soffset = (which_rc-1)*MAXCHANNELS;
+
    // Create MCE context
    mce_context_t *mce = connect_mce_or_exit(&options);
 
    // Lookup MCE parameters, or exit with error message.
-   mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_nrows_rep, m_retdat;
+   mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_nrows_rep, m_retdat,
+     m_sq2fb_col[MAXVOLTS];
 
-   load_param_or_exit(mce, &m_sq2fb,   SQ2_CARD, SQ2_FB);
-   load_param_or_exit(mce, &m_sq1fb,   SQ1_CARD, SQ1_FB);
-   load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS);
-   load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported");
+   load_param_or_exit(mce, &m_sq1fb,   SQ1_CARD, SQ1_FB, 0);
+   load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
+   load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported", 0);
+
+   // Check for biasing address card
+   error = load_param_or_exit(mce, &m_sq2fb,   SQ2_CARD, SQ2_FB, 1);
+   if (error != 0) {
+     error = load_param_or_exit(mce, &m_sq2fb, SQ2_CARD, SQ2_FB_COL "0", 1);
+     if (error) {
+       sprintf(errmsg_temp, "Neither %s %s nor %s %s could be loaded!",
+	       SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0"); 
+       ERRPRINT(errmsg_temp);
+       exit(ERR_MCE_PARA);
+     }
+     biasing_ac = 1;
+     
+     // Load params for all columns
+     for (i=0; i<MAXCHANNELS; i++) {
+       sprintf(tempbuf, "%s%i", SQ2_FB_COL, i+soffset);
+       load_param_or_exit(mce, m_sq2fb_col+i, SQ2_CARD, tempbuf, 0);
+     }
+   }     
 
    // Make sure this card can go!
    sprintf(tempbuf, "rc%i", which_rc);
-   load_param_or_exit(mce, &m_retdat, tempbuf, "ret_dat");
+   load_param_or_exit(mce, &m_retdat, tempbuf, "ret_dat", 0);
 
    u32 nrows_rep;
    if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0){
@@ -265,9 +288,6 @@ int main ( int argc, char **argv )
      return ERR_RUN_FILE;
    }
 
-   // All of our per-column parameters must be written at the right index
-   soffset = (which_rc-1)*MAXCHANNELS;
-
    /* generate the header line for the bias file*/
    for ( snum=0; snum<MAXCHANNELS; snum++)
      fprintf ( fd, "  <error%02d> ", snum + soffset);
@@ -287,7 +307,15 @@ int main ( int argc, char **argv )
 
       for ( i=0; i<nfeed; i++ ){
 
-	write_range_or_exit(mce, &m_sq2fb, soffset, sq2fb + soffset, MAXCHANNELS, "sq2fb");
+	if (biasing_ac) {
+	  for (snum=0; snum<MAXCHANNELS; snum++) {
+	    duplicate_fill( sq2fb[snum+soffset], temparr, MAXROWS );
+	    write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");
+	  }
+	} else {
+	  write_range_or_exit(mce, &m_sq2fb, soffset, sq2fb + soffset, MAXCHANNELS, "sq2fb");
+	}
+
 	duplicate_fill(sq1feed + i*sq1fstep, temparr, MAXCHANNELS);
 	write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");	
 	

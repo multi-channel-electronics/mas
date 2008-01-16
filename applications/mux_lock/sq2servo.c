@@ -79,6 +79,7 @@ int main ( int argc, char **argv )
    int  which_rc;
    int  soffset;
    int  skip_sq2bias = 0;
+   int  biasing_ac = 0;     /* does MCE have a biasing address card? */
 
    int  error = 0;
    char errmsg_temp[256];
@@ -87,7 +88,7 @@ int main ( int argc, char **argv )
    
    /* Define default MAS options */
    option_t options = {
-     config_file:   CONFIG_FILE,
+     config_file:   MASCONFIG_FILE,
      cmd_device:    CMD_DEVICE,
      data_device:   DATA_DEVICE,
      hardware_file: HARDWARE_FILE,
@@ -144,43 +145,42 @@ int main ( int argc, char **argv )
    else
       skip_sq2bias = 0;
    
-   
+   // All of our per-column parameters must be written at the right index
+   soffset = (which_rc-1)*MAXCHANNELS;
+
    // Create MCE context
-   mce_context_t *mce = mcelib_create();
-
-   // Load MCE config information ("xml")
-   if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {
-     sprintf(errmsg_temp, "Load MCE configuration file %s", CONFIG_FILE);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_LCFG;
-   }
-
-   // Connect to an mce_cmd device.
-   if (mcecmd_open(mce, CMD_DEVICE)) {
-     sprintf(errmsg_temp, "Failed to open %s.\n", CMD_DEVICE);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_OPEN;
-   }
-
-   // Open data device
-   if ((error=mcedata_open(mce, DATA_DEVICE))!= 0) {
-     sprintf(errmsg_temp, "could not open '%s'", DATA_DEVICE);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_DATA;
-   }
-
+   mce_context_t *mce = connect_mce_or_exit(&options);
 
    // Lookup MCE parameters, or exit with error message
-   mce_param_t m_safb, m_sq2fb, m_sq2bias, m_nrows_rep, m_retdat;
+   mce_param_t m_safb, m_sq2fb, m_sq2bias, m_nrows_rep, m_retdat,
+     m_sq2fb_col[MAXVOLTS];
 
-   load_param_or_exit(mce, &m_safb,    SA_CARD,  SA_FB);
-   load_param_or_exit(mce, &m_sq2fb,   SQ2_CARD, SQ2_FB);
-   load_param_or_exit(mce, &m_sq2bias, SQ2_CARD, SQ2_BIAS);
-   load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported");
+   load_param_or_exit(mce, &m_safb,    SA_CARD,  SA_FB, 0);
+   load_param_or_exit(mce, &m_sq2bias, SQ2_CARD, SQ2_BIAS, 0);
+   load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported", 0);
+
+   // Check for biasing address card
+   error = load_param_or_exit(mce, &m_sq2fb,   SQ2_CARD, SQ2_FB, 1);
+   if (error != 0) {
+     error = load_param_or_exit(mce, &m_sq2fb, SQ2_CARD, SQ2_FB_COL "0", 1);
+     if (error) {
+       sprintf(errmsg_temp, "Neither %s %s nor %s %s could be loaded!",
+	       SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0"); 
+       ERRPRINT(errmsg_temp);
+       exit(ERR_MCE_PARA);
+     }
+     biasing_ac = 1;
+     
+     // Load params for all columns
+     for (i=0; i<MAXCHANNELS; i++) {
+       sprintf(tempbuf, "%s%i", SQ2_FB_COL, i+soffset);
+       load_param_or_exit(mce, m_sq2fb_col+i, SQ2_CARD, tempbuf, 0);
+     }
+   }     
 
    // Make sure this card can go!
    sprintf(tempbuf, "rc%i", which_rc);
-   load_param_or_exit(mce, &m_retdat, tempbuf, "ret_dat");
+   load_param_or_exit(mce, &m_retdat, tempbuf, "ret_dat", 0);
 
    //int nrows_rep;
    if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0){
@@ -247,11 +247,8 @@ int main ( int argc, char **argv )
    if (error != 0){
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", full_datafilename, error);
      ERRPRINT(errmsg_temp);
-     return ERR_RUN_FILE; 
+     return ERR_RUN_FILE;
    }
-
-   // All of our per-column parameters must be written at the right index
-   soffset = (which_rc-1)*MAXCHANNELS;
 
    /* generate the header line for the bias file*/
    for ( snum=0; snum<MAXCHANNELS; snum++)
@@ -273,8 +270,16 @@ int main ( int argc, char **argv )
       for ( i=0; i<nfeed; i++ ){
 
 	 write_range_or_exit(mce, &m_safb, soffset, ssafb + soffset, MAXCHANNELS, "safb");
-	 duplicate_fill(sq2feed + i*sq2bstep, temparr, MAXCHANNELS);
-	 write_range_or_exit(mce, &m_sq2fb, soffset, temparr, MAXCHANNELS, "sq2fb");
+
+	 if (biasing_ac) {
+	   duplicate_fill(sq2feed + i*sq2fstep, temparr, MAXROWS);
+	   for (snum=0; snum<MAXCHANNELS; snum++) {
+	     write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");
+	   }
+	 } else {
+	   duplicate_fill(sq2feed + i*sq2fstep, temparr, MAXCHANNELS);
+	   write_range_or_exit(mce, &m_sq2fb, soffset, temparr, MAXCHANNELS, "sq2fb");
+	 }
 
 	 if ( (error=mcedata_acq_go(&acq, 1)) != 0) 
 	   error_action("data acquisition failed", error);

@@ -115,17 +115,21 @@ mce_context_t* connect_mce_or_exit(option_t* options)
 }
 
 
-void load_param_or_exit(mce_context_t* mce, mce_param_t* p,
-			const char *card, const char *para)
+int load_param_or_exit(mce_context_t* mce, mce_param_t* p,
+			const char *card, const char *para, int no_exit)
 {
   char errmsg[1024];
   int error = mcecmd_load_param(mce, p, card, para);
   if (error != 0) {
+    if (no_exit)
+      return error;
+
     sprintf(errmsg, "lookup of %s %s failed with %d (%s)",
 	    card, para, error, mcelib_error_string(error)); 
     ERRPRINT(errmsg);
     exit(ERR_MCE_PARA);
   }
+  return 0;
 }
 
 

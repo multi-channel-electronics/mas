@@ -20,9 +20,12 @@ CC=gcc
 # targets
 
 TARGETS = sq1servo   sq2servo
+OBJECTS = sq1servo.o sq2servo.o servo.o
 HEADERS = servo.h servo_err.h options.h
 
 all: $(TARGETS)
+
+$(OBJECTS): $(HEADERS)
 
 sq1servo: sq1servo.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
