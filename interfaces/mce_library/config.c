@@ -104,7 +104,7 @@ int mceconfig_open(mce_context_t* context,
 	config_setting_t *hardware = config_lookup(cfg, key);
 	if (hardware == NULL) {
 		fprintf(stderr, "Could not find key '%s' in file '%s'.\n",
-			filename, key);
+			key, filename);
 		return 1;
 	}
 

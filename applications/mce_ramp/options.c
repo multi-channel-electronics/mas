@@ -7,7 +7,7 @@
 
 #define USAGE_MESSAGE \
 "Usage:\n\t%s [options]\n"\
-"  -M <msg>               preamble/postable output\n"\
+"  -M <msg>               preamble/postamble output\n"\
 "  -L <iters>             new loop\n"\
 "  -V <start> <incr>      new incrementing value (associated to last -L)\n"\
 "  -P <string> <repeat>   new output string (associated to last -V)\n"\
@@ -16,9 +16,6 @@
 "  -d <device file>       choose a particular mce device\n"\
 "  -c <config file>       choose a particular mce config file\n"\
 "  -f <batch file>        run commands from file instead of stdin\n"\
-"  -x <command>           execute a command now\n"\
-"  -C <data file>         DAS compatibility mode\n"\
-"  -o <directory>         data file path\n"\
 ""
 
 int process_options(options_t *options, int argc, char **argv)
