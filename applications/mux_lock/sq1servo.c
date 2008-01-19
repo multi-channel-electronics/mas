@@ -309,7 +309,8 @@ int main ( int argc, char **argv )
 
 	if (biasing_ac) {
 	  for (snum=0; snum<MAXCHANNELS; snum++) {
-	    duplicate_fill( sq2fb[snum+soffset], temparr, MAXROWS );
+	    duplicate_fill( 0, temparr, MAXROWS );
+	    temparr[sq1servo.row_num[snum+soffset]] =  sq2fb[snum+soffset];
 	    write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");
 	  }
 	} else {
