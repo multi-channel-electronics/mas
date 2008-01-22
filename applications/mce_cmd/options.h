@@ -10,6 +10,7 @@ typedef struct {
 	int no_prefix;
 	int display;
 	int echo;
+	int use_readline;
 
 	int das_compatible; // horror
 

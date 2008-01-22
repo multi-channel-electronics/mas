@@ -91,6 +91,13 @@ int process_options(options_t *options, int argc, char **argv)
 		}
 	}
 
+	// Set interactive mode unless we're reading a file.
+	if (!options->batch_now)
+		options->interactive = 1;
+
+	// Only use readline in interactive mode
+	options->use_readline = options->interactive;
+
 	return 0;
 }
 

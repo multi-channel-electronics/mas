@@ -15,6 +15,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include <mce_library.h>
 
 #include <cmdtree.h>
@@ -135,7 +138,8 @@ cmdtree_opt_t root_opts[] = {
 
 mce_context_t* mce;
 
-char *line;
+char *line = NULL;
+char *line_buffer = NULL;
 char errstr[LINE_LEN];
 
 options_t options = {
@@ -178,8 +182,8 @@ int  main(int argc, char **argv)
 		       PROGRAM_NAME, VERSION_STRING);
 	}
 
-	line = (char*) malloc(LINE_LEN);
-	if (line==NULL) {
+	line_buffer = (char*) malloc(LINE_LEN);
+	if (line_buffer==NULL) {
 		fprintf(ferr, "memory error!\n");
 		err = ERR_MEM;
 		goto exit_now;
@@ -248,9 +252,19 @@ int  main(int argc, char **argv)
 			strcpy(line, options.cmd_command);
 			done = 1;
 		} else {
-
-			getline(&line, &n, fin);
-			if (n==0 || feof(fin)) break;
+			if (options.use_readline) {
+				line = readline("");
+				if (line == NULL)
+					break;
+				strcpy(line_buffer, line);
+				add_history(line);
+				free(line);
+				line = line_buffer;
+			} else {
+				line = line_buffer;
+				getline(&line, &n, fin);
+				if (n==0 || feof(fin)) break;
+			}
 
 			n = strlen(line);
 			if (line[n-1]=='\n') line[--n]=0;
@@ -314,7 +328,7 @@ int  main(int argc, char **argv)
 		printf("Processed %i lines, exiting.\n", line_count);
 
 exit_now:
-	if (line!=NULL) free(line);
+	if (line_buffer!=NULL) free(line_buffer);
 
 	mcelib_destroy(mce);
 
