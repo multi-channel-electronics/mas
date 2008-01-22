@@ -63,7 +63,7 @@ int idl_crawler(options_t *options, crawler_t *crawler)
 	idl->options = options;
 	idl->echo_only = 0;
 	idl->pass = -1;
-	idl->function_suffix = options->param_name;
+	idl->function_suffix = options->output_word;
 
 	crawler->init = idl_init;
 	crawler->cleanup = idl_cleanup;
