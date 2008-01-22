@@ -53,7 +53,7 @@ int process_options(options_t* options, int argc, char **argv)
 {
 	int i;
 	int option;
-	while ( (option = getopt(argc, argv, "?hm:f:s:v")) >=0) {
+	while ( (option = getopt(argc, argv, "+?hm:f:s:v")) >=0) {
 
 		switch(option) {
 		case '?':
