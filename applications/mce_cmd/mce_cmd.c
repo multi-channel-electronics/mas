@@ -249,7 +249,7 @@ int  main(int argc, char **argv)
 		unsigned int n = LINE_LEN;
 
 		if ( options.cmd_now ) {
-			strcpy(line, options.cmd_command);
+			line = options.cmd_command;
 			done = 1;
 		} else {
 			if (options.use_readline) {
