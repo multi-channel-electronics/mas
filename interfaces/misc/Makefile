@@ -4,8 +4,9 @@ default: $(TARGET)
 BASE = ../
 include $(BASE)Makefile.children
 
-OBJECTS = socks.o cmdtree.o
-HEADERS = $(MAS_INCLUDE_F)socks.h $(MAS_INCLUDE_F)cmdtree.h
+OBJECTS = socks.o cmdtree.o masconfig.o
+HEADERS = $(MAS_INCLUDE_F)socks.h $(MAS_INCLUDE_F)cmdtree.h \
+	$(MAS_INCLUDE_F)masconfig.h
 CC = gcc
 
 CFLAGS += -Wall -I$(MAS_INCLUDE_F)
@@ -16,6 +17,9 @@ socks.o: socks.c $(MAS_INCLUDE_F)socks.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
 cmdtree.o: cmdtree.c $(MAS_INCLUDE_F)cmdtree.h
+	$(CC) $(CFLAGS) $< -c -o $@
+
+masconfig.o: masconfig.c $(MAS_INCLUDE_F)masconfig.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
 test.o: test.c $(HEADERS)
