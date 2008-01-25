@@ -90,7 +90,7 @@ int param_report(options_t *options)
 
 	case CFG_DBL:
 		for (i=0; i<m.count; i++)
-			printf("%le ", m.data_d[i]);
+			printf("%lf ", m.data_d[i]);
 		break;
 
 	default:
