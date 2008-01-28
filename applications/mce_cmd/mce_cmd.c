@@ -140,7 +140,6 @@ mce_context_t* mce;
 
 char *line = NULL;
 char *line_buffer = NULL;
-char errstr[LINE_LEN];
 
 options_t options = {
 	cmd_device: DEFAULT_DEVICE,
@@ -429,7 +428,7 @@ int preload_mce_params()
 }
 
 
-int learn_acq_params(int get_frame_count, int get_rows)
+int learn_acq_params(char *errstr, int get_frame_count, int get_rows)
 {
 	u32 data[64];
 
@@ -518,7 +517,7 @@ int prepare_outfile(char *errmsg, int file_sequencing)
 
 int do_acq_compat(char *errmsg)
 {
-	if (learn_acq_params(1, 1)!=0)
+	if (learn_acq_params(errmsg, 1, 1)!=0)
 		return -1;
 	
 	if (mcedata_acq_setup(&acq, mce, 0, my_acq.cards, my_acq.rows) != 0) {
@@ -640,7 +639,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				}
 
 				// Get num_rows and n_frames
-				if (learn_acq_params(1, 1)) {
+				if (learn_acq_params(errmsg, 1, 1)) {
 					ret_val = -1;
 					break;
 				}
@@ -735,15 +734,15 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case SPECIAL_ACQ:
 			my_acq.n_frames = tokens[1].value;
-			if (mcedata_acq_go(&acq, my_acq.n_frames) != 0) {
-				sprintf(errmsg, "Acquisition failed.\n");
+			if ((err=mcedata_acq_go(&acq, my_acq.n_frames)) != 0) {
+				sprintf(errmsg, "Acquisition failed: %s\n", 
+					mcelib_error_string(err));
 				ret_val = -1;
 			}
 			break;
 
 		case SPECIAL_ACQ_CONFIG:
 			/* Args: filename, card */
-
 			strcpy(my_acq.filename, options.acq_path);
 			cmdtree_token_word( my_acq.filename + strlen(my_acq.filename),
 					    tokens+1 );
@@ -753,10 +752,11 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			if (my_acq.cards < 0) {
 				sprintf(errmsg, "Bad card option '%s'", s);
 				ret_val = -1;
+				break;
 			}
 
 			// Get num_rows from MCE
-			if (learn_acq_params(0, 1)) {
+			if (learn_acq_params(errmsg, 0, 1)) {
 				ret_val = -1;
 				break;
 			}
@@ -768,8 +768,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			/* Args: filename, card, interval */
 
 			strcpy(my_acq.filename, options.acq_path);
-			cmdtree_token_word( my_acq.filename + strlen(my_acq.filename)
-					    , tokens+1 );
+			cmdtree_token_word(my_acq.filename + strlen(my_acq.filename),
+					   tokens+1 );
 
 			cmdtree_token_word( s, tokens+2 );
 			my_acq.cards = translate_card_string(s);
@@ -779,7 +779,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			}
 
 			// Get num_rows from MCE
-			if (learn_acq_params(0, 1)) {
+			if (learn_acq_params(errmsg, 0, 1)) {
 				ret_val = -1;
 				break;
 			}
