@@ -46,7 +46,9 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 
 	PRINT_INFO(SUBNAME "local sem obtained, calling data_copy\n");
 
-	read_count = data_copy_frame(buf, NULL, count);
+	read_count = data_copy_frame(buf, NULL, count, filp->f_flags & O_NONBLOCK);
+	if (filp->f_flags & O_NONBLOCK && read_count == 0)
+		return -EAGAIN;
 
 	up(&frames.sem);
 
