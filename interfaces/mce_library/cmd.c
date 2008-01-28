@@ -75,6 +75,11 @@ int mcecmd_open (mce_context_t *context, char *dev_name)
 	C_cmd.fd = open(dev_name, O_RDWR);
 	if (C_cmd.fd<0) return -MCE_ERR_DEVICE;
 
+	// Set up connection to prevent outstanding replies after release
+	ioctl(C_cmd.fd, MCEDEV_IOCT_SET,
+	      ioctl(C_cmd.fd, MCEDEV_IOCT_GET) | MCEDEV_CLOSE_CLEANLY);
+
+
 	C_cmd.connected = 1;
 	strcpy(C_cmd.dev_name, dev_name);
 

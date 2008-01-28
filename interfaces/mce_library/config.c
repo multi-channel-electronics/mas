@@ -20,8 +20,10 @@ get_string(char *dest, const config_setting_t *parent, const char *name);
 static int 
 get_int(int *dest, const config_setting_t *parent, const char *name);
 
+/* Unused
 static int
 get_int_elem(int *dest, const config_setting_t *parent, const char *name, int index);
+*/
 
 static int
 get_int_array(int *dest, const config_setting_t *parent,
@@ -780,6 +782,7 @@ inline config_setting_t *get_setting(const config_setting_t *parent,
 	return config_setting_get_member(parent, name);
 }
 
+/* Unused
 int get_int_elem(int *dest, const config_setting_t *parent,
 		 const char *name, int index)
 {
@@ -790,6 +793,7 @@ int get_int_elem(int *dest, const config_setting_t *parent,
 	*dest = config_setting_get_int(set);
 	return 0;
 }
+*/
 
 int get_int_array(int *dest, const config_setting_t *parent,
 		  const char *name, int max)

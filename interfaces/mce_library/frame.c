@@ -1,6 +1,33 @@
 #include <string.h>
 #include "frame.h"
 
+
+/* Define frame header for header version 6 */
+
+struct frame_header_abstraction frame_header_v6 = {
+	_size:             43,
+
+	status_v6:          0 | FRAME_OFFSET_PRESENT,
+	frame_counter:      1 | FRAME_OFFSET_PRESENT,
+	row_len:            2 | FRAME_OFFSET_PRESENT,
+	num_rows_reported:  3 | FRAME_OFFSET_PRESENT,
+	data_rate:          4 | FRAME_OFFSET_PRESENT,
+	rtz_counter:        5 | FRAME_OFFSET_PRESENT,
+	header_version:     6 | FRAME_OFFSET_PRESENT,
+	ramp_value:         7 | FRAME_OFFSET_PRESENT,
+	ramp_address:       8 | FRAME_OFFSET_PRESENT,
+	num_rows:           9 | FRAME_OFFSET_PRESENT,
+	sync_number:       10 | FRAME_OFFSET_PRESENT,
+	run_id:            11 | FRAME_OFFSET_PRESENT,
+	user_word:         12 | FRAME_OFFSET_PRESENT,
+	fpga_block_v6:     13 | FRAME_OFFSET_PRESENT,
+	card_block_v6:     23 | FRAME_OFFSET_PRESENT,
+	psc_block_v6:      33 | FRAME_OFFSET_PRESENT,
+	box_block_v6:      41 | FRAME_OFFSET_PRESENT,
+	data_block:        43 | FRAME_OFFSET_PRESENT,
+};
+
+
 static int count_bits( int bits )
 {
 	int c = 0;
@@ -60,4 +87,3 @@ int sort_columns( mce_acq_t *acq, u32 *data )
 
 	return 0;	       
 }
-

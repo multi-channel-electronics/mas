@@ -18,6 +18,8 @@
 /* #define LOG_LEVEL_REP_OK  LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_ER  LOGGER_INFO */
 
+#define FRAME_USLEEP 10000
+
 
 // We'll have to generalize this if the frame structure ever changes.
 
@@ -34,7 +36,6 @@ static int card_count(int cards);
 
 static int load_ret_dat(mce_acq_t *acq);
 
-
 int mcedata_acq_setup(mce_acq_t *acq, mce_context_t* context,
 		      int options, int cards, int rows_reported)
 {
@@ -45,8 +46,7 @@ int mcedata_acq_setup(mce_acq_t *acq, mce_context_t* context,
 	memset(acq, 0, sizeof(*acq));
 
 	if (n_cards <= 0) {
-		fprintf(stdout, "Invalid card selection\n");
-		return -1;
+		return -MCE_ERR_FRAME_CARD;
 	}
 
 	acq->frame_size = rows_reported * FRAME_COLUMNS * n_cards + 
@@ -60,7 +60,7 @@ int mcedata_acq_setup(mce_acq_t *acq, mce_context_t* context,
 				       acq->frame_size * sizeof(u32));
 	if (ret_val != 0) {
  		fprintf(stdout, "Could not set data size [%i]\n", ret_val);
-		return -1;
+		return -MCE_ERR_FRAME_SIZE;
 	}
 	return 0;
 }
@@ -74,22 +74,17 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 	if ( n_frames != acq->last_n_frames || acq->last_n_frames <= 0 ) {
 		ret_val = set_n_frames(acq, n_frames);
 		if (ret_val != 0) {
-			fprintf(stderr,
-				"Could not set ret_dat_s! [%#x]\n", ret_val);
-			return -1;
+/* 			fprintf(stderr, */
+/* 				"Could not set ret_dat_s! [%#x]\n", ret_val); */
+			return -MCE_ERR_FRAME_COUNT;
 		}
 	}
 
 	if (!acq->know_ret_dat && (ret_val = load_ret_dat(acq)) != 0)
 		return ret_val;
 		
-	ret_val =
-		mcecmd_start_application(acq->context, &acq->ret_dat);
-
-	if (ret_val != 0) {
-		fprintf(stderr, "Could not set ret_dat_s! [%#x]\n", ret_val);
-		return -1;
-	}
+	ret_val = mcecmd_start_application(acq->context, &acq->ret_dat);
+	if (ret_val != 0) return ret_val;
 
 	acq->n_frames = n_frames;
 
@@ -98,27 +93,22 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 		data_thread_t d;
 		d.state = MCETHREAD_IDLE;
 		d.acq = acq;
-		if (data_thread_launcher(&d)) {
-			fprintf(stderr, "Thread launch failure\n");
-			return -1;
+		if ((ret_val=data_thread_launcher(&d)) != 0) {
+/* 			fprintf(stderr, "Thread launch failure\n"); */
+			return ret_val;
 		}
 
 		while (d.state != MCETHREAD_IDLE) {
-			printf("thread state = %i\n", d.state);
-			sleep(1);
+/* 			printf("thread state = %i\n", d.state); */
+			usleep(FRAME_USLEEP);
 		}
 
 	} else {
 		/* Block for frames, and return */
-		
 		ret_val = copy_frames(acq);
-		if (ret_val != n_frames) {
-			fprintf(stderr, "Data write wanted %i frames and got %i\n",
-				acq->n_frames, ret_val);
-		}
 	}
 
-	return 0;
+	return ret_val;
 }
 
 
@@ -181,7 +171,7 @@ int load_ret_dat(mce_acq_t *acq)
 	default:
 		fprintf(stderr, "Invalid card set selection [%#x]\n",
 			acq->cards);
-		return -1;
+		return -MCE_ERR_FRAME_CARD;
 	}
 
 	acq->know_ret_dat = 1;
@@ -196,11 +186,16 @@ int copy_frames(mce_acq_t *acq)
 	int count = 0;
 	int index = 0;
 	u32 *data = malloc(acq->frame_size * sizeof(*data));
+
+	int waits = 0;
+	int max_waits = 1000;
 	
+	acq->n_frames_complete = 0;
+
 	if (data==NULL) {
 		fprintf(stderr, "Could not allocate frame buffer of size %i\n",
 			acq->frame_size);
-		return -1;
+		return -MCE_ERR_FRAME_SIZE;
 	}
 
 	while (!done) {
@@ -216,6 +211,9 @@ int copy_frames(mce_acq_t *acq)
 		if (ret_val<0) {
 			if (errno==EAGAIN) {
 				usleep(1000);
+				waits++;
+				if (waits >= max_waits)
+					done = EXIT_TIMEOUT;
 			} else {
 				// Error: clear rest of frame and quit
 				fprintf(stderr,
@@ -227,8 +225,10 @@ int copy_frames(mce_acq_t *acq)
 			}
 		} else if (ret_val==0) {
 			done = EXIT_EOF;
-		} else
+		} else {
 			index += ret_val;
+			waits = 0;
+		}
 
 		// Only dump complete frames to disk
 		if (index < acq->frame_size*sizeof(*data))
@@ -245,9 +245,42 @@ int copy_frames(mce_acq_t *acq)
 		index = 0;
 		if (++count >= acq->n_frames)
 			done = EXIT_COUNT;
+
+		if (frame_property(data, &frame_header_v6, status_v6)
+		    & FRAME_STATUS_V6_STOP)
+			done = EXIT_STOP;
+
+		if (frame_property(data, &frame_header_v6, status_v6)
+		    & FRAME_STATUS_V6_LAST)
+			done = EXIT_LAST;
 	}
 
-	return count;
+	switch (done) {
+	case EXIT_COUNT:
+	case EXIT_LAST:
+		acq->status = MCEDATA_IDLE;
+		break;
+
+	case EXIT_TIMEOUT:
+		acq->status = MCEDATA_TIMEOUT;
+		break;
+
+	case EXIT_STOP:
+		acq->status = MCEDATA_STOP;
+		break;
+		
+	case EXIT_READ:
+	case EXIT_WRITE:
+	case EXIT_EOF:
+	default:
+		acq->status = MCEDATA_ERROR;
+		break;
+	}
+
+	acq->n_frames_complete = count;
+
+	free(data);
+	return 0;
 }
 
 int card_count(int cards)
