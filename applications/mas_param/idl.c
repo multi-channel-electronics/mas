@@ -93,7 +93,8 @@ int  idl_init(unsigned user_data, const options_t *options)
 	switch (idl->pass) {
 
 	case 0:
-		fprintf(idl->out, IDL_WARNING STR_FLAT LOAD_INT LOAD_FLOAT LOAD_STRING);
+/* 		fprintf(idl->out, IDL_WARNING STR_FLAT LOAD_INT LOAD_FLOAT LOAD_STRING); */
+		fprintf(idl->out, IDL_WARNING STR_FLAT );
 		fprintf(idl->out,
 			"pro save_%s,m,filename\n",
 			idl->function_suffix );
@@ -130,17 +131,17 @@ int idl_item_load(idl_t *idl, const mas_param_t *p)
 	switch (p->type) {
 	case CFG_STR:
 		fprintf(idl->out, ",  $\n"
-			"        '%s',mas_load_string(filename,'%s')",
+			"        '%s',mas_param_string(filename,'%s')",
 			p->data_name, p->data_name);
 		return 0;
 	case CFG_DBL:
 		fprintf(idl->out, ",  $\n"
-			"        '%s',mas_load_float(filename,'%s')",
+			"        '%s',mas_param_float(filename,'%s')",
 			p->data_name, p->data_name);
 		return 0;
 	case CFG_INT:
 		fprintf(idl->out, ",  $\n"
-			"        '%s',mas_load_int(filename,'%s')",
+			"        '%s',mas_param_int(filename,'%s')",
 			p->data_name, p->data_name);
 		return 0;
 	}
