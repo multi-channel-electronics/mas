@@ -34,8 +34,9 @@ int mcedata_open(mce_context_t *context, const char *dev_name)
 	if (C_data.fd<0) return -MCE_ERR_DEVICE;
 
 	// Non-blocking reads allow us to timeout
-	if (fcntl(C_data.fd, F_SETFL, fcntl(C_data.fd, F_GETFL) | O_NONBLOCK))
-		return -MCE_ERR_DEVICE;
+	/* Hey!  This makes single go (and thus ramp) very slow!! */
+/* 	if (fcntl(C_data.fd, F_SETFL, fcntl(C_data.fd, F_GETFL) | O_NONBLOCK)) */
+/* 		return -MCE_ERR_DEVICE; */
 
 	C_data.connected = 1;
 	strcpy(C_data.dev_name, dev_name);

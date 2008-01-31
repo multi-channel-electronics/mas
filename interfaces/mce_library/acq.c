@@ -18,7 +18,7 @@
 /* #define LOG_LEVEL_REP_OK  LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_ER  LOGGER_INFO */
 
-#define FRAME_USLEEP 10000
+#define FRAME_USLEEP 1000
 
 
 // We'll have to generalize this if the frame structure ever changes.
