@@ -146,6 +146,7 @@ options_t options = {
 	data_device: DEFAULT_DATA,
 	config_file: DEFAULT_XML,
 	display: SPECIAL_DEF,
+	use_readline: 1,
 };
 
 mce_acq_t acq;
