@@ -62,12 +62,35 @@ int cfg_item(unsigned user_data, const mce_param_t *p)
 {
 	int i;
 	cfg_t *cfg = (cfg_t*) user_data;
+	maprange_t mr;
 
-	fprintf(cfg->out, "%-10s %-20s %#04x %2i",
-		p->card.name, p->param.name, p->param.id, p->card.card_count);
-	
-	for (i=0; i<p->card.card_count; i++) {
-		fprintf(cfg->out, " %#04x", p->card.id[i]);
+	switch (p->card.nature) {
+	case MCE_NATURE_PHYSICAL:
+		
+		fprintf(cfg->out, "physical   %-10s %-20s %#04x %2i cards:",
+			p->card.name, p->param.name, p->param.id, p->card.card_count);
+		
+		for (i=0; i<p->card.card_count; i++) {
+			fprintf(cfg->out, " %#04x", p->card.id[i]);
+		}
+		break;
+	       
+	case MCE_NATURE_VIRTUAL:
+
+		fprintf(cfg->out, "virtual    %-10s %-20s maps:",
+			p->card.name, p->param.name);
+
+		for (i=0; i<p->param.map_count; i++) {
+			mceconfig_param_maprange(cfg->options->context,
+						 &p->param, i, &mr);
+			fprintf(cfg->out, " [(%i,%i)->('%s %s'+%2i)]",
+				mr.start, mr.count,
+				mr.card_name, mr.param_name, mr.offset);
+		}
+		break;
+
+	default:
+		fprintf(cfg->out, "unknown    %2i", p->card.nature);
 	}
 
 	fprintf(cfg->out, "\n");

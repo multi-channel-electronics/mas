@@ -254,7 +254,7 @@ int data_frame_empty_buffers( void )
 #define SUBNAME "data_copy_frame: "
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count)
+		    int count, int nonblock)
 {
 	int d;
 	int count_out = 0;
@@ -266,12 +266,18 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 		return -1;
 	}
 
-	PRINT_INFO("data_copy_frame: sleeping\n");
-	if (wait_event_interruptible(frames.queue,
-				     (frames.flags & FRAME_ERR) ||
-				     (frames.tail_index
-				      != frames.head_index)))
-		return -ERESTARTSYS;
+	if (nonblock) {
+		if ((frames.tail_index == frames.head_index) &&
+		    !(frames.flags & FRAME_ERR))
+			return -EAGAIN;
+	} else {
+		PRINT_INFO("data_copy_frame: sleeping\n");
+		if (wait_event_interruptible(frames.queue,
+					     (frames.flags & FRAME_ERR) ||
+					     (frames.tail_index
+					      != frames.head_index)))
+			return -ERESTARTSYS;
+	}
 
 	if (frames.tail_index != frames.head_index) {
 

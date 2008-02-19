@@ -7,7 +7,7 @@
 
 #include "libmaslog.h"
 
-#define CONFIG_FILE "/etc/mas.cfg"
+#define CONFIG_FILE "/etc/mce/mas.cfg"
 
 #define CONFIG_CLIENT "log_client"
 #define CONFIG_LOGADDR "log_address"

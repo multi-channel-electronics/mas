@@ -2,6 +2,7 @@
 #define _KVERSION_H_
 
 #include <linux/version.h>
+#include <linux/interrupt.h>
 
 /* This header file is used to control differences between kernel
    versions.  Currently we distinguish between 3 possibilities:

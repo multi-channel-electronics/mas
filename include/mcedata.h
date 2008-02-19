@@ -41,6 +41,14 @@ typedef struct mcedata {
 #define MCEDATA_THREAD            (1 <<  3) /* use non-blocking data thread */
 
 
+/* MCE data acquisition statuses. */
+
+#define MCEDATA_IDLE               0
+#define MCEDATA_TIMEOUT            1
+#define MCEDATA_STOP               2
+#define MCEDATA_ERROR              3
+
+
 /* MCE card bits - fix this! */
 
 #define MCEDATA_RC1               (1 <<  0)
@@ -70,6 +78,7 @@ struct mce_acq_struct {
 	mce_context_t *context;
 
 	int n_frames;
+	int n_frames_complete;
 	int frame_size;                 // Active frame size
 
 	int status;
@@ -80,6 +89,7 @@ struct mce_acq_struct {
 
 	char errstr[MCE_LONG];
 
+	int timeout_ms;
  	int options;
 
 	/* Cached mce info */
@@ -89,7 +99,7 @@ struct mce_acq_struct {
 	mce_param_t ret_dat;
 	mce_param_t ret_dat_s;
 	int last_n_frames;
-	
+		
 };
 
 

@@ -1,12 +1,15 @@
 /* Production and analysis of MCE command and reply packets. */
 
+#include <string.h>
 #include <mce_library.h>
 
 int mcecmd_load_command(mce_command *cmd, u32 command,
 		     u32 card_id, u32 para_id, 
-		     int count, const u32 *data)
+		     int count, int data_count, const u32 *data)
 {
 	int i;
+
+	memset(cmd, 0, sizeof(*cmd));
 
 	cmd->preamble[0] = PREAMBLE_0;
 	cmd->preamble[1] = PREAMBLE_1;
@@ -15,15 +18,13 @@ int mcecmd_load_command(mce_command *cmd, u32 command,
 	cmd->card_id = card_id;
 	cmd->count = count;
 
-	for (i=0; i<count && i<MCE_CMD_DATA_MAX; i++)
+	for (i=0; i<data_count && i<MCE_CMD_DATA_MAX; i++)
 		cmd->data[i] = data[i];
-	
-	for (i=count; i<MCE_CMD_DATA_MAX; i++)
-		cmd->data[i] = 0;
 	
 	cmd->checksum = mcecmd_cmd_checksum(cmd);
 
-	if (count < 0 || count >= MCE_CMD_DATA_MAX)
+	if ((data_count < 0 || data_count >= MCE_CMD_DATA_MAX)  ||
+	    (count < 0      || count >= MCE_CMD_DATA_MAX))
 		return -MCE_ERR_BOUNDS;
 
 	return 0;

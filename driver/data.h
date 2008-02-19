@@ -118,7 +118,7 @@ int  data_frame_increment(void);
 int  data_frame_contribute(int count);
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count);
+		    int count, int nonblock);
 int data_frame_fake_stop( void );
 
 int data_frame_resize(int size);

@@ -17,7 +17,7 @@ include $(PWD)/Makefile.local
 
 FAKEMCE    ?= 0
 REALTIME   ?= 0
-BIGPHYS    ?= 0
+BIGPHYS    ?= 1
 
 
 # Compilation options - don't trash CFLAGS, everything breaks.

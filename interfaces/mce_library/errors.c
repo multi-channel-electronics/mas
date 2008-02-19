@@ -73,6 +73,34 @@ char *mcelib_error_string(int error)
 	case MCE_ERR_INT_SURPRISE:
 		return "Unexpected packet notification from interface (DSP).";
 
+	case MCE_ERR_FRAME_UNKNOWN:
+		return "Unknown acquisition system error.";
+		
+	case MCE_ERR_FRAME_TIMEOUT:
+		return "Frame data timed-out.";
+		
+	case MCE_ERR_FRAME_STOP:
+		return "Frame data was stopped.";
+		
+	case MCE_ERR_FRAME_LAST:
+		return "Last frame received.";
+		
+	case MCE_ERR_FRAME_DEVICE:
+		return "Acquisition stopped because of device read error.";
+		
+	case MCE_ERR_FRAME_OUTPUT:
+		return "Acquisition stopped because of frame write error.";
+		
+	case MCE_ERR_FRAME_CARD:
+		return "Acquisition does not support the specified card combination.";
+		
+	case MCE_ERR_FRAME_SIZE:
+		return "Frame size is invalid or could not be configured.";
+		
+	case MCE_ERR_FRAME_COUNT:
+		return "Frame count is invalid or could not be configured.";
+		
+		
 	case 0:
 		return "Success.";
 	}
