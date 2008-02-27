@@ -1,6 +1,6 @@
 
 # Don't make example dir by default, it's not really in our build system
-SUB_DIRS = dsp_cmd mce_cmd mce_status maslog mas_param mux_lock mce_ramp
+SUB_DIRS = dsp_cmd mce_cmd mce_status maslog mas_param mux_lock mce_ramp psc_status
 
 sub-dirs:
 	@for d in ${SUB_DIRS}; do	\
