@@ -60,18 +60,28 @@ typedef struct mcedata {
 #define MCEDATA_CARDS             4
 #define MCEDATA_COMBOS            (1 << MCEDATA_CARDS)
 
+#define MCEDATA_COLUMNS           8
+#define MCEDATA_ROWS              41
+
 struct mce_acq_struct;
 typedef struct mce_acq_struct mce_acq_t;
 
-typedef struct mce_frame_actions_t {
+struct mcedata_storage;
+typedef struct mcedata_storage mcedata_storage_t;
+
+
+struct mcedata_storage {
 
 	int (*init)(mce_acq_t*);
 	int (*pre_frame)(mce_acq_t *);
 	int (*flush)(mce_acq_t *);
 	int (*post_frame)(mce_acq_t *, int, u32 *);
 	int (*cleanup)(mce_acq_t *);
+	int (*destroy)(mcedata_storage_t *);
 
-} mce_frame_actions_t;
+	void* action_data;
+
+};
 
 struct mce_acq_struct {
 
@@ -83,9 +93,9 @@ struct mce_acq_struct {
 
 	int status;
 	int cards;
+	int rows;
 
-	mce_frame_actions_t actions;
-	unsigned long action_data;
+	mcedata_storage_t* storage;
 
 	char errstr[MCE_LONG];
 
@@ -95,9 +105,11 @@ struct mce_acq_struct {
 	/* Cached mce info */
 	int know_ret_dat;
 	int know_ret_dat_s;
+	int know_num_rows_rep;
 	
 	mce_param_t ret_dat;
 	mce_param_t ret_dat_s;
+	mce_param_t num_rows_rep;
 	int last_n_frames;
 		
 };
@@ -129,32 +141,40 @@ int mcedata_qt_setup(mce_context_t* context, int frame_index);
 typedef int (*rambuff_callback_t)(unsigned user_data,
 				  int frame_size, u32 *buffer);
 
-int mcedata_rambuff_create(mce_acq_t *acq, rambuff_callback_t callback,
-			   unsigned user_data);
+mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
+					  unsigned user_data);
 
-void mcedata_rambuff_destroy(mce_acq_t *acq);
+//void mcedata_rambuff_destroy(mce_acq_t *acq);
 
 
 /* flatfile: frames are stored in a single data file */
 
-int mcedata_flatfile_create(mce_acq_t *acq, const char *filename);
+mcedata_storage_t* mcedata_flatfile_create(const char *filename);
 
-void mcedata_flatfile_destroy(mce_acq_t *acq);
+//void mcedata_flatfile_destroy(mce_acq_t *acq);
 
 
 /* fileseq: frames are stored in a set of files, numbered sequentially */
 
-int mcedata_fileseq_create(mce_acq_t *acq, const char *basename,
-			   int interval, int digits);
+mcedata_storage_t* mcedata_fileseq_create(const char *basename, int interval,
+					  int digits);
 
-void mcedata_fileseq_destroy(mce_acq_t *acq);
+//void mcedata_fileseq_destroy(mce_acq_t *acq);
 
+/* generic destructor for mcedata_storage_t; it will be called automatically by mcedata_acq_destroy. */
+
+mcedata_storage_t* mcedata_storage_destroy(mcedata_storage_t *storage);
 
 /* Acquisition sessions - once the mce_acq_t is ready, setup the
    acquisition and go. */
 
-int mcedata_acq_setup(mce_acq_t *acq, mce_context_t *context,
-		      int options, int cards, int rows_reported);
+mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options);
+
+int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
+		       int options, int cards, int rows_reported, 
+		       mcedata_storage_t* storage);
+
+int mcedata_acq_destroy(mce_acq_t *acq);
 
 int mcedata_acq_go(mce_acq_t *acq, int n_frames);
 

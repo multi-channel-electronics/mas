@@ -71,7 +71,7 @@ int process_options(options_t *options, int argc, char **argv)
 
 		case 'C':
 			options->das_compatible = 1;
-			strcpy(my_acq.filename, optarg);
+			strcpy(options->acq_filename, optarg);
 			break;
 
 		case 'r':

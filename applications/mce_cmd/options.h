@@ -11,6 +11,7 @@ typedef struct {
 	int display;
 	int echo;
 	int use_readline;
+	int acq_now;
 
 	int das_compatible; // horror
 
@@ -25,9 +26,11 @@ typedef struct {
 	char config_file[LINE_LEN];
 
 	char acq_path[LINE_LEN];
+	char acq_filename[LINE_LEN];
 
+	int acq_cards;
 	int acq_frames;
-	int acq_now;
+	int acq_interval;
 } options_t;
 
 int process_options(options_t *options, int argc, char **argv);

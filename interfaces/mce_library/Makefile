@@ -11,7 +11,7 @@ DSP_DIR = ../driver
 OBJECTS = context.o errors.o \
 	cmd.o packet.o virtual.o \
 	data.o acq.o data_thread.o files.o frame.o \
-	config.o
+	dirfile.o config.o
 
 HEADERS = data_thread.h frame.h version.h virtual.h
 

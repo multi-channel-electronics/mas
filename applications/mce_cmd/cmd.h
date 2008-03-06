@@ -17,17 +17,4 @@ enum { ERR_MEM=1,
        ERR_OPT=2,
        ERR_MCE=3 };
 
-// This structure is used to cache data which eventually constructs acq.
-
-struct my_acq_struct {
-	char filename[LINE_LEN];
-	int  cards;
-	int  rows;
-	int  n_frames;
-	int  interval;
-};
-
-extern struct my_acq_struct my_acq;
-
-
 #endif

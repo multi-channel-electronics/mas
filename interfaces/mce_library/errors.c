@@ -100,7 +100,9 @@ char *mcelib_error_string(int error)
 	case MCE_ERR_FRAME_COUNT:
 		return "Frame count is invalid or could not be configured.";
 		
-		
+	case MCE_ERR_FRAME_ROWS:
+		return "Frame rows could not be determined or was invalid.";
+
 	case 0:
 		return "Success.";
 	}
