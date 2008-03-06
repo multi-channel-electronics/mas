@@ -55,6 +55,7 @@ enum {
 	SPECIAL_SLEEP,
 	SPECIAL_COMMENT,
 	SPECIAL_FRAME,
+	SPECIAL_DISPLAY,
 	SPECIAL_DEF,
 	SPECIAL_DEC,
 	SPECIAL_HEX,
@@ -62,6 +63,8 @@ enum {
 	ENUM_SPECIAL_HIGH,
 };   
 
+
+#define SEL_NO   (CMDTREE_SELECT | CMDTREE_NOCASE)
 
 cmdtree_opt_t anything_opts[] = {
 	{ CMDTREE_INTEGER, "", 0, -1, 0, anything_opts },
@@ -99,7 +102,13 @@ cmdtree_opt_t fs_args[] = {
 	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
-#define SEL_NO   (CMDTREE_SELECT | CMDTREE_NOCASE)
+cmdtree_opt_t display_opts[] = {
+	{ SEL_NO, "DEF"     , 0, 0, SPECIAL_DEF     , NULL},
+	{ SEL_NO, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
+	{ SEL_NO, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
+	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
 
 cmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
@@ -126,9 +135,7 @@ cmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
 	{ SEL_NO, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
 	{ SEL_NO, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
-	{ SEL_NO, "DEF"     , 0, 0, SPECIAL_DEF     , NULL},
-	{ SEL_NO, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
-	{ SEL_NO, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
+	{ SEL_NO, "DISPLAY" , 1, 1, SPECIAL_DISPLAY , display_opts},
 	{ SEL_NO, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
 	{ SEL_NO, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
 	{ SEL_NO, "##"      , 0,-1, SPECIAL_COMMENT , anything_opts},
@@ -857,16 +864,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			}
 			break;
 
-		case SPECIAL_DEC:
-			options.display = SPECIAL_DEC;
-			break;
-
-		case SPECIAL_HEX:
-			options.display = SPECIAL_HEX;
-			break;
-
-		case SPECIAL_DEF:
-			options.display = SPECIAL_DEF;
+		case SPECIAL_DISPLAY:
+			options.display = tokens[1].value;
 			break;
 
 		case SPECIAL_ECHO:
