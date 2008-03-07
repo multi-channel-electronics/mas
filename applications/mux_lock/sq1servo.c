@@ -193,16 +193,6 @@ int main ( int argc, char **argv )
      ERRPRINT(errmsg_temp);
      return ERR_MCE_RB;
    }
-   // Pick a card (won't work for rcs!!)
-   int cards=(1<<(which_rc-1));
-   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
-   mce_acq_t acq;
-   error = mcedata_acq_setup(&acq, mce, 0, cards, (int) nrows_rep);
-   if (error != 0) {
-     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_GO;
-   }
 
    // Our callback will update the counter in this structure
    servo_t sq1servo;
@@ -210,8 +200,20 @@ int main ( int argc, char **argv )
    sq1servo.which_rc=which_rc;
 
    // setup a call back function
-   mcedata_rambuff_create(&acq, frame_callback, (unsigned) &sq1servo);
+   mcedata_storage_t* ramb;
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned) &sq1servo);
    
+   // Pick a card (won't work for rcs!!)
+   int cards=(1<<(which_rc-1));
+   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
+   mce_acq_t acq;
+   error = mcedata_acq_create(&acq, mce, 0, cards, (int) nrows_rep, ramb);
+   if (error != 0) {
+     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
+     ERRPRINT(errmsg_temp);
+     return ERR_MCE_GO;
+   }
+
    if ( (datadir=getenv("MAS_DATA")) == NULL){
      ERRPRINT("Enviro var. $MAS_DATA not set, quit");
      return ERR_DATA_DIR;

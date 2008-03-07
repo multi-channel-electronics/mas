@@ -182,17 +182,12 @@ int main ( int argc, char **argv )
    sprintf(tempbuf, "rc%i", which_rc);
    load_param_or_exit(mce, &m_retdat, tempbuf, "ret_dat", 0);
 
-   //int nrows_rep;
    if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0){
      sprintf(errmsg_temp, "rb cc num_rows_reported failed with %d", error);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_RB;     
    }	   
-   // Pick a card (won't work for rcs!!)
-   int cards=(1<<(which_rc-1));
-   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
-   mce_acq_t acq;
-   mcedata_acq_setup(&acq, mce, 0, cards, (int) nrows_rep);
+
    // Our callback will update the counter in this structure
    servo_t sq2servo; 
    sq2servo.fcount = 0;
@@ -200,8 +195,15 @@ int main ( int argc, char **argv )
    sq2servo.row_num[0] = nrows_rep - 1;
 
    // setup a call back function
-   mcedata_rambuff_create(&acq, frame_callback, (unsigned) &sq2servo);   
+   mcedata_storage_t* ramb;
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned) &sq2servo);
    
+   // Pick a card (won't work for rcs!!)
+   int cards=(1<<(which_rc-1));
+   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
+   mce_acq_t acq;
+   mcedata_acq_create(&acq, mce, 0, cards, (int) nrows_rep, ramb);
+
    if ( (datadir=getenv("MAS_DATA")) == NULL){
       ERRPRINT("Enviro var. $MAS_DATA not set, quit");
       return ERR_DATA_DIR;
