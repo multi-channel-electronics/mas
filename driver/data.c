@@ -55,7 +55,7 @@ frame_buffer_t frames;
 int data_frame_address(u32 *dest)
 {
         *dest = (u32)(frames.base_busaddr)
-                + frames.incr*(frames.head_index);
+                + frames.frame_size*(frames.head_index);
 	
         return 0;
 }
@@ -183,19 +183,18 @@ int data_frame_resize(int size)
 			  "to non-positive number\n");
 		return -2;
 	}
-	if (size > frames.frame_size) {
-		PRINT_ERR(SUBNAME "can't change data_size "
-			  "to be larger than frame_size\n");
+
+	if (data_frame_divide(size)) {
+		PRINT_ERR(SUBNAME "failed to divide the buffer by %#x\n", size);
 		return -3;
 	}
-
+	
 	if (frames.data_mode == DATAMODE_QUIET &&
-	    data_qt_cmd(DSP_QT_SIZE, size, 0)!=0) {
+	    data_qt_configure(1)!=0) {
 		PRINT_ERR(SUBNAME "can't set DSP quiet mode frame size\n");
 		return -4;
 	}
 
-	frames.data_size = size;
 	return 0;
 }
 
@@ -246,6 +245,26 @@ int data_frame_empty_buffers( void )
 }
 
 #undef SUBNAME
+
+
+int data_frame_divide( int new_data_size )
+{
+	// Recompute the division of the buffer into frames
+	if (new_data_size >= 0) frames.data_size = new_data_size;
+
+	// Round the frame size to a size convenient for DMA
+	frames.frame_size =
+		(frames.data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
+	frames.max_index = frames.size / frames.frame_size;
+
+	if (frames.max_index <= 1) {
+		PRINT_ERR("data_frame_divide: buffer can only hold %i data packet!\n",
+			  frames.max_index);
+		return -1;
+	}
+
+	return 0;
+}
 
 
 /****************************************************************************/
@@ -332,7 +351,7 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 {
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
 	caddr_t virt;
-	u32 phys;
+	void *borrower_p;
 
 	PRINT_INFO(SUBNAME "entry\n");
 
@@ -357,40 +376,32 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 	}
 #endif
 
-	//Store
-	//frames.bigphys_base = (void*)virt;
+	// Borrower data location
+	borrower_p = virt + mem_size - borrow;
 
-	//Bus address?
-	phys = (u32)virt_to_bus(virt);
-
-	//Construct data buffer
-
+	// Save the buffer address and maximum size
 	frames.base = virt;
-	frames.data_size = data_size;
-	frames.frame_size = (data_size + DMA_ADDR_ALIGN - 1)
-		& DMA_ADDR_MASK;
-	frames.max_index  = (mem_size - borrow) /
-		frames.frame_size;
-	
-	frames.base_busaddr = (caddr_t)phys;
-	frames.top_busaddr  = (caddr_t)phys + PAGE_SIZE * npg - borrow;
-	frames.incr = frames.frame_size;
-	
+	frames.size = mem_size - borrow;
+
+	// Partition buffer into blocks of some default size
+	data_frame_divide(data_size);
+
+	// Save physical address for hardware
+	frames.base_busaddr = (caddr_t)virt_to_bus(virt);
+
 	//Debug
-	PRINT_ERR(SUBNAME "buffer: base=%x + %x gives %x of size %x, borrowed=%x\n",
-		  (int)frames.base, 
-		  (int)(PAGE_SIZE * npg - borrow), 
-		  frames.max_index,
-		  (int)frames.frame_size,
-		  (int)(virt+mem_size - borrow));
+	PRINT_INFO(SUBNAME "buffer: base=%x + %x gives %x of size %x\n",
+		   (int)frames.base, 
+		   (int)(frames.mem_size), 
+		   frames.max_index,
+		   (int)frames.frame_size);
 	
-	PRINT_ERR(SUBNAME "buffer: bus %x to %x, incr %x; borrowed_bus=%x\n",
-		  (int)frames.base_busaddr, 
-		  (int)frames.top_busaddr, 
-		  (int)frames.incr,
-		  (int)(phys+mem_size - borrow));
+	PRINT_INFO(SUBNAME "buffer: bus %x to %x, incr %x; borrowed_bus=%x\n",
+		   (int)frames.base_busaddr, 
+		   (int)frames.base_busaddr + frames.mem_size,
+		   (int)(borrower_p));
 	
-	return virt + mem_size - borrow;
+	return borrower_p;
 }
 
 #undef SUBNAME
