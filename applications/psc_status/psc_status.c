@@ -1,9 +1,9 @@
- /*****************************************************************************
- * psc_status.c : utility to parse the reply to 'rb psc psc_status' command as 
- *                conformed by rev. 2.3 of psuc firmware and 
- *                psu_monitor_gain.xls. 
+/****************************************************************************
+ * psc_status.c : utility to parse the reply to 'rb psc psc_status' command    
+ *                as conformed by rev. 2.3 of psuc firmware and
+ *                psu_monitor_gain.xls.
  * Author       : mandana@phas.ubc.ca
-*****************************************************/
+ ****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,8 +65,8 @@ int main (int argc, char **argv){
 
    // print the value read back
    for (index=0 ; index< PSC_DATA_BLK_SIZE/8; index++){
-   //    printf ("%d- data is %u %8.8x \n", index, data[index], data[index]);	     
-       sprintf((unsigned char *)(psc_data_blk+(index*8)), "%8.8x",data[index]);
+   //    printf ("%d- data is %u %8.8x \n", index, data[index], data[index]);
+       sprintf(psc_data_blk+(index*8), "%8.8x",data[index]);
    }
    //printf ("\n");
    

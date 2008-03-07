@@ -11,7 +11,7 @@
 // PSU Data Block POINTERS - defining this way prevents pointers from being reassigned dynamically
 #define PSC_DATA_BLK_SIZE 72 
 
-static unsigned char psc_data_blk[PSC_DATA_BLK_SIZE] = "";
+static char psc_data_blk[PSC_DATA_BLK_SIZE] = "";
 
 #define SILICON_ID          0      // Read from DS18S20 LS 32 bits of 48
 #define SOFTWARE_VERSION    4*2      // Software Version
