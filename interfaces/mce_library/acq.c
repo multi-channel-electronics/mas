@@ -63,7 +63,7 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 			return -MCE_ERR_FRAME_ROWS;
 		rows_reported = (int)datum;
 	} else {
-		datum = (u32)datum;
+		datum = (u32)rows_reported;
 		if (mcecmd_write_block(context, &para, 1, &datum) != 0)
 			return -MCE_ERR_FRAME_ROWS;
 	}
@@ -109,12 +109,14 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 	int ret_val = 0;
 
 	// Does checking / setting ret_dat_s really slow us down?
-	if (!acq->know_ret_dat_s && 
-	    (acq->know_ret_dat_s = (
-		    mcecmd_load_param(acq->context,
-				      &acq->ret_dat_s, "cc", "ret_dat_s")!=0))) {
-		fprintf(stderr, "Could not load 'cc ret_dat_s'\n");
-		return -MCE_ERR_XML;
+	if (!acq->know_ret_dat_s) {
+		acq->know_ret_dat_s = (
+			mcecmd_load_param(acq->context,
+					  &acq->ret_dat_s, "cc", "ret_dat_s") ==0 );
+		if (!acq->know_ret_dat_s) {
+			fprintf(stderr, "Could not load 'cc ret_dat_s'\n");
+			return -MCE_ERR_XML;
+		}
 	}
 
 	if (n_frames < 0) {
@@ -143,7 +145,6 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 	acq->n_frames = n_frames;
 
 	if (acq->options & MCEDATA_THREAD) {
-
 		data_thread_t d;
 		d.state = MCETHREAD_IDLE;
 		d.acq = acq;
