@@ -219,6 +219,7 @@ int cmdtree_tokenize(token_t *t, char *line, int max_tokens)
 	
 	int idx = 0;
 	int n = 0;
+	int overflow = 0;
 
 	while (line[idx] != 0 && n < max_tokens) {
 		while ( index(WHITESPACE, line[idx]) != NULL &&
@@ -233,6 +234,7 @@ int cmdtree_tokenize(token_t *t, char *line, int max_tokens)
 		
 		t[n++].stop = idx;
 	}
+	if (line[idx] != 0) overflow = 1;
 
 	for (idx=0; idx<n; idx++ ) {
 		t[idx].n = n-idx;
@@ -249,7 +251,7 @@ int cmdtree_tokenize(token_t *t, char *line, int max_tokens)
 		}
 	}
 
-	if (n >= max_tokens) return -1;
+	if (overflow) return -2;
 
 	return 0;		
 }
@@ -289,26 +291,5 @@ int match_menu( cmdtree_token_t *t, const cmdtree_opt_t *menu )
 			}
 		}
 	}
-	return 0;
-}
-
-
-int ee_select( cmdtree_token_t *t, const cmdtree_opt_t *root, char *errmsg )
-{
-	int index = 0;
-	
-	const cmdtree_opt_t *parent = root;
-
-	for (index=0; t[index].line != NULL; index++) {
-		
-
-	}
-		
-	while (t[index].line != NULL) {
-		
-		
-	}
-
-
 	return 0;
 }
