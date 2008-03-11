@@ -20,6 +20,7 @@ CC=gcc
 
 # targets
 
+OBJECTS = mce_cmd.o options.o
 HEADERS = options.h cmd.h
 
 all: mce_cmd
@@ -27,7 +28,7 @@ all: mce_cmd
 mce_cmd: mce_cmd.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-.c.o: 	$(HEADERS)
+$(OBJECTS): $(HEADERS)
 
 tidy:
 	-rm *~ *.o
