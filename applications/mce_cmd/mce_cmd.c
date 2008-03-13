@@ -350,7 +350,7 @@ exit_now:
 
 	mcelib_destroy(mce);
 
-	return (err==0) ? 0 : 1;
+	return (err>=0) ? 0 : 1;
 }
 
 #define FILL_MENU(m, _name, min, max, data, opts ) \
