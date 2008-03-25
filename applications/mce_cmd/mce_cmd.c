@@ -142,6 +142,16 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 	
+/* Table for decoding RC strings into bit sets */
+cmdtree_opt_t rc_list[] = {
+	{ SEL_NO, "rc1", 0, 0, MCEDATA_RC1, NULL },
+	{ SEL_NO, "rc2", 0, 0, MCEDATA_RC2, NULL },
+	{ SEL_NO, "rc3", 0, 0, MCEDATA_RC3, NULL },
+	{ SEL_NO, "rc4", 0, 0, MCEDATA_RC4, NULL },
+	{ SEL_NO, "rcs", 0, 0, 
+	  MCEDATA_RC1 | MCEDATA_RC2 | MCEDATA_RC3 | MCEDATA_RC4, NULL },
+	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
+};
 
 // Lazy old globals...
 
@@ -253,12 +263,12 @@ int  main(int argc, char **argv)
 	int done = 0;
 
 	while (!done) {
-
+		cmdtree_token_t args[NARGS];
 		unsigned int n = LINE_LEN;
 
-		if ( options.cmd_now ) {
-			line = options.cmd_command;
-			done = 1;
+		if ( options.cmds_now > 0 ) {
+			line = options.cmd_set[options.cmds_idx++];
+			done = (options.cmds_idx == options.cmds_now);
 		} else {
 			if (options.use_readline) {
 				line = readline("");
@@ -289,11 +299,7 @@ int  main(int argc, char **argv)
 		}
 
 		errmsg[0] = 0;
-
-		cmdtree_token_t args[NARGS];
 		args[0].n = 0;
-		int err = 0;
-
 		cmdtree_debug = 0;
 
 		err = cmdtree_tokenize(args, line, NARGS);
@@ -344,7 +350,7 @@ exit_now:
 
 	mcelib_destroy(mce);
 
-	return err;
+	return (err>=0) ? 0 : 1;
 }
 
 #define FILL_MENU(m, _name, min, max, data, opts ) \
@@ -423,62 +429,18 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 	return 0;
 }
 
+int translate_card_string(char *s, char *errmsg)
+{
+	cmdtree_token_t rc_token;
+	if (cmdtree_tokenize(&rc_token, s, 1) != 0) {
+		sprintf(errmsg, "invalid readout specification string\n");
+		return -1;
+	}
+			
+	if (cmdtree_select(&rc_token, rc_list, errmsg) <= 0)
+		return -1;
 
-/* int preload_mce_params() */
-/* { */
-/* 	int ret_val = 0; */
-/* 	if ((ret_val=mcecmd_load_param(mce, &num_rows_reported, "cc", "num_rows_reported"))!=0) { */
-/* 		fprintf(stderr, "Could not decode 'cc num_rows_reported' [%i]\n", */
-/* 			ret_val); */
-/* 		return -1; */
-/* 	} */
-	
-/* 	if ((ret_val=mcecmd_load_param(mce, &ret_dat_s,  "cc", "ret_dat_s"))!=0) { */
-/* 		fprintf(stderr, "Could not decode 'cc ret_dat_s' [%i]\n", ret_val); */
-/* 		return -1; */
-/* 	} */
-/* 	return 0; */
-/* } */
-
-
-/* int learn_acq_params(char *errstr, int get_frame_count, int get_rows) */
-/* { */
-/* 	u32 data[64]; */
-
-/* 	if (get_frame_count) { */
-/* 		if (mcecmd_read_block(mce, &ret_dat_s, -1, data)) { */
-/* 			sprintf(errstr, "Failed to read frame count from MCE"); */
-/* 			return -1; */
-/* 		} */
-/* 		my_acq.n_frames = data[1]-data[0]+1; */
-/* 	} */
-
-/* 	/\* */
-/* 	if (get_rows) { */
-/* 		if (mcecmd_read_block(mce, &num_rows_reported, -1, data)) { */
-/* 			sprintf(errstr, "Failed to read number of reported rows"); */
-/* 			return -1; */
-/* 		} */
-/* 		my_acq.rows = data[0]; */
-/* 	} */
-/* 	*\/ */
-/* 	return 0; */
-/* } */
-
-
-int translate_card_string(char *s)
-{	
-	if (strcmp(s, "rc1")==0)
-		return MCEDATA_RC1;
-	else if (strcmp(s, "rc2")==0)
-		return MCEDATA_RC2;
-	else if (strcmp(s, "rc3")==0)
-		return MCEDATA_RC3;
-	else if (strcmp(s, "rc4")==0)
-		return MCEDATA_RC4;
-	else if (strcmp(s, "rcs")==0)
-		return MCEDATA_RC1 | MCEDATA_RC2 | MCEDATA_RC3 | MCEDATA_RC4;
-	return -1;
+	return rc_token.value;
 }
 
 int bit_count(int k)
@@ -494,6 +456,7 @@ int bit_count(int k)
 
 int prepare_outfile(char *errmsg, int storage_option)
 {
+	int error;
 	mcedata_storage_t* storage;
 
 	// Cleanup last acq
@@ -543,8 +506,9 @@ int prepare_outfile(char *errmsg, int storage_option)
 	}
 	
 	// Initialize the acquisition system
-	if (mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage) != 0) {
-		sprintf(errmsg, "Could not configure acquisition");
+	if ((error=mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage)) != 0) {
+		sprintf(errmsg, "Could not configure acquisition: %s",
+			mcelib_error_string(error));
 		return -1;
 	}
 
@@ -647,9 +611,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 			if (options.das_compatible) {
 				cmdtree_token_word( s, tokens+1 );
-				options.acq_cards = translate_card_string(s);
+				options.acq_cards = translate_card_string(s, errmsg);
 				if (options.acq_cards<0) {
-					sprintf(errmsg, "Bad card name.\n");
 					ret_val = -1;
 					break;
 				}
@@ -661,7 +624,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				if (ret_val != 0) {
 					sprintf(errmsg, "Acquisition failed.\n");
 				}
-				
+			
 			} else {
 				// If you get here, your data just accumulates
 				//  in the driver's buffer, /dev/mce_data0, assuming that
@@ -744,8 +707,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		case SPECIAL_ACQ:
 			options.acq_frames = tokens[1].value;
 			if ((err=mcedata_acq_go(acq, options.acq_frames)) != 0) {
-				sprintf(errmsg, "Acquisition failed: %s\n", 
-					mcelib_error_string(err));
+				sprintf(errmsg, "%s\n", mcelib_error_string(err));
 				ret_val = -1;
 			}
 			break;
@@ -759,9 +721,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 			/* Decode card name */
 			cmdtree_token_word( s, tokens+2 );
-			options.acq_cards = translate_card_string(s);
+			options.acq_cards = translate_card_string(s, errmsg);
 			if (options.acq_cards < 0) {
-				sprintf(errmsg, "Bad card option '%s'", s);
 				ret_val = -1;
 				break;
 			}
@@ -778,10 +739,10 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 			/* Decode card name */
 			cmdtree_token_word( s, tokens+2 );
-			options.acq_cards = translate_card_string(s);
+			options.acq_cards = translate_card_string(s, errmsg);
 			if (options.acq_cards < 0) {
-				sprintf(errmsg, "Bad card option '%s'", s);
 				ret_val = -1;
+				break;
 			}
 
 			/* Store acquisition interval */
@@ -799,10 +760,10 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 			/* Decode card name */
 			cmdtree_token_word( s, tokens+2 );
-			options.acq_cards = translate_card_string(s);
+			options.acq_cards = translate_card_string(s, errmsg);
 			if (options.acq_cards < 0) {
-				sprintf(errmsg, "Bad card option '%s'", s);
 				ret_val = -1;
+				break;
 			}
 
 			ret_val = prepare_outfile(errmsg, SPECIAL_ACQ_CONFIG_DIRFILE);

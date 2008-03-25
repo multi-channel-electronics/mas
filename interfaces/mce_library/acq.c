@@ -50,10 +50,6 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	// Zero the structure!
 	memset(acq, 0, sizeof(*acq));
 
-	if (n_cards <= 0) {
-		return -MCE_ERR_FRAME_CARD;
-	}
-
 	if ((ret_val=mcecmd_load_param(context, &para, "cc", "num_rows_reported")) != 0)
 		return ret_val;
 
@@ -67,7 +63,8 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 		if (mcecmd_write_block(context, &para, 1, &datum) != 0)
 			return -MCE_ERR_FRAME_ROWS;
 	}
-		
+
+	// Save frame size and other options
 	acq->frame_size = rows_reported * FRAME_COLUMNS * n_cards + 
 		FRAME_HEADER + FRAME_FOOTER;
 	acq->cards = cards;
@@ -76,6 +73,17 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	acq->storage = storage;
 	acq->rows = rows_reported;
 
+	// Lookup "rc# ret_dat" (go address) location or fail.
+	if (load_ret_dat(acq) != 0)
+		return -MCE_ERR_FRAME_CARD;
+	
+	// Lookup "cc ret_data_s" (frame count) or fail
+	if ((ret_val=mcecmd_load_param(
+		     acq->context, &acq->ret_dat_s, "cc", "ret_dat_s")) != 0) {
+/* 		fprintf(stderr, "Could not load 'cc ret_dat_s'\n"); */
+		return ret_val;
+	}
+	
 	// Set frame size in driver.
 	ret_val = mcedata_set_datasize(acq->context,
 				       acq->frame_size * sizeof(u32));
@@ -89,6 +97,7 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 		return -MCE_ERR_FRAME_OUTPUT;
 	}
 
+	acq->ready = 1;
 	return 0;
 }
 
@@ -108,17 +117,13 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 {
 	int ret_val = 0;
 
-	// Does checking / setting ret_dat_s really slow us down?
-	if (!acq->know_ret_dat_s) {
-		acq->know_ret_dat_s = (
-			mcecmd_load_param(acq->context,
-					  &acq->ret_dat_s, "cc", "ret_dat_s") ==0 );
-		if (!acq->know_ret_dat_s) {
-			fprintf(stderr, "Could not load 'cc ret_dat_s'\n");
-			return -MCE_ERR_XML;
-		}
-	}
+	// Assertion
+	if (acq==NULL || !acq->ready) {
+		fprintf(stderr, "mcedata_acq_go: acq structure null or not ready!\n");
+		return -MCE_ERR_FRAME_UNKNOWN;
+	}			
 
+	// Does checking / setting ret_dat_s really slow us down?
 	if (n_frames < 0) {
 		n_frames = get_n_frames(acq);
 		if (n_frames <= 0) return -MCE_ERR_FRAME_COUNT;
@@ -131,12 +136,6 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 			return -MCE_ERR_FRAME_COUNT;
 	}
 
-	// Lookup "rc ret_dat" location or fail.
-	if (!acq->know_ret_dat && (ret_val = load_ret_dat(acq)) != 0) {
-		fprintf(stderr, "Failed to look up 'ret_dat'!\n");
-		return ret_val;
-	}
-		
 	// Issue the MCE 'GO' command.
 	ret_val = mcecmd_start_application(acq->context, &acq->ret_dat);
 	if (ret_val != 0) return ret_val;
@@ -209,31 +208,25 @@ static int get_n_frames(mce_acq_t *acq)
 
 int load_ret_dat(mce_acq_t *acq)
 {
-	// Start acquisition
+	/* Return value is non-zero on error, but is not an mcelib error code! */
+
+	// Lookup the go command location for the specified card set.
 	switch (acq->cards) {
 	case MCEDATA_RC1:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rc1", "ret_dat");
-		break;
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc1", "ret_dat");
 	case MCEDATA_RC2:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rc2", "ret_dat");
-		break;
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc2", "ret_dat");
 	case MCEDATA_RC3:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rc3", "ret_dat");
-		break;
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc3", "ret_dat");
 	case MCEDATA_RC4:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rc4", "ret_dat");
-		break;
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc4", "ret_dat");
 	case MCEDATA_RCS:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
-		break;
-	default:
-		fprintf(stderr, "Invalid card set selection [%#x]\n",
-			acq->cards);
-		return -MCE_ERR_FRAME_CARD;
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
 	}
 
-	acq->know_ret_dat = 1;
-	return 0;
+	fprintf(stderr, "Invalid card set selection [%#x]\n",
+		acq->cards);
+	return -1;
 }
 
 

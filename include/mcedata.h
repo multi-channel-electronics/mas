@@ -102,16 +102,12 @@ struct mce_acq_struct {
 	int timeout_ms;
  	int options;
 
-	/* Cached mce info */
-	int know_ret_dat;
-	int know_ret_dat_s;
-	int know_num_rows_rep;
-	
 	mce_param_t ret_dat;
 	mce_param_t ret_dat_s;
-	mce_param_t num_rows_rep;
+
 	int last_n_frames;
-		
+	
+	int ready;
 };
 
 

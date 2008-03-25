@@ -3,6 +3,8 @@
 
 #include "cmd.h"
 
+#define MAX_CMDLINE_CMD 32
+
 typedef struct {
 
 	int interactive;
@@ -18,8 +20,9 @@ typedef struct {
 	char batch_file[LINE_LEN];
 	int  batch_now;
 
-	char cmd_command[LINE_LEN];
-	int  cmd_now;
+	char *cmd_set[MAX_CMDLINE_CMD];
+	int  cmds_now;
+	int  cmds_idx;
 
 	char data_device[LINE_LEN];
 	char cmd_device[LINE_LEN];
@@ -31,6 +34,7 @@ typedef struct {
 	int acq_cards;
 	int acq_frames;
 	int acq_interval;
+
 } options_t;
 
 int process_options(options_t *options, int argc, char **argv);
