@@ -15,8 +15,8 @@ LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 
 CFLAGS += $(INCLUDE) $(DEFS) -Wall
 
-OBJECTS = mce_status.o options.o das.o cfg_dump.o
-HEADERS = mce_status.h das.h cfg_dump.h
+OBJECTS = mce_status.o options.o das.o mas.o cfg_dump.o
+HEADERS = mce_status.h das.h mas.h cfg_dump.h
 
 CC=gcc
 
