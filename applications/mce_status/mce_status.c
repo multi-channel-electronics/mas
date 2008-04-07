@@ -16,6 +16,7 @@
 
 #include "mce_status.h"
 #include "das.h"
+#include "mas.h"
 #include "cfg_dump.h"
 
 options_t options = {
@@ -71,6 +72,10 @@ int main(int argc, char **argv)
 
 	case CRAWLER_DAS:
 		das_crawler(&options, &crawler);
+		break;
+
+	case CRAWLER_MAS:
+		mas_crawler(&options, &crawler);
 		break;
 
 	case CRAWLER_CFG:
