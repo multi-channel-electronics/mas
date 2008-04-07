@@ -30,7 +30,11 @@ typedef struct {
   int fcount;
   int row_num[MAXVOLTS];
   int row_data[MAXVOLTS];
+  u32 last_header[HEADER_OFFSET];
+  u32 last_frame[MAXVOLTS*MAXROWS];
   int which_rc;
+  int num_rows;
+    
   FILE *df;
 }servo_t;
 
