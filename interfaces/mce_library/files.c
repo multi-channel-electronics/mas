@@ -110,6 +110,7 @@ typedef struct flatfile_struct {
 	char filename[MCE_LONG];
 	int frame_size;
 	FILE *fout;
+	int bytes_out;
 
 } flatfile_t;
 
@@ -146,6 +147,13 @@ static int flatfile_post(mce_acq_t *acq, int frame_index, u32 *data)
 	if (f->fout==NULL) return -1;
 
 	fwrite(data, acq->frame_size*sizeof(*data), 1, f->fout);
+
+	// Manage disk flushing - some systems wait too long to flush? (64 MB problem?)
+	f->bytes_out += acq->frame_size*sizeof(*data);
+	if (f->bytes_out > 4*1024*1024) {
+		fflush(f->fout);
+		f->bytes_out = 0;
+	}
 
 	return 0;
 }
