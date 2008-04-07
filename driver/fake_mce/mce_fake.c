@@ -532,10 +532,10 @@ int fake_writeblock(const mce_command *cmd, mce_reply *rep)
 		mce_state.run_id = cmd->data[0];
 		break;
 
-	case TIMER_OUT: /* select_clk ! */
-		/* This will cause the command to timeout, useful for testing */
-		mce_state.timeout_trigger = 1;
-		break;
+/* 	case TIMER_OUT: /\* select_clk ! *\/ */
+/* 		/\* This will cause the command to timeout, useful for testing *\/ */
+/* 		mce_state.timeout_trigger = 1; */
+/* 		break; */
 
 /* 	default: */
 /* 		//Who am I to stop you? */
