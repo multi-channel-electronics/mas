@@ -234,5 +234,3 @@ mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options)
 	
 	return storage;
 }
-
-

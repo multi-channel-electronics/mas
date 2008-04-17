@@ -15,12 +15,12 @@
 #include "kversion.h"
 #include "mce_options.h"
 
-#include "dsp_errors.h"
+#include <mce/dsp_errors.h>
 
 #include "dsp.h"
 #include "dsp_ops.h"
 #include "dsp_driver.h"
-#include "dsp_ioctl.h"
+#include <mce/dsp_ioctl.h>
 
 typedef enum {
 	OPS_IDLE = 0,

@@ -10,10 +10,10 @@ DSP_DIR = ../driver
 
 OBJECTS = context.o errors.o \
 	cmd.o packet.o virtual.o \
-	data.o acq.o data_thread.o files.o frame.o \
+	data.o acq.o data_thread.o files.o frame_manip.o \
 	dirfile.o config.o
 
-HEADERS = data_thread.h frame.h version.h virtual.h
+HEADERS = data_thread.h version.h virtual.h
 
 INCLUDE += -I. -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I$(DSP_DIR)
 

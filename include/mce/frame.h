@@ -1,7 +1,7 @@
 #ifndef __FRAME_H__
 #define __FRAME_H__
 
-#include <mce_library.h>
+#include "mce.h"
 
 #define EXIT_LAST      1
 #define EXIT_READ      2
@@ -55,6 +55,8 @@ struct frame_header_abstraction {
 	int data_block;
 };
 
+typedef struct frame_header_abstraction frame_header_abstraction_t;
+
 #define frame_property( /* u32* */ data, /* struct frame_header_abstraction* */ format, property ) \
        (data[(format)->property & FRAME_OFFSET_MASK])
 
@@ -78,8 +80,5 @@ extern struct frame_header_abstraction frame_header_v6;
 #define FRAME_STATUS_V6_RC2         ( 1 << 11 )
 #define FRAME_STATUS_V6_RC3         ( 1 << 12 )
 #define FRAME_STATUS_V6_RC4         ( 1 << 13 )
-
-
-int sort_columns( mce_acq_t *acq, u32 *data );
 
 #endif

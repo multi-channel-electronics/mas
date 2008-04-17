@@ -5,7 +5,7 @@ BASE = ../
 include $(BASE)Makefile.children
 
 OBJECTS = socks.o cmdtree.o masconfig.o
-HEADERS = $(MAS_INCLUDE_F)socks.h $(MAS_INCLUDE_F)cmdtree.h \
+HEADERS = $(MAS_INCLUDE_F)mce/socks.h $(MAS_INCLUDE_F)mce/cmdtree.h \
 	$(MAS_INCLUDE_F)masconfig.h
 CC = gcc
 
@@ -13,13 +13,13 @@ CFLAGS += -Wall -I$(MAS_INCLUDE_F)
 
 all: $(OBJECTS)
 
-socks.o: socks.c $(MAS_INCLUDE_F)socks.h
+socks.o: socks.c $(HEADERS)
 	$(CC) $(CFLAGS) $< -c -o $@
 
-cmdtree.o: cmdtree.c $(MAS_INCLUDE_F)cmdtree.h
+cmdtree.o: cmdtree.c $(HEADERS)
 	$(CC) $(CFLAGS) $< -c -o $@
 
-masconfig.o: masconfig.c $(MAS_INCLUDE_F)masconfig.h
+masconfig.o: masconfig.c $(HEADERS)
 	$(CC) $(CFLAGS) $< -c -o $@
 
 test.o: test.c $(HEADERS)
