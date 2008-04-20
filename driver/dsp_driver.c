@@ -21,7 +21,7 @@
 
 #include "dsp_driver.h"
 
-#include "dsp_ioctl.h"
+#include "mce/dsp_ioctl.h"
 
 #ifdef FAKEMCE
 #  include <dsp_fake.h>

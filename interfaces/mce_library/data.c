@@ -9,11 +9,10 @@
 #include <sys/ioctl.h>
 
 #include "mce_library.h"
-#include "data_ioctl.h"
+#include <mce/data_ioctl.h>
 
 /* Local header files */
 
-#include "frame.h"
 #include "data_thread.h"
 
 /* #define LOG_LEVEL_CMD     LOGGER_DETAIL */

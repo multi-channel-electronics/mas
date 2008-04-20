@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "socks.h"
+#include "mce/socks.h"
 
 char default_addr[1024] = "";
 int  default_port = 0;

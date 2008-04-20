@@ -10,7 +10,7 @@
 #  include <linux/interrupt.h>
 #endif
 
-#include <dsp.h>
+#include "mce/dsp.h"
 #include "dsp_state.h"
 
 #define PSIZE 2048

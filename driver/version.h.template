@@ -11,7 +11,7 @@
 /* repository (or whatever) that might cause version numbers to be       */
 /* repeated.                                                             */
 
-#define REPO_NAME               "gamow/mas"
+#define REPO_NAME               "$REPO."
 #define REPO_VERSION            "$SVN."
 
 #define VERSION_STRING          REPO_NAME ":" REPO_VERSION

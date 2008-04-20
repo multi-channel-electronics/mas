@@ -1,5 +1,7 @@
 #include <string.h>
-#include "frame.h"
+
+#include "mce_library.h"
+#include "frame_manip.h"
 
 
 /* Define frame header for header version 6 */

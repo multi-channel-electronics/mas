@@ -33,7 +33,7 @@
 #include "dsp_fake.h"
 #include "dsp_state.h"
 #include "mce_fake.h"
-#include <dsp_ioctl.h>
+#include "mce/dsp_ioctl.h"
 
 
 /*

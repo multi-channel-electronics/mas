@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <errno.h>
 
-#include "cmdtree.h"
+#include "mce/cmdtree.h"
 
 typedef cmdtree_token_t token_t;
 

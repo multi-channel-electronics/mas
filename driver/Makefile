@@ -8,6 +8,7 @@ RTAI_DIR   ?= /usr/src/rtai
 
 # Get svn repository version number
 REPO_VERSION   = $(shell svnversion $(PWD))
+BRANCH_ID = $(shell cat ../branch_id.txt)
 
 # Use Makefile.local to set up default configuration options.
 
@@ -114,6 +115,7 @@ endif #FAKEMCE=1
 
 version.h: version.h.template FORCE
 	grep -v '^\/\*-' version.h.template | \
+		sed 's:\$$REPO\.:$(BRANCH_ID):g' | \
 		sed 's/\$$SVN\./$(REPO_VERSION)/g' > version.h
 
 
