@@ -6,7 +6,8 @@
 #include "options.h"
 
 #define USAGE_MESSAGE \
-"Usage:\n\t%s [options] [-x cmd...]\n"\
+"Usage:\n"\
+"\t%s [options] [-x cmd...]\n"\
 "  -i                     interactive mode, don't exit on errors\n"\
 "  -q                     quiet mode, only print errors or output data\n"\
 "  -p                     prefix-supression, don't print line number\n"\
@@ -24,16 +25,15 @@
 "                         The -X command may be more useful as it allows multiple\n"\
 "                         commands to be executed, e.g.\n"\
 "                                mce_cmd -X \"acq_config test_1 rc1\" -X \"acq_go 100\"\n"\
+"\n"\
+"  -v                     print version string and exit\n"\
 ""
-
-//"  -a <filename> <rc>     configure acquisition\n"
-//"  -g <frames>            go now! (only valid with -a option)\n"
 
 int process_options(options_t *options, int argc, char **argv)
 {
 	char *s;
 	int option;
-	while ( (option = getopt(argc, argv, "?hiqepf:c:d:C:ro:X:xa")) >=0) {
+	while ( (option = getopt(argc, argv, "?hiqepf:c:d:C:ro:X:xv")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -64,7 +64,7 @@ int process_options(options_t *options, int argc, char **argv)
 			break;
 
 		case 'c':
-			strcpy(options->config_file, optarg);
+			strcpy(options->hardware_file, optarg);
 			break;
 
 		case 'd':
@@ -97,9 +97,19 @@ int process_options(options_t *options, int argc, char **argv)
 			}
 			break;
 
+		case 'v':
+			options->version_only = 1;
+			break;
+
 		default:
 			printf("Unimplemented option '-%c'!\n", option);
 		}
+	}
+
+	// Check for stragglers (these are files we should be reading...)
+	if (optind < argc) {
+		fprintf(stderr, "Stray arguments!  Use '%s -f <file>' to execute a script.\n", argv[0]);
+		return -1;
 	}
 
 	// Readline has to be off when reading from a file stream!

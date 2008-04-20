@@ -20,9 +20,9 @@
 #include "cfg_dump.h"
 
 options_t options = {
-	device_file:   "/dev/mce_cmd0",
-	config_file:   "/etc/mce/mas.cfg",
-	hardware_file: "/etc/mce/mce.cfg",
+        device_file:   DEFAULT_CMDFILE,
+	config_file:   DEFAULT_MASFILE,
+	hardware_file: DEFAULT_HARDWAREFILE,
 	mode:          CRAWLER_DAS,
 };
 

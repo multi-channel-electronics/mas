@@ -3,11 +3,6 @@
 
 #include "options.h"
 
-#define MASCONFIG_FILE "/etc/mce/mas.cfg"
-#define CMD_DEVICE "/dev/mce_cmd0"
-#define DATA_DEVICE "/dev/mce_data0"
-#define HARDWARE_FILE "/etc/mce/mce.cfg"
-
 #define HEADER_OFFSET 43
 
 #define MAXLINE 1024

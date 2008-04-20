@@ -3,7 +3,7 @@
 
 #include "logger.h"
 
-#define CONFIG_FILE "/etc/mce/mas.cfg"
+#define CONFIG_FILE DEFAULT_MASFILE
 
 #define CONFIG_SERVER  "log_server"
 #define CONFIG_LOGFILE "log_file"
