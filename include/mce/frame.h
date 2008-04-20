@@ -1,7 +1,7 @@
 #ifndef __FRAME_H__
 #define __FRAME_H__
 
-#include "mce.h"
+#include "mce/types.h"
 
 #define EXIT_LAST      1
 #define EXIT_READ      2

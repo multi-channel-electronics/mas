@@ -2,8 +2,8 @@
 #define _MCE_LIBRARY_H_
 
 #include <libmaslog.h>
-#include <mce.h>
-#include <mce_errors.h>
+#include <mce/types.h>
+#include <mce/mce_errors.h>
 
 
 /*

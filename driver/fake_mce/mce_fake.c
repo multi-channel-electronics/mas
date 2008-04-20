@@ -5,7 +5,7 @@
 #include <linux/interrupt.h> /*Weird erorrs? try linux/sched.h before this*/
 
 #include <mce_options.h>
-#include <mce.h>
+#include <mce/types.h>
 
 #include "dsp_fake.h"
 #include "dsp_state.h"

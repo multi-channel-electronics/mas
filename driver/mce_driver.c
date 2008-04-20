@@ -8,11 +8,11 @@
 #include "mce_options.h"
 #include "memory.h"
 
-#include <dsp.h>
+#include "mce/dsp.h"
+#include "mce/mce_errors.h"
 
 #include "mce_driver.h"
 #include "mce_ops.h"
-#include <mce/mce_errors.h>
 #include "data.h"
 #include "data_ops.h"
 #include "dsp_driver.h"

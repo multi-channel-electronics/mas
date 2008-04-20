@@ -19,8 +19,8 @@
  *  device file.
  */
 
-#include <mce/acq.h>
 #include <mce/frame.h>
+#include <mce/acq.h>
 
 /* Module information structure */
 

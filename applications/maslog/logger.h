@@ -2,7 +2,7 @@
 #define _LOGGER_H_
 
 #include <stdio.h>
-#include <socks.h>
+#include <mce/socks.h>
 
 #define MAX_CLIENTS 16
 #define MEDLEN 1024

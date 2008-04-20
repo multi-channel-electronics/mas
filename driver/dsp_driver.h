@@ -1,8 +1,8 @@
 #ifndef _DSP_DRIVER_H_
 #define _DSP_DRIVER_H_
 
-#include "dsp.h"
-#include <mce/dsp_errors.h>
+#include "mce/dsp.h"
+#include "mce/dsp_errors.h"
 
 #define DSPDEV_NAME "mce_dsp"
 #define DSP_DEFAULT_TIMEOUT (HZ*50/100)

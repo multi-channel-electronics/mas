@@ -20,7 +20,7 @@
 
 #include <mce_library.h>
 
-#include <cmdtree.h>
+#include <mce/cmdtree.h>
 
 #include "cmd.h"
 #include "options.h"

@@ -30,14 +30,15 @@ include $(MAKERULES)Makefile.install_rule_lib
 
 install: install__$(LIBNAME)
 
-$(LIBNAME) : $(OBJECTS)
+$(LIBNAME) : $(OBJECTS) version.h
 	$(AR) rs $@ $(OBJECTS)
 
 $(OBJECTS): $(HEADERS)
 
 version.h: version.h.template FORCE
 	grep -v '^\/\*-' version.h.template | \
-		sed 's/\$$SVN\./$(REPO_VERSION)/g' > version.h
+		sed 's/\$$SVN\./$(REPO_VERSION)/g' | \
+		sed 's:\$$REPO\.:$(BRANCH_ID):g' > version.h
 
 docs:
 	doxygen

@@ -13,13 +13,13 @@ CFLAGS += -Wall -I$(MAS_INCLUDE_F)
 
 all: $(OBJECTS)
 
-socks.o: socks.c $(HEADERS)
+socks.o: socks.c $(MAS_INCLUDE_F)mce/socks.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
-cmdtree.o: cmdtree.c $(HEADERS)
+cmdtree.o: cmdtree.c $(MAS_INCLUDE_F)mce/cmdtree.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
-masconfig.o: masconfig.c $(HEADERS)
+masconfig.o: masconfig.c $(MAS_INCLUDE_F)masconfig.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
 test.o: test.c $(HEADERS)

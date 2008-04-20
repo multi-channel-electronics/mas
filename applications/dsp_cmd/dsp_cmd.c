@@ -9,7 +9,7 @@
 
 #include <mcedsp.h>
 
-#include <cmdtree.h>
+#include <mce/cmdtree.h>
 
 #define PROGRAM_NAME "dsp_cmd"
 

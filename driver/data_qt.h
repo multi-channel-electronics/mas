@@ -1,7 +1,7 @@
 #ifndef _DATA_QT_H_
 #define _DATA_QT_H_
 
-#include "dsp.h"
+#include "mce/dsp.h"
 
 #define DSP_INTERNAL_FREQ  50e6
 #define DSP_INFORM_RATE    10 /* Hz */
