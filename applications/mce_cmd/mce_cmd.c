@@ -18,8 +18,6 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include <mce_library.h>
-
 #include <mce/cmdtree.h>
 
 #include "cmd.h"
@@ -161,9 +159,10 @@ char *line = NULL;
 char *line_buffer = NULL;
 
 options_t options = {
-	cmd_device:    DEFAULT_DEVICE,
-	data_device:   DEFAULT_DATA,
-	config_file:   DEFAULT_XML,
+	cmd_device:     DEFAULT_CMDFILE,
+	data_device:    DEFAULT_DATAFILE,
+	hardware_file:  DEFAULT_HARDWAREFILE,
+	masconfig_file: DEFAULT_MASFILE,
 	display:       SPECIAL_DEF,
 	acq_path:      "./",
 	use_readline: 1,
@@ -186,6 +185,7 @@ int pathify_filename(char *dest, const char *src);
 
 int  main(int argc, char **argv)
 {
+	char msg[1024];
 	FILE *ferr = stderr;
 	FILE *fin  = stdin;
 	int err = 0;
@@ -193,6 +193,11 @@ int  main(int argc, char **argv)
 	if (process_options(&options, argc, argv)) {
 		err = ERR_OPT;
 		goto exit_now;
+	}
+
+	if (options.version_only) {
+		printf("%s\n", VERSION_STRING);
+		exit(0);
 	}
 
 	if (!options.nonzero_only) {
@@ -229,31 +234,31 @@ int  main(int argc, char **argv)
 		goto exit_now;
 	}
 	
-	if (mceconfig_open(mce, options.config_file, NULL)!=0) {
+	if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
-			options.config_file);
+			options.hardware_file);
 		err = ERR_MCE;
 		goto exit_now;
 	}
 
+	// Log!
+	logger_connect( &options.logger, options.masconfig_file, "mce_cmd" );
+
 	menuify_mceconfig(root_opts);
 
-/* 	// Preload useful MCE parameter id's */
-/* 	if (preload_mce_params()) { */
-/* 		fprintf(ferr, "Could not pre-load useful MCE parameter id's.\n"); */
-/* 		err = ERR_MCE; */
-/* 		goto exit_now; */
-/* 	} */
-	
 	//Open batch file, if given
 	if (options.batch_now) {
 		fin = fopen(options.batch_file, "r");
 		if (fin==NULL) {
-			fprintf(ferr, "Could not open batch file '%s'\n",
+			fprintf(ferr, "could not open batch file '%s'\n",
 				options.batch_file);
+			sprintf(msg, "failed to read script '%s'\n", options.batch_file);
+			logger_print( &options.logger, msg );
 			err = ERR_MCE;
 			goto exit_now;
 		}
+		sprintf(msg, "reading commands from '%s'\n", options.batch_file);
+		logger_print( &options.logger, msg );
 	}
 				
 
@@ -334,6 +339,11 @@ int  main(int argc, char **argv)
 			printf("%serror : %s\n", premsg, errmsg);
 			if (options.interactive)
 				continue;
+			else {
+				sprintf(msg, "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
+					line_count, line, -err, errmsg);
+				logger_print(&options.logger, msg);
+			}
 			done = 1;
 		}
 	}

@@ -88,10 +88,10 @@ int main ( int argc, char **argv )
    
    /* Define default MAS options */
    option_t options = {
-     config_file:   MASCONFIG_FILE,
-     cmd_device:    CMD_DEVICE,
-     data_device:   DATA_DEVICE,
-     hardware_file: HARDWARE_FILE,
+     config_file:   DEFAULT_MASFILE,
+     cmd_device:    DEFAULT_CMDFILE,
+     data_device:   DEFAULT_DATAFILE,
+     hardware_file: DEFAULT_HARDWAREFILE,
    };
    int arg_offset = 0;
    

@@ -22,11 +22,18 @@
 
 #define MCE_ERR_CARDNOTFOUND    (MCE_ERR_BASE + 0x000d)
 #define MCE_ERR_PARAMNOTFOUND   (MCE_ERR_BASE + 0x000e)
+#define MCE_ERR_NULLSTRUCT      (MCE_ERR_BASE + 0x000f)
 
 #define MCE_ERR_ACTIVE          (MCE_ERR_BASE + 0x0010)
 #define MCE_ERR_NOT_ACTIVE      (MCE_ERR_BASE + 0x0011)
 #define MCE_ERR_KERNEL          (MCE_ERR_BASE + 0x0012)
 #define MCE_ERR_TIMEOUT         (MCE_ERR_BASE + 0x0013)
+
+#define MCE_ERR_CARDTYPE        (MCE_ERR_BASE + 0x0014)
+#define MCE_ERR_CARDMAPPING     (MCE_ERR_BASE + 0x0015)
+#define MCE_ERR_PARAMSET        (MCE_ERR_BASE + 0x0016)
+#define MCE_ERR_CARDNATURE      (MCE_ERR_BASE + 0x0017)
+#define MCE_ERR_PARAMDEF        (MCE_ERR_BASE + 0x0018)
 
 /* Interface subsystem error detail */
 #define MCE_ERR_INT_UNKNOWN     (MCE_ERR_BASE + 0x0020)

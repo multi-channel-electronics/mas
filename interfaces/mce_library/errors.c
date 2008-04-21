@@ -43,6 +43,30 @@ char *mcelib_error_string(int error)
 	case MCE_ERR_NEED_CONFIG:
 		return "Config connection not established.";
 
+	case MCE_ERR_CARDNOTFOUND:
+		return "Card not found in config system.";
+
+	case MCE_ERR_PARAMNOTFOUND:
+		return "Parameter not found in card definition.";
+
+	case MCE_ERR_NULLSTRUCT:
+		return "Unexpected NULL pointer.";
+
+	case MCE_ERR_CARDTYPE:
+		return "Card type invalid.";
+
+	case MCE_ERR_CARDMAPPING:
+		return "Virtual card mapping not found.";
+
+	case MCE_ERR_PARAMSET:
+		return "Paramset not found.";
+
+	case MCE_ERR_CARDNATURE:
+		return "Card nature is unhandled.";
+
+	case MCE_ERR_PARAMDEF:
+		return "Parameter definition not valid.";
+
 	case MCE_ERR_ACTIVE:
 		return "Command not issued because previous command is outstanding.";
 

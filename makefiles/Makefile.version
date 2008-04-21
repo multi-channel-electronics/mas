@@ -2,4 +2,4 @@
 
 SUB_VER := $(shell svnversion $(VER_TARGET))
 REPO_NAME := $(shell cat $(BASE)/branch_id.txt)
-REPO_VER := \"$(REPO_NAME):$(SUB_VER)\"
+REPO_VER := \"$(REPO_NAME)/$(SUB_VER)\"

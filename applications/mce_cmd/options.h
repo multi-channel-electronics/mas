@@ -20,13 +20,16 @@ typedef struct {
 	char batch_file[LINE_LEN];
 	int  batch_now;
 
+	int version_only;
+
 	char *cmd_set[MAX_CMDLINE_CMD];
 	int  cmds_now;
 	int  cmds_idx;
 
 	char data_device[LINE_LEN];
 	char cmd_device[LINE_LEN];
-	char config_file[LINE_LEN];
+	char hardware_file[LINE_LEN];
+	char masconfig_file[LINE_LEN];
 
 	char acq_path[LINE_LEN];
 	char acq_filename[LINE_LEN];
@@ -34,6 +37,8 @@ typedef struct {
 	int acq_cards;
 	int acq_frames;
 	int acq_interval;
+
+	logger_t logger;
 
 } options_t;
 

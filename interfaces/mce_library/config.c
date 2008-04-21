@@ -659,48 +659,52 @@ int mceconfig_lookup(const mce_context_t* context,
 
 	C_config_check;
 
-	if ((p==NULL) || (c==NULL)) return -1;
+	if ((p==NULL) || (c==NULL)) return -MCE_ERR_NULLSTRUCT;
 	
 	p->flags = 0;
 
-	if (mceconfig_lookup_card(context, card_name, c)) return -2;
+	if (mceconfig_lookup_card(context, card_name, c))
+		return -MCE_ERR_CARDNOTFOUND;
 
 	switch(c->nature) {
 
 	case MCE_NATURE_PHYSICAL:
 
-		if (mceconfig_card_cardtype(context, c, &ct)) return -3;
+		if (mceconfig_card_cardtype(context, c, &ct))
+			return -MCE_ERR_CARDTYPE;
 		
 		for (index=0; index < ct.paramset_count; index++) {
 			if (mceconfig_cardtype_paramset(context, &ct, index, &ps))
-				return -4;
+				return -MCE_ERR_PARAMSET;
 			
 			if (mceconfig_lookup_param(context, &ps, para_name, p)==0)
 				return 0;
 		}
-		break;
+
+		return -MCE_ERR_PARAMNOTFOUND;
 
 	case MCE_NATURE_VIRTUAL:
 
-		if (mceconfig_card_mapping(context, c, &m)) return -3;
+		if (mceconfig_card_mapping(context, c, &m))
+			return -MCE_ERR_CARDTYPE;
 		
 		config_setting_t *pcfg = get_setting(m.cfg, "parameters");
-		if (pcfg == NULL) return -2;
+		if (pcfg == NULL) return -MCE_ERR_PARAMSET;
 
 		config_setting_t *cfg = get_setting_by_name(pcfg, para_name);
-		if (cfg == NULL) return -1;
+		if (cfg == NULL) return -MCE_ERR_PARAMNOTFOUND;
 
 		if (mceconfig_cfg_param(cfg, p) != 0)
-			return -1;
+			return -MCE_ERR_PARAMDEF;
 
 		return 0;
 		
 	default:
 		fprintf(stderr, "Unhandled card nature!\n");
-		return -1;
+		return -MCE_ERR_CARDNATURE;
 	}
 			    
-	return -5;
+	return -1;
 }
 
 int mceconfig_check_data(const card_t *c, const param_t *p, int count,
