@@ -1,0 +1,18 @@
+This directory contains files for wrapping the MAS C API into python
+classes.
+
+The swig interface file mce_library.i is used to expose the basic
+libarary functions as a python module mce_library.  A more useful
+module for applications is mce.py, which exposes MCE operations in the
+mce class.
+
+Once compiled, you can use the mce class by making sure that
+mce_library.py, _mce_library.so, and mce.py are in your python path
+and then doing
+
+    import mce
+
+in your script.
+
+The 'test' directory contains some test / demo programs for using the
+module.
