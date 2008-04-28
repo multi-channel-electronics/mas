@@ -7,7 +7,7 @@
 
 #include "mce_fake.h"
 #include "dsp_state.h"
-
+#include "../dsp_driver.h"
 
 dsp_state_t dsp_state;
 
@@ -21,6 +21,12 @@ int dsp_state_init()
 {
 	dsp_state.mce_con = NULL;
 
+	PRINT_ERR("INIT!\n");
+
+	init_timer(&dsp_state.timer);
+	dsp_state.timer.function = dsp_timer_function;
+	dsp_state.timer.data = (unsigned long)&dsp_state;
+	
 	tasklet_init(&dsp_state.msg_tasklet,
 		     msg_now, (unsigned long)&dsp_state);
 
@@ -35,7 +41,9 @@ int dsp_state_set_handler(fake_int_handler_t fake_int_handler)
 
 int dsp_state_cleanup( void )
 {
+	del_timer_sync(&dsp_state.timer);
 	tasklet_kill(&dsp_state.msg_tasklet);
+
 	return 0;
 }
 
@@ -195,6 +203,75 @@ int dsp_readmem(dsp_command *cmd, dsp_message *msg)
 }
 
 
+int dsp_qt_command(dsp_command *cmd, dsp_message *msg)
+{
+	int arg1 = cmd->args[1];
+	int val = 0;
+
+	switch (cmd->args[0]) {
+	case DSP_QT_ENABLE:
+		dsp_state.qt_data.enabled = arg1;
+		break;
+
+	case DSP_QT_DELTA:
+		dsp_state.qt_data.delta = arg1;
+		break;
+
+	case DSP_QT_NUMBER:
+		dsp_state.qt_data.number = arg1;
+		break;
+
+	case DSP_QT_INFORM:
+		dsp_state.qt_data.inform = arg1;
+		break;
+
+	case DSP_QT_PERIOD:
+		dsp_state.qt_data.period = arg1;
+		break;
+
+	case DSP_QT_SIZE:
+		dsp_state.qt_data.size = arg1;
+		break;
+
+	case DSP_QT_TAIL:
+		dsp_state.qt_data.tail = arg1;
+		break;
+
+	case DSP_QT_HEAD:
+		dsp_state.qt_data.head = arg1;
+		break;
+
+	case DSP_QT_DROPS:
+		dsp_state.qt_data.drops = arg1;
+		break;
+
+	case DSP_QT_BASE:
+		dsp_state.qt_data.base =
+			bus_to_virt(arg1 | (cmd->args[2] << 16));
+		break;
+
+	default:
+		msg->reply = DSP_ERR;
+	}
+
+	msg->data = val;
+	return (msg->reply==DSP_ACK) ? 0 : 1;
+}
+
+
+int dsp_fake_version(dsp_command *cmd, dsp_message *msg)
+{
+	// Old firmware replies with error.
+	if (FAKE_DSP_VERSION < 0x550103) {
+		msg->reply = DSP_ERR;
+		return 1;
+	}
+
+	msg->data = FAKE_DSP_VERSION;
+	return 0;
+}
+
+
 int dsp_con(dsp_command *cmd, dsp_message *msg)
 {
 	int busaddr = (cmd->args[0] << 16) | cmd->args[1];
@@ -270,6 +347,14 @@ int dsp_state_command(dsp_command *cmd)
 		dsp_rco(cmd, &msg);
 		break;
 
+	case DSP_VER:
+		dsp_fake_version(cmd, &msg);
+		break;
+
+	case DSP_QTS:
+		dsp_qt_command(cmd, &msg);
+		break;
+
 	default:
 		msg.reply = DSP_ERR;
 	}
@@ -309,4 +394,76 @@ int dsp_state_nfy_rp(int size)
 	PRINT_INFO("nfy rp: size=%i\n", size);
 
 	return 0;
+}
+
+
+/* QT handling - mce_fake calls us back when a go is received and
+   tells us the dirt on what the interrupt rate will be.  We then
+   generate the correct rate of interrupts, calling mce back for the
+   relevant number of frames at each step. */
+
+int dsp_retdat_callback(int frame_size, int ticks, int nframes)
+{
+	PRINT_ERR("dsp_retdat_callback: ting-a-ling! %i %i %i\n", frame_size, ticks, nframes);
+
+	// If this is a stop, kill the timer
+	if (frame_size < 0) {
+		del_timer_sync(&dsp_state.timer);
+		dsp_state.n_frames = 0;
+	} else {
+		dsp_state.n_frames = nframes;
+		dsp_state.delta_frames = dsp_state.qt_data.period / ticks;
+		dsp_state.delta_jiffies = dsp_state.qt_data.period * HZ / MCE_CLOCK;
+		if (dsp_state.delta_jiffies <= 0)
+			dsp_state.delta_jiffies = 1;
+		PRINT_ERR("dj = %i df = %i\n", dsp_state.delta_jiffies, dsp_state.delta_frames);
+		dsp_state.timer.expires = jiffies + dsp_state.delta_jiffies;
+		add_timer(&dsp_state.timer);
+	}
+	
+	return 0;
+}
+
+
+void dsp_timer_function(unsigned long arg)
+{
+	dsp_state_t *state = (dsp_state_t*)arg;
+	dsp_qtinform qti;
+	int new_frames = state->delta_frames;
+	if (new_frames > state->n_frames) new_frames = state->n_frames;
+
+	state->n_frames -= new_frames;
+	PRINT_ERR("blip! %i\n", state->n_frames);
+
+	PRINT_ERR("qt: %i %i %i\n", dsp_state.qt_data.size,
+		  dsp_state.qt_data.inform,  dsp_state.qt_data.size);
+
+	for (; new_frames > 0; new_frames--) {
+		if ((state->qt_data.head + 1) % state->qt_data.number == state->qt_data.tail) {
+			state->qt_data.drops++;
+			fake_data_fill(NULL);			
+		} else {
+			fake_data_fill((u32*)(state->qt_data.base + 
+					      state->qt_data.head*state->qt_data.delta));
+			state->qt_data.head = (state->qt_data.head + 1) % 
+				state->qt_data.number;
+		}
+	}
+	
+	qti.type = DSP_QTI;
+	qti.dsp_head = state->qt_data.head;
+	qti.dsp_tail = state->qt_data.tail;
+	qti.dsp_drops = state->qt_data.drops;
+	
+	dsp_int_handler((dsp_message*)&qti);
+
+	if (state->n_frames > 0) {
+		int delta = state->delta_jiffies;
+		if (state->n_frames < state->qt_data.inform) {
+			delta = delta * state->qt_data.inform / state->n_frames;
+		}
+		if (delta <= 0) delta = 1;
+		state->timer.expires = jiffies + delta;
+		add_timer(&state->timer);
+	}
 }
