@@ -78,7 +78,18 @@ class mce:
         if err != 0:
             raise MCEError, mcelib_error_string(err)
 
-    def read_frame(self, card_list = ["RCS"], data_only=False ):
+    def reset(self, dsp_reset=False, mce_reset=True):
+        if mce_reset:
+            error = mcecmd_hardware_reset(self.context)
+            if error != 0:
+                raise MCEError, "Hardware reset: " + mcelib_error_string(err)
+
+        if dsp_reset:
+            error = mcecmd_interface_reset(self.context)
+            if error != 0:
+                raise MCEError, "PCI card reset: " + mcelib_error_string(err)            
+
+    def card_bits(self, card_list):
         cards = 0
         for cc in card_list:
             c = cc.lower()
@@ -89,11 +100,16 @@ class mce:
             elif c == "rc4": cards |= 0x8
             else:
                 raise ParamError, 'Unknown card ' + cc
+            return cards
 
-        card_count = (cards & 0x1 != 0) + (cards & 0x2 != 0) + \
-            (cards & 0x4 != 0) + (cards & 0x8 != 0)
-        
-        max_size = 44 + 41*8*card_count
+    def card_count(self, cards):
+        return (cards & 0x1 != 0) + (cards & 0x2 != 0) + \
+               (cards & 0x4 != 0) + (cards & 0x8 != 0)
+    
+
+    def read_frame(self, card_list = ["RCS"], data_only=False ):
+        cards = self.cards(card_list)
+        max_size = 44 + 41*8*self.card_count(cards)
         d = u32array(max_size)
 
         read_frame(self.context, d.cast(), cards);
@@ -106,3 +122,13 @@ class mce:
         if data_only: return dd
         return dd, header
 
+
+#class MCEData:
+
+#    def __init__(self):
+
+
+#    def load_flatfile(self, filename):
+
+
+#    def 
