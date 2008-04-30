@@ -47,7 +47,8 @@ frame_buffer_t frames;
   incremented because that would make it equal to tail_index.  So the
   "buffer full" error is actually returned by data_frame_increment.
 
-  This is called in interrupt context.
+  This is called in interrupt context.  It is not used in quiet
+  transfer mode.
 */
 
 #define SUBNAME "data_frame_address: "
@@ -77,7 +78,8 @@ int data_frame_address(u32 *dest)
   head_index has not been incremented, -1 is returned and the data
   will be overwritten by the next frame.
 
-  This is called in interrupt context.
+  This is called in interrupt context.  It is not used in quiet
+  transfer mode.
 */
   
 
@@ -110,6 +112,17 @@ int data_frame_increment()
 }
 
 #undef SUBNAME
+
+
+/* Quiet transfer mode buffer update 
+ *
+ * data_frame_contribute is called by the interrupt service routine to
+ * update the head of the circular buffer.  The buffers between head
+ * and new_head must already have been updated with new data.  At the
+ * end of this function any threads waiting for frame data will be
+ * awoken and the tasklet that updates the buffer status on the PCI
+ * card is scheduled.
+ */
 
 
 #define SUBNAME "data_frame_contribute: "
@@ -272,59 +285,56 @@ int data_frame_divide( int new_data_size )
 
 #define SUBNAME "data_copy_frame: "
 
+/* data_copy_frame - copy up to one complete frame into buffer
+ *
+ * This is the primary exporter of buffered frame data; this
+ * effectively pops a frame or part of a frame from the circular
+ * buffer, freeing the space.  The frames semaphore should be held
+ * when calling this routine.  This routine is not re-entrant.
+ */
+
 int data_copy_frame(void* __user user_buf, void *kern_buf,
 		    int count, int nonblock)
 {
-	int d;
+	void *source;
 	int count_out = 0;
+	int this_read;
 
-	//Are buffers well defined?  Warn...
+	// Are buffers well defined?  Warn...
 	if (  !( (user_buf!=NULL) ^ (kern_buf!=NULL) ) ) {
 		PRINT_ERR(SUBNAME "number of dest'n buffers != 1 (%x | %x)\n",
 			  (int)user_buf, (int)kern_buf);
 		return -1;
 	}
 
-	if (nonblock) {
-		if ((frames.tail_index == frames.head_index) &&
-		    !(frames.flags & FRAME_ERR))
-			return -EAGAIN;
-	} else {
-		PRINT_INFO("data_copy_frame: sleeping\n");
-		if (wait_event_interruptible(frames.queue,
-					     (frames.flags & FRAME_ERR) ||
-					     (frames.tail_index
-					      != frames.head_index)))
-			return -ERESTARTSYS;
-	}
+	// Exit once supply runs out or demand is satisfied.
+	while ((frames.tail_index != frames.head_index) && count > 0) {
 
-	if (frames.tail_index != frames.head_index) {
+		source = frames.base + frames.tail_index*frames.frame_size + frames.partial;
 
-		void *frame = frames.base +
-			frames.tail_index*frames.frame_size;
-
-		count_out = frames.data_size - frames.partial;
-		if (count_out > count)
-			count_out = count;
+		// Don't read past end of frame.
+		this_read = (frames.data_size - frames.partial < count) ?
+			frames.data_size - frames.partial : count;
 		
 		if (user_buf!=NULL) {
 			PRINT_INFO(SUBNAME "copy_to_user %x->[%x] now\n",
-				  count_out, (int)user_buf);
-			count_out -= copy_to_user(user_buf,
-						  frame + frames.partial,
-						  count_out);
+				   count, (int)user_buf);
+			this_read -= copy_to_user(user_buf, source, this_read);
 		}
 		if (kern_buf!=NULL) {
 			PRINT_INFO(SUBNAME "memcpy to kernel %x now\n",
-				  (int)kern_buf);
-			memcpy(kern_buf, frame + frames.partial, count_out);
+				   (int)kern_buf);
+			memcpy(kern_buf, source, this_read);
 		}
-		
-		//Update data source
 
-		frames.partial += count_out;
+		// Update demand
+		count -= this_read;
+		count_out += this_read;
+	
+		// Update supply
+		frames.partial += this_read;
 		if (frames.partial >= frames.data_size) {
-			d = (frames.tail_index + 1) % frames.max_index;
+			unsigned d = (frames.tail_index + 1) % frames.max_index;
 			barrier();
 			frames.tail_index = d;
 			frames.partial = 0;
