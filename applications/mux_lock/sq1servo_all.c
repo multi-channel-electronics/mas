@@ -310,7 +310,7 @@ int main ( int argc, char **argv )
 	for ( snum=0; snum<MAXCHANNELS; snum++) {
 	  for (r=0; r<nrows_rep; r++) {
 	    sq2fb[snum + soffset][r] += gain *
-		( sq1servo.last_frame[r*MAXVOLTS + snum + soffset] - z );
+		( (int)sq1servo.last_frame[r*MAXVOLTS + snum + soffset] - z );
 	  }
 	}
 
