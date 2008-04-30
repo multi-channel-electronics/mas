@@ -43,8 +43,8 @@
 /* Clock divider: 50 MHz / 41 / 64 = 19055 Hz */
 #define CLK_DIV         19055
 
-/* The min_data_rate is limited by the system timing resolution */
-#define MIN_DATA_RATE   ( (CLK_DIV + HZ - 1) / HZ )
+/* The min_data_rate used to be limited by the system timing resolution */
+#define MIN_DATA_RATE   ( 1 )
 
 
 /* Needlessly precise timing model:

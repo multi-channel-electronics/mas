@@ -404,7 +404,8 @@ int dsp_state_nfy_rp(int size)
 
 int dsp_retdat_callback(int frame_size, int ticks, int nframes)
 {
-	PRINT_ERR("dsp_retdat_callback: ting-a-ling! %i %i %i\n", frame_size, ticks, nframes);
+	PRINT_ERR("dsp_retdat_callback: ting-a-ling! %i %i %i\n",
+		  frame_size, ticks, nframes);
 
 	// If this is a stop, kill the timer
 	if (frame_size < 0) {
@@ -433,10 +434,6 @@ void dsp_timer_function(unsigned long arg)
 	if (new_frames > state->n_frames) new_frames = state->n_frames;
 
 	state->n_frames -= new_frames;
-	PRINT_ERR("blip! %i\n", state->n_frames);
-
-	PRINT_ERR("qt: %i %i %i\n", dsp_state.qt_data.size,
-		  dsp_state.qt_data.inform,  dsp_state.qt_data.size);
 
 	for (; new_frames > 0; new_frames--) {
 		if ((state->qt_data.head + 1) % state->qt_data.number == state->qt_data.tail) {
@@ -459,8 +456,8 @@ void dsp_timer_function(unsigned long arg)
 
 	if (state->n_frames > 0) {
 		int delta = state->delta_jiffies;
-		if (state->n_frames < state->qt_data.inform) {
-			delta = delta * state->qt_data.inform / state->n_frames;
+		if (state->n_frames < state->delta_frames) {
+			delta = delta * state->delta_frames / state->n_frames;
 		}
 		if (delta <= 0) delta = 1;
 		state->timer.expires = jiffies + delta;
