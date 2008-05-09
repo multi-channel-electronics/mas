@@ -46,10 +46,6 @@ int frame_callback(unsigned user_data, int size, u32 *data)
 	       c->data_size * sizeof(data[0]));
 
 	c->count ++;
-
-	// Print the first two words of each frame as it comes in
-	printf("Frame %3i :  %08x %08x\n",
-	       c->count, data[0], data[1]);
 	return 0;
 }
 
