@@ -28,6 +28,7 @@ typedef struct {
 	int count;
 	int header_offset;
 	int data_size;
+	int max_frames;
 } raw_data_t;
 
 
@@ -93,13 +94,14 @@ int main(int argc, char **argv)
 {
 	int err = 0;
 	char card_str[] = "rcx";
+	char *filename = NULL;
 	int card = 0;
 	mce_context_t *mce = mce_connect();
 
 	if (mce == NULL) exit(1);
 	
-	if (argc >= 2 && strlen(argv[1])==1)
-		card_str[2] = argv[1][0];
+	if (argc >= 3 && strlen(argv[2])==1)
+		card_str[2] = argv[2][0];
 
 	switch(card_str[2]) {
 	case '1':
@@ -117,9 +119,11 @@ int main(int argc, char **argv)
 	}
 
 	if (card == 0) {
-		printf("Usage: %s <card>\n\nwhere card is 1 2 3 or 4.\n", argv[0]);
+		printf("Usage: %s <filename> <card>\n\nwhere card is 1 2 3 or 4.\n", argv[0]);
+		printf("You should probably be running this from some kind of script...\n");
 		exit(1);
 	}
+	filename = argv[1];
 
 	/* Lookups */
 	mce_param_t p_row_len, p_num_rows, p_num_rows_reported, p_ret_dat_s, p_data_mode, p_captr_raw;
@@ -131,7 +135,7 @@ int main(int argc, char **argv)
 	err |= mcecmd_load_param(mce, &p_data_mode, card_str, "data_mode");
 	err |= mcecmd_load_param(mce, &p_captr_raw, card_str, "captr_raw");
 	if (err) {
-		printf("Lookups failes!\n");
+		printf("Lookups failed!\n");
 		exit(1);
 	}
 
@@ -153,10 +157,15 @@ int main(int argc, char **argv)
 	// Our callback will update the counter in this structure
 	raw_data_t raw_data;
 
-	// Store frame size, in u32
+	// There are row_len readout frames per internal MCE cycle,
+	// and up to 2 internal frames in the dump.
+	int n_internal = 2;
+
+	// Configure local acq data structure.
+	raw_data.max_frames = (int)row_len * n_internal;
 	raw_data.data_size = NCOLS*num_rows;
 	raw_data.header_offset = HEADER_SIZE;
-	raw_data.raw_data = (u32*)malloc(raw_data.data_size * row_len * sizeof(u32));
+	raw_data.raw_data = (u32*)malloc(raw_data.data_size * raw_data.max_frames * sizeof(u32));
 	raw_data.count = 0;
 
 	// Storage object calls our callback.
@@ -175,14 +184,14 @@ int main(int argc, char **argv)
 	temp[0] = 1;
 	mcecmd_write_block(mce, &p_captr_raw, 1, temp);
 
-	// Acquire the raw data.  There are row_len frames.
-	mcedata_acq_go(&acq, (int)row_len);
+	// Acquire the raw data.
+	mcedata_acq_go(&acq, raw_data.max_frames);
 
 	// Write out the data
-	FILE *fout = fopen("raw_out", "w");
+	FILE *fout = fopen(filename, "w");
 	u32 *buf = (u32*)malloc((HEADER_SIZE + raw_data.data_size + 1) * sizeof(u32));
 
-	for (int i=0; i<row_len; i++) {
+	for (int i=0; i<raw_data.max_frames; i++) {
 		raw_data.header[1] = i;
 		memcpy(buf, raw_data.header, HEADER_SIZE*sizeof(u32));
 		for (int j=0; j<num_rows; j++) {
