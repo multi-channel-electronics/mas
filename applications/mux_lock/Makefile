@@ -48,8 +48,10 @@ clean:	tidy
 # Make the install__*servo rules
 INSTALL_TARGET=sq1servo
 include $(MAKERULES)Makefile.install_rule
+INSTALL_TARGET=sq1servo_all
+include $(MAKERULES)Makefile.install_rule
 INSTALL_TARGET=sq2servo
 include $(MAKERULES)Makefile.install_rule
 
-install: install__sq1servo install__sq2servo
+install: install__sq1servo install__sq1servo_all install__sq2servo
 
