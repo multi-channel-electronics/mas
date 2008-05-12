@@ -11,6 +11,7 @@
 "  -m <mas config>        choose a particular mce config file\n"\
 "  -o <output directory>  destination folder for output\n"\
 "  -f <output filename>   filename for output (stdout by default)\n"\
+"  -s                     snapshot style, civilized output\n"\
 "  -g                     dump parameter mapping\n"\
 "\n"\
 "  -v                     print version string and exit\n"\
@@ -19,7 +20,7 @@
 int process_options(options_t* options, int argc, char **argv)
 {
 	int option;
-	while ( (option = getopt(argc, argv, "?hd:c:m:o:f:gv")) >=0) {
+	while ( (option = getopt(argc, argv, "?hd:c:m:o:f:gvs")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -50,6 +51,10 @@ int process_options(options_t* options, int argc, char **argv)
 
 		case 'g':
 			options->mode = CRAWLER_CFG;
+			break;
+
+		case 's':
+			options->mode = CRAWLER_MAS;
 			break;
 
 		case 'v':

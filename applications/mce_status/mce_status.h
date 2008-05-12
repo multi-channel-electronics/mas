@@ -7,6 +7,7 @@
 
 
 enum { CRAWLER_DAS = 0,
+       CRAWLER_MAS,
        CRAWLER_CFG };
 
 

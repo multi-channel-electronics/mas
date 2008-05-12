@@ -90,10 +90,10 @@ int main ( int argc, char **argv )
 
    /* Define default MAS options */
    option_t options = {
-     config_file:   MASCONFIG_FILE,
-     cmd_device:    CMD_DEVICE,
-     data_device:   DATA_DEVICE,
-     hardware_file: HARDWARE_FILE,
+     config_file:   DEFAULT_MASFILE,
+     cmd_device:    DEFAULT_CMDFILE,
+     data_device:   DEFAULT_DATAFILE,
+     hardware_file: DEFAULT_HARDWAREFILE,
    };
    int arg_offset = 0;
    
@@ -193,16 +193,6 @@ int main ( int argc, char **argv )
      ERRPRINT(errmsg_temp);
      return ERR_MCE_RB;
    }
-   // Pick a card (won't work for rcs!!)
-   int cards=(1<<(which_rc-1));
-   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
-   mce_acq_t acq;
-   error = mcedata_acq_setup(&acq, mce, 0, cards, (int) nrows_rep);
-   if (error != 0) {
-     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_GO;
-   }
 
    // Our callback will update the counter in this structure
    servo_t sq1servo;
@@ -210,8 +200,20 @@ int main ( int argc, char **argv )
    sq1servo.which_rc=which_rc;
 
    // setup a call back function
-   mcedata_rambuff_create(&acq, frame_callback, (unsigned) &sq1servo);
+   mcedata_storage_t* ramb;
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned) &sq1servo);
    
+   // Pick a card (won't work for rcs!!)
+   int cards=(1<<(which_rc-1));
+   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
+   mce_acq_t acq;
+   error = mcedata_acq_create(&acq, mce, 0, cards, (int) nrows_rep, ramb);
+   if (error != 0) {
+     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
+     ERRPRINT(errmsg_temp);
+     return ERR_MCE_GO;
+   }
+
    if ( (datadir=getenv("MAS_DATA")) == NULL){
      ERRPRINT("Enviro var. $MAS_DATA not set, quit");
      return ERR_DATA_DIR;
@@ -309,7 +311,8 @@ int main ( int argc, char **argv )
 
 	if (biasing_ac) {
 	  for (snum=0; snum<MAXCHANNELS; snum++) {
-	    duplicate_fill( sq2fb[snum+soffset], temparr, MAXROWS );
+	    duplicate_fill( 0, temparr, MAXROWS );
+	    temparr[sq1servo.row_num[snum+soffset]] =  sq2fb[snum+soffset];
 	    write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");
 	  }
 	} else {

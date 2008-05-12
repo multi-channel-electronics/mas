@@ -1,7 +1,7 @@
 #ifndef _DSP_PCI_H_
 #define _DSP_PCI_H_
 
-#include <dsp.h>
+#include "mce/dsp.h"
 
 
 /* PCI DMA alignment */

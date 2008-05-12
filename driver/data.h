@@ -34,7 +34,7 @@
 #include <linux/interrupt.h>
 
 #include "kversion.h"
-#include "data_ioctl.h"
+#include "mce/data_ioctl.h"
 #include "data_qt.h"
 
 
@@ -43,20 +43,16 @@
 
 typedef struct {
 
-	void*     bigphys_base;
-	
-	// High level parameters; buffer address is
-        //  base + frame_size*index
-        // with index <= max_index.
-        // Actual size of data content is data_size (<= frame_size)
+	// Buffer addresses are, for 0 <= i < max_index,
+        //  addr[i] = base + frame_size*i
+	// But each buffer contains only data_size bytes of real data.
 
 	void*     base;
+	u32       size;
+
 	int       frame_size;
 	int       data_size;
         int       max_index;
-
-	// Data mode of the DSP
-	unsigned  data_mode;
 
         // New data is written at head, consumer data is read at tail.
 	volatile
@@ -64,14 +60,15 @@ typedef struct {
 	volatile
 	int       tail_index;
 
+	// Data mode of the DSP - DATAMODE_*
+	unsigned  data_mode;
+
 	// If frame at tail_index has been only partially consumed, 
 	//  partial will indicate the current index into the buffer.
 	int       partial;
 
 	// Low level equivalent information
 	caddr_t   base_busaddr;
-	caddr_t   top_busaddr;
-	u32       incr; // = frame_size
 	
 	// Semaphore should be held when modifying structure, but
 	// interrupt routines may modify head_index if DATA_GO flag is
@@ -116,9 +113,10 @@ void data_report(void);
 int  data_frame_address(u32 *dest);
 int  data_frame_increment(void);
 int  data_frame_contribute(int count);
+int  data_frame_divide(int new_data_size);
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count);
+		    int count, int nonblock);
 int data_frame_fake_stop( void );
 
 int data_frame_resize(int size);

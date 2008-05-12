@@ -2,8 +2,8 @@
 #define _MCE_DRIVER_H
 
 #include "kversion.h"
-#include <dsp.h>
-#include <mce.h>
+#include "mce/dsp.h"
+#include "mce/types.h"
 
 
 #define MCEDEV_NAME "mce_cmd"

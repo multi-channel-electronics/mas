@@ -10,7 +10,7 @@ clean:
 	make -C interfaces   clean
 	make -C applications clean
 
-install:
+install: sub-dirs
 	cd driver; make install
 	make -C include      install
 	make -C interfaces   install

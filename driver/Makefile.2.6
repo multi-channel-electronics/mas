@@ -19,7 +19,7 @@ else # we are in the kernel source tree
 
 #Add our CFLAGS to existing ones.  Don't replace CFLAGS.
 
-CFLAGS += $(MY_CFLAGS) $(INCLUDES) $(DEFS) $(LIBS)
+EXTRA_CFLAGS += $(MY_CFLAGS) $(INCLUDES) $(DEFS) $(LIBS)
 
 $(DRIVER_NAME)-objs := $(SOURCE_OBJ)
 
@@ -29,7 +29,7 @@ endif #KERNELRELEASE
 
 
 depend .depend dep:
-	$(CC) $(CFLAGS) -M *.c > .depend
+	$(CC) $(EXTRA_CFLAGS) -M *.c > .depend
 
 ifeq (.depend,$(wildcard .depend))
 include .depend

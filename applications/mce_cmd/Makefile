@@ -5,14 +5,15 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-DEFS += -DVERSION_STRING="$(REPO_VER)"
+include $(MAKERULES)Makefile.defaults
+DEFS += -DVERSION_STRING="$(REPO_VER)" $(CONFIGFILE_DEFS)
 
 INCLUDE=-I$(MAS_INCLUDE_F)
 
 LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 	-L$(LOGLIB_F) -l$(LOGLIB) \
 	$(MASMISC_F)cmdtree.o \
-	-lpthread -lconfig 
+	-lpthread -lconfig -lreadline
 
 CFLAGS += $(INCLUDE) -Wall $(DEFS)
 
@@ -20,6 +21,7 @@ CC=gcc
 
 # targets
 
+OBJECTS = mce_cmd.o options.o
 HEADERS = options.h cmd.h
 
 all: mce_cmd
@@ -27,7 +29,7 @@ all: mce_cmd
 mce_cmd: mce_cmd.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-.c.o: 	$(HEADERS)
+$(OBJECTS): $(HEADERS)
 
 tidy:
 	-rm *~ *.o

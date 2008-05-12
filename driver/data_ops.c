@@ -27,32 +27,66 @@
 
 #define SUBNAME "data_read: "
 
+/* Non-blocking behaviour: return -EAGAIN if we can't get the
+ * semaphore.  Return 0 if no data is available.  Otherwise, copy as
+ * much data as you can and return the count.
+ *
+ * Blocking behaviour: block for the semaphore.  If data is available,
+ * copy as much as you can and return it.  If data is not available,
+ * block for availability; once available, copy as much as possible
+ * and exit.  (This will always block for a single frame but never
+ * hang if the requested buffer size exceeds the data size.)  This
+ * method calls back the reader in quiet periods and keeps buffers
+ * flushed and stuff like that.
+ */
+
+
 ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
 	int read_count = 0;
+	int this_read = 0;
 
 	if (filp->f_flags & O_NONBLOCK) {
 		if (down_trylock(&frames.sem))
 			return -EAGAIN;
-		if (!data_frame_poll()) {
-			up(&frames.sem);
-			return -EAGAIN;
-		}
 	} else {
 		if (down_interruptible(&frames.sem))
 			return -ERESTARTSYS;
 	}
 
-	PRINT_INFO(SUBNAME "local sem obtained, calling data_copy\n");
+	PRINT_INFO(SUBNAME "user demands %i with nonblock=%i\n",
+		   count, filp->f_flags & O_NONBLOCK);
 
-	read_count = data_copy_frame(buf, NULL, count);
+	while (count > 0) {
+		
+		// Pop count bytes from frame buffer; data_copy frame
+		// will return at most 1 frame of data.
+		this_read = data_copy_frame(buf, NULL, count, 0);
+
+		if (this_read < 0) {
+			// On error, exit with the current count.
+			break;
+		} else if (this_read == 0) {
+			// Buffer is empty, for now, so unless we
+			// haven't copied any bytes yet or we're
+			// O_NONBLOCK, exit back to the user.
+			if (filp->f_flags & O_NONBLOCK || read_count > 0)
+				break;
+			if (wait_event_interruptible(
+				    frames.queue,
+				    (frames.flags & FRAME_ERR) ||
+				    (frames.tail_index
+				     != frames.head_index)))
+				return -ERESTARTSYS;
+		} else {
+			// Update counts and read again.
+			read_count += this_read;
+			count -= this_read;
+		}
+	}
 
 	up(&frames.sem);
-
-	if (read_count<0)
-		return 0;
-
 	return read_count;
 }
 

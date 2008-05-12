@@ -9,14 +9,16 @@
 #include <sys/ioctl.h>
 
 #include <mce_library.h>
-#include "data_ioctl.h"
+#include <mce/data_ioctl.h>
 
-#include "frame.h"
 #include "data_thread.h"
+#include "frame_manip.h"
 
 /* #define LOG_LEVEL_CMD     LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_OK  LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_ER  LOGGER_INFO */
+
+#define FRAME_USLEEP 1000
 
 
 // We'll have to generalize this if the frame structure ever changes.
@@ -30,95 +32,135 @@ static int copy_frames(mce_acq_t *acq);
 
 static int set_n_frames(mce_acq_t *acq, int n_frames);
 
+static int get_n_frames(mce_acq_t *acq);
+
 static int card_count(int cards);
 
 static int load_ret_dat(mce_acq_t *acq);
 
-
-int mcedata_acq_setup(mce_acq_t *acq, mce_context_t* context,
-		      int options, int cards, int rows_reported)
+int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
+		       int options, int cards, int rows_reported,
+		       mcedata_storage_t *storage)
 {
 	int ret_val = 0;
 	int n_cards = card_count(cards);
+	mce_param_t para;
+	u32 datum;
 
 	// Zero the structure!
 	memset(acq, 0, sizeof(*acq));
 
-	if (n_cards <= 0) {
-		fprintf(stdout, "Invalid card selection\n");
-		return -1;
+	if ((ret_val=mcecmd_load_param(context, &para, "cc", "num_rows_reported")) != 0)
+		return ret_val;
+
+	// If rows_reported is passed as negative, use the existing value.
+	if (rows_reported < 0) {
+		if (mcecmd_read_block(context, &para, 1, &datum) != 0)
+			return -MCE_ERR_FRAME_ROWS;
+		rows_reported = (int)datum;
+	} else {
+		datum = (u32)rows_reported;
+		if (mcecmd_write_block(context, &para, 1, &datum) != 0)
+			return -MCE_ERR_FRAME_ROWS;
 	}
 
+	// Save frame size and other options
 	acq->frame_size = rows_reported * FRAME_COLUMNS * n_cards + 
 		FRAME_HEADER + FRAME_FOOTER;
 	acq->cards = cards;
 	acq->options = options;
 	acq->context = context;
+	acq->storage = storage;
+	acq->rows = rows_reported;
 
+	// Lookup "rc# ret_dat" (go address) location or fail.
+	if (load_ret_dat(acq) != 0)
+		return -MCE_ERR_FRAME_CARD;
+	
+	// Lookup "cc ret_data_s" (frame count) or fail
+	if ((ret_val=mcecmd_load_param(
+		     acq->context, &acq->ret_dat_s, "cc", "ret_dat_s")) != 0) {
+/* 		fprintf(stderr, "Could not load 'cc ret_dat_s'\n"); */
+		return ret_val;
+	}
+	
 	// Set frame size in driver.
 	ret_val = mcedata_set_datasize(acq->context,
 				       acq->frame_size * sizeof(u32));
 	if (ret_val != 0) {
  		fprintf(stdout, "Could not set data size [%i]\n", ret_val);
-		return -1;
+		return -MCE_ERR_FRAME_SIZE;
 	}
+
+	if (acq->storage->init != NULL && acq->storage->init(acq) != 0) {
+		fprintf(stdout, "Storage init action failed.\n");
+		return -MCE_ERR_FRAME_OUTPUT;
+	}
+
+	acq->ready = 1;
 	return 0;
 }
 
+int mcedata_acq_destroy(mce_acq_t *acq)
+{
+	if (acq->storage->cleanup != NULL && acq->storage->cleanup(acq) != 0) {
+		fprintf(stdout, "Storage init action failed.\n");
+		return -MCE_ERR_FRAME_OUTPUT;
+	}
+
+	acq->storage = mcedata_storage_destroy(acq->storage);
+
+	return 0;
+}
 
 int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 {
 	int ret_val = 0;
 
+	// Assertion
+	if (acq==NULL || !acq->ready) {
+		fprintf(stderr, "mcedata_acq_go: acq structure null or not ready!\n");
+		return -MCE_ERR_FRAME_UNKNOWN;
+	}			
+
+	// Does checking / setting ret_dat_s really slow us down?
+	if (n_frames < 0) {
+		n_frames = get_n_frames(acq);
+		if (n_frames <= 0) return -MCE_ERR_FRAME_COUNT;
+	}
+
 	// Check if ret_dat_s needs changing...
 	if ( n_frames != acq->last_n_frames || acq->last_n_frames <= 0 ) {
 		ret_val = set_n_frames(acq, n_frames);
-		if (ret_val != 0) {
-			fprintf(stderr,
-				"Could not set ret_dat_s! [%#x]\n", ret_val);
-			return -1;
-		}
+		if (ret_val != 0)
+			return -MCE_ERR_FRAME_COUNT;
 	}
 
-	if (!acq->know_ret_dat && (ret_val = load_ret_dat(acq)) != 0)
-		return ret_val;
-		
-	ret_val =
-		mcecmd_start_application(acq->context, &acq->ret_dat);
+	// Issue the MCE 'GO' command.
+	ret_val = mcecmd_start_application(acq->context, &acq->ret_dat);
+	if (ret_val != 0) return ret_val;
 
-	if (ret_val != 0) {
-		fprintf(stderr, "Could not set ret_dat_s! [%#x]\n", ret_val);
-		return -1;
-	}
-
+	// Launch the data thread, or just block for data.
 	acq->n_frames = n_frames;
 
 	if (acq->options & MCEDATA_THREAD) {
-
 		data_thread_t d;
 		d.state = MCETHREAD_IDLE;
 		d.acq = acq;
-		if (data_thread_launcher(&d)) {
-			fprintf(stderr, "Thread launch failure\n");
-			return -1;
-		}
+		if ((ret_val=data_thread_launcher(&d)) != 0)
+			return ret_val;
 
 		while (d.state != MCETHREAD_IDLE) {
-			printf("thread state = %i\n", d.state);
-			sleep(1);
+/* 			printf("thread state = %i\n", d.state); */
+			usleep(FRAME_USLEEP);
 		}
 
 	} else {
 		/* Block for frames, and return */
-		
 		ret_val = copy_frames(acq);
-		if (ret_val != n_frames) {
-			fprintf(stderr, "Data write wanted %i frames and got %i\n",
-				acq->n_frames, ret_val);
-		}
 	}
 
-	return 0;
+	return ret_val;
 }
 
 
@@ -129,19 +171,10 @@ static int set_n_frames(mce_acq_t *acq, int n_frames)
 {
 	int ret_val;
 	u32 args[2];
-	acq->know_ret_dat_s = acq->know_ret_dat_s || 
-		(mcecmd_load_param(acq->context,
-				&acq->ret_dat_s, "cc", "ret_dat_s")==0);
 
-	if (!acq->know_ret_dat_s) {
-		fprintf(stderr, "Could not load 'cc ret_dat_s'\n");
-		return -MCE_ERR_XML;
-	}
-	
 	args[0] = 0;
 	args[1] = n_frames - 1;
-	ret_val = mcecmd_write_block(acq->context,
-				  &acq->ret_dat_s, 2, args);
+	ret_val = mcecmd_write_block(acq->context, &acq->ret_dat_s, 2, args);
 	if (ret_val != 0) {
 		fprintf(stderr, "Could not set ret_dat_s! [%#x]\n", ret_val);
 		acq->last_n_frames = -1;
@@ -159,33 +192,41 @@ static int set_n_frames(mce_acq_t *acq, int n_frames)
 }
 
 
-int load_ret_dat(mce_acq_t *acq)
+static int get_n_frames(mce_acq_t *acq)
 {
-	// Start acquisition
-	switch (acq->cards) {
-	case MCEDATA_RC1:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rc1", "ret_dat");
-		break;
-	case MCEDATA_RC2:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rc2", "ret_dat");
-		break;
-	case MCEDATA_RC3:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rc3", "ret_dat");
-		break;
-	case MCEDATA_RC4:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rc4", "ret_dat");
-		break;
-	case MCEDATA_RCS:
-		mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
-		break;
-	default:
-		fprintf(stderr, "Invalid card set selection [%#x]\n",
-			acq->cards);
+	int ret_val;
+	u32 args[2];
+	ret_val = mcecmd_read_block(acq->context, &acq->ret_dat_s, 2, args);
+	if (ret_val != 0) {
+		fprintf(stderr, "Error reading ret_dat_s: '%s'",
+			mcelib_error_string(ret_val));
 		return -1;
 	}
+	return args[1] - args[0] + 1;
+}
 
-	acq->know_ret_dat = 1;
-	return 0;
+
+int load_ret_dat(mce_acq_t *acq)
+{
+	/* Return value is non-zero on error, but is not an mcelib error code! */
+
+	// Lookup the go command location for the specified card set.
+	switch (acq->cards) {
+	case MCEDATA_RC1:
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc1", "ret_dat");
+	case MCEDATA_RC2:
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc2", "ret_dat");
+	case MCEDATA_RC3:
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc3", "ret_dat");
+	case MCEDATA_RC4:
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc4", "ret_dat");
+	case MCEDATA_RCS:
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
+	}
+
+	fprintf(stderr, "Invalid card set selection [%#x]\n",
+		acq->cards);
+	return -1;
 }
 
 
@@ -196,17 +237,22 @@ int copy_frames(mce_acq_t *acq)
 	int count = 0;
 	int index = 0;
 	u32 *data = malloc(acq->frame_size * sizeof(*data));
+
+	int waits = 0;
+	int max_waits = 1000;
 	
+	acq->n_frames_complete = 0;
+
 	if (data==NULL) {
 		fprintf(stderr, "Could not allocate frame buffer of size %i\n",
 			acq->frame_size);
-		return -1;
+		return -MCE_ERR_FRAME_SIZE;
 	}
 
 	while (!done) {
 
-		if (acq->actions.pre_frame != NULL &&
-		    acq->actions.pre_frame(acq)) {
+		if (acq->storage->pre_frame != NULL &&
+		    acq->storage->pre_frame(acq) != 0) {
 				fprintf(stderr, "pre_frame action failed\n");
 		}
 	
@@ -216,6 +262,9 @@ int copy_frames(mce_acq_t *acq)
 		if (ret_val<0) {
 			if (errno==EAGAIN) {
 				usleep(1000);
+				waits++;
+				if (waits >= max_waits)
+					done = EXIT_TIMEOUT;
 			} else {
 				// Error: clear rest of frame and quit
 				fprintf(stderr,
@@ -227,8 +276,10 @@ int copy_frames(mce_acq_t *acq)
 			}
 		} else if (ret_val==0) {
 			done = EXIT_EOF;
-		} else
+		} else {
 			index += ret_val;
+			waits = 0;
+		}
 
 		// Only dump complete frames to disk
 		if (index < acq->frame_size*sizeof(*data))
@@ -237,17 +288,50 @@ int copy_frames(mce_acq_t *acq)
 		// Logical formatting
 		sort_columns( acq, data );
 
-		if ( (acq->actions.post_frame != NULL) &&
-		     acq->actions.post_frame( acq, count, data ) ) {
+		if ( (acq->storage->post_frame != NULL) &&
+		     acq->storage->post_frame( acq, count, data ) ) {
 			fprintf(stderr, "post_frame action failed\n");
 		}
 
 		index = 0;
 		if (++count >= acq->n_frames)
 			done = EXIT_COUNT;
+
+		if (frame_property(data, &frame_header_v6, status_v6)
+		    & FRAME_STATUS_V6_STOP)
+			done = EXIT_STOP;
+
+		if (frame_property(data, &frame_header_v6, status_v6)
+		    & FRAME_STATUS_V6_LAST)
+			done = EXIT_LAST;
 	}
 
-	return count;
+	switch (done) {
+	case EXIT_COUNT:
+	case EXIT_LAST:
+		acq->status = MCEDATA_IDLE;
+		break;
+
+	case EXIT_TIMEOUT:
+		acq->status = MCEDATA_TIMEOUT;
+		break;
+
+	case EXIT_STOP:
+		acq->status = MCEDATA_STOP;
+		break;
+		
+	case EXIT_READ:
+	case EXIT_WRITE:
+	case EXIT_EOF:
+	default:
+		acq->status = MCEDATA_ERROR;
+		break;
+	}
+
+	acq->n_frames_complete = count;
+
+	free(data);
+	return 0;
 }
 
 int card_count(int cards)

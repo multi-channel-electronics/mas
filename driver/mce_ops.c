@@ -9,8 +9,8 @@
 
 #include "mce_ops.h"
 #include "mce_driver.h"
-#include "mce_ioctl.h"
-#include "mce_errors.h"
+#include "mce/mce_ioctl.h"
+#include "mce/mce_errors.h"
 
 struct file_operations mce_fops = 
 {
@@ -41,6 +41,8 @@ struct mce_ops_t {
 
 	mce_reply   rep;
 	mce_command cmd;
+
+	int properties; /* accessed through MCEDEV_IOCT_GET / SET */
 
 } mce_ops;
 
@@ -318,6 +320,13 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 		mce_ops.error = 0;
 		return x;
 
+	case MCEDEV_IOCT_GET:
+		return mce_ops.properties;
+		
+	case MCEDEV_IOCT_SET:
+		mce_ops.properties = (int)arg;
+		return 0;
+		
 	default:
 		PRINT_ERR("ioctl: unknown command (%#x)\n", iocmd );
 	}
@@ -338,6 +347,14 @@ int mce_open(struct inode *inode, struct file *filp)
 int mce_release(struct inode *inode, struct file *filp)
 {
 	PRINT_INFO("mce_release\n");
+
+	// Re-idle the state so subsequent commands don't (necessarily) fail
+
+	if ((mce_ops.properties & MCEDEV_CLOSE_CLEANLY) && mce_ops.state == OPS_CMD) {
+		PRINT_ERR("mce_release: closure forced, setting state to idle.\n");
+		mce_ops.state = OPS_IDLE;
+	}
+
 	return 0;
 }
 

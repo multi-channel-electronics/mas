@@ -1,10 +1,11 @@
 #ifndef _DATA_QT_H_
 #define _DATA_QT_H_
 
-#include "dsp.h"
+#include "mce/dsp.h"
 
+#define DSP_INTERNAL_FREQ  50e6
 #define DSP_INFORM_RATE    10 /* Hz */
-#define DSP_INFORM_COUNTS  (50000000 / DSP_INFORM_RATE) 
+#define DSP_INFORM_COUNTS  (DSP_INTERNAL_FREQ / DSP_INFORM_RATE) 
 
 int  mce_qti_handler ( dsp_message *msg, unsigned long data );
 

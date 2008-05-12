@@ -36,6 +36,17 @@
 #define MCE_ERR_INT_PROTO       (MCE_ERR_BASE + 0x0024)
 #define MCE_ERR_INT_SURPRISE    (MCE_ERR_BASE + 0x0025)
 
+/* Acquisition system errors */
+#define MCE_ERR_FRAME_UNKNOWN   (MCE_ERR_BASE + 0x0030)
+#define MCE_ERR_FRAME_TIMEOUT   (MCE_ERR_BASE + 0x0031)
+#define MCE_ERR_FRAME_STOP      (MCE_ERR_BASE + 0x0032)
+#define MCE_ERR_FRAME_LAST      (MCE_ERR_BASE + 0x0033)
+#define MCE_ERR_FRAME_DEVICE    (MCE_ERR_BASE + 0x0034)
+#define MCE_ERR_FRAME_OUTPUT    (MCE_ERR_BASE + 0x0035)
+#define MCE_ERR_FRAME_CARD      (MCE_ERR_BASE + 0x0036)
+#define MCE_ERR_FRAME_SIZE      (MCE_ERR_BASE + 0x0037)
+#define MCE_ERR_FRAME_COUNT     (MCE_ERR_BASE + 0x0038)
+#define MCE_ERR_FRAME_ROWS      (MCE_ERR_BASE + 0x0039)
 
 /* #define MCE_ERR_                MCE_ERR_BASE + 0x0001 */
 

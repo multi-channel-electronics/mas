@@ -16,12 +16,13 @@
 
 #include "mce_status.h"
 #include "das.h"
+#include "mas.h"
 #include "cfg_dump.h"
 
 options_t options = {
-	device_file:   "/dev/mce_cmd0",
-	config_file:   "/etc/mce/mas.cfg",
-	hardware_file: "/etc/mce/mce.cfg",
+        device_file:   DEFAULT_CMDFILE,
+	config_file:   DEFAULT_MASFILE,
+	hardware_file: DEFAULT_HARDWAREFILE,
 	mode:          CRAWLER_DAS,
 };
 
@@ -71,6 +72,10 @@ int main(int argc, char **argv)
 
 	case CRAWLER_DAS:
 		das_crawler(&options, &crawler);
+		break;
+
+	case CRAWLER_MAS:
+		mas_crawler(&options, &crawler);
 		break;
 
 	case CRAWLER_CFG:

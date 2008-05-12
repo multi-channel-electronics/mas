@@ -2,7 +2,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
-#include "socks.h"
+#include "mce/socks.h"
 #include <libconfig.h>
 
 #include "libmaslog.h"

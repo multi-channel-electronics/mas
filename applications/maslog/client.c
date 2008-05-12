@@ -26,13 +26,13 @@ int main(int argc, char **argv) {
 	char *line = (char*)malloc(LINE);
 
 	while (!feof(stdin) ) {
-		int nin = LINE-1;
+		size_t nin = LINE-1;
 		int nout = getline(&line, &nin, stdin);
 		if (nout>0) {
 			if (line[nout]!=0) line[nout]=0;
 			if (line[nout-1]=='\n')
 				line[--nout]=0;
-			int send_err =logger_print(&logger, line);
+			logger_print(&logger, line);
 		}
 	}
 

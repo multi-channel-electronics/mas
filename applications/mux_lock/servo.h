@@ -3,11 +3,6 @@
 
 #include "options.h"
 
-#define MASCONFIG_FILE "/etc/mce/mas.cfg"
-#define CMD_DEVICE "/dev/mce_cmd0"
-#define DATA_DEVICE "/dev/mce_data0"
-#define HARDWARE_FILE "/etc/mce/mce.cfg"
-
 #define HEADER_OFFSET 43
 
 #define MAXLINE 1024
@@ -30,7 +25,11 @@ typedef struct {
   int fcount;
   int row_num[MAXVOLTS];
   int row_data[MAXVOLTS];
+  u32 last_header[HEADER_OFFSET];
+  u32 last_frame[MAXVOLTS*MAXROWS];
   int which_rc;
+  int num_rows;
+    
   FILE *df;
 }servo_t;
 

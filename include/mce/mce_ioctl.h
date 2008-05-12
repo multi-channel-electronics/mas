@@ -17,4 +17,11 @@
 
 #define MCEDEV_IOCT_LAST_ERROR        _IO(MCEDEV_IOC_MAGIC,  4)
 
+#define MCEDEV_IOCT_GET               _IO(MCEDEV_IOC_MAGIC,  5)
+
+#define MCEDEV_IOCT_SET               _IO(MCEDEV_IOC_MAGIC,  6)
+
+/* Flags for MCEDEV_IOCT_SET */
+#define MCEDEV_CLOSE_CLEANLY      (1 <<  0)
+
 #endif
