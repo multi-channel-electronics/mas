@@ -58,6 +58,9 @@ struct dsp_dev_t {
 
 	irq_handler_t int_handler;
 
+	int ints_good;
+	int ints_bad;
+
 };
 
 

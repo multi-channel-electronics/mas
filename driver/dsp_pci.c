@@ -128,6 +128,13 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	if (dev_id != dev) return IRQ_NONE;
 #endif
 
+	//Ignore spurious interrupts (hack to protect against crazy NICs)
+	if (!(dsp_read_hstr(dsp) & HSTR_HRRQ)) {
+		dev->ints_bad++;
+		return IRQ_NONE;
+	}
+	dev->ints_good++;
+
 	// Immediately clear interrupt bit
 	dsp_write_hcvr(dsp, HCVR_INT_RST);
 
@@ -408,6 +415,8 @@ int dsp_pci_init(char *dev_name)
 	int err = 0;
 	PRINT_INFO(SUBNAME "entry\n");
 
+	dev->ints_good = 0;
+	dev->ints_bad = 0;
 	dev->int_handler = NULL;
 
 #ifdef OLD_KERNEL
@@ -537,10 +546,15 @@ int dsp_pci_proc(char *buf, int count)
 {
 	int len = 0;
 	if (len < count) {
-		len += sprintf(buf+len, "    hstr:     %#06x\n"
-			                "    hctr:     %#06x\n",
+		len += sprintf(buf+len, "    hstr:       %#08x\n"
+			                "    hctr:       %#08x\n",
 			       dsp_read_hstr(dev->dsp),
 			       dsp_read_hctr(dev->dsp));
+	}
+	if (len < count) {
+		len += sprintf(buf+len, "    good ints: %9d\n"
+	    		                "    bad ints:  %9d\n",
+			       dev->ints_good, dev->ints_bad);
 	}
 	
 	return len;

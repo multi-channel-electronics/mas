@@ -392,13 +392,13 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 	//Debug
 	PRINT_INFO(SUBNAME "buffer: base=%x + %x gives %x of size %x\n",
 		   (int)frames.base, 
-		   (int)(frames.mem_size), 
+		   (int)(mem_size), 
 		   frames.max_index,
 		   (int)frames.frame_size);
 	
 	PRINT_INFO(SUBNAME "buffer: bus %x to %x, incr %x; borrowed_bus=%x\n",
 		   (int)frames.base_busaddr, 
-		   (int)frames.base_busaddr + frames.mem_size,
+		   (int)frames.base_busaddr + mem_size,
 		   (int)(borrower_p));
 	
 	return borrower_p;
