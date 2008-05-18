@@ -52,7 +52,7 @@ int main ( int argc, char **argv )
    char *datadir;
    char safb_initfile[256];      /* filename for safb.init*/
    
-   u32 temparr[MAXVOLTS];
+   u32 temparr[MAXTEMP];    /* This must have at least rows, channels elements */
   
    int i;
    int j;
@@ -62,7 +62,7 @@ int main ( int argc, char **argv )
    FILE *tempf;             /* pointer to safb.init file*/
    char line[MAXLINE]; 
    char init_line[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
-   char tempbuf[30];
+   char tempbuf[MAXLINE];
   
    double gain;             /* servo gain (=P=I) for the 0th calculation of the servo*/
    char *endptr;

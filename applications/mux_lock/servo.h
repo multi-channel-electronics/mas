@@ -14,6 +14,7 @@
 #define MAXVOLTS 32     /* use 32 even on a small subrack! */
 #define MAXCHANNELS 8
 #define MAXROWS 41
+#define MAXTEMP 1024
 
 #define SA_CARD  "sa"
 #define SQ2_CARD "sq2"
