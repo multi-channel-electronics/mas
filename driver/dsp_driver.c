@@ -392,6 +392,7 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
 
 	case DSPDEV_IOCT_CORE:
 	case DSPDEV_IOCT_CORE_IRQ:
+	case DSPDEV_IOCT_CLEAR:
 		return dsp_pci_ioctl(iocmd, arg);
 
 	default:

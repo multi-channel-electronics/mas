@@ -531,6 +531,11 @@ int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg)
 		}
 		break;
 
+	case DSPDEV_IOCT_CLEAR:
+		PRINT_ERR(SUBNAME "issuing system clear\n");
+		dsp_write_hcvr(dev->dsp, HCVR_SYS_RST);
+		return 0;
+
 	default:
 		PRINT_ERR(SUBNAME "I don't handle iocmd=%ui\n", iocmd);
 		return -1;

@@ -399,6 +399,7 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 	PRINT_INFO(SUBNAME "buffer: bus %x to %x, incr %x; borrowed_bus=%x\n",
 		   (int)frames.base_busaddr, 
 		   (int)frames.base_busaddr + mem_size,
+		   (int)frames.frame_size,
 		   (int)(borrower_p));
 	
 	return borrower_p;
