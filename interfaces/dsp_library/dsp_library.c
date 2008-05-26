@@ -223,6 +223,16 @@ int dsp_reset(int handle)
 	return dsp_send_command_now(handle, &cmd);
 }
 
+
+int dsp_clear(int handle)
+{
+	CHECK_HANDLE(handle);
+	CHECK_OPEN(handle);
+  
+	return dsp_ioctl(handle, DSPDEV_IOCT_CLEAR, 0);
+}
+
+
 int dsp_start_application(int handle, int data)
 {
 	CHECK_HANDLE(handle);

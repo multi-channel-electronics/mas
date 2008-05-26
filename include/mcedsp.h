@@ -57,6 +57,8 @@ int dsp_version(int handle);
 
 int dsp_reset(int handle);
 
+int dsp_clear(int handle);
+
 int dsp_start_application(int handle, int data);
 
 int dsp_stop_application(int handle);

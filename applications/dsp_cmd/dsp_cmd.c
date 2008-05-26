@@ -34,6 +34,7 @@ enum {
 	ENUM_COMMAND_HIGH,
 	SPECIAL_COMMENT,
 	SPECIAL_SLEEP,
+	SPECIAL_CLEAR,
 	SPECIAL_RESETFLAGS,
 	DATA
 };
@@ -81,6 +82,7 @@ cmdtree_opt_t root_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RESET"    , 0,0, COMMAND_RST, integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "RESET_MCE", 0,0, COMMAND_RCO, integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "QT_SET"   , 0,-1, COMMAND_QTS, qt_opts},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "CLEAR"    , 0,-1, SPECIAL_CLEAR, NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "#"        , 0,-1, SPECIAL_COMMENT, anything_opts},
 	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
@@ -351,6 +353,11 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		switch( tokens[0].value ) {
 
 		case SPECIAL_COMMENT:
+			break;
+
+		case SPECIAL_CLEAR:
+			dsp_clear(handle);
+			sleep(1);
 			break;
 
 		case SPECIAL_SLEEP:
