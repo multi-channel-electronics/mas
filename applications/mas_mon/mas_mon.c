@@ -1,10 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <mce_library.h>
 
 #define MAX_BARLEN 400
+
+#define MON_LOG     0x01
+#define MON_PRINT   0x02
 
 char *bar(int len, int fill)
 {
@@ -25,6 +30,10 @@ int main()
 	int last_usage = -1;
 	mce_context_t *mce;
 	int barlen = 40;
+	char ts[1024];
+	time_t t;
+
+	int mode_flags = MON_PRINT;
 
 	if ((mce=mcelib_create())==NULL ||
 	    (mcedata_open(mce, DEFAULT_DATAFILE)!=0)) {
@@ -35,10 +44,16 @@ int main()
 	while (1) {
 		mcedata_buffer_query(mce, &head, &tail, &count);
 		int usage = (head - tail + count) % count;
-		if (usage != last_usage)
-			printf("[%4i/%4i] [%s]\n", usage, count, bar(barlen, barlen*usage/count));
-		last_usage = usage;
+		if (usage != last_usage) {
+			t = time(NULL);
+			strcpy(ts, ctime(&t));
+			ts[strlen(ts)-1] = 0;
+			printf("%s [%4i/%4i] [%s]\n",
+			       ts, usage, count, bar(barlen, barlen*usage/count));
+			last_usage = usage;
+		}
 		sleep(1);
 	}
 
+	return 0;
 }
