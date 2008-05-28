@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 500
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -52,7 +54,7 @@ int main()
 			       ts, usage, count, bar(barlen, barlen*usage/count));
 			last_usage = usage;
 		}
-		sleep(1);
+		usleep(100000);
 	}
 
 	return 0;
