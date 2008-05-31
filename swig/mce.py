@@ -22,6 +22,95 @@ class ParamError(Exception):
     def __str__(self):
         return repr(self.value)
 
+class ChannelSet:
+    """
+    Defines a set of channels and offers information to Mce class on
+    how to acquire them.
+    """
+    def __init__(self, rc=''):
+
+        self.use_readout_index = False
+
+        self.has_list = False
+        self.channel_list = [[],[]]
+        self.rows = range(41)
+
+        if rc != '':
+            self.columns = self.columns_from_cards(self.cards_from_list([ rc ]))
+        else:
+            self.columns = range(32)
+
+    def cards_span(self):
+        """
+        Returns card_bits for acq necessary to acquire the ChannelSet
+        channels.
+        """
+        max_card = max(self.columns)/8
+        min_card = min(self.columns)/8
+        if max_card != min_card:
+            return self.cards_from_list(['rcs'])
+        return self.cards_from_list([ 'rc%i' % (max_card+1) ])
+
+    def rows_span(self):
+        if self.use_readout_index:
+            return [min(self.rows), max(self.columns)]
+        return [0, max(self.columns)]
+
+    def columns_span(self):
+        cards = self.cards_span()
+        c_list = self.columns_from_cards(cards)
+        return [min(c_list), max(c_list)]
+
+    def acq_size(self):
+        c_span = self.columns_span()
+        r_span = self.rows_span()
+        return (c_span[1] - c_span[0] + 1)*(r_span[1] - r_span[0] + 1)
+
+    def data_size(self):
+        return len(self.columns) * len(self.rows)
+                
+    def cards_from_list(self, card_list):
+        """
+        Given a list of card names, returns card_bits of the minimal
+        acq.
+        """
+        cards = 0
+        for cc in card_list:
+            c = cc.lower()
+            if c == "rcs": cards |= 0xf
+            elif c == "rc1": cards |= 0x1
+            elif c == "rc2": cards |= 0x2
+            elif c == "rc3": cards |= 0x4
+            elif c == "rc4": cards |= 0x8
+            else:
+                raise ParamError, 'Unknown card ' + cc
+        return cards
+
+    def columns_from_cards(self, cards):
+        """
+        Given card_bits, returns the list of associated columns.
+        """
+        c = []
+        if cards & 0x1:
+            c.extend(range(0,8))
+        if cards & 0x2:
+            c.extend(range(8,16))
+        if cards & 0x4:
+            c.extend(range(16,24))
+        if cards & 0x8:
+            c.extend(range(24,32))
+        return c
+
+    def extract_channels(self, data):
+        c_span = self.columns_span()
+        r_span = self.rows_span()
+
+        c_num = c_span[1] - c_span[0] + 1
+        g = [ [data[c_num*(r-r_span[0]) + (c - c_span[0])] \
+              for c in self.columns ] for r in self.rows ]
+        return g
+
+    
 class mce:
     """
     Object representing an MCE.
@@ -88,28 +177,20 @@ class mce:
             error = mcecmd_interface_reset(self.context)
             if error != 0:
                 raise MCEError, "PCI card reset: " + mcelib_error_string(err)            
-
-    def card_bits(self, card_list):
-        cards = 0
-        for cc in card_list:
-            c = cc.lower()
-            if c == "rcs": cards |= 0xf
-            elif c == "rc1": cards |= 0x1
-            elif c == "rc2": cards |= 0x2
-            elif c == "rc3": cards |= 0x4
-            elif c == "rc4": cards |= 0x8
-            else:
-                raise ParamError, 'Unknown card ' + cc
-            return cards
-
     def card_count(self, cards):
         return (cards & 0x1 != 0) + (cards & 0x2 != 0) + \
                (cards & 0x4 != 0) + (cards & 0x8 != 0)
     
+    def read_frame(self, channel_set = False, data_only=False ):
 
-    def read_frame(self, card_list = ["RCS"], data_only=False ):
-        cards = self.cards(card_list)
-        max_size = 44 + 41*8*self.card_count(cards)
+        if channel_set == False:
+            channel_set = ChannelSet()
+            
+        cards = channel_set.cards_span()
+
+        n_cols = 8*self.card_count(cards)
+        n_extra = 44
+        max_size = n_cols*41 + n_extra
         d = u32array(max_size)
 
         read_frame(self.context, d.cast(), cards);
@@ -117,7 +198,7 @@ class mce:
         header = [ d[i] for i in range(43) ]
         num_rows_reported = header[3]
 
-        dd = [ d[i+43] for i in range(num_rows_reported * 8*card_count) ]
+        dd = [ d[i+43] for i in range(num_rows_reported*n_cols) ]
 
         if data_only: return dd
         return dd, header
