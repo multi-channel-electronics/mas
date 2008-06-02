@@ -21,8 +21,6 @@ int dsp_state_init()
 {
 	dsp_state.mce_con = NULL;
 
-	PRINT_ERR("INIT!\n");
-
 	init_timer(&dsp_state.timer);
 	dsp_state.timer.function = dsp_timer_function;
 	dsp_state.timer.data = (unsigned long)&dsp_state;
@@ -404,8 +402,8 @@ int dsp_state_nfy_rp(int size)
 
 int dsp_retdat_callback(int frame_size, int ticks, int nframes)
 {
-	PRINT_ERR("dsp_retdat_callback: ting-a-ling! %i %i %i\n",
-		  frame_size, ticks, nframes);
+	PRINT_INFO("dsp_retdat_callback: ting-a-ling! %i %i %i\n",
+		   frame_size, ticks, nframes);
 
 	// If this is a stop, kill the timer
 	if (frame_size < 0) {
@@ -417,7 +415,6 @@ int dsp_retdat_callback(int frame_size, int ticks, int nframes)
 		dsp_state.delta_jiffies = dsp_state.qt_data.period * HZ / MCE_CLOCK;
 		if (dsp_state.delta_jiffies <= 0)
 			dsp_state.delta_jiffies = 1;
-		PRINT_ERR("dj = %i df = %i\n", dsp_state.delta_jiffies, dsp_state.delta_frames);
 		dsp_state.timer.expires = jiffies + dsp_state.delta_jiffies;
 		add_timer(&dsp_state.timer);
 	}
