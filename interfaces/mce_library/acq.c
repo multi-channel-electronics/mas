@@ -21,13 +21,6 @@
 #define FRAME_USLEEP 1000
 
 
-// We'll have to generalize this if the frame structure ever changes.
-
-#define FRAME_HEADER 43
-#define FRAME_COLUMNS 8 /* per card */
-#define FRAME_FOOTER 1
-
-
 static int copy_frames(mce_acq_t *acq);
 
 static int set_n_frames(mce_acq_t *acq, int n_frames);
@@ -65,8 +58,8 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	}
 
 	// Save frame size and other options
-	acq->frame_size = rows_reported * FRAME_COLUMNS * n_cards + 
-		FRAME_HEADER + FRAME_FOOTER;
+	acq->frame_size = rows_reported * MCEDATA_COLUMNS * n_cards + 
+		MCEDATA_HEADER + MCEDATA_FOOTER;
 	acq->cards = cards;
 	acq->options = options;
 	acq->context = context;

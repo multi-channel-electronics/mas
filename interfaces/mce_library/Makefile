@@ -13,7 +13,7 @@ OBJECTS = context.o errors.o \
 	data.o acq.o data_thread.o files.o frame_manip.o \
 	dirfile.o config.o
 
-HEADERS = data_thread.h version.h virtual.h
+HEADERS = data_thread.h virtual.h
 
 INCLUDE += -I. -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I$(DSP_DIR)
 
@@ -34,6 +34,8 @@ $(LIBNAME) : $(OBJECTS) version.h
 	$(AR) rs $@ $(OBJECTS)
 
 $(OBJECTS): $(HEADERS)
+
+context.o: version.h
 
 version.h: version.h.template FORCE
 	grep -v '^\/\*-' version.h.template | \
