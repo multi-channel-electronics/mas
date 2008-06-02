@@ -156,12 +156,12 @@ int dsp_pci_proc(char *buf, int count)
 	int len = 0;
 	if (len < count) {
 		len += sprintf(buf+len, "    (pci emulator!)\n");
-		len += sprintf(buf+len, "    qt_enabled:  %6i\n", dsp_state.qt_data.enabled);
-		len += sprintf(buf+len, "    qt_number:   %6i\n", dsp_state.qt_data.number);
-		len += sprintf(buf+len, "    qt_head:     %6i\n", dsp_state.qt_data.head);
-		len += sprintf(buf+len, "    qt_tail:     %6i\n", dsp_state.qt_data.tail);
-		len += sprintf(buf+len, "    qt_inform:   %6i\n", dsp_state.qt_data.inform);
-		len += sprintf(buf+len, "    qt_period:   %6i\n", dsp_state.qt_data.period);
+		len += sprintf(buf+len, "    qt_enabled:  %7i\n", dsp_state.qt_data.enabled);
+		len += sprintf(buf+len, "    qt_number:   %7i\n", dsp_state.qt_data.number);
+		len += sprintf(buf+len, "    qt_head:     %7i\n", dsp_state.qt_data.head);
+		len += sprintf(buf+len, "    qt_tail:     %7i\n", dsp_state.qt_data.tail);
+		len += sprintf(buf+len, "    qt_inform:   %7i\n", dsp_state.qt_data.inform);
+		len += sprintf(buf+len, "    qt_period:   %7i\n", dsp_state.qt_data.period);
 	}
 	
 	return len;
