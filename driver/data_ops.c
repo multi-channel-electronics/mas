@@ -77,8 +77,10 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 				    frames.queue,
 				    (frames.flags & FRAME_ERR) ||
 				    (frames.tail_index
-				     != frames.head_index)))
-				return -ERESTARTSYS;
+				     != frames.head_index))) {
+				read_count = -ERESTARTSYS;
+				goto up_and_out;
+			}
 		} else {
 			// Update counts and read again.
 			read_count += this_read;
@@ -86,6 +88,7 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		}
 	}
 
+up_and_out:
 	up(&frames.sem);
 	return read_count;
 }
