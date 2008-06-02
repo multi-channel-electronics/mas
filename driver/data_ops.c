@@ -18,6 +18,10 @@
 #endif
 
 
+typedef struct {
+	unsigned minor;
+} data_ops_t;
+
 
 /**************************************************************************
  *                                                                        *
@@ -44,6 +48,7 @@
 ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
+	data_ops_t* d = filp->private_data;
 	int read_count = 0;
 	int this_read = 0;
 
@@ -67,28 +72,28 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		if (this_read < 0) {
 			// On error, exit with the current count.
 			break;
-		} else if (this_read == 0) {
-			// Buffer is empty, for now, so unless we
-			// haven't copied any bytes yet or we're
-			// O_NONBLOCK, exit back to the user.
-			if (filp->f_flags & O_NONBLOCK || read_count > 0)
-				break;
-			if (wait_event_interruptible(
-				    frames.queue,
-				    (frames.flags & FRAME_ERR) ||
-				    (frames.tail_index
-				     != frames.head_index))) {
-				read_count = -ERESTARTSYS;
-				goto up_and_out;
-			}
-		} else {
-			// Update counts and read again.
+		} else if (this_read > 0) {
+			// More reading, more reading...
 			read_count += this_read;
 			count -= this_read;
+			continue;
+		}
+
+		/* Buffer is empty.  O_NONBLOCK exits now, other
+		   readers exit as long as *some* data has been
+		   copied. */
+		if (filp->f_flags & O_NONBLOCK || read_count > 0)
+			break;
+		
+		if (wait_event_interruptible(frames.queue,
+					     (frames.flags & FRAME_ERR) ||
+					     (frames.tail_index
+					      != frames.head_index))) {
+			read_count = -ERESTARTSYS;
+			break;
 		}
 	}
 
-up_and_out:
 	up(&frames.sem);
 	return read_count;
 }
@@ -96,7 +101,6 @@ up_and_out:
 ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
 		   loff_t *f_pos)
 {
-	data_report();
 	return count;
 }
 
@@ -175,11 +179,18 @@ int data_ioctl(struct inode *inode, struct file *filp,
 
 int data_open(struct inode *inode, struct file *filp)
 {
+	// Store details of inode in private data
+	data_ops_t* d = kmalloc(sizeof(data_ops_t), GFP_KERNEL);
+	d->minor = iminor(inode);
+
+	filp->private_data = d;
+
 	return 0;
 }
 
 int data_release(struct inode *inode, struct file *filp)
 {
+	if (filp->private_data != NULL) kfree(filp->private_data);
 	return 0;
 }
 

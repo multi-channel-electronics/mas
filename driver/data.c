@@ -347,14 +347,6 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 #undef SUBNAME
 
 
-void data_report() {
-	PRINT_IOCT("data_report: head=%x/%x , tail=%x(%x)\n",
-		  frames.head_index, frames.max_index,
-		  frames.tail_index, frames.partial);
-	PRINT_IOCT("data_report: flags=%x\n", frames.flags);
-}
-
-
 #define SUBNAME "data_alloc: "
 
 void *data_alloc(int mem_size, int data_size, int borrow)
