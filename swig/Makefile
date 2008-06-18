@@ -3,7 +3,7 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-PYTHON_INC=/usr/include/python2.5/
+PYTHON_INC=/usr/include/python2.4/
 
 INCLUDE=-I$(MAS_INCLUDE_F) -I$(PYTHON_INC)
 

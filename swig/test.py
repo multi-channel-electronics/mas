@@ -21,6 +21,8 @@ print 'Extracting'
 r = h.extract_channels(g[0])
 print r
 
+g = m.read_channel(0,0,100)
+
 from pylab import *
 
 # delta = 0.025
@@ -72,6 +74,6 @@ app = wx.App()
 # frame2.canvas = FigureCanvasWx(frame2, -1, fig)
 # frame2.Show()
 
-c = Communicate(None, -1, 'comm')
+c = Communicate(None, -1, 'comm', m)
 
 app.MainLoop()

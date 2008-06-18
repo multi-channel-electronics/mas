@@ -104,7 +104,6 @@ class ChannelSet:
     def extract_channels(self, data):
         c_span = self.columns_span()
         r_span = self.rows_span()
-
         c_num = c_span[1] - c_span[0] + 1
         g = [ [data[c_num*(r-r_span[0]) + (c - c_span[0])] \
               for c in self.columns ] for r in self.rows ]
@@ -181,7 +180,7 @@ class mce:
         return (cards & 0x1 != 0) + (cards & 0x2 != 0) + \
                (cards & 0x4 != 0) + (cards & 0x8 != 0)
     
-    def read_frame(self, channel_set = False, data_only=False ):
+    def read_frames(self, count, channel_set = False, data_only=False):
 
         if channel_set == False:
             channel_set = ChannelSet()
@@ -191,17 +190,53 @@ class mce:
         n_cols = 8*self.card_count(cards)
         n_extra = 44
         max_size = n_cols*41 + n_extra
-        d = u32array(max_size)
+        d = u32array(max_size*count)
 
-        read_frame(self.context, d.cast(), cards);
+        read_frames(self.context, d.cast(), cards, count);
 
-        header = [ d[i] for i in range(43) ]
-        num_rows_reported = header[3]
+        # Get num rows rep from first header
+        num_rows_rep = d[3]
+        frame_size = n_cols * num_rows_rep + n_extra
 
-        dd = [ d[i+43] for i in range(num_rows_reported*n_cols) ]
+        # Extract headers, and data.
+        hh = [ [d[frame_size*f + i] for i in range(43)] for f in range(count) ]
+        dd = [ [d[frame_size*f + i + 43] for i in range(num_rows_rep*n_cols)]
+               for f in range(count) ]
 
         if data_only: return dd
-        return dd, header
+        return dd, hh
+
+    def read_frame(self, channel_set = False, data_only=False):
+
+        if data_only:
+            d = self.read_frames(1, channel_set=channel_set, data_only=True)
+            return d[0]
+        
+        d, h = self.read_frames(1, channel_set=channel_set, data_only=False)
+        return d[0], h[0]
+
+    def read_channel(self, col, row, count=1):
+
+        channel_set = False
+        if channel_set == False:
+            channel_set = ChannelSet()
+            
+        cards = channel_set.cards_span()
+
+        n_cols = 8*self.card_count(cards)
+        n_extra = 44
+        max_size = n_cols*41 + n_extra
+        d = u32array(count)
+  
+        cc = u32array(1)
+        cc[0] = 43 + row*32 + col
+
+        read_channels(self.context, d.cast(), cards, count, cc.cast(), 1);
+
+        ii = i32array(count)
+        u32_to_int(ii.cast(), d.cast(), count)
+
+        return ii
 
 
 #class MCEData:
