@@ -50,7 +50,7 @@ typedef struct {
 #pragma pack()
 
 
-struct dsp_dev_t {
+typedef struct {
 
 	struct pci_dev *pci;
 
@@ -58,7 +58,7 @@ struct dsp_dev_t {
 
 	irq_handler_t int_handler;
 
-};
+} dsp_dev_t;
 
 
 /* Prototypes */
