@@ -5,38 +5,8 @@
 # communicate.py
 
 import wx
-
-import matplotlib
-matplotlib.use('WX')
-from matplotlib.backends.backend_wx import Toolbar, FigureCanvasWx,\
-     FigureManager
-
-from matplotlib.figure import Figure
-
-class FigureFrame(wx.Frame):
-    def __init__(self, parent, id, style=0):
-        wx.Frame.__init__(self, parent, id, "Test embed", \
-                          style=wx.DEFAULT_FRAME_STYLE & ~wx.CLOSE_BOX)
-
-#        self.SetWindowStyle(wx.SIMPLE_BORDER)
-
-        self.fig = Figure((9,8), 75)
-        self.canvas = FigureCanvasWx(self, -1, self.fig)
-        self.subp = self.fig.add_subplot(111)
-
-        self.Update([0])
-        
-    def Update(self, x):
-        #r = range(10)
-        #x = [ (rr+x)**2 for rr in r ]
-
-        r = range(len(x))
-        
-        self.fig.delaxes(self.subp)
-
-        self.subp = self.fig.add_subplot(111)
-        self.subp.plot(r, x)
-        self.Refresh()
+from mceViewport import *
+from mce_acquisitions import *
 
 class LeftPanel(wx.Panel):
     def __init__(self, parent, id, mce):
@@ -57,22 +27,25 @@ class LeftPanel(wx.Panel):
     def OnHigh(self, even):
         f = self.parent.target
 
-#        print 'start acq'
-#        dd = self.mce.read_frames(self.n_frames, data_only=True)
-#        print 'done acq'
-        
-#        d = [ dd[i][self.data_index] for i in range(self.n_frames) ]
-#        print 'done sort'
-
         n_frames = int(self.parent.n_frames.GetValue())
         row = int(self.parent.row.GetValue())
         col = int(self.parent.column.GetValue())
 
-        i32 = self.mce.read_channel(col,row,n_frames)
-        d = [ i32[i] for i in range(n_frames) ]
+        #ca = mceChannelAcq(self.mce)
+        #p = ca.acq(col, row, n_frames)
+        
+        #ca = mceColumnAcq(self.mce)
+        #p = ca.acq(col, n_frames)
+        
+        ca = mceColumnCorrAcq(self.mce)
+        p = ca.acq(col, row, n_frames)
+
+        trim = int(self.parent.trim.GetValue())
+        if trim > 0:
+            p.x_limits = (0, trim)
         
         if f != None:
-            f.Update(d)
+            f.Update(p)
 
     def OnPlus(self, event):
         value = int(self.text.GetValue())
@@ -112,7 +85,7 @@ class Communicate(wx.Frame):
     def __init__(self, parent, id, title, mce):
         wx.Frame.__init__(self, parent, id, title, size=(280, 200))
 
-        self.target = FigureFrame(self, -1 ) #, style = wx.SIMPLE_BORDER)
+        self.target = mceViewport(self, -1 ) #, style = wx.SIMPLE_BORDER)
         
         panel = wx.Panel(self, -1)
         #self.rightPanel = RightPanel(panel, -1)
@@ -133,9 +106,13 @@ class Communicate(wx.Frame):
         self.row = labelledText(panel, -1, 'row:',
                                    wx.SpinCtrl(panel, -1, '0', min=0, max=32))
 
+        self.trim = labelledText(panel, -1, 'trim_to:',
+                                 myText(panel, -1, '-1'))
+
         rightSizer.Add(self.n_frames, 1)
         rightSizer.Add(self.column, 1)
-        rightSizer.Add(self.row, 1, wx.EXPAND)
+        rightSizer.Add(self.row, 1)
+        rightSizer.Add(self.trim, 1)
         
         leftPanel = LeftPanel(panel, -1, mce)
 

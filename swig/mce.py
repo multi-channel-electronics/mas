@@ -53,8 +53,8 @@ class ChannelSet:
 
     def rows_span(self):
         if self.use_readout_index:
-            return [min(self.rows), max(self.columns)]
-        return [0, max(self.columns)]
+            return [min(self.rows), max(self.rows)]
+        return [0, max(self.rows)]
 
     def columns_span(self):
         cards = self.cards_span()
@@ -109,6 +109,34 @@ class ChannelSet:
               for c in self.columns ] for r in self.rows ]
         return g
 
+    def count(self):
+        if self.has_list:
+            return len(self.channel_list)
+        else:
+            return len(self.columns)*len(self.rows)
+
+    def item(self, index):
+        if self.has_list:
+            return self.channel_list[index]
+        else:
+            return [ self.columns[index / len(self.rows)],
+                     self.rows[index % len(self.rows)] ]
+
+    def frame_indices(self):
+
+        data_offset = 43
+        rs = self.rows_span()
+        cs = self.columns_span()
+        
+        if self.has_list:
+            return [ data_offset +
+                     (self.channel_list[i].row - rs[0])*(cs[1] - cs[0] + 1) +
+                     self.channel_list[i].column - cs[0]
+                     for i in range(len(self.channel_list)) ]
+        else:
+            return [ data_offset +
+                     (r - rs[0])*(cs[1] - cs[0] + 1) + c - cs[0]
+                     for r in self.rows for c in self.columns ]
     
 class mce:
     """
@@ -139,7 +167,7 @@ class mce:
             raise ParamError, mcelib_error_string(err)
         return p
 
-    def read(self, card, para, count=-1, offset=0):
+    def read(self, card, para, count=-1, offset=0, array=True):
 
         p = self.lookup(card,para)
         if count < 0: count = p.param.count - offset
@@ -148,6 +176,8 @@ class mce:
         err = mcecmd_read_range(self.context, p, offset, d.cast(), count)
         if (err != 0):
             raise MCEError, mcelib_error_string(err)
+
+        if array == False: return d[0]
 
         dd = [ d[i] for i in range(count) ]
         return dd
@@ -186,22 +216,24 @@ class mce:
             channel_set = ChannelSet()
             
         cards = channel_set.cards_span()
-
+        indices = channel_set.frame_indices()
         n_cols = 8*self.card_count(cards)
         n_extra = 44
-        max_size = n_cols*41 + n_extra
-        d = u32array(max_size*count)
+
+        num_rows_rep = self.read('cc', 'num_rows_reported', array=False)
+        frame_size = n_cols*num_rows_rep + n_extra
+        d = u32array(frame_size*count)
 
         read_frames(self.context, d.cast(), cards, count);
 
-        # Get num rows rep from first header
-        num_rows_rep = d[3]
-        frame_size = n_cols * num_rows_rep + n_extra
-
         # Extract headers, and data.
         hh = [ [d[frame_size*f + i] for i in range(43)] for f in range(count) ]
-        dd = [ [d[frame_size*f + i + 43] for i in range(num_rows_rep*n_cols)]
-               for f in range(count) ]
+
+        # This will break if user asks for rows beyond num_rows_rep...
+        ii = i32array(frame_size*count)
+        u32_to_int(ii.cast(), d.cast(), frame_size*count)
+        
+        dd = [ [ii[frame_size*f + i] for i in indices] for f in range(count) ]
 
         if data_only: return dd
         return dd, hh
@@ -215,21 +247,25 @@ class mce:
         d, h = self.read_frames(1, channel_set=channel_set, data_only=False)
         return d[0], h[0]
 
-    def read_channel(self, col, row, count=1):
+    def read_channel(self, count=1, channel_set=False):
 
-        channel_set = False
         if channel_set == False:
             channel_set = ChannelSet()
-            
-        cards = channel_set.cards_span()
+            channel_set.rows = [0]
+            channel_set.columns = [0]
 
-        n_cols = 8*self.card_count(cards)
-        n_extra = 44
-        max_size = n_cols*41 + n_extra
-        d = u32array(count)
-  
+        index = channel_set.frame_indices()
+
+        if (len(index) != 1):
+            print 'ChannelSet must have exactly one channel!'
+            return -1
+
+        # Calculate index of target data
         cc = u32array(1)
-        cc[0] = 43 + row*32 + col
+        cc[0] = index[0]
+
+        cards = channel_set.cards_span()
+        d = u32array(count)
 
         read_channels(self.context, d.cast(), cards, count, cc.cast(), 1);
 

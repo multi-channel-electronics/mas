@@ -17,12 +17,6 @@ print h.acq_size()
 g = m.read_frame(h)
 print g[1]
 
-print 'Extracting'
-r = h.extract_channels(g[0])
-print r
-
-g = m.read_channel(0,0,100)
-
 from pylab import *
 
 # delta = 0.025
