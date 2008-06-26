@@ -36,4 +36,8 @@ int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data);
 
 int dsp_clear_handler(u32 code);
 
+int dsp_driver_probe(void);
+
+void dsp_driver_cleanup(void);
+
 #endif

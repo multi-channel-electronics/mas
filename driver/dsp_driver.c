@@ -465,6 +465,52 @@ int dsp_query_version(void)
 #undef SUBNAME
 
 
+
+
+#define SUBNAME "dsp_driver_probe: "
+
+int dsp_driver_probe()
+{	
+	int err = 0;
+
+	// Set up handlers for the DSP interrupts - additional
+	//  handlers will be set up by sub-modules.
+	dsp_set_handler(DSP_REP, dsp_reply_handler, 0);
+	dsp_set_handler(DSP_HEY, dsp_hey_handler, 0);
+
+	// Version can only be obtained after REP handler has been set
+	if (dsp_query_version()) {
+		err = -1;
+		goto out;
+	}
+
+	if (dsp_ops_init()) {
+		err = -1;
+		goto out;
+	}
+	
+	if (mce_init_module(ddat.version)) {
+		err = -1;
+		goto out;
+	}
+
+	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
+
+
+	PRINT_INFO(SUBNAME "driver ok\n");
+	return 0;
+
+ out:
+  
+	dsp_driver_cleanup();
+
+	PRINT_ERR(SUBNAME "exiting with errors!\n");
+	return err;
+}
+
+#undef SUBNAME
+
+
 #define SUBNAME "cleanup_module: "
 
 void dsp_driver_cleanup(void)
@@ -512,44 +558,10 @@ inline int dsp_driver_init(void)
 	dsp_fake_init( DSPDEV_NAME );
 #else
 	if (dsp_pci_init( DSPDEV_NAME )) {
-		err = -1;
-		goto out;
+		return -1;
 	}
 #endif
-	
-	// Set up handlers for the DSP interrupts - additional
-	//  handlers will be set up by sub-modules.
-	dsp_set_handler(DSP_REP, dsp_reply_handler, 0);
-	dsp_set_handler(DSP_HEY, dsp_hey_handler, 0);
-
-	// Version can only be obtained after REP handler has been set
-	if (dsp_query_version()) {
-		err = -1;
-		goto out;
-	}
-
-	if (dsp_ops_init()) {
-		err = -1;
-		goto out;
-	}
-	
-	if (mce_init_module(ddat.version)) {
-		err = -1;
-		goto out;
-	}
-
-	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
-
-
-	PRINT_INFO(SUBNAME "driver ok\n");
 	return 0;
-
- out:
-  
-	dsp_driver_cleanup();
-
-	PRINT_ERR(SUBNAME "exiting with errors!\n");
-	return err;
 }
 
 module_init(dsp_driver_init);

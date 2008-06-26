@@ -19,7 +19,7 @@
   OPT_QUIET - don't even log errors
 
 */
-
+#define OPT_VERBOSE
 
 /*
   DEBUG MESSAGES
