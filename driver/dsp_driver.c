@@ -511,6 +511,15 @@ int dsp_driver_probe()
 #undef SUBNAME
 
 
+#define SUBNAME "dsp_driver_remove: "
+
+void dsp_driver_remove(void)
+{
+}
+
+#undef SUBNAME
+
+
 #define SUBNAME "cleanup_module: "
 
 void dsp_driver_cleanup(void)

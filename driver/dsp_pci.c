@@ -363,6 +363,7 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 			char *dev_name)
 {
 	int err = 0;
+	int cfg_irq = 0;
 
 	if (pci==NULL || dev==NULL) {
 		PRINT_ERR(SUBNAME "Null pointers! pci=%lx dev=%lx\n",
@@ -370,6 +371,10 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 		return -ERESTARTSYS;
 	}
 	
+	pci_read_config_byte(pci, PCI_INTERRUPT_LINE, (char*)&cfg_irq);
+	PRINT_ERR(SUBNAME "pci has irq %i and config space has irq %i\n",
+		  pci->irq, cfg_irq);
+
 	// Free existing handler
 	if (dev->int_handler!=NULL)
 		dsp_pci_remove_handler(pci);
@@ -520,6 +525,8 @@ int dsp_pci_init(char *dev_name)
 
 int dsp_pci_cleanup()
 {
+	pci_unregister_driver(&pci_driver);
+
 	if ( dev->pci != NULL ) {
 		PRINT_ERR("driver uninstalled without zeroing pci struct!\n");
 	}
