@@ -325,6 +325,7 @@ int dsp_pci_flush()
 
 int dsp_pci_configure(dsp_reg_t *dsp)
 {
+	PRINT_INFO("dsp_pci_configure: DSTR = %#06x\n", dsp_read_hstr(dsp));
 	dsp_clear_interrupt(dsp);
 
 	dsp_write_hctr(dsp, DSP_PCI_MODE);
@@ -431,6 +432,12 @@ int dsp_pci_init(char *dev_name)
 	if (dev->dsp==NULL) {
 		PRINT_ERR(SUBNAME "Could not map PCI registers!\n");
 		err = -EIO;
+		goto fail;
+	}
+
+	// Enable card - leaving this out causes ACPI conflicts.
+	if ((err = pci_enable_device(dev->pci)) != 0) {
+		PRINT_ERR(SUBNAME "pci_enable_device returned %i\n", err);
 		goto fail;
 	}
 
