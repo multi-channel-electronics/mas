@@ -86,3 +86,10 @@ int mcedata_qt_setup(mce_context_t* context, int frame_count)
 {
 	return ioctl(C_data.fd, DATADEV_IOCT_QT_CONFIG, frame_count);
 }
+
+void mcedata_buffer_query(mce_context_t* context, int *head, int *tail, int *count)
+{
+	*head = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_HEAD);
+	*tail = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_TAIL);
+	*count = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_MAX);
+}

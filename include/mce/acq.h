@@ -33,6 +33,9 @@
 #define MCEDATA_COLUMNS           8
 #define MCEDATA_ROWS              41
 
+#define MCEDATA_HEADER            43
+#define MCEDATA_FOOTER            1
+
 struct mce_acq_struct;
 typedef struct mce_acq_struct mce_acq_t;
 

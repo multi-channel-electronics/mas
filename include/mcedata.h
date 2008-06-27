@@ -54,6 +54,8 @@ int mcedata_empty_data(mce_context_t* context);
 int mcedata_fake_stopframe(mce_context_t* context);
 int mcedata_qt_enable(mce_context_t* context, int on);
 int mcedata_qt_setup(mce_context_t* context, int frame_index);
+void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
+			  int *count);
 
 
 /* Frame data handlers */
