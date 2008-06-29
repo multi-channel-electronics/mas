@@ -224,8 +224,7 @@ int data_frame_fake_stop( void )
 	frames.head_index++;
 	
 	//Pointer to next frame
-	frame = (u32*) (frames.base +
-			frames.head_index*frames.frame_size);
+	frame = (u32*)FRAME_ADDRESS(&frames, frames.head_index);
 
 	//Flag as stop
 	frame[0] = 1;
@@ -268,7 +267,8 @@ int data_frame_divide( int new_data_size )
 	// Round the frame size to a size convenient for DMA
 	frames.frame_size =
 		(frames.data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
-	frames.max_index = frames.size / frames.frame_size;
+	frames.section_buffers = frames.section_size / frames.frame_size;
+	frames.max_index = frames.section_count * frames.section_buffers;
 
 	if (frames.max_index <= 1) {
 		PRINT_ERR("data_frame_divide: buffer can only hold %i data packet!\n",
@@ -310,7 +310,7 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 	// Exit once supply runs out or demand is satisfied.
 	while ((frames.tail_index != frames.head_index) && count > 0) {
 
-		source = frames.base + frames.tail_index*frames.frame_size + frames.partial;
+		source = FRAME_ADDRESS(&frames, frames.tail_index) + frames.partial;
 
 		// Don't read past end of frame.
 		this_read = (frames.data_size - frames.partial < count) ?
@@ -349,47 +349,71 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 #define SUBNAME "data_alloc: "
 
-void *data_alloc(int mem_size, int data_size, int borrow)
+int data_alloc(int mem_size, int data_size)
 {
-	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
-	caddr_t virt;
-	void *borrower_p;
+	int i;
+	int npg;
 
 	PRINT_INFO(SUBNAME "entry\n");
 
+#ifdef BIGPHYS	
+	// Round up to a page boundary
+	npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
 	mem_size = npg * PAGE_SIZE;
 
-#ifdef BIGPHYS	
+	// Allocate (very little) space for section pointers
+	frames.section_addr = kmalloc(sizeof(*frames.section_addr), GFP_KERNEL);
+	frames.section_bus = kmalloc(sizeof(*frames.section_addr), GFP_KERNEL);
+
 	// Virtual address?
-	virt = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
-
-	if (virt==NULL) {
+	frames.section_addr[0] = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
+	if (frames.section_addr[0]==NULL) {
 		PRINT_ERR(SUBNAME "bigphysarea_alloc_pages failed!\n");
-		return NULL;
+		return -ENOMEM;
 	}
-
-#else
-	virt = kmalloc(mem_size, GFP_KERNEL);
-
-	if (virt==NULL) {
-		PRINT_ERR(SUBNAME "kmalloc failed to allocate %i bytes\n",
-			  mem_size);
-		return NULL;
-	}
-#endif
-
-	// Borrower data location
-	borrower_p = virt + mem_size - borrow;
 
 	// Save the buffer address and maximum size
-	frames.base = virt;
-	frames.size = mem_size - borrow;
+	frames.section_bus[0] = virt_to_bus(frames.section_addr[0]);
+	frames.section_size = mem_size;
+	frames.section_count = 1;
+
+#else
+#define MAX_KMALLOC  (128*1024)
+	// Round up to a page kmalloc boundary
+	frames.section_size = MAX_KMALLOC;
+	npg = (mem_size + frames.section_size-1) / frames.section_size;
+
+	npg = 1;
+	PRINT_ERR(SUBNAME "attempting to allocate %i pages of size %i\n",
+		  npg, frames.section_size);
+
+	// Allocate space for section pointers
+	frames.section_addr = kmalloc(npg*sizeof(*frames.section_addr), GFP_KERNEL);
+	frames.section_bus  = kmalloc(npg*sizeof(*frames.section_bus),  GFP_KERNEL);
+	
+	for (i=0; i<npg; i++) {
+		frames.section_addr[i] = 
+			dsp_allocate_dma(frames.section_size, &(frames.section_bus[i]));
+		if (frames.section_addr[i] == NULL)
+			break;
+	}
+	frames.section_count = i;
+	if (frames.section_count < npg) {
+		PRINT_ERR(SUBNAME "allocated only %i out of %i buffer sections.\n",
+			  frames.section_count, npg);
+	}
+
+	if (frames.section_count <= 0)
+		return -ENOMEM;
+
+	// Save the buffer address and maximum size
+
+#endif
+	// Save physical address for hardware
+	frames.base_busaddr = (caddr_t)frames.section_bus[0];
 
 	// Partition buffer into blocks of some default size
 	data_frame_divide(data_size);
-
-	// Save physical address for hardware
-	frames.base_busaddr = (caddr_t)virt_to_bus(virt);
 
 	//Debug
 	PRINT_INFO(SUBNAME "buffer: base=%x + %x of size %x\n",
@@ -397,20 +421,32 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 		   frames.max_index,
 		   (int)frames.frame_size);
 	
-	return borrower_p;
+	return 0;
 }
 
 #undef SUBNAME
 
 int data_free(void)
 {
-
-	if (frames.base != NULL) {
+	if (frames.section_count != 0) {
 #ifdef BIGPHYS
-		bigphysarea_free_pages(frames.base);
+		// We probably just allocated one big area...
+		bigphysarea_free_pages(frames.section_addr[0]);
 #else
-		kfree(frames.base);
+		int i;
+		for (i=0; i<frames.section_count; i++) {
+			dsp_free_dma(frames.section_addr[i], MAX_KMALLOC, frames.section_bus[i]);
+		}
 #endif
+		frames.section_count = 0;
+		if (frames.section_addr != NULL) {
+			kfree(frames.section_addr);
+			frames.section_addr = NULL;
+		}
+		if (frames.section_bus != NULL) {
+			kfree(frames.section_bus);
+			frames.section_bus = NULL;
+		}
 	}
 	return 0;
 }
@@ -454,7 +490,7 @@ int data_proc(char *buf, int count)
 	int len = 0;
 	if (len < count)
 		len += sprintf(buf+len, "    virtual:  %#010x\n",
-			       (unsigned)frames.base);
+			       (unsigned)frames.section_addr[0]);
 	if (len < count)
 		len += sprintf(buf+len, "    bus:      %#010x\n",
 			       (unsigned)frames.base_busaddr);
@@ -494,9 +530,9 @@ int data_proc(char *buf, int count)
 
 #define SUBNAME "data_init: "
 
-void* data_init(int dsp_version, int mem_size, int data_size, int borrow)
+int data_init(int dsp_version, int mem_size, int data_size)
 {
-	void *addr = NULL;
+	int err = 0;
 
 	init_waitqueue_head(&frames.queue);
 
@@ -504,8 +540,8 @@ void* data_init(int dsp_version, int mem_size, int data_size, int borrow)
 		     data_grant_task, 0);
 
 	
-	addr = data_alloc(mem_size, data_size, borrow);
-	if (addr==NULL) return NULL;
+	if ( (err = data_alloc(mem_size, data_size)) != 0)
+		return err;
 
 	data_reset();
 
@@ -521,18 +557,18 @@ void* data_init(int dsp_version, int mem_size, int data_size, int borrow)
 		
 	case DSP_U0104:
 		if (data_qt_configure(1)) 
-			return NULL;
+			return -EIO;
 		break;
 		
 	default:
 		PRINT_ERR(SUBNAME
 			  "DSP code not recognized, attempting quiet transfer mode...\n");
 		if (data_qt_configure(1))
-			return NULL;
+			return -EIO;
 		break;
 	}
 
-	return addr;
+	return 0;
 }
 
 #undef SUBNAME

@@ -428,7 +428,7 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	int err = 0;
-	PRINT_ERR(SUBNAME "entry!\n");
+	PRINT_INFO(SUBNAME "entry!\n");
 	
 	if (pci==NULL) {
 		PRINT_ERR(SUBNAME "Called with NULL pci_dev!\n");

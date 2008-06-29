@@ -661,35 +661,28 @@ int mce_send_command_wait_callback(int error, mce_reply *rep)
  * just allocate a page.  If not, dsp_alloc_dma.
  */
 
-int mce_buffer_allocate(mce_comm_buffer *buffer, void *borrowed)
+int mce_buffer_allocate(mce_comm_buffer *buffer)
 {
 	// Create DMA-able area.  Use only one call since the two
 	// buffers are so small.
 
-	int offset = ( sizeof(mce_command) + (DMA_ADDR_ALIGN-1) ) &
+	int reply_offset = ( sizeof(mce_command) + (DMA_ADDR_ALIGN-1) ) &
 		DMA_ADDR_MASK;
 
-	int size = offset + sizeof(mce_reply);
+	int size = reply_offset + sizeof(mce_reply);
 
-	if (borrowed==NULL) {
-		buffer->command = (mce_command*)
-			dsp_allocate_dma(size, (unsigned int*)
-					 &buffer->command_busaddr);
+	// Load a virtual and bus address
+	buffer->command = (mce_command*)
+		dsp_allocate_dma(size, (unsigned int*)&buffer->command_busaddr);
 
-		if (buffer->command==NULL)
-			return -ENOMEM;
+	if (buffer->command==NULL)
+		return -ENOMEM;
 
-		buffer->reply = (mce_reply*) ((char*)buffer->command + offset);
-		buffer->reply_busaddr = buffer->command_busaddr + offset;
-		buffer->dma_size = size;
-	} else {
-		buffer->command = (mce_command*)borrowed;
-		buffer->reply   = (mce_reply*)  (borrowed+offset);
-		buffer->command_busaddr = (caddr_t)virt_to_bus(buffer->command);
-		buffer->reply_busaddr   = (caddr_t)virt_to_bus(buffer->reply);
-		buffer->dma_size = 0;
-	}
+	buffer->reply = (mce_reply*) ((void*)buffer->command + reply_offset);
+	buffer->reply_busaddr = buffer->command_busaddr + reply_offset;
 	
+	buffer->dma_size = size;
+
 	PRINT_INFO("cmd/rep[virt->bus]: [%lx->%lx]/[%lx->%lx]\n",
 		   (long unsigned int)buffer->command,
 		   virt_to_bus(buffer->command),
@@ -701,7 +694,7 @@ int mce_buffer_allocate(mce_comm_buffer *buffer, void *borrowed)
 
 int mce_buffer_free(mce_comm_buffer *buffer)
 {
-	if (buffer->command!=NULL && buffer->dma_size!=0) {
+	if (buffer->command!=NULL) {
 		dsp_free_dma(buffer->command, buffer->dma_size,
 			     (int)buffer->command_busaddr);
 	}
@@ -766,20 +759,17 @@ int mce_interface_reset()
 int mce_init_module(int dsp_version)
 {
 	int err = 0;
-	void *borrowed;
 
 	mdat.initialized = 1;
 
 	//Init data module
-	borrowed = data_init(dsp_version, FRAME_BUFFER_SIZE, 5424, 4096);
-	if (borrowed==NULL) {
-		PRINT_ERR(SUBNAME "mce data module init failure\n");
-		err = -ENOMEM;
+	err = data_init(dsp_version, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
+	if (err!=0) {
+		PRINT_ERR(SUBNAME "mce data module init failed with code %i\n", err);
 		goto out;
 	}
 
-
-	err = mce_buffer_allocate(&mdat.buff, borrowed);
+	err = mce_buffer_allocate(&mdat.buff);
 	if (err) goto out;
 
 	mce_ops_init();  //Catch this?
