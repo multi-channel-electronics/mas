@@ -38,6 +38,30 @@
 struct dsp_dev_t dsp_dev;
 struct dsp_dev_t *dev = &dsp_dev;
 
+/* Internal prototypes */
+
+void  dsp_clear_interrupt(dsp_reg_t *dsp);
+
+void  dsp_pci_remove(struct pci_dev *pci);
+
+int   dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id);
+
+
+/* Data for PCI enumeration */
+
+static const struct pci_device_id pci_ids[] = {
+	{ PCI_DEVICE(DSP_VENDORID, DSP_DEVICEID) },
+	{ 0 },
+};
+
+static struct pci_driver pci_driver = {
+	.name = "mce_dsp",
+	.id_table = pci_ids,
+	.probe = dsp_pci_probe,
+	.remove = dsp_pci_remove,
+};
+
+
 
 /*
   Each command is mapped to a particular DSP host control vector
@@ -73,13 +97,6 @@ static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_SYS_ERR, HCVR_SYS_ERR, VECTOR_QUICK},
 	{DSP_SYS_RST, HCVR_SYS_RST, VECTOR_QUICK},
 };
-
-
-/* Internal prototypes */
-
-void  dsp_clear_interrupt(dsp_reg_t *dsp);
-
-
 
 /* DSP register wrappers */
 
@@ -372,8 +389,8 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 	}
 	
 	pci_read_config_byte(pci, PCI_INTERRUPT_LINE, (char*)&cfg_irq);
-	PRINT_ERR(SUBNAME "pci has irq %i and config space has irq %i\n",
-		  pci->irq, cfg_irq);
+	PRINT_INFO(SUBNAME "pci has irq %i and config space has irq %i\n",
+		   pci->irq, cfg_irq);
 
 	// Free existing handler
 	if (dev->int_handler!=NULL)
@@ -474,6 +491,9 @@ void dsp_pci_remove(struct pci_dev *pci)
 
 	if ( dev->pci == NULL )
 		return;
+	
+	// Disable higher-level features first
+	dsp_driver_remove();
 		
 	// Remove int handler, clear remaining ints, unmap i/o memory
 	dsp_pci_remove_handler(dev->pci);
@@ -487,18 +507,6 @@ void dsp_pci_remove(struct pci_dev *pci)
 	dev->pci = NULL;
 }
 
-
-static const struct pci_device_id pci_ids[] = {
-	{ PCI_DEVICE(DSP_VENDORID, DSP_DEVICEID) },
-	{ 0 },
-};
-
-static struct pci_driver pci_driver = {
-	.name = "mce_dsp",
-	.id_table = pci_ids,
-	.probe = dsp_pci_probe,
-	.remove = dsp_pci_remove,
-};
 
 #define SUBNAME "dsp_pci_init: "
 

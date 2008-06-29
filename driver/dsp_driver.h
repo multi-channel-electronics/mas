@@ -38,6 +38,6 @@ int dsp_clear_handler(u32 code);
 
 int dsp_driver_probe(void);
 
-void dsp_driver_cleanup(void);
+void dsp_driver_remove(void);
 
 #endif
