@@ -224,7 +224,8 @@ int data_frame_fake_stop( void )
 	frames.head_index++;
 	
 	//Pointer to next frame
-	frame = (u32*)FRAME_ADDRESS(&frames, frames.head_index);
+	frame = (u32*) (frames.base +
+			frames.head_index*frames.frame_size);
 
 	//Flag as stop
 	frame[0] = 1;
@@ -267,8 +268,7 @@ int data_frame_divide( int new_data_size )
 	// Round the frame size to a size convenient for DMA
 	frames.frame_size =
 		(frames.data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
-	frames.section_buffers = frames.section_size / frames.frame_size;
-	frames.max_index = frames.section_count * frames.section_buffers;
+	frames.max_index = frames.size / frames.frame_size;
 
 	if (frames.max_index <= 1) {
 		PRINT_ERR("data_frame_divide: buffer can only hold %i data packet!\n",
@@ -310,7 +310,7 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 	// Exit once supply runs out or demand is satisfied.
 	while ((frames.tail_index != frames.head_index) && count > 0) {
 
-		source = FRAME_ADDRESS(&frames, frames.tail_index) + frames.partial;
+		source = frames.base + frames.tail_index*frames.frame_size + frames.partial;
 
 		// Don't read past end of frame.
 		this_read = (frames.data_size - frames.partial < count) ?
@@ -351,70 +351,41 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 int data_alloc(int mem_size, int data_size)
 {
-	int i;
-	int npg;
+	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
+	caddr_t virt;
 
 	PRINT_INFO(SUBNAME "entry\n");
 
-#ifdef BIGPHYS	
-	// Round up to a page boundary
-	npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
 	mem_size = npg * PAGE_SIZE;
 
-	// Allocate (very little) space for section pointers
-	frames.section_addr = kmalloc(sizeof(*frames.section_addr), GFP_KERNEL);
-	frames.section_bus = kmalloc(sizeof(*frames.section_addr), GFP_KERNEL);
-
+#ifdef BIGPHYS	
 	// Virtual address?
-	frames.section_addr[0] = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
-	if (frames.section_addr[0]==NULL) {
+	virt = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
+
+	if (virt==NULL) {
 		PRINT_ERR(SUBNAME "bigphysarea_alloc_pages failed!\n");
 		return -ENOMEM;
 	}
 
-	// Save the buffer address and maximum size
-	frames.section_bus[0] = virt_to_bus(frames.section_addr[0]);
-	frames.section_size = mem_size;
-	frames.section_count = 1;
-
 #else
-#define MAX_KMALLOC  (128*1024)
-	// Round up to a page kmalloc boundary
-	frames.section_size = MAX_KMALLOC;
-	npg = (mem_size + frames.section_size-1) / frames.section_size;
+	virt = kmalloc(mem_size, GFP_KERNEL);
 
-	PRINT_ERR(SUBNAME "attempting to allocate %i pages of size %i\n",
-		  npg, frames.section_size);
-
-	// Allocate space for section pointers
-	frames.section_addr = kmalloc(npg*sizeof(*frames.section_addr), GFP_KERNEL);
-	frames.section_bus  = kmalloc(npg*sizeof(*frames.section_bus),  GFP_KERNEL);
-	
-	for (i=0; i<npg; i++) {
-		frames.section_addr[i] = 
-			dsp_allocate_dma(frames.section_size, &(frames.section_bus[i]));
-		if (frames.section_addr[i] == NULL)
-			break;
-	}
-	frames.section_count = i;
-	if (frames.section_count < npg) {
-		PRINT_ERR(SUBNAME "allocated only %i out of %i buffer sections.\n",
-			  frames.section_count, npg);
-	}
-
-	if (frames.section_count <= 0)
+	if (virt==NULL) {
+		PRINT_ERR(SUBNAME "kmalloc failed to allocate %i bytes\n",
+			  mem_size);
 		return -ENOMEM;
-
-
-	frames.section_secret_count = frames.section_count;
-	frames.section_count = 1;
-
+	}
 #endif
-	// Save physical address for hardware
-	frames.base_busaddr = (caddr_t)frames.section_bus[0];
+
+	// Save the buffer address and maximum size
+	frames.base = virt;
+	frames.size = mem_size;
 
 	// Partition buffer into blocks of some default size
 	data_frame_divide(data_size);
+
+	// Save physical address for hardware
+	frames.base_busaddr = (caddr_t)virt_to_bus(virt);
 
 	//Debug
 	PRINT_INFO(SUBNAME "buffer: base=%x + %x of size %x\n",
@@ -429,26 +400,13 @@ int data_alloc(int mem_size, int data_size)
 
 int data_free(void)
 {
-	if (frames.section_count != 0) {
+
+	if (frames.base != NULL) {
 #ifdef BIGPHYS
-		// We probably just allocated one big area...
-		bigphysarea_free_pages(frames.section_addr[0]);
+		bigphysarea_free_pages(frames.base);
 #else
-		int i;
-		frames.section_count = frames.section_secret_count;
-		for (i=0; i<frames.section_count; i++) {
-			dsp_free_dma(frames.section_addr[i], MAX_KMALLOC, frames.section_bus[i]);
-		}
+		kfree(frames.base);
 #endif
-		frames.section_count = 0;
-		if (frames.section_addr != NULL) {
-			kfree(frames.section_addr);
-			frames.section_addr = NULL;
-		}
-		if (frames.section_bus != NULL) {
-			kfree(frames.section_bus);
-			frames.section_bus = NULL;
-		}
 	}
 	return 0;
 }
@@ -492,7 +450,7 @@ int data_proc(char *buf, int count)
 	int len = 0;
 	if (len < count)
 		len += sprintf(buf+len, "    virtual:  %#010x\n",
-			       (unsigned)frames.section_addr[0]);
+			       (unsigned)frames.base);
 	if (len < count)
 		len += sprintf(buf+len, "    bus:      %#010x\n",
 			       (unsigned)frames.base_busaddr);
@@ -540,10 +498,9 @@ int data_init(int dsp_version, int mem_size, int data_size)
 
 	tasklet_init(&frames.grant_tasklet,
 		     data_grant_task, 0);
-
 	
-	if ( (err = data_alloc(mem_size, data_size)) != 0)
-		return err;
+	err = data_alloc(mem_size, data_size);
+	if (err) return err;
 
 	data_reset();
 

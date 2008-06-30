@@ -47,12 +47,8 @@ typedef struct {
         //  addr[i] = base + frame_size*i
 	// But each buffer contains only data_size bytes of real data.
 
-	int       section_count;
-	int       section_secret_count;
-	int       section_size;
-	void**    section_addr;
-	unsigned int* section_bus;
-	int       section_buffers;
+	void*     base;
+	u32       size;
 
 	int       frame_size;
 	int       data_size;
@@ -96,10 +92,6 @@ typedef struct {
 
 extern frame_buffer_t frames;
 
-#define FRAME_ADDRESS(F, IDX)     ((F)->section_addr[IDX / (F)->section_buffers] + \
-                                   (F)->frame_size*(IDX % (F)->section_buffers))
-
-
 /* Alternative model: keep track of total index, not circular index.
  * Then a linked list of readers can be installed, each doing whatever
  * it wants with the data whenever it feels like it.  One reader can
@@ -109,8 +101,8 @@ extern frame_buffer_t frames;
 
 /* Prototypes */
 
-int  data_init(int dsp_version, int mem_size, int data_size);
-int  data_cleanup(void);
+int data_init(int dsp_version, int mem_size, int data_size);
+int data_cleanup(void);
 
 
 int data_force_escape( void );

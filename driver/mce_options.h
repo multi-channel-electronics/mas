@@ -46,13 +46,14 @@
 
 #ifndef BIGPHYS
 
-#  define FRAME_BUFFER_SIZE (4*1024*1024)
+#  define FRAME_BUFFER_SIZE 128000
 
 #else
 
 #  define FRAME_BUFFER_SIZE 10e6
 
 #endif
+
 
 /* DEFAULT_DATA_SIZE - doesn't affect very much, just the initial
  * frame size.  5424, as the current MCE maximum, is fine. */

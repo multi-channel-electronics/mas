@@ -657,32 +657,25 @@ int mce_send_command_wait_callback(int error, mce_reply *rep)
 
 /************************************************************************/
 
-/* FIXME: this borrowing is dumb.  If bigphys is present, we should
- * just allocate a page.  If not, dsp_alloc_dma.
- */
-
 int mce_buffer_allocate(mce_comm_buffer *buffer)
 {
 	// Create DMA-able area.  Use only one call since the two
 	// buffers are so small.
 
-	int reply_offset = ( sizeof(mce_command) + (DMA_ADDR_ALIGN-1) ) &
+	int offset = ( sizeof(mce_command) + (DMA_ADDR_ALIGN-1) ) &
 		DMA_ADDR_MASK;
 
-	int size = reply_offset + sizeof(mce_reply);
+	int size = offset + sizeof(mce_reply);
 
-	// Load a virtual and bus address
-	buffer->command = (mce_command*)
-		dsp_allocate_dma(size, (unsigned int*)&buffer->command_busaddr);
-
+	buffer->command = (mce_command*) dsp_allocate_dma(
+		size, (unsigned int*)&buffer->command_busaddr);
 	if (buffer->command==NULL)
 		return -ENOMEM;
 
-	buffer->reply = (mce_reply*) ((void*)buffer->command + reply_offset);
-	buffer->reply_busaddr = buffer->command_busaddr + reply_offset;
-	
+	buffer->reply = (mce_reply*) ((char*)buffer->command + offset);
+	buffer->reply_busaddr = buffer->command_busaddr + offset;
 	buffer->dma_size = size;
-
+	
 	PRINT_INFO("cmd/rep[virt->bus]: [%lx->%lx]/[%lx->%lx]\n",
 		   (long unsigned int)buffer->command,
 		   virt_to_bus(buffer->command),
@@ -701,7 +694,7 @@ int mce_buffer_free(mce_comm_buffer *buffer)
 
 	buffer->command = NULL;
 	buffer->reply   = NULL;
-
+	
 	return 0;
 }
 
@@ -764,10 +757,11 @@ int mce_init_module(int dsp_version)
 
 	//Init data module
 	err = data_init(dsp_version, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
-	if (err!=0) {
-		PRINT_ERR(SUBNAME "mce data module init failed with code %i\n", err);
+	if (err) {
+		PRINT_ERR(SUBNAME "mce data module init failure\n");
 		goto out;
 	}
+
 
 	err = mce_buffer_allocate(&mdat.buff);
 	if (err) goto out;
