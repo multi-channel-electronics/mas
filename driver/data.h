@@ -101,8 +101,8 @@ extern frame_buffer_t frames;
 
 /* Prototypes */
 
-void* data_init(int dsp_version, int mem_size, int data_size, int borrow);
-int   data_cleanup(void);
+int data_init(int dsp_version, int mem_size, int data_size);
+int data_cleanup(void);
 
 
 int data_force_escape( void );
@@ -124,6 +124,8 @@ int data_frame_resize(int size);
 int data_frame_empty_buffers( void );
 
 int data_frame_poll( void );
+
+int data_tail_increment(void);
 
 int data_proc(char *buf, int count);
 

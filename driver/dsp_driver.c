@@ -465,58 +465,14 @@ int dsp_query_version(void)
 #undef SUBNAME
 
 
-#define SUBNAME "cleanup_module: "
-
-void dsp_driver_cleanup(void)
-{
-	del_timer_sync(&ddat.tim);
-
-	remove_proc_entry("mce_dsp", NULL);
-
-	mce_cleanup();
-
-	dsp_ops_cleanup();
-
-#ifdef FAKEMCE
-	dsp_fake_cleanup();
-#else
-	dsp_pci_cleanup();
-#endif
-
-	PRINT_INFO(SUBNAME "driver removed\n");
-}    
-
-#undef SUBNAME
 
 
-#define SUBNAME "init_module: "
+#define SUBNAME "dsp_driver_probe: "
 
-inline int dsp_driver_init(void)
-{
+int dsp_driver_probe()
+{	
 	int err = 0;
 
-	PRINT_INFO(SUBNAME "driver init...\n");
-
-	init_MUTEX(&ddat.sem);
-
-	init_MUTEX(&dsp_local.sem);
-	init_waitqueue_head(&dsp_local.queue);
-
-	init_timer(&ddat.tim);
-	ddat.tim.function = dsp_timeout;
-	ddat.tim.data = (unsigned long)&ddat;
-
-	ddat.state = DDAT_IDLE;
-  
-#ifdef FAKEMCE
-	dsp_fake_init( DSPDEV_NAME );
-#else
-	if (dsp_pci_init( DSPDEV_NAME )) {
-		err = -1;
-		goto out;
-	}
-#endif
-	
 	// Set up handlers for the DSP interrupts - additional
 	//  handlers will be set up by sub-modules.
 	dsp_set_handler(DSP_REP, dsp_reply_handler, 0);
@@ -538,18 +494,80 @@ inline int dsp_driver_init(void)
 		goto out;
 	}
 
-	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
-
-
 	PRINT_INFO(SUBNAME "driver ok\n");
 	return 0;
 
  out:
   
-	dsp_driver_cleanup();
+	dsp_driver_remove();
 
 	PRINT_ERR(SUBNAME "exiting with errors!\n");
 	return err;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "dsp_driver_remove: "
+
+void dsp_driver_remove(void)
+{
+	del_timer_sync(&ddat.tim);
+
+	mce_cleanup();
+
+	dsp_ops_cleanup();
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "cleanup_module: "
+
+void dsp_driver_cleanup(void)
+{
+#ifdef FAKEMCE
+	dsp_driver_remove();
+	dsp_fake_cleanup();
+#else
+	dsp_pci_cleanup();
+#endif
+
+	remove_proc_entry("mce_dsp", NULL);
+
+	PRINT_INFO(SUBNAME "driver removed\n");
+}    
+
+#undef SUBNAME
+
+
+#define SUBNAME "init_module: "
+
+inline int dsp_driver_init(void)
+{
+	PRINT_INFO(SUBNAME "driver init...\n");
+
+	init_MUTEX(&ddat.sem);
+
+	init_MUTEX(&dsp_local.sem);
+	init_waitqueue_head(&dsp_local.queue);
+
+	init_timer(&ddat.tim);
+	ddat.tim.function = dsp_timeout;
+	ddat.tim.data = (unsigned long)&ddat;
+
+	ddat.state = DDAT_IDLE;
+  
+	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
+
+#ifdef FAKEMCE
+	dsp_fake_init( DSPDEV_NAME );
+#else
+	if (dsp_pci_init( DSPDEV_NAME )) {
+		return -1;
+	}
+#endif
+	return 0;
 }
 
 module_init(dsp_driver_init);

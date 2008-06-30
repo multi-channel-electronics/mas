@@ -18,6 +18,10 @@
 #endif
 
 
+typedef struct {
+	unsigned minor;
+	u32 *user_map;
+} data_ops_t;
 
 /**************************************************************************
  *                                                                        *
@@ -90,13 +94,44 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 	return read_count;
 }
 
+#undef SUBNAME
+
+
 ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
 		   loff_t *f_pos)
 {
-	data_report();
 	return count;
 }
 
+
+#define SUBNAME "data_mmap: "
+
+/* Map the DSP buffer into user space (rather than occupying limited
+ * kernel space.  The driver doesn't need direct access to the buffer
+ * provided we can tell the user how to get the data. */
+
+int data_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	data_ops_t* d = filp->private_data;
+
+	// Do args checking on vma... start, end, prot.
+	PRINT_ERR(SUBNAME "mapping %#lx to user virtual %#lx\n",
+		  vma->vm_start, vma->vm_end - vma->vm_start);
+
+	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
+	remap_pfn_range(vma, vma->vm_start,
+			(unsigned long)frames.base_busaddr >> PAGE_SHIFT,
+			vma->vm_end - vma->vm_start, vma->vm_page_prot);
+
+	d->user_map = (u32*)vma->vm_start;
+
+	return 0;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "data_ioctl: "
 
 int data_ioctl(struct inode *inode, struct file *filp,
 	       unsigned int iocmd, unsigned long arg)
@@ -104,11 +139,11 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	switch(iocmd) {
 
 	case DATADEV_IOCT_RESET:
-		PRINT_INFO("ioctl: reset\n");
+		PRINT_INFO(SUBNAME"reset\n");
 		break;
 
 	case DATADEV_IOCT_QUERY:
-		PRINT_INFO("ioctl: query\n");
+		PRINT_INFO(SUBNAME "query\n");
 		switch (arg) {
 		case QUERY_HEAD:
 			return frames.head_index;
@@ -122,6 +157,9 @@ int data_ioctl(struct inode *inode, struct file *filp,
 			return frames.data_size;
 		case QUERY_FRAMESIZE:
 			return frames.frame_size;
+		case QUERY_BUFSIZE:
+			if (frames.base == NULL) return 0;
+			return frames.size;
 		default:
 			return -1;
 		}
@@ -139,30 +177,36 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	case DATADEV_IOCT_WATCH:
 	case DATADEV_IOCT_WATCH_DL:
 #ifdef OPT_WATCHER
-		PRINT_INFO("ioctl: watch control\n");
+		PRINT_INFO(SUBNAME "watch control\n");
 		return watcher_ioctl(iocmd, arg);
 #else
-		PRINT_IOCT("ioctl: watch function; disabled!\n");
+		PRINT_IOCT(SUBNAME "watch function; disabled!\n");
 		return -1;
 #endif
 
 	case DATADEV_IOCT_EMPTY:
-		PRINT_INFO("ioctl: reset data buffer\n");
+		PRINT_INFO(SUBNAME "reset data buffer\n");
 		mce_error_reset();
 		return data_frame_empty_buffers();
 
 	case DATADEV_IOCT_QT_CONFIG:
-		PRINT_INFO("ioctl: configure Quiet Transfer mode "
+		PRINT_INFO(SUBNAME "configure Quiet Transfer mode "
 			   "[inform=%li]\n", arg);
 		return data_qt_configure(arg);
 
 	case DATADEV_IOCT_QT_ENABLE:
-		PRINT_INFO("ioctl: enable/disable quiet Transfer mode "
+		PRINT_INFO(SUBNAME "enable/disable quiet Transfer mode "
 			   "[on=%li]\n", arg);
 		return data_qt_enable(arg);
 
+	case DATADEV_IOCT_FRAME_POLL:
+		return (data_frame_poll() ? frames.tail_index*frames.frame_size : -1);
+
+	case DATADEV_IOCT_FRAME_CONSUME:
+		return data_tail_increment();
+
 	default:
-		PRINT_ERR("ioctl: unknown command (%#x)\n", iocmd );
+		PRINT_ERR(SUBNAME "unknown command (%#x)\n", iocmd );
 	}
 
 	return 0;
@@ -172,6 +216,13 @@ int data_ioctl(struct inode *inode, struct file *filp,
 
 int data_open(struct inode *inode, struct file *filp)
 {
+	// Store details of inode in private data
+	data_ops_t* d = kmalloc(sizeof(data_ops_t), GFP_KERNEL);
+	d->minor = iminor(inode);
+	d->user_map = NULL;
+
+	filp->private_data = d;
+
 	return 0;
 }
 
@@ -183,11 +234,12 @@ int data_release(struct inode *inode, struct file *filp)
 struct file_operations data_fops = 
 {
 	.owner=   THIS_MODULE,
+ 	.ioctl=   data_ioctl,
+	.mmap=    data_mmap,
 	.open=    data_open, 
 	.read=    data_read,
 	.release= data_release,
 	.write=   data_write,
- 	.ioctl=   data_ioctl,
 };
 
 

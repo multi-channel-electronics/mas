@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 
 #include "mce_library.h"
 #include <mce/data_ioctl.h>
@@ -24,6 +25,9 @@
 
 int mcedata_open(mce_context_t *context, const char *dev_name)
 {
+	void *map;
+	int map_size;
+
 	if (C_data.connected) mcedata_close(context);
 
 	if (strlen(dev_name)>=MCE_LONG-1)
@@ -37,6 +41,17 @@ int mcedata_open(mce_context_t *context, const char *dev_name)
 /* 	if (fcntl(C_data.fd, F_SETFL, fcntl(C_data.fd, F_GETFL) | O_NONBLOCK)) */
 /* 		return -MCE_ERR_DEVICE; */
 
+	// Obtain buffer size for subsequent mmap
+	map_size = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_BUFSIZE);
+	if (map_size > 0) {
+		map = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
+			   MAP_SHARED, C_data.fd, 0);
+		if (map != NULL) {
+			C_data.map = map;
+			C_data.map_size = map_size;
+		}
+	}
+
 	C_data.connected = 1;
 	strcpy(C_data.dev_name, dev_name);
 
@@ -46,6 +61,12 @@ int mcedata_open(mce_context_t *context, const char *dev_name)
 int mcedata_close(mce_context_t *context)
 {
 	C_data_check;
+
+	if (C_data.map != NULL) 
+		munmap(C_data.map, C_data.map_size);
+
+	C_data.map_size = 0;
+	C_data.map = NULL;
 
 	if (close(C_data.fd) < 0)
 		return -MCE_ERR_DEVICE;
@@ -92,4 +113,15 @@ void mcedata_buffer_query(mce_context_t* context, int *head, int *tail, int *cou
 	*head = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_HEAD);
 	*tail = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_TAIL);
 	*count = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_MAX);
+}
+
+int mcedata_poll_offset(mce_context_t* context, int *offset)
+{
+	*offset = ioctl(C_data.fd, DATADEV_IOCT_FRAME_POLL);
+	return (*offset >= 0);
+}
+
+int mcedata_consume_frame(mce_context_t* context)
+{
+	return ioctl(C_data.fd, DATADEV_IOCT_FRAME_CONSUME);
 }

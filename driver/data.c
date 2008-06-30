@@ -346,22 +346,30 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 #undef SUBNAME
 
+#define SUBNAME "data_head_increment: "
 
-void data_report() {
-	PRINT_IOCT("data_report: head=%x/%x , tail=%x(%x)\n",
-		  frames.head_index, frames.max_index,
-		  frames.tail_index, frames.partial);
-	PRINT_IOCT("data_report: flags=%x\n", frames.flags);
+/* Call tail_increment to mark a frame as consumed. */
+
+int data_tail_increment()
+{
+	unsigned d = (frames.tail_index + 1) % frames.max_index;
+	if (frames.head_index == frames.tail_index)
+		return -1;
+	barrier();
+	frames.tail_index = d;
+	frames.partial = 0;
+	return 0;
 }
+
+#undef SUBNAME
 
 
 #define SUBNAME "data_alloc: "
 
-void *data_alloc(int mem_size, int data_size, int borrow)
+int data_alloc(int mem_size, int data_size)
 {
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
 	caddr_t virt;
-	void *borrower_p;
 
 	PRINT_INFO(SUBNAME "entry\n");
 
@@ -373,7 +381,7 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 
 	if (virt==NULL) {
 		PRINT_ERR(SUBNAME "bigphysarea_alloc_pages failed!\n");
-		return NULL;
+		return -ENOMEM;
 	}
 
 #else
@@ -382,16 +390,13 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 	if (virt==NULL) {
 		PRINT_ERR(SUBNAME "kmalloc failed to allocate %i bytes\n",
 			  mem_size);
-		return NULL;
+		return -ENOMEM;
 	}
 #endif
 
-	// Borrower data location
-	borrower_p = virt + mem_size - borrow;
-
 	// Save the buffer address and maximum size
 	frames.base = virt;
-	frames.size = mem_size - borrow;
+	frames.size = mem_size;
 
 	// Partition buffer into blocks of some default size
 	data_frame_divide(data_size);
@@ -405,7 +410,7 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 		   frames.max_index,
 		   (int)frames.frame_size);
 	
-	return borrower_p;
+	return 0;
 }
 
 #undef SUBNAME
@@ -502,18 +507,17 @@ int data_proc(char *buf, int count)
 
 #define SUBNAME "data_init: "
 
-void* data_init(int dsp_version, int mem_size, int data_size, int borrow)
+int data_init(int dsp_version, int mem_size, int data_size)
 {
-	void *addr = NULL;
+	int err = 0;
 
 	init_waitqueue_head(&frames.queue);
 
 	tasklet_init(&frames.grant_tasklet,
 		     data_grant_task, 0);
-
 	
-	addr = data_alloc(mem_size, data_size, borrow);
-	if (addr==NULL) return NULL;
+	err = data_alloc(mem_size, data_size);
+	if (err) return err;
 
 	data_reset();
 
@@ -529,18 +533,18 @@ void* data_init(int dsp_version, int mem_size, int data_size, int borrow)
 		
 	case DSP_U0104:
 		if (data_qt_configure(1)) 
-			return NULL;
+			return -EIO;
 		break;
 		
 	default:
 		PRINT_ERR(SUBNAME
 			  "DSP code not recognized, attempting quiet transfer mode...\n");
 		if (data_qt_configure(1))
-			return NULL;
+			return -EIO;
 		break;
 	}
 
-	return addr;
+	return 0;
 }
 
 #undef SUBNAME

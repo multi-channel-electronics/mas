@@ -38,6 +38,30 @@
 struct dsp_dev_t dsp_dev;
 struct dsp_dev_t *dev = &dsp_dev;
 
+/* Internal prototypes */
+
+void  dsp_clear_interrupt(dsp_reg_t *dsp);
+
+void  dsp_pci_remove(struct pci_dev *pci);
+
+int   dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id);
+
+
+/* Data for PCI enumeration */
+
+static const struct pci_device_id pci_ids[] = {
+	{ PCI_DEVICE(DSP_VENDORID, DSP_DEVICEID) },
+	{ 0 },
+};
+
+static struct pci_driver pci_driver = {
+	.name = "mce_dsp",
+	.id_table = pci_ids,
+	.probe = dsp_pci_probe,
+	.remove = dsp_pci_remove,
+};
+
+
 
 /*
   Each command is mapped to a particular DSP host control vector
@@ -73,13 +97,6 @@ static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_SYS_ERR, HCVR_SYS_ERR, VECTOR_QUICK},
 	{DSP_SYS_RST, HCVR_SYS_RST, VECTOR_QUICK},
 };
-
-
-/* Internal prototypes */
-
-void  dsp_clear_interrupt(dsp_reg_t *dsp);
-
-
 
 /* DSP register wrappers */
 
@@ -363,6 +380,7 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 			char *dev_name)
 {
 	int err = 0;
+	int cfg_irq = 0;
 
 	if (pci==NULL || dev==NULL) {
 		PRINT_ERR(SUBNAME "Null pointers! pci=%lx dev=%lx\n",
@@ -370,6 +388,10 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 		return -ERESTARTSYS;
 	}
 	
+	pci_read_config_byte(pci, PCI_INTERRUPT_LINE, (char*)&cfg_irq);
+	PRINT_INFO(SUBNAME "pci has irq %i and config space has irq %i\n",
+		   pci->irq, cfg_irq);
+
 	// Free existing handler
 	if (dev->int_handler!=NULL)
 		dsp_pci_remove_handler(pci);
@@ -401,31 +423,30 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 #undef SUBNAME
 
 
-#define SUBNAME "dsp_pci_init: "
+#define SUBNAME "dsp_probe: "
 
-int dsp_pci_init(char *dev_name)
+int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	int err = 0;
-	PRINT_INFO(SUBNAME "entry\n");
-
-	dev->int_handler = NULL;
-
-#ifdef OLD_KERNEL
-	dev->pci = (struct pci_dev *)
-		pci_find_device(DSP_VENDORID, DSP_DEVICEID, NULL);
-# else
-	dev->pci = (struct pci_dev *)
-		pci_get_device(DSP_VENDORID, DSP_DEVICEID, NULL);
-# endif
-
-	if (dev->pci==NULL) {
-		PRINT_ERR(SUBNAME "Could not find PCI card!\n");
+	PRINT_INFO(SUBNAME "entry!\n");
+	
+	if (pci==NULL) {
+		PRINT_ERR(SUBNAME "Called with NULL pci_dev!\n");
 		err = -EPERM;
 		goto fail;
 	}
 
+	if (dev->pci != NULL) {
+		PRINT_ERR(SUBNAME "called after device already configured.\n");
+		err = -EPERM;
+		goto fail;
+	}
+
+	err = pci_enable_device(pci);
+	if (err) goto fail;
+
 	// Map i/o registers into a dsp_reg_t structure
-	dev->dsp = (dsp_reg_t *)ioremap(pci_resource_start(dev->pci, 0) & 
+	dev->dsp = (dsp_reg_t *)ioremap(pci_resource_start(pci, 0) & 
 					PCI_BASE_ADDRESS_MEM_MASK,
 					sizeof(*dev->dsp));
 	if (dev->dsp==NULL) {
@@ -435,38 +456,44 @@ int dsp_pci_init(char *dev_name)
 	}
 
 	// Mark PCI card as bus master
-	pci_set_master(dev->pci);
+	pci_set_master(pci);
 	
-	// Enable memory write-invalidate?  We don't use this...
-	/*
-	if ((err=pci_set_mwi(dev->pci)) != 0) {
-		PRINT_ERR(SUBNAME "Could not set card as PCI master.\n");
-		goto fail;
-	}
-	*/
-
 	// Configure the card for our purposes
 	dsp_pci_configure(dev->dsp);
 
 	// Install the interrupt handler (cast necessary for backward compat.)
-	err = dsp_pci_set_handler(dev->pci, (irq_handler_t)pci_int_handler,
-				  dev_name);
+	err = dsp_pci_set_handler(pci, (irq_handler_t)pci_int_handler,
+				  "mce_dsp");
 	if (err) goto fail;
 
-	PRINT_INFO(SUBNAME "ok\n");
+	// Mark dev->pci as non-null to show successful config.
+	dev->pci = pci;
+
+	// Call init function for higher levels.
+	dsp_driver_probe();
+
 	return 0;
 
- fail:
-	return err;
+fail:
+	PRINT_ERR(SUBNAME "failed with code %i\n", err);
+	return -1;
 }
 
 #undef SUBNAME
 
 
-int dsp_pci_cleanup()
+void dsp_pci_remove(struct pci_dev *pci)
 {
+	if (pci != dev->pci) {
+		PRINT_ERR("dsp_remove called with unknown device!\n");
+		return;
+	}
+
 	if ( dev->pci == NULL )
-		return 0;
+		return;
+	
+	// Disable higher-level features first
+	dsp_driver_remove();
 		
 	// Remove int handler, clear remaining ints, unmap i/o memory
 	dsp_pci_remove_handler(dev->pci);
@@ -477,12 +504,42 @@ int dsp_pci_cleanup()
 		dev->dsp = NULL;
 	}
 
-#ifndef OLD_KERNEL
-	pci_dev_put(dev->pci);
-#endif
-
 	dev->pci = NULL;
+}
+
+
+#define SUBNAME "dsp_pci_init: "
+
+int dsp_pci_init(char *dev_name)
+{
+	int err = 0;
+	PRINT_INFO(SUBNAME "entry\n");
+
+	dev->int_handler = NULL;
+
+	err = pci_register_driver(&pci_driver);
+	if (err) {
+		PRINT_ERR(SUBNAME
+			  "pci_register_driver failed with code %i.\n", err);
+		return -1;
+	}			  
+
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
+}
+
+#undef SUBNAME
+
+
+int dsp_pci_cleanup()
+{
+	pci_unregister_driver(&pci_driver);
+
+	if ( dev->pci != NULL ) {
+		PRINT_ERR("driver uninstalled without zeroing pci struct!\n");
+	}
+	return 0;
+		
 }
 
 

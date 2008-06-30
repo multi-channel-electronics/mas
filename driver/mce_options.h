@@ -55,6 +55,12 @@
 #endif
 
 
+/* DEFAULT_DATA_SIZE - doesn't affect very much, just the initial
+ * frame size.  5424, as the current MCE maximum, is fine. */
+
+#define DEFAULT_DATA_SIZE   5424
+
+
 /*
   WATCHER - adds functionality for characterizing buffer usage.
   Adds a fast function call to data_frame_increment, and enables the
