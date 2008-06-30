@@ -35,11 +35,8 @@
 #include "dsp_driver.h"
 #include "mce/dsp_ioctl.h"
 
-#define NUM_PCI_CRD 3
-
-int cards = 0;
-dsp_dev_t dsp_dev[NUM_PCI_CRD];
-//struct dsp_dev_t *dev = &dsp_dev;
+struct dsp_dev_t dsp_dev;
+struct dsp_dev_t *dev = &dsp_dev;
 
 
 /*
@@ -118,8 +115,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	/* Note that the regs argument is deprecated in newer kernels,
 	   do not use it.  It is left here for compatibility with
 	   2.6.18-                                                    */
-        
-        dsp_dev_t *dev = dsp_dev;
+
 	dsp_message msg;
 	dsp_reg_t *dsp = dev->dsp;
 	int i = 0;
@@ -191,7 +187,6 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector)
 {
 	int i = 0;
 	int n = sizeof(dsp_command) / sizeof(u32);
-        dsp_dev_t *dev = dsp_dev;
 
 	// HSTR must be ready to receive
 	if ( !(dsp_read_hstr(dev->dsp) & HSTR_TRDY) ) {
@@ -221,8 +216,6 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector)
 
 int dsp_quick_command(u32 vector) 
 {
-        dsp_dev_t *dev = dsp_dev;
-
 	PRINT_INFO(SUBNAME "sending vector %#x\n", vector);
 	dsp_write_hcvr(dev->dsp, vector);
 	return 0;
@@ -308,8 +301,7 @@ void  dsp_free_dma(void* buffer, int size, unsigned int bus_addr)
 
 int dsp_pci_flush()
 {
-        dsp_dev_t *dev = dsp_dev;
-        dsp_reg_t *dsp = dev->dsp;
+	dsp_reg_t *dsp = dev->dsp;
 
 	int count = 0, tmp;
 
@@ -345,8 +337,6 @@ int dsp_pci_configure(dsp_reg_t *dsp)
 
 int dsp_pci_remove_handler(struct pci_dev *pci)
 {
-        dsp_dev_t *dev = dsp_dev;
-
 	if (dev->int_handler==NULL) {
 		PRINT_INFO(SUBNAME "no handler installed\n");
 		return 0;
@@ -372,7 +362,6 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 			irq_handler_t handler,
 			char *dev_name)
 {
-        dsp_dev_t *dev = dsp_dev;
 	int err = 0;
 
 	if (pci==NULL || dev==NULL) {
@@ -416,57 +405,53 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 
 int dsp_pci_init(char *dev_name)
 {
-        dsp_dev_t *dev = dsp_dev;
-        int err = 0;
+	int err = 0;
 	PRINT_INFO(SUBNAME "entry\n");
 
 	dev->int_handler = NULL;
-	
+
 #ifdef OLD_KERNEL
-	while(dev->pci = (struct pci_dev *)
-	      pci_find_device(DSP_VENDORID, DSP_DEVICEID, NULL)) {
+	dev->pci = (struct pci_dev *)
+		pci_find_device(DSP_VENDORID, DSP_DEVICEID, NULL);
 # else
-	while(dev->pci = (struct pci_dev *)
-	      pci_get_device(DSP_VENDORID, DSP_DEVICEID, NULL)) {
+	dev->pci = (struct pci_dev *)
+		pci_get_device(DSP_VENDORID, DSP_DEVICEID, NULL);
 # endif
-		cards++;
 
-		// Map i/o registers into a dsp_reg_t structure
-		dev->dsp = (dsp_reg_t *)ioremap(pci_resource_start(dev->pci, 0) & 
-						PCI_BASE_ADDRESS_MEM_MASK,
-						sizeof(*dev->dsp));
-		if (dev->dsp==NULL) {
-			PRINT_ERR(SUBNAME "Could not map PCI registers!\n");
-			err = -EIO;
-			goto fail;
-		}
-
-		// Mark PCI card as bus master
-		pci_set_master(dev->pci);
-	
-		// Enable memory write-invalidate?  We don't use this...
-		/*
-		if ((err=pci_set_mwi(dev->pci)) != 0) {
-		PRINT_ERR(SUBNAME "Could not set card as PCI master.\n");
-		goto fail;
-		}
-		*/
-
-		// Configure the card for our purposes
-		dsp_pci_configure(dev->dsp);
-
-		// Install the interrupt handler (cast necessary for backward compat.)
-		err = dsp_pci_set_handler(dev->pci, (irq_handler_t)pci_int_handler,
-				  dev_name);
-		if (err) goto fail;
-	}
-
-	if (cards == 0) {
+	if (dev->pci==NULL) {
 		PRINT_ERR(SUBNAME "Could not find PCI card!\n");
 		err = -EPERM;
 		goto fail;
 	}
 
+	// Map i/o registers into a dsp_reg_t structure
+	dev->dsp = (dsp_reg_t *)ioremap(pci_resource_start(dev->pci, 0) & 
+					PCI_BASE_ADDRESS_MEM_MASK,
+					sizeof(*dev->dsp));
+	if (dev->dsp==NULL) {
+		PRINT_ERR(SUBNAME "Could not map PCI registers!\n");
+		err = -EIO;
+		goto fail;
+	}
+
+	// Mark PCI card as bus master
+	pci_set_master(dev->pci);
+	
+	// Enable memory write-invalidate?  We don't use this...
+	/*
+	if ((err=pci_set_mwi(dev->pci)) != 0) {
+		PRINT_ERR(SUBNAME "Could not set card as PCI master.\n");
+		goto fail;
+	}
+	*/
+
+	// Configure the card for our purposes
+	dsp_pci_configure(dev->dsp);
+
+	// Install the interrupt handler (cast necessary for backward compat.)
+	err = dsp_pci_set_handler(dev->pci, (irq_handler_t)pci_int_handler,
+				  dev_name);
+	if (err) goto fail;
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
@@ -480,32 +465,23 @@ int dsp_pci_init(char *dev_name)
 
 int dsp_pci_cleanup()
 {
-	dsp_dev_t *dev;
-	int i;
+	if ( dev->pci == NULL )
+		return 0;
+		
+	// Remove int handler, clear remaining ints, unmap i/o memory
+	dsp_pci_remove_handler(dev->pci);
 
-	if (cards == 0)	return 0;
-
-        for(i =0;  i < cards; i++) {
-
-		dev = dsp_dev + i;
-	
-		// Remove int handler, clear remaining ints, unmap i/o memory
-		dsp_pci_remove_handler(dev->pci);
-
-		if (dev->dsp!=NULL) {
-			dsp_clear_interrupt(dev->dsp);
-			iounmap(dev->dsp);
-			dev->dsp = NULL;
-       		}
-
-	#ifndef OLD_KERNEL
-		pci_dev_put(dev->pci);
-	#endif
-
-		dev->pci = NULL;
+	if (dev->dsp!=NULL) {
+		dsp_clear_interrupt(dev->dsp);
+		iounmap(dev->dsp);
+		dev->dsp = NULL;
 	}
 
-	cards = 0; //MATT: NO ERROR CHECKING NEEDED?
+#ifndef OLD_KERNEL
+	pci_dev_put(dev->pci);
+#endif
+
+	dev->pci = NULL;
 	return 0;
 }
 
@@ -514,8 +490,6 @@ int dsp_pci_cleanup()
 
 int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg)
 {
-        dsp_dev_t *dev = dsp_dev;
-
 	switch (iocmd) {
 	case DSPDEV_IOCT_CORE:
 		
@@ -561,8 +535,6 @@ int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg)
 
 int dsp_pci_proc(char *buf, int count)
 {
-        dsp_dev_t *dev = dsp_dev;
-
 	int len = 0;
 	if (len < count) {
 		len += sprintf(buf+len, "    hstr:     %#06x\n"
