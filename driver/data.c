@@ -2,6 +2,7 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
+#include <linux/mm.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
@@ -369,6 +370,7 @@ int data_tail_increment()
 int data_alloc(int mem_size, int data_size)
 {
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
+	caddr_t phys;
 	caddr_t virt;
 
 	PRINT_INFO(SUBNAME "entry\n");
@@ -384,25 +386,41 @@ int data_alloc(int mem_size, int data_size)
 		return -ENOMEM;
 	}
 
-#else
-	virt = kmalloc(mem_size, GFP_KERNEL);
-
-	if (virt==NULL) {
-		PRINT_ERR(SUBNAME "kmalloc failed to allocate %i bytes\n",
-			  mem_size);
-		return -ENOMEM;
-	}
-#endif
-
 	// Save the buffer address and maximum size
 	frames.base = virt;
 	frames.size = mem_size;
 
-	// Partition buffer into blocks of some default size
-	data_frame_divide(data_size);
-
 	// Save physical address for hardware
 	frames.base_busaddr = (caddr_t)virt_to_bus(virt);
+
+#else
+/* 	virt = kmalloc(mem_size, GFP_KERNEL); */
+
+/* 	if (virt==NULL) { */
+/* 		PRINT_ERR(SUBNAME "kmalloc failed to allocate %i bytes\n", */
+/* 			  mem_size); */
+/* 		return -ENOMEM; */
+/* 	} */
+
+#ifdef CONFIG_HIGHMEM
+	phys = (caddr_t) (num_physpages * PAGE_SIZE);
+	PRINT_ERR(SUBNAME "highmem; phys=%lx\n", (unsigned long)phys);
+#else
+	phys = (caddr_t)__pa( high_memory );
+	PRINT_ERR(SUBNAME "!highmem; phys=%lx\n", (unsigned long)phys);
+#endif
+
+	// Save the buffer address and maximum size
+	frames.base = NULL;
+	frames.size = mem_size;
+
+	// Save physical address for hardware
+	frames.base_busaddr = phys;
+
+#endif
+
+	// Partition buffer into blocks of some default size
+	data_frame_divide(data_size);
 
 	//Debug
 	PRINT_INFO(SUBNAME "buffer: base=%x + %x of size %x\n",
@@ -422,7 +440,8 @@ int data_free(void)
 #ifdef BIGPHYS
 		bigphysarea_free_pages(frames.base);
 #else
-		kfree(frames.base);
+//		kfree(frames.base);
+		frames.size = 0;
 #endif
 	}
 	return 0;

@@ -119,9 +119,14 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	data_ops_t* d = filp->private_data;
 
+	// Mark memory as reserved (prevents core dump inclusion) and
+	// IO (prevents caching)
+
+	vma->vm_flags |= VM_IO | VM_RESERVED;
+
 	// Do args checking on vma... start, end, prot.
-	PRINT_ERR(SUBNAME "mapping %#lx to user virtual %#lx\n",
-		  vma->vm_start, vma->vm_end - vma->vm_start);
+	PRINT_INFO(SUBNAME "mapping %#lx bytes to user address %#lx\n",
+		   vma->vm_end - vma->vm_start, vma->vm_start);
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
 	remap_pfn_range(vma, vma->vm_start,
@@ -163,7 +168,6 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		case QUERY_FRAMESIZE:
 			return frames.frame_size;
 		case QUERY_BUFSIZE:
-			if (frames.base == NULL) return 0;
 			return frames.size;
 		default:
 			return -1;

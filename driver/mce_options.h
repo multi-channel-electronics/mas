@@ -46,7 +46,7 @@
 
 #ifndef BIGPHYS
 
-#  define FRAME_BUFFER_SIZE 128000
+#  define FRAME_BUFFER_SIZE (32*1024*1024)
 
 #else
 
