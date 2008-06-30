@@ -48,6 +48,7 @@ typedef struct {
 	// But each buffer contains only data_size bytes of real data.
 
 	int       section_count;
+	int       section_secret_count;
 	int       section_size;
 	void**    section_addr;
 	unsigned int* section_bus;

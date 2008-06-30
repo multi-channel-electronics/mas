@@ -383,7 +383,6 @@ int data_alloc(int mem_size, int data_size)
 	frames.section_size = MAX_KMALLOC;
 	npg = (mem_size + frames.section_size-1) / frames.section_size;
 
-	npg = 1;
 	PRINT_ERR(SUBNAME "attempting to allocate %i pages of size %i\n",
 		  npg, frames.section_size);
 
@@ -406,7 +405,9 @@ int data_alloc(int mem_size, int data_size)
 	if (frames.section_count <= 0)
 		return -ENOMEM;
 
-	// Save the buffer address and maximum size
+
+	frames.section_secret_count = frames.section_count;
+	frames.section_count = 1;
 
 #endif
 	// Save physical address for hardware
@@ -434,6 +435,7 @@ int data_free(void)
 		bigphysarea_free_pages(frames.section_addr[0]);
 #else
 		int i;
+		frames.section_count = frames.section_secret_count;
 		for (i=0; i<frames.section_count; i++) {
 			dsp_free_dma(frames.section_addr[i], MAX_KMALLOC, frames.section_bus[i]);
 		}
