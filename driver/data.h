@@ -125,6 +125,8 @@ int data_frame_empty_buffers( void );
 
 int data_frame_poll( void );
 
+int data_tail_increment(void);
+
 int data_proc(char *buf, int count);
 
 #endif

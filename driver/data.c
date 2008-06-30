@@ -346,6 +346,23 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 #undef SUBNAME
 
+#define SUBNAME "data_head_increment: "
+
+/* Call tail_increment to mark a frame as consumed. */
+
+int data_tail_increment()
+{
+	unsigned d = (frames.tail_index + 1) % frames.max_index;
+	if (frames.head_index == frames.tail_index)
+		return -1;
+	barrier();
+	frames.tail_index = d;
+	frames.partial = 0;
+	return 0;
+}
+
+#undef SUBNAME
+
 
 #define SUBNAME "data_alloc: "
 
