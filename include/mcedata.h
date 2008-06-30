@@ -32,6 +32,8 @@ typedef struct mcedata {
 	char dev_name[MCE_LONG];
 	char errstr[MCE_LONG];
 
+	void *map;
+	int map_size;
 } mcedata_t;
 
 
@@ -56,6 +58,8 @@ int mcedata_qt_enable(mce_context_t* context, int on);
 int mcedata_qt_setup(mce_context_t* context, int frame_index);
 void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
 			  int *count);
+int mcedata_poll_offset(mce_context_t* context, int *offset);
+int mcedata_consume_frame(mce_context_t* context);
 
 
 /* Frame data handlers */

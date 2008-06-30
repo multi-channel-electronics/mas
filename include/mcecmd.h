@@ -30,7 +30,6 @@ typedef struct mcecmd {
 
 	char dev_name[MCE_LONG];
 	char errstr[MCE_LONG];
-
 } mcecmd_t;
 
 
