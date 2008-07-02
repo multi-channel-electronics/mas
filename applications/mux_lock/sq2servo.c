@@ -20,6 +20,14 @@
  *
  ***********************************************************/
 
+
+int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
+		mce_param_t *m_sq2fb_col, int biasing_ac,
+		u32 *data, int offset, int count);
+
+int servo_step(u32* dest, int* src, int count, double gain, double target);
+
+
 /***********************************************************
  * frame_callback: to store the frame to a file and fill row_data
  *
@@ -70,6 +78,7 @@ int main ( int argc, char **argv )
    int nfeed;
    u32 nrows_rep;
    char outfile[256];       /* output data file */
+   u32 ssafb_init[MAXVOLTS]; /* starting values for feedback */
    u32 ssafb[MAXVOLTS];     /* series array feedback voltages */
    int sq2bias;             /* SQ2 bias voltage */
    int sq2bstep;            /* SQ2 bias voltage step */
@@ -80,6 +89,7 @@ int main ( int argc, char **argv )
    int  soffset;
    int  skip_sq2bias = 0;
    int  biasing_ac = 0;     /* does MCE have a biasing address card? */
+   int  preservo = 0;
 
    int  error = 0;
    char errmsg_temp[256];
@@ -236,8 +246,8 @@ int main ( int argc, char **argv )
        ERRPRINT("reading safb.init quitting...."); 
        return ERR_INI_READ;
      }
-     ssafb[j] = atoi (line );
-     sprintf(tempbuf, "%d ", ssafb[j]);
+     ssafb_init[j] = atoi (line );
+     sprintf(tempbuf, "%d ", ssafb_init[j]);
      strcat(init_line, tempbuf);
    }
    fclose(tempf);
@@ -267,6 +277,23 @@ int main ( int argc, char **argv )
       if (!skip_sq2bias){
 	duplicate_fill( (u32)sq2bias + j*sq2bstep, temparr, MAXCHANNELS );
 	write_range_or_exit(mce, &m_sq2bias, soffset, temparr, MAXCHANNELS, "sq2bias");
+      }
+
+      // Load starting fb values
+      for (snum=0; snum<MAXCHANNELS; snum++)
+	      ssafb[snum] = ssafb_init[snum];
+
+      // Set starting sa fb and sq2 fb
+      duplicate_fill(sq2feed, temparr, MAXCHANNELS);
+      write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, biasing_ac, temparr, soffset, MAXCHANNELS);
+	      
+      for (i=0; i<preservo; i++) {
+	      write_range_or_exit(mce, &m_safb, soffset, ssafb + soffset, MAXCHANNELS, "safb");
+
+	      if ( (error=mcedata_acq_go(&acq, 1)) != 0) 
+		      error_action("data acquisition failed", error);
+
+	      servo_step(ssafb+soffset, sq2servo.row_data, MAXCHANNELS, gain, z);
       }
 
       for ( i=0; i<nfeed; i++ ){
@@ -321,4 +348,36 @@ int main ( int argc, char **argv )
    //elapsed = ((double) (end - start))/CLOCKS_PER_SEC;
    printf ("sq2servo: elapsed time is %fs \n", difftime(finish,start));	   
    return SUCCESS;
+}
+
+/* Writes values to sq2 feedback columns offset through offset+count.
+ * Even with biasing_ac, the same value is applied for the whole
+ * column.  In that case, m_sq2fb_col should point to the desired
+ * columns only (i.e. m_sq2fb_col[0] through mm_sq2fb_col[count-1] are
+ * used, *not* m_sq2fb_col[offset] through [offset+count-1]. */
+
+int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
+		 mce_param_t *m_sq2fb_col, int biasing_ac,
+		 u32 *data, int offset, int count)
+{
+	if (biasing_ac) {
+		int i;
+		u32 temparr[MAXROWS];
+		for (i=0; i<count; i++) {
+			duplicate_fill(data[i], temparr, MAXROWS);
+			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");
+		}
+	} else {
+		write_range_or_exit(mce, m_sq2fb, offset, data, MAXCHANNELS, "sq2fb");
+	}
+	return 0;
+}
+
+int servo_step(u32* dest, int* src, int count, double gain, double target)
+{
+	int i;
+	for (i=0; i<count; i++) {
+		dest[i] += gain * (src[i] - target);
+	}
+	return 0;
 }
