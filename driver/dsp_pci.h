@@ -2,7 +2,7 @@
 #define _DSP_PCI_H_
 
 #include <linux/interrupt.h>
-#include "dsp.h"
+#include "mce/dsp.h"
 
 
 /* PCI DMA alignment */

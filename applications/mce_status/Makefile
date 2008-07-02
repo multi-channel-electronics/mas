@@ -5,7 +5,8 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-DEFS = -DVERSION_STRING="$(REPO_VER)"
+include $(MAKERULES)Makefile.defaults
+DEFS = -DVERSION_STRING="$(REPO_VER)" $(CONFIGFILE_DEFS)
 
 INCLUDE=-I$(MAS_INCLUDE_F)
 
@@ -15,8 +16,8 @@ LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 
 CFLAGS += $(INCLUDE) $(DEFS) -Wall
 
-OBJECTS = mce_status.o options.o das.o cfg_dump.o
-HEADERS = mce_status.h das.h cfg_dump.h
+OBJECTS = mce_status.o options.o das.o mas.o cfg_dump.o
+HEADERS = mce_status.h das.h mas.h cfg_dump.h
 
 CC=gcc
 

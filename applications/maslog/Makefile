@@ -10,9 +10,11 @@ SOCK = $(MASMISC_F)/socks.o
 SOURCE = logger.c main.c init.c
 HEADER = logger.h init.h
 
+include $(MAKERULES)Makefile.defaults
+DEFS += $(CONFIGFILE_DEFS)
 INCLUDE += -I$(MAS_INCLUDE_F)
 
-CFLAGS += -Wall $(INCLUDE)
+CFLAGS += -Wall $(INCLUDE) $(DEFS)
 
 CC=gcc
 
@@ -24,7 +26,7 @@ SCRIPT := maslog
 
 all: $(LOGAPP) $(CLIENT)
 
-$(LOGAPP): $(SOURCE) $(HEADER)
+$(LOGAPP): $(SOURCE) $(HEADER) $(SOCK)
 	$(CC) $(CFLAGS) $(SOURCE) -o$@ $(SOCK) $(LIBRARY)
 
 $(CLIENT): client.c

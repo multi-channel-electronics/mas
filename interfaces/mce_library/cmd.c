@@ -15,7 +15,7 @@
 
 #include <mce_library.h>
 
-#include "mce_ioctl.h"
+#include <mce/mce_ioctl.h>
 
 #include "virtual.h"
 

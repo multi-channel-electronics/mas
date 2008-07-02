@@ -10,8 +10,14 @@
 #  include <linux/interrupt.h>
 #endif
 
-#include <dsp.h>
+#include "mce/dsp.h"
 #include "dsp_state.h"
+
+/* Internal MCE clock rate */
+#define MCE_CLOCK      50000000
+
+/* You can set this to emulate 0x550102, 0x550103, 0x550104 */
+#define FAKE_DSP_VERSION 0x550104
 
 #define PSIZE 2048
 #define XSIZE 2048
@@ -39,7 +45,28 @@ typedef struct dsp_state_struct {
 
 	struct tasklet_struct msg_tasklet;
 
+	struct {
+		int enabled;
+		int delta;
+		int number;
+		int inform;
+		int period;
+		int size;
+		int tail;
+		int head;
+		int drops;
+		void *base;
+	} qt_data;
+
+	int n_frames;
+	int delta_jiffies;
+	int delta_frames;
+
+	struct timer_list timer;
+
 } dsp_state_t;
+
+extern dsp_state_t dsp_state;
 
 int dsp_state_init( void );
 int dsp_state_cleanup( void );
@@ -52,5 +79,8 @@ int dsp_state_command(dsp_command *cmd);
 
 int dsp_state_nfy_da(int size);
 int dsp_state_nfy_rp(int size);
+
+int dsp_retdat_callback(int frame_size, int ticks, int nframes);
+void dsp_timer_function(unsigned long arg);
 
 #endif

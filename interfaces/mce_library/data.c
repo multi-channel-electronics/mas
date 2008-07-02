@@ -9,11 +9,10 @@
 #include <sys/ioctl.h>
 
 #include "mce_library.h"
-#include "data_ioctl.h"
+#include <mce/data_ioctl.h>
 
 /* Local header files */
 
-#include "frame.h"
 #include "data_thread.h"
 
 /* #define LOG_LEVEL_CMD     LOGGER_DETAIL */
@@ -86,4 +85,11 @@ int mcedata_qt_enable(mce_context_t* context, int on)
 int mcedata_qt_setup(mce_context_t* context, int frame_count)
 {
 	return ioctl(C_data.fd, DATADEV_IOCT_QT_CONFIG, frame_count);
+}
+
+void mcedata_buffer_query(mce_context_t* context, int *head, int *tail, int *count)
+{
+	*head = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_HEAD);
+	*tail = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_TAIL);
+	*count = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_MAX);
 }

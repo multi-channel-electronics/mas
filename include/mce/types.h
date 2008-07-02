@@ -1,5 +1,5 @@
-#ifndef _MCE_H_
-#define _MCE_H_
+#ifndef _MCE_TYPES_H_
+#define _MCE_TYPES_H_
 
 #include <linux/types.h>
 #include <linux/unistd.h>

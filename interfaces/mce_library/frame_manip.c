@@ -1,5 +1,7 @@
 #include <string.h>
-#include "frame.h"
+
+#include "mce_library.h"
+#include "frame_manip.h"
 
 
 /* Define frame header for header version 6 */
@@ -43,10 +45,10 @@ int sort_columns( mce_acq_t *acq, u32 *data )
 {
 	u32 temp[MCEDATA_PACKET_MAX];
 
-	int header_size = 43;
-	int footer_size = 1;
+	int header_size = MCEDATA_HEADER;
+	int footer_size = MCEDATA_FOOTER;
 
-	int columns = 8;
+	int columns = MCEDATA_COLUMNS;
 	int cards_in = count_bits(acq->cards);
 	int cards_out = cards_in;
 	int rows = (acq->frame_size - header_size - footer_size) /

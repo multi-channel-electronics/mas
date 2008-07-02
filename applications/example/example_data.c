@@ -75,36 +75,26 @@ int main()
 		return 1;
 	}
 		
-	// Determine current num_rows_reported
-	mce_param_t rows_rep;
-	if (mcecmd_load_param(mce, &rows_rep, "cc", "num_rows_reported")) {
-		fprintf(stderr, "Failed to laod num_rows_reported\n");
-		return 1;
-	}
-	u32 num_rows;
-	if (mcecmd_read_element(mce, &rows_rep, 0, &num_rows)) {
-		fprintf(stderr, "Reading of num_rows_reported failed!\n");
-		return 1;
-	}
-	
 	// Pick a card (any card)
 	int cards = MCEDATA_RC1;
-
-	printf("Card bits=%#x, num_rows_reported=%i\n",
-	       cards, (int)num_rows);
-
-	// Setup an acqusition structure, associated with this data device.
-	mce_acq_t acq;
-	mcedata_acq_setup(&acq, mce, 0, cards, (int)num_rows);
+	printf("Card bits=%#x\n", cards);
 
 	// Our callback will update the counter in this structure
 	my_counter_t counter = {
 		frame_count: 0
 	};
 
-	// Setup the acqusition to call our callback function on each received frame:
-	//   (other options here are to set up an output file, or a file sequence)
-	mcedata_rambuff_create( &acq, frame_callback, (unsigned)&counter );
+	// Setup a storage object that calls our callback function on
+	// each received frame.  (Other options here are to set up an
+	// output file, or a file sequence.)
+	mcedata_storage_t* ramb;
+	ramb = mcedata_rambuff_create( frame_callback, (unsigned)&counter );
+
+	// Setup an acqusition structure, associated with the rambuff.
+	// We can specify the number of readout rows, or pass -1 to use the
+	// current value.
+	mce_acq_t acq;
+	mcedata_acq_create(&acq, mce, 0, cards, -1, ramb);
 
 	// Now we are free to do as many go's as we want.
 

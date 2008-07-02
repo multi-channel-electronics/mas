@@ -47,7 +47,8 @@ frame_buffer_t frames;
   incremented because that would make it equal to tail_index.  So the
   "buffer full" error is actually returned by data_frame_increment.
 
-  This is called in interrupt context.
+  This is called in interrupt context.  It is not used in quiet
+  transfer mode.
 */
 
 #define SUBNAME "data_frame_address: "
@@ -55,7 +56,7 @@ frame_buffer_t frames;
 int data_frame_address(u32 *dest)
 {
         *dest = (u32)(frames.base_busaddr)
-                + frames.incr*(frames.head_index);
+                + frames.frame_size*(frames.head_index);
 	
         return 0;
 }
@@ -77,7 +78,8 @@ int data_frame_address(u32 *dest)
   head_index has not been incremented, -1 is returned and the data
   will be overwritten by the next frame.
 
-  This is called in interrupt context.
+  This is called in interrupt context.  It is not used in quiet
+  transfer mode.
 */
   
 
@@ -110,6 +112,17 @@ int data_frame_increment()
 }
 
 #undef SUBNAME
+
+
+/* Quiet transfer mode buffer update 
+ *
+ * data_frame_contribute is called by the interrupt service routine to
+ * update the head of the circular buffer.  The buffers between head
+ * and new_head must already have been updated with new data.  At the
+ * end of this function any threads waiting for frame data will be
+ * awoken and the tasklet that updates the buffer status on the PCI
+ * card is scheduled.
+ */
 
 
 #define SUBNAME "data_frame_contribute: "
@@ -183,19 +196,18 @@ int data_frame_resize(int size)
 			  "to non-positive number\n");
 		return -2;
 	}
-	if (size > frames.frame_size) {
-		PRINT_ERR(SUBNAME "can't change data_size "
-			  "to be larger than frame_size\n");
+
+	if (data_frame_divide(size)) {
+		PRINT_ERR(SUBNAME "failed to divide the buffer by %#x\n", size);
 		return -3;
 	}
-
+	
 	if (frames.data_mode == DATAMODE_QUIET &&
-	    data_qt_cmd(DSP_QT_SIZE, size, 0)!=0) {
+	    data_qt_configure(1)!=0) {
 		PRINT_ERR(SUBNAME "can't set DSP quiet mode frame size\n");
 		return -4;
 	}
 
-	frames.data_size = size;
 	return 0;
 }
 
@@ -248,64 +260,81 @@ int data_frame_empty_buffers( void )
 #undef SUBNAME
 
 
+int data_frame_divide( int new_data_size )
+{
+	// Recompute the division of the buffer into frames
+	if (new_data_size >= 0) frames.data_size = new_data_size;
+
+	// Round the frame size to a size convenient for DMA
+	frames.frame_size =
+		(frames.data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
+	frames.max_index = frames.size / frames.frame_size;
+
+	if (frames.max_index <= 1) {
+		PRINT_ERR("data_frame_divide: buffer can only hold %i data packet!\n",
+			  frames.max_index);
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /****************************************************************************/
 
 
 #define SUBNAME "data_copy_frame: "
 
+/* data_copy_frame - copy up to one complete frame into buffer
+ *
+ * This is the primary exporter of buffered frame data; this
+ * effectively pops a frame or part of a frame from the circular
+ * buffer, freeing the space.  The frames semaphore should be held
+ * when calling this routine.  This routine is not re-entrant.
+ */
+
 int data_copy_frame(void* __user user_buf, void *kern_buf,
 		    int count, int nonblock)
 {
-	int d;
+	void *source;
 	int count_out = 0;
+	int this_read;
 
-	//Are buffers well defined?  Warn...
+	// Are buffers well defined?  Warn...
 	if (  !( (user_buf!=NULL) ^ (kern_buf!=NULL) ) ) {
 		PRINT_ERR(SUBNAME "number of dest'n buffers != 1 (%x | %x)\n",
 			  (int)user_buf, (int)kern_buf);
 		return -1;
 	}
 
-	if (nonblock) {
-		if ((frames.tail_index == frames.head_index) &&
-		    !(frames.flags & FRAME_ERR))
-			return -EAGAIN;
-	} else {
-		PRINT_INFO("data_copy_frame: sleeping\n");
-		if (wait_event_interruptible(frames.queue,
-					     (frames.flags & FRAME_ERR) ||
-					     (frames.tail_index
-					      != frames.head_index)))
-			return -ERESTARTSYS;
-	}
+	// Exit once supply runs out or demand is satisfied.
+	while ((frames.tail_index != frames.head_index) && count > 0) {
 
-	if (frames.tail_index != frames.head_index) {
+		source = frames.base + frames.tail_index*frames.frame_size + frames.partial;
 
-		void *frame = frames.base +
-			frames.tail_index*frames.frame_size;
-
-		count_out = frames.data_size - frames.partial;
-		if (count_out > count)
-			count_out = count;
+		// Don't read past end of frame.
+		this_read = (frames.data_size - frames.partial < count) ?
+			frames.data_size - frames.partial : count;
 		
 		if (user_buf!=NULL) {
 			PRINT_INFO(SUBNAME "copy_to_user %x->[%x] now\n",
-				  count_out, (int)user_buf);
-			count_out -= copy_to_user(user_buf,
-						  frame + frames.partial,
-						  count_out);
+				   count, (int)user_buf);
+			this_read -= copy_to_user(user_buf, source, this_read);
 		}
 		if (kern_buf!=NULL) {
 			PRINT_INFO(SUBNAME "memcpy to kernel %x now\n",
-				  (int)kern_buf);
-			memcpy(kern_buf, frame + frames.partial, count_out);
+				   (int)kern_buf);
+			memcpy(kern_buf, source, this_read);
 		}
-		
-		//Update data source
 
-		frames.partial += count_out;
+		// Update demand
+		count -= this_read;
+		count_out += this_read;
+	
+		// Update supply
+		frames.partial += this_read;
 		if (frames.partial >= frames.data_size) {
-			d = (frames.tail_index + 1) % frames.max_index;
+			unsigned d = (frames.tail_index + 1) % frames.max_index;
 			barrier();
 			frames.tail_index = d;
 			frames.partial = 0;
@@ -318,21 +347,13 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 #undef SUBNAME
 
 
-void data_report() {
-	PRINT_IOCT("data_report: head=%x/%x , tail=%x(%x)\n",
-		  frames.head_index, frames.max_index,
-		  frames.tail_index, frames.partial);
-	PRINT_IOCT("data_report: flags=%x\n", frames.flags);
-}
-
-
 #define SUBNAME "data_alloc: "
 
 void *data_alloc(int mem_size, int data_size, int borrow)
 {
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
 	caddr_t virt;
-	u32 phys;
+	void *borrower_p;
 
 	PRINT_INFO(SUBNAME "entry\n");
 
@@ -357,40 +378,26 @@ void *data_alloc(int mem_size, int data_size, int borrow)
 	}
 #endif
 
-	//Store
-	//frames.bigphys_base = (void*)virt;
+	// Borrower data location
+	borrower_p = virt + mem_size - borrow;
 
-	//Bus address?
-	phys = (u32)virt_to_bus(virt);
-
-	//Construct data buffer
-
+	// Save the buffer address and maximum size
 	frames.base = virt;
-	frames.data_size = data_size;
-	frames.frame_size = (data_size + DMA_ADDR_ALIGN - 1)
-		& DMA_ADDR_MASK;
-	frames.max_index  = (mem_size - borrow) /
-		frames.frame_size;
-	
-	frames.base_busaddr = (caddr_t)phys;
-	frames.top_busaddr  = (caddr_t)phys + PAGE_SIZE * npg - borrow;
-	frames.incr = frames.frame_size;
-	
+	frames.size = mem_size - borrow;
+
+	// Partition buffer into blocks of some default size
+	data_frame_divide(data_size);
+
+	// Save physical address for hardware
+	frames.base_busaddr = (caddr_t)virt_to_bus(virt);
+
 	//Debug
-	PRINT_ERR(SUBNAME "buffer: base=%x + %x gives %x of size %x, borrowed=%x\n",
-		  (int)frames.base, 
-		  (int)(PAGE_SIZE * npg - borrow), 
-		  frames.max_index,
-		  (int)frames.frame_size,
-		  (int)(virt+mem_size - borrow));
+	PRINT_INFO(SUBNAME "buffer: base=%x + %x of size %x\n",
+		   (int)frames.base, 
+		   frames.max_index,
+		   (int)frames.frame_size);
 	
-	PRINT_ERR(SUBNAME "buffer: bus %x to %x, incr %x; borrowed_bus=%x\n",
-		  (int)frames.base_busaddr, 
-		  (int)frames.top_busaddr, 
-		  (int)frames.incr,
-		  (int)(phys+mem_size - borrow));
-	
-	return virt + mem_size - borrow;
+	return borrower_p;
 }
 
 #undef SUBNAME

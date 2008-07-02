@@ -18,6 +18,10 @@
 #endif
 
 
+typedef struct {
+	unsigned minor;
+} data_ops_t;
+
 
 /**************************************************************************
  *                                                                        *
@@ -27,41 +31,76 @@
 
 #define SUBNAME "data_read: "
 
+/* Non-blocking behaviour: return -EAGAIN if we can't get the
+ * semaphore.  Return 0 if no data is available.  Otherwise, copy as
+ * much data as you can and return the count.
+ *
+ * Blocking behaviour: block for the semaphore.  If data is available,
+ * copy as much as you can and return it.  If data is not available,
+ * block for availability; once available, copy as much as possible
+ * and exit.  (This will always block for a single frame but never
+ * hang if the requested buffer size exceeds the data size.)  This
+ * method calls back the reader in quiet periods and keeps buffers
+ * flushed and stuff like that.
+ */
+
+
 ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
+	data_ops_t* d = filp->private_data;
 	int read_count = 0;
+	int this_read = 0;
 
 	if (filp->f_flags & O_NONBLOCK) {
 		if (down_trylock(&frames.sem))
 			return -EAGAIN;
-		if (!data_frame_poll()) {
-			up(&frames.sem);
-			return -EAGAIN;
-		}
 	} else {
 		if (down_interruptible(&frames.sem))
 			return -ERESTARTSYS;
 	}
 
-	PRINT_INFO(SUBNAME "local sem obtained, calling data_copy\n");
+	PRINT_INFO(SUBNAME "user demands %i with nonblock=%i\n",
+		   count, filp->f_flags & O_NONBLOCK);
 
-	read_count = data_copy_frame(buf, NULL, count, filp->f_flags & O_NONBLOCK);
-	if (filp->f_flags & O_NONBLOCK && read_count == 0)
-		return -EAGAIN;
+	while (count > 0) {
+		
+		// Pop count bytes from frame buffer; data_copy frame
+		// will return at most 1 frame of data.
+		this_read = data_copy_frame(buf, NULL, count, 0);
+
+		if (this_read < 0) {
+			// On error, exit with the current count.
+			break;
+		} else if (this_read > 0) {
+			// More reading, more reading...
+			read_count += this_read;
+			count -= this_read;
+			continue;
+		}
+
+		/* Buffer is empty.  O_NONBLOCK exits now, other
+		   readers exit as long as *some* data has been
+		   copied. */
+		if (filp->f_flags & O_NONBLOCK || read_count > 0)
+			break;
+		
+		if (wait_event_interruptible(frames.queue,
+					     (frames.flags & FRAME_ERR) ||
+					     (frames.tail_index
+					      != frames.head_index))) {
+			read_count = -ERESTARTSYS;
+			break;
+		}
+	}
 
 	up(&frames.sem);
-
-	if (read_count<0)
-		return 0;
-
 	return read_count;
 }
 
 ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
 		   loff_t *f_pos)
 {
-	data_report();
 	return count;
 }
 
@@ -140,11 +179,18 @@ int data_ioctl(struct inode *inode, struct file *filp,
 
 int data_open(struct inode *inode, struct file *filp)
 {
+	// Store details of inode in private data
+	data_ops_t* d = kmalloc(sizeof(data_ops_t), GFP_KERNEL);
+	d->minor = iminor(inode);
+
+	filp->private_data = d;
+
 	return 0;
 }
 
 int data_release(struct inode *inode, struct file *filp)
 {
+	if (filp->private_data != NULL) kfree(filp->private_data);
 	return 0;
 }
 

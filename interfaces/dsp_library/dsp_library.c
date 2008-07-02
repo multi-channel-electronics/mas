@@ -14,8 +14,8 @@
 #include <stdio.h>
 
 #include <mcedsp.h>
-#include <dsp_errors.h>
-#include <dsp_ioctl.h>
+#include <mce/dsp_errors.h>
+#include <mce/dsp_ioctl.h>
 
 #define PATH_LENGTH
 

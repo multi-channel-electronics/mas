@@ -46,6 +46,7 @@
 #define MCE_ERR_FRAME_CARD      (MCE_ERR_BASE + 0x0036)
 #define MCE_ERR_FRAME_SIZE      (MCE_ERR_BASE + 0x0037)
 #define MCE_ERR_FRAME_COUNT     (MCE_ERR_BASE + 0x0038)
+#define MCE_ERR_FRAME_ROWS      (MCE_ERR_BASE + 0x0039)
 
 /* #define MCE_ERR_                MCE_ERR_BASE + 0x0001 */
 

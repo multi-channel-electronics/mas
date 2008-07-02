@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <socks.h>
+#include <mce/socks.h>
 #include "logger.h"
 #include "init.h"
 

@@ -88,10 +88,10 @@ int main ( int argc, char **argv )
    
    /* Define default MAS options */
    option_t options = {
-     config_file:   MASCONFIG_FILE,
-     cmd_device:    CMD_DEVICE,
-     data_device:   DATA_DEVICE,
-     hardware_file: HARDWARE_FILE,
+     config_file:   DEFAULT_MASFILE,
+     cmd_device:    DEFAULT_CMDFILE,
+     data_device:   DEFAULT_DATAFILE,
+     hardware_file: DEFAULT_HARDWAREFILE,
    };
    int arg_offset = 0;
    
@@ -109,7 +109,7 @@ int main ( int argc, char **argv )
    /* check command-line arguments */
    if ( argc != 11 && argc != 12)
    {  
-      printf ( "Rev. 2.1clover\n");
+      printf ( "Rev. 2.1\n");
       printf ( "usage: sq2servo outfile sq2bias sq2bstep nbias\n" );
       printf ( "sq2feed sq2fstep nfeed N target gain skip_sq2bias\n" );
       printf ( "   outfile = name of file for output data\n" );
@@ -182,17 +182,12 @@ int main ( int argc, char **argv )
    sprintf(tempbuf, "rc%i", which_rc);
    load_param_or_exit(mce, &m_retdat, tempbuf, "ret_dat", 0);
 
-   //int nrows_rep;
    if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0){
      sprintf(errmsg_temp, "rb cc num_rows_reported failed with %d", error);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_RB;     
    }	   
-   // Pick a card (won't work for rcs!!)
-   int cards=(1<<(which_rc-1));
-   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
-   mce_acq_t acq;
-   mcedata_acq_setup(&acq, mce, 0, cards, (int) nrows_rep);
+
    // Our callback will update the counter in this structure
    servo_t sq2servo; 
    sq2servo.fcount = 0;
@@ -200,8 +195,15 @@ int main ( int argc, char **argv )
    sq2servo.row_num[0] = nrows_rep - 1;
 
    // setup a call back function
-   mcedata_rambuff_create(&acq, frame_callback, (unsigned) &sq2servo);   
+   mcedata_storage_t* ramb;
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned) &sq2servo);
    
+   // Pick a card (won't work for rcs!!)
+   int cards=(1<<(which_rc-1));
+   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
+   mce_acq_t acq;
+   mcedata_acq_create(&acq, mce, 0, cards, (int) nrows_rep, ramb);
+
    if ( (datadir=getenv("MAS_DATA")) == NULL){
       ERRPRINT("Enviro var. $MAS_DATA not set, quit");
       return ERR_DATA_DIR;

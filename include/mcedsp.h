@@ -10,7 +10,7 @@
 
 /* dsp.h defines the structures used by the dsp driver */
 
-#include <dsp.h>
+#include <mce/dsp.h>
 
 
 /* Maximum number of handles available */
