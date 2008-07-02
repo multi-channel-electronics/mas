@@ -45,6 +45,9 @@ class ChannelView(wx.Frame):
                                  myText(panel, -1, '-1'))
         self.go_button = wx.Button(panel, -1, 'Acquire')
 
+        self.all_columns = wx.CheckBox(panel, -1, 'All columns')
+        self.all_rows = wx.CheckBox(panel, -1, 'All rows')
+
         self.Bind(wx.EVT_BUTTON, self.Go, id=self.go_button.GetId())
 
         panelSizer.Add(self.n_frames, 1, flag=wx.EXPAND)
@@ -52,6 +55,8 @@ class ChannelView(wx.Frame):
         panelSizer.Add(self.row, 1, flag=wx.EXPAND)
         panelSizer.Add(self.trim, 1, flag=wx.EXPAND)
         panelSizer.Add(self.go_button, 1, flag=wx.EXPAND)
+        panelSizer.Add(self.all_columns, 1, flag=wx.EXPAND)
+        panelSizer.Add(self.all-rows, 1, flag=wx.EXPAND)
 
         panel.SetSizer(panelSizer) 
         self.Centre()

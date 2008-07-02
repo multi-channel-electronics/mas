@@ -23,6 +23,22 @@ class mceChannelAcq:
         return pi
 
 
+class mceChannelSetAcq:
+
+    def __init__(self, mce):
+        self.mce = mce
+
+    def acq(self, channel_set, n_frames):
+        
+        i32 = self.mce.read_channel(count=n_frames, channel_set=channel_set)
+
+        pi = mcePlotInput()
+        pi.y = [ i32[i] for i in range(n_frames) ]
+        pi.name = 'Column %i, row %i' % (col, row)
+        
+        return pi
+
+
 class mceColumnAcq:
 
     def __init__(self, mce):
