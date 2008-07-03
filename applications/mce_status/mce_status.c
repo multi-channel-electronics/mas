@@ -1,4 +1,4 @@
-/*! \file mce_cmd.c
+/*! \file mce_status.c
  *
  *  \brief Program to read and record the status of the MCE.
  *

@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -168,22 +169,30 @@ options_t options = {
 	use_readline: 1,
 };
 
+
+/* kill_switch increments with each Ctrl-C (SIGINT).  When it gets to
+   2, exit(1) is called by the signal handler.  If SIGINT is received
+   while waiting for input (input_switch), the handler calls exit(0). */
+
+int kill_switch = 0;
+int input_switch = 0;
+
 mce_acq_t* acq;
 
 mce_param_t ret_dat_s;
 mce_param_t num_rows_reported;
 
-//int  preload_mce_params();
+int bit_count(int k);
 
-int  bit_count(int k);
+int menuify_mceconfig(cmdtree_opt_t *opts);
 
-int  menuify_mceconfig(cmdtree_opt_t *opts);
-
-int  process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
+int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
 
 int pathify_filename(char *dest, const char *src);
 
-int  main(int argc, char **argv)
+void die(int sig);
+
+int main(int argc, char **argv)
 {
 	char msg[1024];
 	FILE *ferr = stderr;
@@ -260,7 +269,10 @@ int  main(int argc, char **argv)
 		sprintf(msg, "reading commands from '%s'\n", options.batch_file);
 		logger_print( &options.logger, msg );
 	}
-				
+
+	// Install signal handler for Ctrl-C and normal kill
+	signal(SIGTERM, die);
+	signal(SIGINT, die);
 
 	char errmsg[1024] = "";
 	char premsg[1024] = "";
@@ -270,6 +282,10 @@ int  main(int argc, char **argv)
 	while (!done) {
 		cmdtree_token_t args[NARGS];
 		unsigned int n = LINE_LEN;
+
+		// Set input semaphore, then check kill condition.
+		input_switch = 1;
+		if (kill_switch) break;
 
 		if ( options.cmds_now > 0 ) {
 			line = options.cmd_set[options.cmds_idx++];
@@ -294,6 +310,9 @@ int  main(int argc, char **argv)
 			line_count++;
 		}
 
+		// Clear input semaphore; SIGs now will just set kill_switch
+		input_switch = 0;
+		
 		if (options.no_prefix)
 			premsg[0] = 0;
 		else
@@ -337,14 +356,12 @@ int  main(int argc, char **argv)
 				printf("%sok : %s\n", premsg, errmsg);
 		} else if (err < 0) {
 			printf("%serror : %s\n", premsg, errmsg);
-			if (options.interactive)
-				continue;
-			else {
+			if (!options.interactive) {
 				sprintf(msg, "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
 					line_count, line, -err, errmsg);
 				logger_print(&options.logger, msg);
+				done = 1;
 			}
-			done = 1;
 		}
 	}
 
@@ -881,3 +898,25 @@ int pathify_filename(char *dest, const char *src)
 
 	return 0;
 }
+
+void die(int sig)
+{
+	// If we're accepting input, just cleanup and exit.
+	if (input_switch) {
+		// Clean up acq!
+		if (acq != NULL)
+			mcedata_acq_destroy(acq);
+		exit(0);
+	} else {
+		switch (kill_switch++) {
+		case 1:
+			fprintf(stderr, "Your eagerness to exit has been noted. "
+				"Press Ctrl-C again to force quit.\n");
+			break;
+		case 2:
+			fprintf(stderr, "Killed inopportunely! mce_reset recommended!\n");
+			exit(1);
+		}
+	}
+}
+

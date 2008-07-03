@@ -5,17 +5,45 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <mce/socks.h>
 #include "logger.h"
 #include "init.h"
 
 #define APP "maslog_server"
+#define PIDFILE "/var/run/mas.pid"
 
+int kill_switch = 0;
+
+void die(int sig)
+{
+	kill_switch = 1;
+}
+
+int daemonize()
+{
+	int err = 0;
+	if ( (err=daemon(0,0)) != 0 ) {
+		return -1;
+	}
+	FILE *f = fopen(PIDFILE, "w");
+	if (f==NULL) return 1;
+	fprintf(f, "%i", getpid());
+	fclose(f);
+	return 0;
+}
+
+int undaemonize()
+{
+	return remove(PIDFILE);
+}
 
 int main(int argc, char **argv)
 {
 	params_t p;
+	log_client_t me;
+	strcpy(me.name, APP);
 	
 	printf(APP " - logging server for MAS\n");
 
@@ -23,20 +51,25 @@ int main(int argc, char **argv)
 		return 1;
 
 	if (p.daemon) {
-		int err = 0;
 		printf("Launching daemon...\n");
-		if ( (err=daemon(0,0)) != 0 ) {
+		if (daemonize() < 0) {
 			printf("Could not spawn daemon: %i\n", errno);
 			exit(1);
 		}
 	}
 
+	// Install kill signal handler
+	signal(SIGTERM, die);
+	signal(SIGINT, die);
+
+	// Talk
+	log_text(&p, APP, "Starting.");
 
 	// Main message loop
 	
 	listener_t *list = &p.listener;
 
-	while (! (p.flags & FLAG_QUIT)) {
+	while (! (p.flags & FLAG_QUIT) && !kill_switch) {
 
 		listener_flags ret = listener_select(list);
 
@@ -75,12 +108,15 @@ int main(int argc, char **argv)
 		}		
 	}
 
+	log_text(&p, APP, "Stopping.");
+
 	log_closefile(&p);
 
 	listener_close(list);
 	listener_cleanup(list);
 
-	return 0;
+	if (p.daemon) undaemonize();
 
+	return 0;
 }
 
