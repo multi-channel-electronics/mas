@@ -16,6 +16,7 @@
 int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 	      void *data)
 {
+	int i = 0;
 	int len = 0;
 	int limit = count - 80;
 
@@ -38,28 +39,42 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 			);
 		len += sprintf(buf+len,"    bigphys:  "
 #ifdef BIGPHYS
-			       "yes\n"
+			       "yes\n\n"
 #else
-			       "no\n"
+			       "no\n\n"
 #endif
 			);
 	}
-	if (len < limit) {
-		len += sprintf(buf+len,"  data buffer:\n");
-		len += data_proc(buf+len, limit-len);
+
+	for( i = 0 ; i < MAX_CARDS; i++) {
+		if(len < limit) {
+			len += sprintf(buf+len,"|| CARD# %d || \n\n", i);
+		} 
+		if (len < limit) {
+			len += sprintf(buf+len,"  data buffer:\n");
+			len += data_proc(buf+len, limit-len);
+		}
+		if (len < limit) {
+			len += sprintf(buf+len,"  mce commander:\n");
+			len += mce_proc(buf+len, limit-len);
+		}
+		if (len < limit) {
+			len += sprintf(buf+len,"  dsp commander:\n");
+			len += dsp_proc(buf+len, limit-len, i);
+		}
+		if (len < limit) {
+			len += sprintf(buf+len,"  dsp pci registers:\n");
+			len += dsp_pci_proc(buf+len, limit-len, i);
+		}
+		
+		PRINT_ERR("i: %d len: %d count: %d limit: %d !\n", i, len, count, limit);
+		
+		if (len >= limit) {
+			PRINT_ERR("Length of proc exceeded count.\n");
+			break;
+		}
 	}
-	if (len < limit) {
-		len += sprintf(buf+len,"  mce commander:\n");
-		len += mce_proc(buf+len, limit-len);
-	}
-	if (len < limit) {
-		len += sprintf(buf+len,"  dsp commander:\n");
-		len += dsp_proc(buf+len, limit-len);
-	}
-	if (len < limit) {
-		len += sprintf(buf+len,"  dsp pci registers:\n");
-		len += dsp_pci_proc(buf+len, limit-len);
-	}
+
 	*eof = 1;
 
 	return len;

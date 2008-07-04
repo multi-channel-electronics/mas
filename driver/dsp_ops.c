@@ -210,7 +210,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	}
 
 	dsp_ops.state = OPS_CMD;
-	if ((err=dsp_send_command(&dsp_ops.cmd, dsp_write_callback))!=0) {
+	if ((err=dsp_send_command(&dsp_ops.cmd, dsp_write_callback, DEFAULT_CARD))!=0) {
 		dsp_ops.state = OPS_IDLE;
 		PRINT_ERR(SUBNAME "dsp_send_command failed [%#0x]\n", err);
 		ret_val = 0;

@@ -63,35 +63,39 @@ struct dsp_control {
 
 	dsp_state_t state;
 	int version;
+
+	struct dsp_dev_t* dev;
 	
 	int n_handlers;
 	dsp_handler_entry handlers[MAX_HANDLERS];
 
 	dsp_callback callback;
 
-} ddat;
+} dsp_dat[MAX_CARDS];
 
 
 #define SUBNAME "dsp_set_handler: "
 
 int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data)
 {
+	struct dsp_control *ddat = dsp_dat;
 	int i;
+
 	// Replace handler if it exists
-	for (i=0; i<ddat.n_handlers; i++) {
-		if (ddat.handlers[i].code == code) {
-			ddat.handlers[i].handler = handler;
-			ddat.handlers[i].data = data;
+	for (i=0; i<ddat->n_handlers; i++) {
+		if (ddat->handlers[i].code == code) {
+			ddat->handlers[i].handler = handler;
+			ddat->handlers[i].data = data;
 			return 0;
 		}
 	}
 
 	// Add to end of list
 	if (i < MAX_HANDLERS) {
-		ddat.handlers[i].code = code;
-		ddat.handlers[i].handler = handler;
-		ddat.handlers[i].data = data;
-	        ddat.n_handlers++;
+		ddat->handlers[i].code = code;
+		ddat->handlers[i].handler = handler;
+		ddat->handlers[i].data = data;
+	        ddat->n_handlers++;
 		return 0;
 	}
 
@@ -106,23 +110,24 @@ int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data)
 
 int dsp_clear_handler(u32 code)
 {
+	struct dsp_control *ddat = dsp_dat;
 	int i = 0;
-	for (i=0; i<ddat.n_handlers; i++) {
-		if (ddat.handlers[i].code == code)
+	for (i=0; i<ddat->n_handlers; i++) {
+		if (ddat->handlers[i].code == code)
 			break;
 	}
 	
-	if (i>=ddat.n_handlers--)
+	if (i>=ddat->n_handlers--)
 		return -1;
 	
 	// Move entries i+1 to i.
-	for ( ; i<ddat.n_handlers; i++) {
-		memcpy(ddat.handlers + i, ddat.handlers + i + 1,
-		       sizeof(*ddat.handlers));
+	for ( ; i<ddat->n_handlers; i++) {
+		memcpy(ddat->handlers + i, ddat->handlers + i + 1,
+		       sizeof(*ddat->handlers));
 	}
 
 	// Clear the removed entry
-	memset(ddat.handlers + ddat.n_handlers, 0, sizeof(*ddat.handlers));
+	memset(ddat->handlers + ddat->n_handlers, 0, sizeof(*ddat->handlers));
 
 	return 0;
 }
@@ -147,7 +152,9 @@ int dsp_clear_handler(u32 code)
 
 int dsp_int_handler(dsp_message *msg)
 {
+	struct dsp_control *ddat = dsp_dat;
 	int i;
+
 	if (msg==NULL) {
 		PRINT_ERR(SUBNAME "called with NULL message pointer!\n");
 		return -1;
@@ -155,10 +162,10 @@ int dsp_int_handler(dsp_message *msg)
 
 	// Discover handler for this message type
 	
-	for (i=0; i < ddat.n_handlers; i++) {
-		if ( (ddat.handlers[i].code == msg->type) &&
-		     (ddat.handlers[i].handler != NULL) ) {
-			ddat.handlers[i].handler(msg, ddat.handlers[i].data);
+	for (i=0; i < ddat->n_handlers; i++) {
+		if ( (ddat->handlers[i].code == msg->type) &&
+		     (ddat->handlers[i].handler != NULL) ) {
+			ddat->handlers[i].handler(msg, ddat->handlers[i].data);
 			return 0;
 		}
 	}
@@ -178,21 +185,22 @@ int dsp_int_handler(dsp_message *msg)
 
 int dsp_reply_handler(dsp_message *msg, unsigned long data)
 {
-	if (ddat.state == DDAT_CMD) {
+	struct dsp_control *ddat = dsp_dat;
+	if (ddat->state == DDAT_CMD) {
 		PRINT_INFO(SUBNAME
 			   "REP received, calling back.\n");
 
 		// Call the registered callbacks
-		if (ddat.callback != NULL) {
-			ddat.callback(0, msg);
+		if (ddat->callback != NULL) {
+			ddat->callback(0, msg);
 		} else {
 			PRINT_ERR(SUBNAME "no handler defined\n");
 		}
-		ddat.state = DDAT_IDLE;
+		ddat->state = DDAT_IDLE;
 	} else {
 		PRINT_ERR(SUBNAME
 			  "unexpected REP received [state=%i].\n",
-			  ddat.state);
+			  ddat->state);
 	}
 	return 0;
 }
@@ -264,31 +272,34 @@ void dsp_timeout(unsigned long data)
    The callback error codes are 0 (success, msg will be non-null) or
    DSP_ERR_TIMEOUT (failure, msg will be null).                    */
 
-int dsp_send_command(dsp_command *cmd,
-		     dsp_callback callback)
+int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 {
+	struct dsp_control *ddat = dsp_dat;
 	int err = 0;
 
+	//INVALID WILL BE REMOVED SOON!
+	ddat->dev = ddat->dev + card; 
+
 	// This will often be called in atomic context
-	if (down_trylock(&ddat.sem)) {
+	if (down_trylock(&ddat->sem)) {
 		PRINT_ERR(SUBNAME "could not get sem\n");
 		return -EAGAIN;
 	}
 	
 	PRINT_INFO(SUBNAME "entry\n");
 		
-	ddat.callback = callback;
-	ddat.state = DDAT_CMD;
+	ddat->callback = callback;
+	ddat->state = DDAT_CMD;
 
-	if ( (err = dsp_send_command_now(cmd)) ) {
-		ddat.callback = NULL;
-		ddat.state = DDAT_IDLE;
+	if ( (err = dsp_send_command_now(cmd, ddat->dev)) ) {
+		ddat->callback = NULL;
+		ddat->state = DDAT_IDLE;
 	} else {
-		mod_timer(&ddat.tim, jiffies + DSP_DEFAULT_TIMEOUT);
+		mod_timer(&ddat->tim, jiffies + DSP_DEFAULT_TIMEOUT);
 	}
 
 	PRINT_INFO(SUBNAME "returning [%i]\n", err);
-	up(&ddat.sem);
+	up(&ddat->sem);
 	return err;
 }
 	
@@ -352,7 +363,7 @@ int dsp_send_command_wait(dsp_command *cmd,
 	dsp_local.msg = msg;
 	dsp_local.flags = LOCAL_CMD;
 	
-	if ((err=dsp_send_command(cmd, dsp_send_command_wait_callback)) != 0)
+	if ((err=dsp_send_command(cmd, dsp_send_command_wait_callback, DEFAULT_CARD)) != 0)
 		goto up_and_out;
 
 	PRINT_INFO(SUBNAME "commanded, waiting\n");
@@ -384,15 +395,17 @@ int dsp_send_command_wait(dsp_command *cmd,
 
 int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
 {
+	struct dsp_control *ddat = dsp_dat;
+
 	switch(iocmd) {
 
 	case DSPDEV_IOCT_SPEAK:
-		PRINT_IOCT(SUBNAME "state=%#x\n", ddat.state);
+		PRINT_IOCT(SUBNAME "state=%#x\n", ddat->state);
 		break;
 
 	case DSPDEV_IOCT_CORE:
 	case DSPDEV_IOCT_CORE_IRQ:
-		return dsp_pci_ioctl(iocmd, arg);
+		return dsp_pci_ioctl(iocmd, arg, ddat->dev);
 
 	default:
 		PRINT_IOCT(SUBNAME "unknown command\n");
@@ -405,12 +418,14 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
 #undef SUBNAME
 
 
-int dsp_proc(char *buf, int count)
+int dsp_proc(char *buf, int count, int card)
 {
+	struct dsp_control *ddat = dsp_dat + card;
 	int len = 0;
+	
 	if (len < count) {
 		len += sprintf(buf+len, "    state:    ");
-		switch (ddat.state) {
+		switch (ddat->state) {
 		case DDAT_IDLE:
 			len += sprintf(buf+len, "idle\n");
 			break;
@@ -418,7 +433,7 @@ int dsp_proc(char *buf, int count)
 			len += sprintf(buf+len, "commanded\n");
 			break;
 		default:
-			len += sprintf(buf+len, "unknown! [%i]\n", ddat.state);
+			len += sprintf(buf+len, "unknown! [%i]\n", ddat->state);
 			break;
 		}
 	}
@@ -438,16 +453,17 @@ int dsp_proc(char *buf, int count)
 
 int dsp_query_version(void)
 {
+	struct dsp_control *ddat = dsp_dat;
 	int err = 0;
 	dsp_command cmd = { DSP_VER, {0,0,0} };
 	dsp_message msg;
 	char version[8] = "<=U0103";
 	
-	ddat.version = 0;
+	ddat->version = 0;
 	if ( (err=dsp_send_command_wait(&cmd, &msg)) != 0 )
 		return err;
 
-	ddat.version = DSP_U0103;
+	ddat->version = DSP_U0103;
 
 	if (msg.reply == DSP_ACK) {
 	
@@ -455,7 +471,7 @@ int dsp_query_version(void)
 		sprintf(version+1, "%02i%02i",
 			(msg.data >> 8) & 0xff, msg.data & 0xff);
 
-		ddat.version = msg.data;
+		ddat->version = msg.data;
 	}
 		
 	PRINT_ERR(SUBNAME " discovered PCI card DSP code version %s\n", version);
@@ -469,9 +485,20 @@ int dsp_query_version(void)
 
 #define SUBNAME "dsp_driver_probe: "
 
-int dsp_driver_probe()
+int dsp_driver_probe(struct dsp_dev_t* dev)
 {	
+	struct dsp_control *ddat = dsp_dat;
 	int err = 0;
+
+	init_MUTEX(&ddat->sem);
+	init_MUTEX(&dsp_local.sem);
+	init_waitqueue_head(&dsp_local.queue);
+	init_timer(&ddat->tim);
+
+	ddat->tim.function = dsp_timeout;
+	ddat->tim.data = (unsigned long)&ddat;
+	ddat->state = DDAT_IDLE;
+	ddat->dev = dev;
 
 	// Set up handlers for the DSP interrupts - additional
 	//  handlers will be set up by sub-modules.
@@ -489,7 +516,7 @@ int dsp_driver_probe()
 		goto out;
 	}
 	
-	if (mce_init_module(ddat.version)) {
+	if (mce_init_module(ddat->version)) {
 		err = -1;
 		goto out;
 	}
@@ -512,7 +539,9 @@ int dsp_driver_probe()
 
 void dsp_driver_remove(void)
 {
-	del_timer_sync(&ddat.tim);
+	struct dsp_control *ddat = dsp_dat;
+
+	del_timer_sync(&ddat->tim);
 
 	mce_cleanup();
 
@@ -545,19 +574,16 @@ void dsp_driver_cleanup(void)
 
 inline int dsp_driver_init(void)
 {
+	struct dsp_control *ddat = dsp_dat;
+	int i = 0;
+
 	PRINT_INFO(SUBNAME "driver init...\n");
 
-	init_MUTEX(&ddat.sem);
+	for(i = 0; i < MAX_CARDS; i++) { 
+		ddat = dsp_dat +i;
+		ddat->dev = NULL; 
+	}
 
-	init_MUTEX(&dsp_local.sem);
-	init_waitqueue_head(&dsp_local.queue);
-
-	init_timer(&ddat.tim);
-	ddat.tim.function = dsp_timeout;
-	ddat.tim.data = (unsigned long)&ddat;
-
-	ddat.state = DDAT_IDLE;
-  
 	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
 
 #ifdef FAKEMCE

@@ -49,6 +49,13 @@ typedef void irqreturn_t;
 
 typedef irqreturn_t (*irq_handler_t)(int,void*,struct pt_regs*);
 
+typedef int my_int_type;\
+e.g.
+int my_func(char *x, int g);
+
+typedef int (*my_func_type)(char *, int);
+
+
 #endif
 
 

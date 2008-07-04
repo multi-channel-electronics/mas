@@ -76,7 +76,7 @@ void data_grant_task(unsigned long data)
 
 	PRINT_INFO(SUBNAME "trying update to tail=%i\n", frames.tail_index);
 
-	if ( (err=dsp_send_command( &cmd, data_grant_callback )) ) {
+	if ( (err=dsp_send_command( &cmd, data_grant_callback, DEFAULT_CARD )) ) {
 		// FIX ME: discriminate between would-block errors and fatals!
 		PRINT_INFO(SUBNAME "dsp busy; rescheduling.\n");
 		tasklet_schedule(&frames.grant_tasklet);

@@ -3,7 +3,8 @@
 
 
 #define DEVICE_NAME "mceds"
-
+#define DEFAULT_CARD 0
+#define MAX_CARDS 3
 
 /*
 
@@ -19,7 +20,7 @@
   OPT_QUIET - don't even log errors
 
 */
-
+#define OPT_VERBOSE
 
 /*
   DEBUG MESSAGES
@@ -70,6 +71,4 @@
 */
 
 #define OPT_WATCHER
-
-
 #endif

@@ -205,7 +205,7 @@ void mce_do_HST_or_schedule(unsigned long data)
 	}
 
 	mdat.state = MDAT_HST;;
-	if ( (err=dsp_send_command( &cmd, mce_HST_dsp_callback )) ) {
+	if ( (err=dsp_send_command( &cmd, mce_HST_dsp_callback, DEFAULT_CARD)) ) {
 		// FIX ME: discriminate between would-block errors and fatals!
 		PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
 		mdat.state = MDAT_NFY;
@@ -277,7 +277,7 @@ int mce_send_command_now (void)
 		   (int)mdat.buff.command->para_id,
 		   (int)mdat.buff.command->card_id);
 	
-	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback ))) {
+	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback, DEFAULT_CARD))) {
 		PRINT_INFO(SUBNAME "dsp_send_command failed (%#x)\n",
 			  err);
 		switch(-err) {
@@ -472,7 +472,7 @@ int mce_da_hst_now(void)
 	data_frame_address(&baddr);
 	HST_FILL(cmd, baddr);
 
-	if ((err = dsp_send_command(&cmd, mce_da_hst_callback))) {
+	if ((err = dsp_send_command(&cmd, mce_da_hst_callback, DEFAULT_CARD))) {
 		PRINT_INFO(SUBNAME "dsp_send_command failed!\n");
 		if (mce_error_register()) {
 			PRINT_ERR(SUBNAME "dsp_send_command error %i; "

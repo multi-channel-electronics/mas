@@ -4,6 +4,12 @@
 #include "mce/dsp.h"
 #include "mce/dsp_errors.h"
 
+#ifdef FAKEMCE
+#  include <dsp_fake.h>
+#else
+#  include "dsp_pci.h"
+#endif
+
 #define DSPDEV_NAME "mce_dsp"
 #define DSP_DEFAULT_TIMEOUT (HZ*50/100)
 
@@ -21,14 +27,14 @@ typedef int (*dsp_handler)(dsp_message *, unsigned long data);
 /* Prototypes */
 
 int dsp_send_command(dsp_command *cmd,
-		     dsp_callback callback);
+		     dsp_callback callback, int card);
 
 int dsp_send_command_wait(dsp_command *cmd,
 			  dsp_message *msg);
 
 int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg);
 
-int dsp_proc(char *buf, int count);
+int dsp_proc(char *buf, int count, int card);
 
 int dsp_int_handler(dsp_message *msg);
 
@@ -36,7 +42,7 @@ int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data);
 
 int dsp_clear_handler(u32 code);
 
-int dsp_driver_probe(void);
+int dsp_driver_probe(struct dsp_dev_t *dev);
 
 void dsp_driver_remove(void);
 
