@@ -258,6 +258,73 @@ int mce_HST_dsp_callback( int error, dsp_message *msg )
 #undef SUBNAME
 
 
+/* Simplified command system, for DSP >= U0105.  Reply buffer address
+ * is pre-loaded to the DSP, so we don't have to hand-shake in
+ * real-time. */
+
+
+#define SUBNAME "mce_NFY_RPQ_handler: "
+
+int mce_NFY_RPQ_handler( int error, dsp_message *msg )
+{
+	// We'll just trust the NFY for now, assuming no error.
+	if ( error || (msg==NULL) ) {
+		PRINT_ERR(SUBNAME "called error=%i, msg=%lx\n",
+			  error, (unsigned long)msg);
+		mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL);
+		return 0;
+	}
+
+	if (mdat.state != MDAT_CONOK) {
+		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat.state);
+		return -1;
+	}
+
+	// Callback, which must copy away the reply
+	mce_command_do_callback(0, mdat.buff.reply);
+
+	// Signal DSP that reply buffer can be re-used
+	dsp_clear_RP();
+	
+	return 0;
+}
+
+#undef SUBNAME
+
+
+int mce_qt_command( dsp_qt_code code, int arg1, int arg2)
+{
+	dsp_command cmd = { DSP_QTS, {code,arg1,arg2} };
+	dsp_message reply;
+	return dsp_send_command_wait( &cmd, &reply );
+}	
+
+
+#define SUBNAME "mce_quiet_RP_config: "
+
+int mce_quiet_RP_config(void)
+{
+	int err = 0;
+	unsigned long bus = (unsigned long)mdat.buff.reply_busaddr;
+
+	PRINT_INFO(SUBNAME "configuring...\n");
+	
+	err |= mce_qt_command(DSP_QT_RPSIZE, sizeof(mce_reply), 0);
+	err |= mce_qt_command(DSP_QT_RPBASE,
+			      (bus      ) & 0xFFFF,
+			      (bus >> 16) & 0xFFFF );
+	err |= mce_qt_command(DSP_QT_RPENAB, 1, 0);
+	
+	if (err) {
+		PRINT_ERR(SUBNAME "failed to configure DSP.\n");
+		return -1;
+	}
+	return 0;
+}
+
+#undef SUBNAME
+
+
 #define SUBNAME "mce_send_command_now: "
 
 //Command must already be in mdat.buff.command
@@ -508,6 +575,13 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 
 		PRINT_INFO(SUBNAME "NFY RP identified\n");
 		mce_NFY_RP_handler( 0, msg );
+
+		break;
+
+	case DSP_RPQ:
+
+		PRINT_INFO(SUBNAME "NFY RPQ identified\n");
+		mce_NFY_RPQ_handler( 0, msg );
 
 		break;
 
@@ -788,6 +862,11 @@ int mce_init_module(int dsp_version)
 	// Set up command and quiet transfer handlers
 	dsp_set_handler(DSP_QTI, mce_qti_handler, 0);
 	dsp_set_handler(DSP_NFY, mce_int_handler, 0);
+
+	if (dsp_version >= DSP_U0105) {
+		dsp_set_handler(DSP_RPQ, mce_int_handler, 0);
+		mce_quiet_RP_config();
+	}
 
 	PRINT_INFO(SUBNAME "init ok.\n");
 

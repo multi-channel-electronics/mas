@@ -465,6 +465,13 @@ int dsp_query_version(void)
 #undef SUBNAME
 
 
+void dsp_clear_RP(void)
+{
+	dsp_command cmd = { DSP_INT_RPC, {0, 0, 0} };
+
+	// This is interrupt safe because it is a vector command
+	dsp_send_command_now(&cmd);
+}
 
 
 #define SUBNAME "dsp_driver_probe: "

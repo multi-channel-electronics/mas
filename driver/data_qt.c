@@ -28,6 +28,7 @@
 #include "data.h"
 #include "data_qt.h"
 #include "dsp_driver.h"
+#include "mce_driver.h"
 
 
 #define SUBNAME "mce_qti_handler: "
@@ -82,25 +83,16 @@ void data_grant_task(unsigned long data)
 		tasklet_schedule(&frames.grant_tasklet);
 		return;
 	}
-	
-
 }
 
 #undef SUBNAME
-
-int data_qt_cmd( dsp_qt_code code, int arg1, int arg2)
-{
-	dsp_command cmd = { DSP_QTS, {code,arg1,arg2} };
-	dsp_message reply;
-	return dsp_send_command_wait( &cmd, &reply );
-}	
 
 
 #define SUBNAME "data_qt_enable: "
 
 int data_qt_enable(int on)
 {
-	int err = data_qt_cmd(DSP_QT_ENABLE, on, 0);
+	int err = mce_qt_command(DSP_QT_ENABLE, on, 0);
 	if (!err)
 		frames.data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
 	return err;
@@ -120,33 +112,33 @@ int data_qt_configure( int qt_interval )
 		err = -1;
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_DELTA , frames.frame_size, 0);
+		err = mce_qt_command(DSP_QT_DELTA , frames.frame_size, 0);
 	
 	if (!err)
-		err = data_qt_cmd(DSP_QT_NUMBER, frames.max_index, 0);
+		err = mce_qt_command(DSP_QT_NUMBER, frames.max_index, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_INFORM, qt_interval, 0);
+		err = mce_qt_command(DSP_QT_INFORM, qt_interval, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0);
+		err = mce_qt_command(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_SIZE  , frames.data_size, 0);
+		err = mce_qt_command(DSP_QT_SIZE  , frames.data_size, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_TAIL  , frames.tail_index, 0);
+		err = mce_qt_command(DSP_QT_TAIL  , frames.tail_index, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_HEAD  , frames.head_index, 0);
+		err = mce_qt_command(DSP_QT_HEAD  , frames.head_index, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_DROPS , 0, 0);
+		err = mce_qt_command(DSP_QT_DROPS , 0, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_BASE,
-				  ((long)frames.base_busaddr      ) & 0xffff,
-				  ((long)frames.base_busaddr >> 16) & 0xffff);
+		err = mce_qt_command(DSP_QT_BASE,
+				     ((long)frames.base_busaddr      ) & 0xffff,
+				     ((long)frames.base_busaddr >> 16) & 0xffff);
 	
 	if (!err)
 		err = data_qt_enable(1);

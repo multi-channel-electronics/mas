@@ -467,8 +467,8 @@ int data_reset()
 	frames.dropped = 0;
 	
 	if (frames.data_mode == DATAMODE_QUIET) {
-		if (data_qt_cmd(DSP_QT_TAIL  , frames.tail_index, 0) ||
-		    data_qt_cmd(DSP_QT_HEAD  , frames.head_index, 0) ) {
+		if (mce_qt_command(DSP_QT_TAIL  , frames.tail_index, 0) ||
+		    mce_qt_command(DSP_QT_HEAD  , frames.head_index, 0) ) {
 			PRINT_ERR(SUBNAME
 				  "Could not reset DSP QT indexes; disabling.");
 			data_qt_enable(0);

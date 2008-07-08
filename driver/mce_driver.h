@@ -34,6 +34,8 @@ int mce_send_command( mce_command *cmd,
 int mce_get_reply( __user void* reply_user,
 		   void* reply_kern, int count );
 
+int mce_qt_command( dsp_qt_code code, int arg1, int arg2);
+
 int mce_clear_commflags(void);
 
 int mce_interface_reset(void);

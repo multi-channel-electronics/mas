@@ -79,7 +79,7 @@ struct dsp_vector {
 	enum dsp_vector_type type;
 };
 
-#define NUM_DSP_CMD 14
+#define NUM_DSP_CMD 15
 
 static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_WRM, 0x8079, VECTOR_STANDARD},
@@ -94,6 +94,7 @@ static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_QTS, 0x8089, VECTOR_STANDARD},
 	{DSP_INT_RST, HCVR_INT_RST, VECTOR_QUICK},
 	{DSP_INT_DON, HCVR_INT_DON, VECTOR_QUICK},
+	{DSP_INT_RPC, HCVR_INT_RPC, VECTOR_QUICK},
 	{DSP_SYS_ERR, HCVR_SYS_ERR, VECTOR_QUICK},
 	{DSP_SYS_RST, HCVR_SYS_RST, VECTOR_QUICK},
 };

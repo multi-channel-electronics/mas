@@ -27,6 +27,7 @@ typedef enum
 	//Quick commands, no data or reply
 	DSP_INT_RST = 0x49525354, // "IRST" Clear interrupt
 	DSP_INT_DON = 0x49444f4e, // "IDON" Indicate interrupt done (?)
+	DSP_INT_RPC = 0x49525043, // "IRPC" Clear RP buffer
 	DSP_SYS_ERR = 0x53455252, // "IERR" Signal fatal error to DSP
 	DSP_SYS_RST = 0x53525354, // "IRST" System reset
 
@@ -56,7 +57,11 @@ typedef enum
 	DSP_QT_INFORM = 0x00494e46, // "INF" - information interval
 	DSP_QT_PERIOD = 0x00504552, // "PER" - information timeout
 	DSP_QT_FLUSH  = 0x00464c55, // "FLU" - flush (inform) remaining data
-	DSP_QT_ENABLE = 0x00534554  // "SET" - enable/disable quiet transfer
+	DSP_QT_ENABLE = 0x00534554, // "SET" - enable/disable quiet transfer
+
+	DSP_QT_RPSIZE = 0x00525053, // "RPS" - set max packet size for replies
+	DSP_QT_RPBASE = 0x00525042, // "RPB" - set bus address for reply
+	DSP_QT_RPENAB = 0x00525045  // "RPE" - enable/disable quiet RP handling
 
 } dsp_qt_code;
 
@@ -84,8 +89,9 @@ typedef enum
 typedef enum
 {
 	
-	DSP_RP   = 0x5250, // "RP"  - mce command reply
-	DSP_DA   = 0x4441, // "DA"  - mce data packet
+	DSP_RP   = 0x005250, //  "RP" - mce command reply
+	DSP_RPQ  = 0x525051, // "RPQ" - mce command reply, quiet mode
+	DSP_DA   = 0x004441, //  "DA" - mce data packet
 
 } dsp_notify_code;
 

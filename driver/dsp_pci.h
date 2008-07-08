@@ -26,6 +26,7 @@
 
 #define HCVR_INT_RST     0x8073 /* Clear DSP interrupt */
 #define HCVR_INT_DON     0x8075 /* Clear interrupt flag */
+#define HCVR_INT_RPC     0x808D /* Clear RP buffer flag */
 #define HCVR_SYS_ERR     0x8077 /* Set fatal error flag */
 #define HCVR_SYS_RST     0x808B /* Set fatal error flag */
 
