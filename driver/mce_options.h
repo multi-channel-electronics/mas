@@ -1,10 +1,12 @@
 #ifndef _MCE_OPTIONS_H_
 #define _MCE_OPTIONS_H_
 
+#define MAX_CARDS 2
+#define DEFAULT_CARD 0
+
 
 #define DEVICE_NAME "mceds"
-#define DEFAULT_CARD 0
-#define MAX_CARDS 3
+
 
 /*
 
@@ -20,7 +22,7 @@
   OPT_QUIET - don't even log errors
 
 */
-#define OPT_VERBOSE
+
 
 /*
   DEBUG MESSAGES
@@ -32,6 +34,7 @@
 #  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
 #endif
 
+#define OPT_VERBOSE
 #ifdef OPT_VERBOSE
 #  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
 #else
@@ -71,4 +74,6 @@
 */
 
 #define OPT_WATCHER
+
+
 #endif

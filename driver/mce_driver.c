@@ -205,7 +205,7 @@ void mce_do_HST_or_schedule(unsigned long data)
 	}
 
 	mdat.state = MDAT_HST;;
-	if ( (err=dsp_send_command( &cmd, mce_HST_dsp_callback, DEFAULT_CARD)) ) {
+	if ( (err=dsp_send_command(&cmd, mce_HST_dsp_callback, DEFAULT_CARD)) ) {
 		// FIX ME: discriminate between would-block errors and fatals!
 		PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
 		mdat.state = MDAT_NFY;

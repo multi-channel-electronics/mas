@@ -67,21 +67,20 @@ int   dsp_pci_init( char *dev_name );
 
 int   dsp_pci_cleanup(void);
 
-int   dsp_pci_proc(char *buf, int count, int card);
+int   dsp_pci_proc(char *buf, int count);
 
-int   dsp_pci_ioctl(unsigned int iocmd, unsigned long arg,
-		    struct dsp_dev_t *dev);
+int   dsp_pci_ioctl(unsigned int iocmd, unsigned long arg);
 
-int   dsp_send_command_now( dsp_command *cmd, struct dsp_dev_t *dev );
+int   dsp_send_command_now( dsp_command *cmd, struct dsp_dev_t *dev);
 
 int   dsp_send_command_now_vector( dsp_command *cmd, u32 vector,
 				   struct dsp_dev_t *dev);
 
-int   dsp_pci_set_handler(struct dsp_dev_t *dev,
+int   dsp_pci_set_handler(struct pci_dev *pci,
 			  irq_handler_t handler,
 			  char *dev_name);
 
-int   dsp_pci_flush(struct dsp_dev_t *dev);
+int   dsp_pci_flush(void);
 
 int   dsp_pci_hstr(void);
 
