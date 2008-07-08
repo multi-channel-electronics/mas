@@ -15,3 +15,5 @@ install: sub-dirs
 	make -C include      install
 	make -C interfaces   install
 	make -C applications install
+	make -C scripts      install
+

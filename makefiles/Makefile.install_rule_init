@@ -1,0 +1,16 @@
+# Create install rule for a init.d script target
+
+# To create an install rule, define the variables INSTALL_TARGET,
+# INSTALL_LEVELS, and INSTALL_PRIORITY.  INSTALL_TARGET is the name of
+# the script to install.  INSTALL_LEVELS is a space separated list of
+# run-levels for which the script should be set to run.  (Don't
+# enclose the list in quotes or it will mess up.)  INSTALL_PRIORITY is
+# a two digit number specifying the step at which the script should
+# run during init.
+
+install__$(INSTALL_TARGET): $(INSTALL_TARGET)
+	install -m u+rwx,g+rwx,o+rx --owner=root --group=$(MAS_GROUP) \
+		$(@:install__%=%) $(MAS_INSTALL_INIT)
+	-@for a in ${INSTALL_LEVELS}; do \
+	    ln -s ${MAS_INSTALL_INIT}$(@:install__%=%) ${MAS_INSTALL_INIT_RC}rc$${a}.d/S${INSTALL_PRIORITY}$(@:install__%=%); \
+	done

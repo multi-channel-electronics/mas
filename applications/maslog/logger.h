@@ -43,7 +43,7 @@ typedef struct params_struct {
 
 void log_init(params_t *p);
 int  log_openfile(params_t *p);
-int  log_string_now(params_t *p, int client_idx, char *str);
+int  log_text(params_t *p, char* client_name, char *str);
 int  log_flush(params_t *p);
 int  log_closefile(params_t *p);
 void log_setflag(params_t *p, int flag);

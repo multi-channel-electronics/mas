@@ -76,7 +76,7 @@ int log_reopen(params_t *p)
 	return 0;
 }
 
-int log_string_now(params_t *p, int client_idx, char *str)
+int log_text(params_t *p, char *client_name, char *str)
 {
 	CHECKPTR;
 
@@ -90,7 +90,7 @@ int log_string_now(params_t *p, int client_idx, char *str)
 	strftime(time_str, 256, "%x %X", tb);
 
 	fprintf(p->out, "%s %s : %s\n",
-		time_str, p->clients[client_idx].name, str);
+		time_str, client_name, str);
 
 	if (p->flags & FLAG_FLUSH)
 		fflush(p->out);
@@ -108,7 +108,7 @@ int log_string(params_t *p, int client_idx, char *str)
 
 	int level = str[0] - '0';
 	if (level >= p->level)
-		return log_string_now(p, client_idx, str+1);
+		return log_text(p, p->clients[client_idx].name, str+1);
 
 	return 0;
 }
@@ -227,7 +227,7 @@ int log_command(params_t *p, int client_idx, char *buf)
 
 	default:
 		sprintf(tmp, "Invalid log command '%s'", keyword);
-		log_string_now(p, client_idx, tmp);
+		log_text(p, p->clients[client_idx].name, tmp);
 		return -1;
 	}
 	return 0;
