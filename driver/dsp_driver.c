@@ -76,8 +76,6 @@ struct dsp_control {
 	dsp_state_t state;
 	int version;
 
-	struct dsp_dev_t* dev;
-	
 	int n_handlers;
 	dsp_handler_entry handlers[MAX_HANDLERS];
 
@@ -288,7 +286,7 @@ void dsp_timeout(unsigned long data)
 
 int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 {
-  	struct dsp_control *ddat = dsp_dat;
+  	struct dsp_control *ddat = dsp_dat + card;
 	int err = 0;
 
 	// This will often be called in atomic context
@@ -302,7 +300,7 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 	ddat->callback = callback;
 	ddat->state = DDAT_CMD;
 
-	if ( (err = dsp_send_command_now(cmd, ddat->dev)) ) {
+	if ( (err = dsp_send_command_now(cmd, card)) ) {
 		ddat->callback = NULL;
 		ddat->state = DDAT_IDLE;
 	} else {
@@ -395,9 +393,9 @@ int dsp_send_command_wait(dsp_command *cmd,
 
 #define SUBNAME "dsp_driver_ioctl: "
 
-int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
+int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card)
 {
-  	struct dsp_control *ddat = dsp_dat;
+  	struct dsp_control *ddat = dsp_dat + card;
 
 	switch(iocmd) {
 
@@ -407,7 +405,7 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg)
 
 	case DSPDEV_IOCT_CORE:
 	case DSPDEV_IOCT_CORE_IRQ:
-		return dsp_pci_ioctl(iocmd, arg);
+		return dsp_pci_ioctl(iocmd, arg, card);
 
 	default:
 		PRINT_IOCT(SUBNAME "unknown command\n");
@@ -453,9 +451,9 @@ int dsp_proc(char *buf, int count)
 
 #define SUBNAME "dsp_query_version: "
 
-int dsp_query_version(void)
+int dsp_query_version(int card)
 {
-  	struct dsp_control *ddat = dsp_dat;
+  	struct dsp_control *ddat = dsp_dat + card;
 	int err = 0;
 	dsp_command cmd = { DSP_VER, {0,0,0} };
 	dsp_message msg;
@@ -487,24 +485,13 @@ int dsp_query_version(void)
 
 #define SUBNAME "dsp_driver_probe: "
 
-int dsp_driver_probe(struct dsp_dev_t *dev)
+int dsp_driver_probe(int card)
 {	
-  	struct dsp_control *ddat = dsp_dat;
+  	struct dsp_control *ddat = dsp_dat + card;
 	int err = 0;
-	int i = 0;
 
 	PRINT_INFO(SUBNAME "entry\n");
-
-	for(i=0; i<MAX_CARDS; i++) {
-		ddat = dsp_dat + i;
-		if(ddat->dev == NULL) break;
-	}
 		
-	if (ddat->dev != NULL) {
-		PRINT_ERR(SUBNAME "called after device configured or dsp_dat[] is full.\n");
-		return -1;
-	}
-
 	init_MUTEX(&ddat->sem);
 	init_MUTEX(&ddat->local.sem);
 	init_waitqueue_head(&ddat->local.queue);
@@ -513,7 +500,6 @@ int dsp_driver_probe(struct dsp_dev_t *dev)
 	ddat->tim.function = dsp_timeout;
 	ddat->tim.data = (unsigned long)ddat;
 	ddat->state = DDAT_IDLE;
-        ddat->dev = dev;
 
 	// Set up handlers for the DSP interrupts - additional
 	//  handlers will be set up by sub-modules.
@@ -521,16 +507,17 @@ int dsp_driver_probe(struct dsp_dev_t *dev)
 	dsp_set_handler(DSP_HEY, dsp_hey_handler, 0);
 
 	// Version can only be obtained after REP handler has been set
-	if (dsp_query_version()) {
+	if (dsp_query_version(card)) {
 		err = -1;
 		goto out;
 	}
 
-	if (dsp_ops_init()) {
+	if (dsp_ops_probe(card)) {
 		err = -1;
 		goto out;
 	}
 	
+	//ISSUE: planning to test DEFAULT_CARD=1 without editing mce (this may require it)
 	if (mce_init_module(ddat->version)) {
 		err = -1;
 		goto out;
@@ -541,7 +528,7 @@ int dsp_driver_probe(struct dsp_dev_t *dev)
 
  out:
   
-	dsp_driver_remove(ddat->dev);
+	dsp_driver_remove(card);
 
 	PRINT_ERR(SUBNAME "exiting with errors!\n");
 	return err;
@@ -552,28 +539,20 @@ int dsp_driver_probe(struct dsp_dev_t *dev)
 
 #define SUBNAME "dsp_driver_remove: "
 
-void dsp_driver_remove(struct dsp_dev_t *dev)
+void dsp_driver_remove(int card)
 {
-  	struct dsp_control *ddat = dsp_dat;
-	int i = 0;
+  	struct dsp_control *ddat = dsp_dat + card;
 	
 	PRINT_INFO(SUBNAME "entry\n");
-
-	for(i=0; i<MAX_CARDS; i++) {
-		ddat = dsp_dat + i;
-		if(ddat->dev == dev) break;
-	}
 		
-	if (ddat->dev != dev) {
-		PRINT_ERR(SUBNAME "called with unknown device!\n");
-		return;
-	}
-
 	del_timer_sync(&ddat->tim);
 
+	//ISSUE: planning to test DEFAULT_CARD=1 without editing mce (this may require it)
 	mce_cleanup();
 
-	dsp_ops_cleanup();
+	if(dsp_ops_remove(card) != 0) {
+		PRINT_ERR(SUBNAME "error with dsp_ops_remove!\n");
+	}
 
 	PRINT_INFO(SUBNAME "ok\n");
 }

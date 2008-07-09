@@ -30,7 +30,7 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback,
 int dsp_send_command_wait(dsp_command *cmd,
 			  dsp_message *msg);
 
-int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg);
+int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
 
 int dsp_proc(char *buf, int count);
 
@@ -40,8 +40,8 @@ int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data);
 
 int dsp_clear_handler(u32 code);
 
-int dsp_driver_probe(struct dsp_dev_t *dev);
+int dsp_driver_probe(int card);
 
-void dsp_driver_remove(struct dsp_dev_t *dev);
+void dsp_driver_remove(int card);
 
 #endif

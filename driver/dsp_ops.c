@@ -302,7 +302,7 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 		return x;
 
 	default:
-		return dsp_driver_ioctl(iocmd, arg);
+		return dsp_driver_ioctl(iocmd, arg, DEFAULT_CARD);
 	}
 
 	return 0;
@@ -346,9 +346,9 @@ struct file_operations dsp_fops =
 };
 
 
-int dsp_ops_init(void)
+int dsp_ops_probe(int card)
 {
-	struct dsp_ops_t *dops = dsp_ops;
+	struct dsp_ops_t *dops = dsp_ops + card;
 	int err = 0;
 
 	init_waitqueue_head(&dops->queue);
@@ -368,9 +368,9 @@ int dsp_ops_init(void)
 	return err;
 }
 
-int dsp_ops_cleanup(void)
+int dsp_ops_remove(int card)
 {
-	struct dsp_ops_t *dops = dsp_ops;
+	struct dsp_ops_t *dops = dsp_ops + card;
 
 	if (dops->major != 0) 
 		unregister_chrdev(dsp_ops->major, DSPDEV_NAME);
