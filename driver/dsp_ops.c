@@ -49,7 +49,7 @@ struct dsp_ops_t {
 	dsp_message msg;
 	dsp_command cmd;
 
-} dsp_ops;
+} dsp_ops[MAX_CARDS];
 
 
 /*
@@ -78,29 +78,30 @@ struct dsp_ops_t {
 ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
+	struct dsp_ops_t *dops = dsp_ops;
 	int read_count = 0;
 	int ret_val = 0;
 	int err = 0;
 
-	PRINT_INFO(SUBNAME "state=%#x\n", dsp_ops.state);
+	PRINT_INFO(SUBNAME "state=%#x\n", dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
-		if (down_trylock(&dsp_ops.sem))
+		if (down_trylock(&dops->sem))
 			return -EAGAIN;
 	} else {
-		if (down_interruptible(&dsp_ops.sem))
+		if (down_interruptible(&dops->sem))
 			return -ERESTARTSYS;
 	}		
 
-	switch (dsp_ops.state) {
+	switch (dops->state) {
 	case OPS_CMD:
 		if (filp->f_flags & O_NONBLOCK) {
 			ret_val = -EAGAIN;
 			goto out;
 		} 
 
-		if (wait_event_interruptible(dsp_ops.queue,
-					     dsp_ops.state != OPS_CMD)) {
+		if (wait_event_interruptible(dops->queue,
+					     dops->state != OPS_CMD)) {
 			ret_val = -ERESTARTSYS;
 			goto out;
 		}
@@ -116,12 +117,12 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 		goto out;
 	}
 	
-	if (dsp_ops.state == OPS_REP) {
+	if (dops->state == OPS_REP) {
 		
-		read_count = sizeof(dsp_ops.msg);
+		read_count = sizeof(dops->msg);
 		if (read_count > count) read_count = count;
 		
-		err = copy_to_user(buf, (void*)&dsp_ops.msg, sizeof(dsp_ops.msg));
+		err = copy_to_user(buf, (void*)&dops->msg, sizeof(dops->msg));
 		read_count -= err;
 		if (err) {
 			PRINT_ERR(SUBNAME "could not copy %#x bytes to user\n",
@@ -131,13 +132,13 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 		read_count = 0;
 	}
 
-	dsp_ops.state = OPS_IDLE;
+	dops->state = OPS_IDLE;
 	ret_val = read_count;
 
  out:
 	PRINT_INFO(SUBNAME "exiting (ret_val=%i)\n", ret_val);
 
-	up(&dsp_ops.sem);
+	up(&dops->sem);
 	return ret_val;
 }
 
@@ -163,65 +164,66 @@ int dsp_write_callback( int error, dsp_message* msg );
 ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
+	struct dsp_ops_t *dops = dsp_ops;
 	int ret_val = 0;
 	int err = 0;
 
-	PRINT_INFO("write: state=%#x\n", dsp_ops.state);
+	PRINT_INFO("write: state=%#x\n", dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
-		if (down_trylock(&dsp_ops.sem))
+		if (down_trylock(&dops->sem))
 			return -EAGAIN;
 	} else {
-		if (down_interruptible(&dsp_ops.sem))
+		if (down_interruptible(&dops->sem))
 			return -ERESTARTSYS;
 	}		
 
-	dsp_ops.error = 0;
+	dops->error = 0;
 
-	switch (dsp_ops.state) {
+	switch (dops->state) {
 	case OPS_IDLE:
 		break;
 
 	case OPS_CMD:
 	case OPS_REP:
 		ret_val = 0;
-		dsp_ops.error = -DSP_ERR_ACTIVE;
+		dops->error = -DSP_ERR_ACTIVE;
 		goto out;
 
 	default:
 		ret_val = 0;
-		dsp_ops.error = -DSP_ERR_STATE;
+		dops->error = -DSP_ERR_STATE;
 		goto out;
 	}
 
 	//Flags ok, so try to get the command data
   
-	if (count != sizeof(dsp_ops.cmd)) {
+	if (count != sizeof(dops->cmd)) {
 		PRINT_ERR(SUBNAME "count != sizeof(dsp_command)\n");
 		ret_val = -EPROTO;
 		goto out;
 	}
 
-	if (copy_from_user(&dsp_ops.cmd, buf, sizeof(dsp_ops.cmd))) {
+	if (copy_from_user(&dops->cmd, buf, sizeof(dops->cmd))) {
 		PRINT_ERR(SUBNAME "copy_from_user incomplete\n");
 		ret_val = 0;
-		dsp_ops.error = -DSP_ERR_KERNEL;
+		dops->error = -DSP_ERR_KERNEL;
 		goto out;
 	}
 
-	dsp_ops.state = OPS_CMD;
-	if ((err=dsp_send_command(&dsp_ops.cmd, dsp_write_callback, DEFAULT_CARD))!=0) {
-		dsp_ops.state = OPS_IDLE;
+	dops->state = OPS_CMD;
+	if ((err=dsp_send_command(&dops->cmd, dsp_write_callback, DEFAULT_CARD))!=0) {
+		dops->state = OPS_IDLE;
 		PRINT_ERR(SUBNAME "dsp_send_command failed [%#0x]\n", err);
 		ret_val = 0;
-		dsp_ops.error = err;
+		dops->error = err;
 		goto out;
 	}
 
 	ret_val = count;
 
  out:
-	up(&dsp_ops.sem);
+	up(&dops->sem);
 
 	return ret_val;
 }
@@ -240,33 +242,35 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 
 int dsp_write_callback( int error, dsp_message* msg )
 {
-	wake_up_interruptible(&dsp_ops.queue);
+        struct dsp_ops_t *dops = dsp_ops;
 
-	if (dsp_ops.state != OPS_CMD) {
+	wake_up_interruptible(&dops->queue);
+
+	if (dops->state != OPS_CMD) {
 		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
-			  dsp_ops.state, OPS_CMD);
+			  dops->state, OPS_CMD);
 		return -1;
 	}			  
 
 	if (error) {
 		PRINT_ERR(SUBNAME "called with error\n");
-		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
-		dsp_ops.state = OPS_ERR;
-		dsp_ops.error = error;
+		memset(&dops->msg, 0, sizeof(dops->msg));
+		dops->state = OPS_ERR;
+		dops->error = error;
 		return 0;
 	}
 
 	if (msg==NULL) {
 		PRINT_ERR(SUBNAME "called with null message\n");
-		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
-		dsp_ops.state = OPS_ERR;
-		dsp_ops.error = -DSP_ERR_UNKNOWN;
+		memset(&dops->msg, 0, sizeof(dops->msg));
+		dops->state = OPS_ERR;
+		dops->error = -DSP_ERR_UNKNOWN;
 		return 0;
 	}
 
 	PRINT_INFO(SUBNAME "type=%#x\n", msg->type);
-	memcpy(&dsp_ops.msg, msg, sizeof(dsp_ops.msg));
-	dsp_ops.state = OPS_REP;
+	memcpy(&dops->msg, msg, sizeof(dops->msg));
+	dops->state = OPS_REP;
 
 	return 0;
 }
@@ -276,24 +280,25 @@ int dsp_write_callback( int error, dsp_message* msg )
 int dsp_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
+	struct dsp_ops_t *dops = dsp_ops;
 	int x;
 
 	switch(iocmd) {
 
 	case DSPDEV_IOCT_RESET:
 		PRINT_IOCT("ioctl: resetting comm flags\n");
-		if (down_interruptible(&dsp_ops.sem)) {
+		if (down_interruptible(&dops->sem)) {
 			return -ERESTARTSYS;
 		}
-		dsp_ops.state = OPS_IDLE;
-		dsp_ops.error = 0;
+		dops->state = OPS_IDLE;
+		dops->error = 0;
 
-		up(&dsp_ops.sem);
+		up(&dops->sem);
 		break;
 
 	case DSPDEV_IOCT_ERROR:
-		x = dsp_ops.error;
-		dsp_ops.error = 0;
+		x = dops->error;
+		dops->error = 0;
 		return x;
 
 	default:
@@ -343,29 +348,32 @@ struct file_operations dsp_fops =
 
 int dsp_ops_init(void)
 {
+	struct dsp_ops_t *dops = dsp_ops;
 	int err = 0;
 
-	init_waitqueue_head(&dsp_ops.queue);
-	init_MUTEX(&dsp_ops.sem);
+	init_waitqueue_head(&dops->queue);
+	init_MUTEX(&dops->sem);
 
-	dsp_ops.state = OPS_IDLE;
+	dops->state = OPS_IDLE;
 
 	err = register_chrdev(0, DSPDEV_NAME, &dsp_fops);
 	if (err<0) {
 		PRINT_ERR("dsp_ops_init: could not register_chrdev, "
 			  "err=%#x\n", -err);
 	} else {	  
-		dsp_ops.major = err;
+		dops->major = err;
 		err = 0;
 	}
 
 	return err;
 }
 
-int dsp_ops_cleanup(void) {
+int dsp_ops_cleanup(void)
+{
+	struct dsp_ops_t *dops = dsp_ops;
 
-	if (dsp_ops.major != 0) 
-		unregister_chrdev(dsp_ops.major, DSPDEV_NAME);
+	if (dops->major != 0) 
+		unregister_chrdev(dsp_ops->major, DSPDEV_NAME);
 
 	return 0;
 }

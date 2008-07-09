@@ -42,6 +42,6 @@ int dsp_clear_handler(u32 code);
 
 int dsp_driver_probe(struct dsp_dev_t *dev);
 
-void dsp_driver_remove(void);
+void dsp_driver_remove(struct dsp_dev_t *dev);
 
 #endif

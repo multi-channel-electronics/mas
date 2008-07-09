@@ -436,11 +436,11 @@ int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	int err = 0;
 	int i = 0;
 
-	PRINT_INFO(SUBNAME "entry!\n");
+	PRINT_INFO(SUBNAME "entry\n");
 
-	for(i=0; i < MAX_CARDS; i++) {
+	for(i=0; i<MAX_CARDS; i++) {
 		dev = dsp_dev + i;
-			if(dev->pci == NULL) break;
+		if(dev->pci == NULL) break;
 	} 	
 
 	if (pci==NULL) {
@@ -486,6 +486,7 @@ int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	// Call init function for higher levels.
 	dsp_driver_probe(dev);
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 
 fail:
@@ -514,7 +515,7 @@ void dsp_pci_remove(struct pci_dev *pci)
 		if(pci == dev->pci) {
 			
 			// Disable higher-level features first
-			dsp_driver_remove();
+			dsp_driver_remove(dev);
 			
 			// Remove int handler, clear remaining ints, unmap i/o memory
 			dsp_pci_remove_handler(dev->pci);
@@ -579,7 +580,7 @@ int dsp_pci_cleanup()
 	for(i=0; i < MAX_CARDS; i++) {
 		struct dsp_dev_t *dev = dsp_dev + i;
 		if ( dev->pci != NULL ) {
-			PRINT_ERR(SUBNAME "failed to zero dev->pci for card; %i!\n", (i+1) );
+			PRINT_ERR(SUBNAME "failed to zero dev->pci for card; %i!\n", i);
 		}
 	}
 
