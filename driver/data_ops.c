@@ -231,7 +231,7 @@ int data_release(struct inode *inode, struct file *filp)
 {
 	data_ops_t* d = filp->private_data;
 	if (d != NULL) {
-		kfree(d);
+	  kfree(d);
 	}
 	return 0;
 }

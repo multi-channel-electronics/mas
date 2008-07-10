@@ -252,17 +252,17 @@ int dsp_hey_handler(dsp_message *msg, unsigned long data)
 
 void dsp_timeout(unsigned long data)
 {
-	struct dsp_control *my_ddat = (struct dsp_control*)data;
+	struct dsp_control *ddat = (struct dsp_control*)data;
 
-	if (my_ddat->state == DDAT_IDLE) {
+	if (ddat->state == DDAT_IDLE) {
 		PRINT_INFO(SUBNAME "timer ignored\n");
 		return;
 	}
 
 	PRINT_ERR(SUBNAME "dsp reply timed out!\n");
-	if (my_ddat->callback != NULL)
-		my_ddat->callback(-DSP_ERR_TIMEOUT, NULL, my_ddat-dsp_dat);
-	my_ddat->state = DDAT_IDLE;
+	if (ddat->callback != NULL)
+		ddat->callback(-DSP_ERR_TIMEOUT, NULL, ddat-dsp_dat);
+	ddat->state = DDAT_IDLE;
 }
 
 #undef SUBNAME
@@ -430,10 +430,12 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card)
 #undef SUBNAME
 
 
-int dsp_proc(char *buf, int count)
+int dsp_proc(char *buf, int count, int card)
 {
-  	struct dsp_control *ddat = dsp_dat;
+  	struct dsp_control *ddat = dsp_dat + card;
 	int len = 0;
+
+	PRINT_ERR("dsp_proc: card = %d\n", card);
 
 	if (len < count) {
 		len += sprintf(buf+len, "    state:    ");

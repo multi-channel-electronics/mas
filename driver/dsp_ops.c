@@ -82,13 +82,13 @@ struct dsp_ops_t {
 ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
-//	struct filp_pdata fpdata; //= filp->private_data;
-	struct dsp_ops_t *dops = dsp_ops; //=dsp_ops + fpdata.minor
+	struct filp_pdata *fpdata = filp->private_data;
+	struct dsp_ops_t *dops = dsp_ops + fpdata->minor;
 	int read_count = 0;
 	int ret_val = 0;
 	int err = 0;
 
-//	PRINT_ERR(SUBNAME "fpdata.minor=%d\n", fpdata.minor);
+	PRINT_ERR(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
 	PRINT_INFO(SUBNAME "state=%#x\n", dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
@@ -170,11 +170,12 @@ int dsp_write_callback(int error, dsp_message* msg, int card);
 ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
-//	struct filp_pdata fpdata; //= filp->private_data;
-	struct dsp_ops_t *dops = dsp_ops; //=dsp_ops + fpdata.minor
+	struct filp_pdata *fpdata = filp->private_data;
+	struct dsp_ops_t *dops = dsp_ops + fpdata->minor;
 	int ret_val = 0;
 	int err = 0;
 
+	PRINT_ERR(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
 	PRINT_INFO("write: state=%#x\n", dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
@@ -249,7 +250,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 
 int dsp_write_callback(int error, dsp_message* msg, int card)
 {
-        struct dsp_ops_t *dops = dsp_ops;
+        struct dsp_ops_t *dops = dsp_ops + card;
 
 	wake_up_interruptible(&dops->queue);
 
@@ -284,11 +285,17 @@ int dsp_write_callback(int error, dsp_message* msg, int card)
 
 #undef SUBNAME
 
+#define SUBNAME "dsp_ioctl: "
+
 int dsp_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
-	struct dsp_ops_t *dops = dsp_ops;
+	struct filp_pdata *fpdata = filp->private_data;
+	struct dsp_ops_t *dops = dsp_ops + fpdata->minor;
 	int x;
+
+	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_ERR(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
 
 	switch(iocmd) {
 
@@ -309,38 +316,63 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 		return x;
 
 	default:
+		PRINT_INFO(SUBNAME "ok\n");
 		return dsp_driver_ioctl(iocmd, arg, DEFAULT_CARD);
 	}
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 
 }
 
+#undef SUBNAME
+
+#define SUBNAME "dsp_open: "
 
 int dsp_open(struct inode *inode, struct file *filp)
 {
-	PRINT_INFO("dsp_open\n");
+	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
+        fpdata->minor = iminor(inode);
+	filp->private_data = fpdata;
+
+	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_ERR(SUBNAME "iminor(inode)=%d\n", iminor(inode));
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	MOD_INC_USE_COUNT;
 #else
 	if(!try_module_get(THIS_MODULE))
 		return -1;
 #endif   
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
 
+#undef SUBNAME
+
+#define SUBNAME "dsp_release: "
 
 int dsp_release(struct inode *inode, struct file *filp)
 {
-	PRINT_INFO("dsp_release\n");
+	struct filp_pdata *fpdata = filp->private_data;
+
+	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_ERR(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
+
+	if(fpdata != NULL) {
+	  kfree(fpdata);
+	} else PRINT_ERR(SUBNAME "called with NULL private_data!\n");
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	MOD_DEC_USE_COUNT;
 #else
 	module_put(THIS_MODULE);
 #endif
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
 
+#undef SUBNAME
 
 struct file_operations dsp_fops = 
 {

@@ -32,7 +32,7 @@ int dsp_send_command_wait(dsp_command *cmd, dsp_message *msg,
 
 int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
 
-int dsp_proc(char *buf, int count);
+int dsp_proc(char *buf, int count, int card);
 
 int dsp_int_handler(dsp_message *msg, int card);
 

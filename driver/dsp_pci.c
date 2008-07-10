@@ -654,11 +654,12 @@ int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg, int card)
 #undef SUBNAME
 
 
-int dsp_pci_proc(char *buf, int count)
+int dsp_pci_proc(char *buf, int count, int card)
 {
-	struct dsp_dev_t *dev = dsp_dev;
-
+	struct dsp_dev_t *dev = dsp_dev + card;
 	int len = 0;
+
+	PRINT_ERR("dsp_pci_proc: card = %d\n", card);
 	if (len < count) {
 		len += sprintf(buf+len, "    hstr:     %#06x\n"
 			                "    hctr:     %#06x\n",

@@ -67,7 +67,7 @@ int   dsp_pci_init( char *dev_name );
 
 int   dsp_pci_cleanup(void);
 
-int   dsp_pci_proc(char *buf, int count);
+int   dsp_pci_proc(char *buf, int count, int card);
 
 int   dsp_pci_ioctl(unsigned int iocmd, unsigned long arg, int card);
 

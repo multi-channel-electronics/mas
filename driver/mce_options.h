@@ -34,7 +34,7 @@
 #  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
 #endif
 
-#define OPT_VERBOSE
+//#define OPT_VERBOSE
 #ifdef OPT_VERBOSE
 #  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
 #else
