@@ -55,7 +55,7 @@ int mce_qti_handler ( dsp_message *msg, unsigned long data )
 
 #define SUBNAME "data_grant_callback: "
 
-int  data_grant_callback( int error, dsp_message *msg )
+int  data_grant_callback( int error, dsp_message *msg, int card)
 {
 	if (error != 0 || msg==NULL) {
 		PRINT_ERR(SUBNAME "error or NULL message.\n");
@@ -92,7 +92,7 @@ int data_qt_cmd( dsp_qt_code code, int arg1, int arg2)
 {
 	dsp_command cmd = { DSP_QTS, {code,arg1,arg2} };
 	dsp_message reply;
-	return dsp_send_command_wait( &cmd, &reply );
+	return dsp_send_command_wait( &cmd, &reply, DEFAULT_CARD);
 }	
 
 

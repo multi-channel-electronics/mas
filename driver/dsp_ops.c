@@ -29,6 +29,10 @@ typedef enum {
 	OPS_ERR
 } dsp_ops_state_t;
 
+struct filp_pdata {
+	int minor;
+};
+
 
 struct dsp_ops_t {
 
@@ -78,11 +82,13 @@ struct dsp_ops_t {
 ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
-	struct dsp_ops_t *dops = dsp_ops;
+//	struct filp_pdata fpdata; //= filp->private_data;
+	struct dsp_ops_t *dops = dsp_ops; //=dsp_ops + fpdata.minor
 	int read_count = 0;
 	int ret_val = 0;
 	int err = 0;
 
+//	PRINT_ERR(SUBNAME "fpdata.minor=%d\n", fpdata.minor);
 	PRINT_INFO(SUBNAME "state=%#x\n", dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
@@ -157,14 +163,15 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
   available via the dsp_read method.
 */
 
-int dsp_write_callback( int error, dsp_message* msg );
+int dsp_write_callback(int error, dsp_message* msg, int card);
 
 #define SUBNAME "dsp_write: "
 
 ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
-	struct dsp_ops_t *dops = dsp_ops;
+//	struct filp_pdata fpdata; //= filp->private_data;
+	struct dsp_ops_t *dops = dsp_ops; //=dsp_ops + fpdata.minor
 	int ret_val = 0;
 	int err = 0;
 
@@ -240,7 +247,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 
 #define SUBNAME "dsp_write_callback: "
 
-int dsp_write_callback( int error, dsp_message* msg )
+int dsp_write_callback(int error, dsp_message* msg, int card)
 {
         struct dsp_ops_t *dops = dsp_ops;
 

@@ -86,10 +86,13 @@ struct dsp_control {
 
 #define SUBNAME "dsp_set_handler: "
 
-int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data)
+//ISSUE: called from mce_driver.c in 2 places
+int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data, int card)
 {
-	struct dsp_control *ddat = dsp_dat;
+	struct dsp_control *ddat = dsp_dat + card;
 	int i;
+
+	PRINT_INFO(SUBNAME "entry\n");
 
 	// Replace handler if it exists
 	for (i=0; i<ddat->n_handlers; i++) {
@@ -106,6 +109,7 @@ int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data)
 		ddat->handlers[i].handler = handler;
 		ddat->handlers[i].data = data;
 	        ddat->n_handlers++;
+		PRINT_INFO(SUBNAME "ok\n");
 		return 0;
 	}
 
@@ -118,10 +122,13 @@ int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data)
 
 #define SUBNAME "dsp_clear_handler: "
 
-int dsp_clear_handler(u32 code)
+//Can be called in the future to clear a handler, not in use atm
+int dsp_clear_handler(u32 code, int card)
 {
   	struct dsp_control *ddat = dsp_dat;
 	int i = 0;
+
+	PRINT_INFO(SUBNAME "entry\n");
 
 	for (i=0; i<ddat->n_handlers; i++) {
 		if (ddat->handlers[i].code == code)
@@ -140,6 +147,7 @@ int dsp_clear_handler(u32 code)
 	// Clear the removed entry
 	memset(ddat->handlers + ddat->n_handlers, 0, sizeof(*ddat->handlers));
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
 
@@ -161,10 +169,12 @@ int dsp_clear_handler(u32 code)
 
 #define SUBNAME "dsp_int_handler: "
 
-int dsp_int_handler(dsp_message *msg)
+int dsp_int_handler(dsp_message *msg, int card)
 {
-  	struct dsp_control *ddat = dsp_dat;
+  	struct dsp_control *ddat = dsp_dat + card;
 	int i;
+
+	PRINT_INFO(SUBNAME "entry\n");
 
 	if (msg==NULL) {
 		PRINT_ERR(SUBNAME "called with NULL message pointer!\n");
@@ -177,6 +187,7 @@ int dsp_int_handler(dsp_message *msg)
 		if ( (ddat->handlers[i].code == msg->type) &&
 		     (ddat->handlers[i].handler != NULL) ) {
 			ddat->handlers[i].handler(msg, ddat->handlers[i].data);
+			PRINT_INFO(SUBNAME "ok\n");
 			return 0;
 		}
 	}
@@ -196,7 +207,7 @@ int dsp_int_handler(dsp_message *msg)
 
 int dsp_reply_handler(dsp_message *msg, unsigned long data)
 {
-  	struct dsp_control *ddat = dsp_dat;
+  	struct dsp_control *ddat = (struct dsp_control *)data;
 
 	if (ddat->state == DDAT_CMD) {
 		PRINT_INFO(SUBNAME
@@ -204,7 +215,8 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 
 		// Call the registered callbacks
 		if (ddat->callback != NULL) {
-			ddat->callback(0, msg);
+
+			ddat->callback(0, msg, ddat-dsp_dat);
 		} else {
 			PRINT_ERR(SUBNAME "no handler defined\n");
 		}
@@ -249,7 +261,7 @@ void dsp_timeout(unsigned long data)
 
 	PRINT_ERR(SUBNAME "dsp reply timed out!\n");
 	if (my_ddat->callback != NULL)
-		my_ddat->callback(-DSP_ERR_TIMEOUT, NULL);
+		my_ddat->callback(-DSP_ERR_TIMEOUT, NULL, my_ddat-dsp_dat);
 	my_ddat->state = DDAT_IDLE;
 }
 
@@ -323,9 +335,9 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 
 #define SUBNAME "dsp_send_command_wait_callback"
 
-int dsp_send_command_wait_callback(int error, dsp_message *msg)
+int dsp_send_command_wait_callback(int error, dsp_message *msg, int card)
 {
-	struct dsp_control *ddat = dsp_dat;
+	struct dsp_control *ddat = dsp_dat + card;
 
 	wake_up_interruptible(&ddat->local.queue);
 
@@ -348,9 +360,9 @@ int dsp_send_command_wait_callback(int error, dsp_message *msg)
 #define SUBNAME "dsp_send_command_wait: "
 
 int dsp_send_command_wait(dsp_command *cmd,
-			  dsp_message *msg)
+			  dsp_message *msg, int card)
 {
-	struct dsp_control *ddat = dsp_dat;
+	struct dsp_control *ddat = dsp_dat + card;
 	int err = 0;
 
 	PRINT_INFO(SUBNAME "entry\n");
@@ -363,7 +375,7 @@ int dsp_send_command_wait(dsp_command *cmd,
 	ddat->local.msg = msg;
 	ddat->local.flags = LOCAL_CMD;
 	
-	if ((err=dsp_send_command(cmd, dsp_send_command_wait_callback, DEFAULT_CARD)) != 0)
+	if ((err=dsp_send_command(cmd, dsp_send_command_wait_callback, card)) != 0)
 		goto up_and_out;
 
 	PRINT_INFO(SUBNAME "commanded, waiting\n");
@@ -460,7 +472,7 @@ int dsp_query_version(int card)
 	char version[8] = "<=U0103";
 	
 	ddat->version = 0;
-	if ( (err=dsp_send_command_wait(&cmd, &msg)) != 0 )
+	if ( (err=dsp_send_command_wait(&cmd, &msg, card)) != 0 )
 		return err;
 
 	ddat->version = DSP_U0103;
@@ -503,8 +515,8 @@ int dsp_driver_probe(int card)
 
 	// Set up handlers for the DSP interrupts - additional
 	//  handlers will be set up by sub-modules.
-	dsp_set_handler(DSP_REP, dsp_reply_handler, 0);
-	dsp_set_handler(DSP_HEY, dsp_hey_handler, 0);
+	dsp_set_handler(DSP_REP, dsp_reply_handler, (unsigned long)ddat, card);
+	dsp_set_handler(DSP_HEY, dsp_hey_handler, (unsigned long)ddat, card);
 
 	// Version can only be obtained after REP handler has been set
 	if (dsp_query_version(card)) {

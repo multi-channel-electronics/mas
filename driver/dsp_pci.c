@@ -139,6 +139,8 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	int k = 0; 
 	int n = sizeof(msg) / sizeof(u32);
 
+	PRINT_INFO(SUBNAME "interrupt entry irq=%#x\n", irq);
+
 	for(k=0; k<MAX_CARDS; k++) {
 		dev = dsp_dev + k;
 		if (dev_id == dev) {
@@ -147,7 +149,6 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 		}
 	}
 
-	PRINT_INFO(SUBNAME "interrupt entry irq=%#x\n", irq);
 	if (dev_id != dev) return IRQ_NONE;
 
 	// Immediately clear interrupt bit
@@ -166,7 +167,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 		  msg.type, msg.command, msg.reply, msg.data);
 
 	// Call the generic message handler
-	dsp_int_handler( &msg );
+	dsp_int_handler(&msg, k);
 
 	// At end, clear DSP handshake bit
 	dsp_write_hcvr(dsp, HCVR_INT_DON);
@@ -174,6 +175,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 /* 	// Clear DSP interrupt flags */
 /* 	dsp_clear_interrupt(dsp); */
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return IRQ_HANDLED;
 }
 

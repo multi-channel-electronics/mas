@@ -85,10 +85,10 @@ void mce_error_reset( void )
  *   MCE command routines.  Holy, elaborate.
  */
 
-int  mce_CON_dsp_callback( int error, dsp_message *msg );
+int  mce_CON_dsp_callback( int error, dsp_message *msg, int card);
 int  mce_NFY_RP_handler( int error, dsp_message *msg );
 void mce_do_HST_or_schedule( unsigned long data );
-int  mce_HST_dsp_callback( int error, dsp_message *msg );
+int  mce_HST_dsp_callback( int error, dsp_message *msg, int card);
 
 
 /* First set: interrupt context, no blocking and no sems! */
@@ -119,7 +119,7 @@ int mce_command_do_callback( int error, mce_reply *rep )
 
 #define SUBNAME "mce_CON_dsp_callback: "
 
-int mce_CON_dsp_callback( int error, dsp_message *msg )
+int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 {
 	PRINT_INFO(SUBNAME "entry\n");
 
@@ -221,7 +221,7 @@ void mce_do_HST_or_schedule(unsigned long data)
 
 #define SUBNAME "mce_HST_dsp_callback: "
 
-int mce_HST_dsp_callback( int error, dsp_message *msg )
+int mce_HST_dsp_callback(int error, dsp_message *msg, int card)
 {
 	if (mdat.state != MDAT_HST) {
 		PRINT_ERR(SUBNAME "unexpected callback! (state=%i)\n",
@@ -412,7 +412,7 @@ int mce_send_command_user(mce_command *cmd, mce_callback callback)
 
 #define SUBNAME "mce_da_hst_callback: "
 
-int mce_da_hst_callback(int error, dsp_message *msg)
+int mce_da_hst_callback(int error, dsp_message *msg, int card)
 {
 	//FIXME: "error" case should be natural and handled smoothly.
 	// What will happen to this "data"?
@@ -736,14 +736,14 @@ int mce_hardware_reset()
 {
 	dsp_command cmd = { DSP_RCO, {0,0,0} };
 	dsp_message msg;
-	return dsp_send_command_wait(&cmd, &msg);
+	return dsp_send_command_wait(&cmd, &msg, DEFAULT_CARD);
 }
 
 int mce_interface_reset()
 {
 	dsp_command cmd = { DSP_RST, {0,0,0} };
 	dsp_message msg;
-	return dsp_send_command_wait(&cmd, &msg);
+	return dsp_send_command_wait(&cmd, &msg, DEFAULT_CARD);
 }
 
 
@@ -786,8 +786,8 @@ int mce_init_module(int dsp_version)
 	mdat.data_flags = 0;
 
 	// Set up command and quiet transfer handlers
-	dsp_set_handler(DSP_QTI, mce_qti_handler, 0);
-	dsp_set_handler(DSP_NFY, mce_int_handler, 0);
+	dsp_set_handler(DSP_QTI, mce_qti_handler, 0, DEFAULT_CARD);
+	dsp_set_handler(DSP_NFY, mce_int_handler, 0, DEFAULT_CARD);
 
 	PRINT_INFO(SUBNAME "init ok.\n");
 
