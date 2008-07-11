@@ -132,14 +132,15 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	   do not use it.  It is left here for compatibility with
 	   2.6.18-                                                    */
 
-	struct dsp_dev_t *dev = dsp_dev;
-	dsp_reg_t *dsp = dev->dsp;
+	struct dsp_dev_t *dev = NULL;
+	dsp_reg_t *dsp = NULL;
 	dsp_message msg;
 	int i = 0;
 	int k = 0; 
 	int n = sizeof(msg) / sizeof(u32);
 
-	PRINT_INFO(SUBNAME "interrupt entry irq=%#x\n", irq);
+	//ISSUE: Continuous stream of general interrupts
+	//PRINT_INFO(SUBNAME "interrupt entry irq=%#x\n", irq);
 
 	for(k=0; k<MAX_CARDS; k++) {
 		dev = dsp_dev + k;
@@ -150,6 +151,9 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	}
 
 	if (dev_id != dev) return IRQ_NONE;
+
+	if ( !(dsp_read_hstr(dsp) & HSTR_HC3) )
+		return IRQ_NONE;
 
 	// Immediately clear interrupt bit
 	dsp_write_hcvr(dsp, HCVR_INT_RST);
@@ -660,11 +664,13 @@ int dsp_pci_proc(char *buf, int count, int card)
 	int len = 0;
 
 	PRINT_ERR("dsp_pci_proc: card = %d\n", card);
-	if (len < count) {
+	if (len < count && dev->dsp != NULL) {
 		len += sprintf(buf+len, "    hstr:     %#06x\n"
 			                "    hctr:     %#06x\n",
 			       dsp_read_hstr(dev->dsp),
 			       dsp_read_hctr(dev->dsp));
+	} else if (len < count) {
+		len += sprintf(buf+len, "    Card not present/intialized\n");
 	}
 	
 	return len;

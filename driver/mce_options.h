@@ -2,7 +2,7 @@
 #define _MCE_OPTIONS_H_
 
 #define MAX_CARDS 2
-#define DEFAULT_CARD 0
+#define DEFAULT_CARD 1
 
 
 #define DEVICE_NAME "mceds"
@@ -34,7 +34,7 @@
 #  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
 #endif
 
-//#define OPT_VERBOSE
+#define OPT_VERBOSE
 #ifdef OPT_VERBOSE
 #  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
 #else

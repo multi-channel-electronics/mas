@@ -220,7 +220,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	}
 
 	dops->state = OPS_CMD;
-	if ((err=dsp_send_command(&dops->cmd, dsp_write_callback, DEFAULT_CARD))!=0) {
+	if ((err=dsp_send_command(&dops->cmd, dsp_write_callback, fpdata->minor))!=0) {
 		dops->state = OPS_IDLE;
 		PRINT_ERR(SUBNAME "dsp_send_command failed [%#0x]\n", err);
 		ret_val = 0;
@@ -317,7 +317,7 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 
 	default:
 		PRINT_INFO(SUBNAME "ok\n");
-		return dsp_driver_ioctl(iocmd, arg, DEFAULT_CARD);
+		return dsp_driver_ioctl(iocmd, arg, fpdata->minor);
 	}
 
 	PRINT_INFO(SUBNAME "ok\n");
@@ -385,34 +385,43 @@ struct file_operations dsp_fops =
 };
 
 
-int dsp_ops_probe(int card)
+void dsp_ops_probe(int card)
 {
 	struct dsp_ops_t *dops = dsp_ops + card;
-	int err = 0;
 
 	init_waitqueue_head(&dops->queue);
 	init_MUTEX(&dops->sem);
 
 	dops->state = OPS_IDLE;
 
+	return;
+}
+
+void dsp_ops_cleanup(void)
+{
+	if (dsp_ops->major != 0) 
+		unregister_chrdev(dsp_ops->major, DSPDEV_NAME);
+
+	return;
+}
+
+int dsp_ops_init(void)
+{
+	int i = 0;
+	int err = 0;
+	
 	err = register_chrdev(0, DSPDEV_NAME, &dsp_fops);
+
 	if (err<0) {
 		PRINT_ERR("dsp_ops_init: could not register_chrdev, "
 			  "err=%#x\n", -err);
-	} else {	  
-		dops->major = err;
+	} else {
+		for(i=0; i<MAX_CARDS; i++) {
+			struct dsp_ops_t *dops = dsp_ops + i;
+			dops->major = err;
+		}
 		err = 0;
 	}
 
 	return err;
-}
-
-int dsp_ops_remove(int card)
-{
-	struct dsp_ops_t *dops = dsp_ops + card;
-
-	if (dops->major != 0) 
-		unregister_chrdev(dsp_ops->major, DSPDEV_NAME);
-
-	return 0;
 }

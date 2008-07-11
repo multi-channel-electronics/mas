@@ -13,6 +13,7 @@
 
 /* PCI register definitions */
 
+#define HSTR_HC3  0x8
 #define HSTR_HRRQ 0x4
 #define HSTR_HTRQ 0x2
 #define HSTR_TRDY 0x1

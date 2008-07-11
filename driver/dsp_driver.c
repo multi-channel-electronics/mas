@@ -215,8 +215,8 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 
 		// Call the registered callbacks
 		if (ddat->callback != NULL) {
-
-			ddat->callback(0, msg, ddat-dsp_dat);
+			int card = ddat - dsp_dat;
+			ddat->callback(0, msg, card);
 		} else {
 			PRINT_ERR(SUBNAME "no handler defined\n");
 		}
@@ -260,8 +260,10 @@ void dsp_timeout(unsigned long data)
 	}
 
 	PRINT_ERR(SUBNAME "dsp reply timed out!\n");
-	if (ddat->callback != NULL)
-		ddat->callback(-DSP_ERR_TIMEOUT, NULL, ddat-dsp_dat);
+	if (ddat->callback != NULL) {
+		int card = ddat - dsp_dat;
+		ddat->callback(-DSP_ERR_TIMEOUT, NULL, card);
+	}
 	ddat->state = DDAT_IDLE;
 }
 
@@ -526,22 +528,19 @@ int dsp_driver_probe(int card)
 		goto out;
 	}
 
-	if (dsp_ops_probe(card)) {
-		err = -1;
-		goto out;
-	}
+	//MATT: dsp_ops_probe no longer error checking
+	dsp_ops_probe(card);
 	
 	//ISSUE: planning to test DEFAULT_CARD=1 without editing mce (this may require it)
-	if (mce_init_module(ddat->version)) {
-		err = -1;
-		goto out;
-	}
+	//	if (mce_init_module(ddat->version)) {
+	//		err = -1;
+	//		goto out;
+	//	}
 
 	PRINT_INFO(SUBNAME "driver ok\n");
 	return 0;
 
  out:
-  
 	dsp_driver_remove(card);
 
 	PRINT_ERR(SUBNAME "exiting with errors!\n");
@@ -562,12 +561,11 @@ void dsp_driver_remove(int card)
 	del_timer_sync(&ddat->tim);
 
 	//ISSUE: planning to test DEFAULT_CARD=1 without editing mce (this may require it)
-	mce_cleanup();
+	//	mce_cleanup();
 
-	if(dsp_ops_remove(card) != 0) {
-		PRINT_ERR(SUBNAME "error with dsp_ops_remove!\n");
-	}
-
+	//MATT dsp_ops_cleanup no longer error checking
+	dsp_ops_cleanup();
+	
 	PRINT_INFO(SUBNAME "ok\n");
 }
 
@@ -586,6 +584,7 @@ void dsp_driver_cleanup(void)
 #else
 	dsp_pci_cleanup();
 #endif
+	dsp_ops_cleanup();
 
 	remove_proc_entry("mce_dsp", NULL);
 
@@ -617,6 +616,11 @@ inline int dsp_driver_init(void)
 		return -1;
 	}
 #endif
+	
+	//MATT how do you want me to return this error?
+	if(dsp_ops_init()) {
+		return -1;
+	}
 	
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
