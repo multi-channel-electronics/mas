@@ -187,7 +187,7 @@ int data_ioctl(struct inode *inode, struct file *filp,
 
 	case DATADEV_IOCT_EMPTY:
 		PRINT_INFO(SUBNAME "reset data buffer\n");
-		mce_error_reset();
+		mce_error_reset(DEFAULT_CARD);
 		return data_frame_empty_buffers();
 
 	case DATADEV_IOCT_QT_CONFIG:

@@ -385,7 +385,7 @@ struct file_operations dsp_fops =
 };
 
 
-void dsp_ops_probe(int card)
+int dsp_ops_probe(int card)
 {
 	struct dsp_ops_t *dops = dsp_ops + card;
 
@@ -394,7 +394,7 @@ void dsp_ops_probe(int card)
 
 	dops->state = OPS_IDLE;
 
-	return;
+	return 0;
 }
 
 void dsp_ops_cleanup(void)

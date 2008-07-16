@@ -1,8 +1,8 @@
 #ifndef _MCE_OPTIONS_H_
 #define _MCE_OPTIONS_H_
 
-#define MAX_CARDS 2
-#define DEFAULT_CARD 1
+#define MAX_CARDS 1
+#define DEFAULT_CARD 0
 
 
 #define DEVICE_NAME "mceds"

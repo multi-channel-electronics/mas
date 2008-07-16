@@ -276,7 +276,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	//  - the alternative risks losing expected interrupts
 
 	mce_ops.state = OPS_CMD;
-	if ((err=mce_send_command(&mce_ops.cmd, mce_write_callback, 1))!=0) {
+	if ((err=mce_send_command(&mce_ops.cmd, mce_write_callback, 1, DEFAULT_CARD))!=0) {
 		PRINT_ERR(SUBNAME "mce_send_command failed\n");
 		mce_ops.state = OPS_IDLE;
 		mce_ops.error = err;
@@ -310,10 +310,10 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 		return -1;
 
 	case MCEDEV_IOCT_HARDWARE_RESET:
-		return mce_hardware_reset();
+		return mce_hardware_reset(DEFAULT_CARD);
 	       
 	case MCEDEV_IOCT_INTERFACE_RESET:
-		return mce_interface_reset();
+		return mce_interface_reset(DEFAULT_CARD);
 
 	case MCEDEV_IOCT_LAST_ERROR:
 		x = mce_ops.error;
@@ -358,16 +358,13 @@ int mce_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+#define SUBNAME "mce_ops_init: "
 
-int mce_ops_init(void) {
+int mce_ops_init(void)
+{
 	int err = 0;
 
-	PRINT_INFO("mce_ops_init: entry\n");
-
-	init_waitqueue_head(&mce_ops.queue);
-	init_MUTEX(&mce_ops.sem);
-
-	mce_ops.state = OPS_IDLE;
+	PRINT_INFO(SUBNAME "entry\n");
 
 	err = register_chrdev(0, MCEDEV_NAME, &mce_fops);
 	if (err<0) {
@@ -378,13 +375,40 @@ int mce_ops_init(void) {
 		err = 0;
 	}
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return err;
 }
 
+#undef SUBNAME
+
+#define SUBNAME "mce_ops_probe: "
+
+int mce_ops_probe(int card)
+{
+	PRINT_INFO(SUBNAME "entry\n");
+
+	init_waitqueue_head(&mce_ops.queue);
+	init_MUTEX(&mce_ops.sem);
+
+	mce_ops.state = OPS_IDLE;
+
+	PRINT_INFO(SUBNAME "ok\n");
+	return 0;
+}
+
+#undef SUBNAME
+
+#define SUBNAME "mce_ops_remove: "
+
 int mce_ops_cleanup(void)
 {
+	PRINT_INFO(SUBNAME "entry\n");
+
 	if (mce_ops.major != 0) 
 		unregister_chrdev(mce_ops.major, MCEDEV_NAME);
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
+
+#undef SUBNAME

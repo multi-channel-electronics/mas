@@ -13,31 +13,31 @@
 
 typedef int (*mce_callback)(int err, mce_reply* rep);
 
+int mce_init(void);
 
-int mce_init_module(int dsp_version);
+int mce_probe(int dsp_version, int card);
 
 int mce_cleanup(void);
 
+int mce_remove(int card);
+
 int mce_proc(char *buf, int count);
 
-int mce_error_register( void );
+int mce_error_register(int card);
 
-void mce_error_reset( void );
-
-int mce_send_command_user( __user mce_command *cmd,
-			   mce_callback callback );
+void mce_error_reset(int card);
 
 int mce_send_command( mce_command *cmd,
 		      mce_callback callback,
-		      int nonblock );
+		      int nonblock, int card );
 
 int mce_get_reply( __user void* reply_user,
 		   void* reply_kern, int count );
 
 int mce_clear_commflags(void);
 
-int mce_interface_reset(void);
+int mce_interface_reset(int card);
 
-int mce_hardware_reset(void);
+int mce_hardware_reset(int card);
 
 #endif

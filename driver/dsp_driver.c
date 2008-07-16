@@ -528,14 +528,16 @@ int dsp_driver_probe(int card)
 		goto out;
 	}
 
-	//MATT: dsp_ops_probe no longer error checking
-	dsp_ops_probe(card);
+	if(dsp_ops_probe(card) != 0) {
+		err = -1;
+		goto out;
+	}
+
 	
-	//ISSUE: planning to test DEFAULT_CARD=1 without editing mce (this may require it)
-	//	if (mce_init_module(ddat->version)) {
-	//		err = -1;
-	//		goto out;
-	//	}
+	if (mce_probe(ddat->version, card)) {
+		err = -1;
+		goto out;
+	}
 
 	PRINT_INFO(SUBNAME "driver ok\n");
 	return 0;
@@ -560,11 +562,7 @@ void dsp_driver_remove(int card)
 		
 	del_timer_sync(&ddat->tim);
 
-	//ISSUE: planning to test DEFAULT_CARD=1 without editing mce (this may require it)
-	//	mce_cleanup();
-
-	//MATT dsp_ops_cleanup no longer error checking
-	dsp_ops_cleanup();
+	mce_remove(card);
 	
 	PRINT_INFO(SUBNAME "ok\n");
 }
@@ -586,6 +584,8 @@ void dsp_driver_cleanup(void)
 #endif
 	dsp_ops_cleanup();
 
+	mce_cleanup();
+
 	remove_proc_entry("mce_dsp", NULL);
 
 	PRINT_INFO(SUBNAME "driver removed\n");
@@ -598,7 +598,8 @@ void dsp_driver_cleanup(void)
 
 inline int dsp_driver_init(void)
 {
-	int i = 0; 
+	int i = 0;
+	int err = 0;
 
 	PRINT_INFO(SUBNAME "driver init...\n");
 
@@ -613,17 +614,21 @@ inline int dsp_driver_init(void)
 	dsp_fake_init( DSPDEV_NAME );
 #else
 	if (dsp_pci_init( DSPDEV_NAME )) {
-		return -1;
+		err = -1;
+		goto out;
 	}
 #endif
-	
-	//MATT how do you want me to return this error?
-	if(dsp_ops_init()) {
-		return -1;
-	}
-	
+	err = dsp_ops_init();
+	if(err != 0) goto out;
+
+	err = mce_init();
+	if(err != 0) goto out;
+
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
+ out:
+	PRINT_ERR(SUBNAME "exiting with error\n");
+	return err;
 }
 
 module_init(dsp_driver_init);
