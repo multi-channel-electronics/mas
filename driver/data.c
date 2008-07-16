@@ -52,17 +52,15 @@ frame_buffer_t data_frames[MAX_CARDS];
 */
 
 #define SUBNAME "data_frame_address: "
-
-int data_frame_address(u32 *dest)
+int data_frame_address(u32 *dest, int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 
         *dest = (u32)(dframes->base_busaddr)
                 + dframes->frame_size*(dframes->head_index);
 	
         return 0;
 }
-
 #undef SUBNAME
 
 
@@ -86,10 +84,9 @@ int data_frame_address(u32 *dest)
   
 
 #define SUBNAME "data_frame_increment: "
-
-int data_frame_increment()
+int data_frame_increment(int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	int d;
 
 #ifdef OPT_WATCHER
@@ -113,7 +110,6 @@ int data_frame_increment()
 	dframes->head_index = d;
         return 0;
 }
-
 #undef SUBNAME
 
 
@@ -129,10 +125,9 @@ int data_frame_increment()
 
 
 #define SUBNAME "data_frame_contribute: "
-
-int data_frame_contribute(int new_head)
+int data_frame_contribute(int new_head, int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	int d;
 
 #ifdef OPT_WATCHER
@@ -175,7 +170,7 @@ int data_frame_contribute(int new_head)
  * available.
  */
 
-int data_frame_poll( void )
+int data_frame_poll(int card)
 {
 	frame_buffer_t *dframes = data_frames;
 
@@ -184,9 +179,9 @@ int data_frame_poll( void )
 
 
 #define SUBNAME "data_frame_resize: "
-int data_frame_resize(int size)
+int data_frame_resize(int size, int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 
 	if (size == dframes->data_size)
 		return 0;
@@ -202,7 +197,7 @@ int data_frame_resize(int size)
 		return -2;
 	}
 
-	if (data_frame_divide(size)) {
+	if (data_frame_divide(size, card)) {
 		PRINT_ERR(SUBNAME "failed to divide the buffer by %#x\n", size);
 		return -3;
 	}
@@ -215,15 +210,13 @@ int data_frame_resize(int size)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "data_frame_fake_stop: "
-
-int data_frame_fake_stop( void )
+int data_frame_fake_stop(int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	u32 *frame;
 
 	//Mark current frame filled
@@ -248,28 +241,25 @@ int data_frame_fake_stop( void )
 	return 0;
 
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "data_frame_empty_buffers: "
-
-int data_frame_empty_buffers( void )
+int data_frame_empty_buffers(int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	//Fix: lock?
 	dframes->head_index = 0;
 	dframes->tail_index = 0;
 	dframes->partial = 0;
 	return 0;
 }
-
 #undef SUBNAME
 
 
-int data_frame_divide( int new_data_size )
+int data_frame_divide( int new_data_size, int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 
 	// Recompute the division of the buffer into frames
 	if (new_data_size >= 0) dframes->data_size = new_data_size;
@@ -292,7 +282,6 @@ int data_frame_divide( int new_data_size )
 /****************************************************************************/
 
 
-#define SUBNAME "data_copy_frame: "
 
 /* data_copy_frame - copy up to one complete frame into buffer
  *
@@ -302,10 +291,11 @@ int data_frame_divide( int new_data_size )
  * when calling this routine.  This routine is not re-entrant.
  */
 
+#define SUBNAME "data_copy_frame: "
 int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count, int nonblock)
+		    int count, int nonblock, int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	void *source;
 	int count_out = 0;
 	int this_read;
@@ -353,16 +343,14 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 	return count_out;
 }
-
 #undef SUBNAME
 
-#define SUBNAME "data_head_increment: "
 
 /* Call tail_increment to mark a frame as consumed. */
-
-int data_tail_increment()
+#define SUBNAME "data_head_increment: "
+int data_tail_increment(int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	unsigned d = (dframes->tail_index + 1) % dframes->max_index;
 	if (dframes->head_index == dframes->tail_index)
 		return -1;
@@ -371,15 +359,13 @@ int data_tail_increment()
 	dframes->partial = 0;
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "data_alloc: "
-
-int data_alloc(int mem_size, int data_size)
+int data_alloc(int mem_size, int data_size, int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
 	caddr_t virt;
 
@@ -411,7 +397,7 @@ int data_alloc(int mem_size, int data_size)
 	dframes->size = mem_size;
 
 	// Partition buffer into blocks of some default size
-	data_frame_divide(data_size);
+	data_frame_divide(data_size, card);
 
 	// Save physical address for hardware
 	dframes->base_busaddr = (caddr_t)virt_to_bus(virt);
@@ -424,12 +410,11 @@ int data_alloc(int mem_size, int data_size)
 	
 	return 0;
 }
-
 #undef SUBNAME
 
-int data_free(void)
+int data_free(int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 
 	if (dframes->base != NULL) {
 #ifdef BIGPHYS
@@ -441,22 +426,11 @@ int data_free(void)
 	return 0;
 }
 
-
-int data_force_escape()
-{
-	frame_buffer_t *dframes = data_frames;
-
-	dframes->flags |= FRAME_ERR;
-	wake_up_interruptible(&dframes->queue);
-	return 0;
-}
-
-
 #define SUBNAME "data_alloc: "
 
-int data_reset()
+int data_reset(int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 
 	dframes->head_index = 0;
 	dframes->tail_index = 0;
@@ -525,68 +499,25 @@ int data_proc(char *buf, int count)
  **************************************************************************/
 
 
-/* #define SUBNAME "data_probe: " */
-/* int data_probe(int card) */
-/* { */
-/* 	frame_buffer_t *dframes = data_frames; */
-
-/* 	init_waitqueue_head(&dframes->queue); */
-
-/* 	tasklet_init(&dframes->grant_tasklet, */
-/* 		     data_grant_task, 0); */
-	
-/* 	data_reset(); */
-
-/* 	err = data_alloc(mem_size, data_size); */
-/* 	if (err) return err; */
-
-/* 	switch (dsp_version) { */
-/* 	case 0: */
-/* 		PRINT_ERR(SUBNAME */
-/* 			  "DSP code is old, you'll get checksum errors.\n"); */
-/* 		break; */
-
-/* 	case DSP_U0103: */
-/* 		PRINT_ERR(SUBNAME "DSP code wants to be upgraded to U0104!\n"); */
-/* 		break; */
-		
-/* 	case DSP_U0104: */
-/* 		if (data_qt_configure(1)) */
-/* 			return -EIO; */
-/* 		break; */
-		
-/* 	default: */
-/* 		PRINT_ERR(SUBNAME */
-/* 			  "DSP code not recognized, attempting quiet transfer mode...\n"); */
-/* 		if (data_qt_configure(1)) */
-/* 			return -EIO; */
-/* 		break; */
-/* 		} */
-
-/* 	return 0; */
-/* } */
-/* #undef SUBNAME */
-
-
-#define SUBNAME "data_init: "
-int data_init(int dsp_version, int mem_size, int data_size)
+#define SUBNAME "data_probe: "
+int data_probe(int dsp_version, int card, int mem_size, int data_size)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
 	init_waitqueue_head(&dframes->queue);
 
 	tasklet_init(&dframes->grant_tasklet,
-		     data_grant_task, 0);
-	
-	err = data_alloc(mem_size, data_size);
+		     data_grant_task, 0);       
+
+	err = data_alloc(mem_size, data_size, card);
 	if (err) return err;
 
-	data_reset();
+	data_reset(card);
 
 	switch (dsp_version) {
 	case 0:
-		PRINT_ERR(SUBNAME 
+		PRINT_ERR(SUBNAME
 			  "DSP code is old, you'll get checksum errors.\n");
 		break;
 
@@ -595,7 +526,7 @@ int data_init(int dsp_version, int mem_size, int data_size)
 		break;
 		
 	case DSP_U0104:
-		if (data_qt_configure(1)) 
+		if (data_qt_configure(1))
 			return -EIO;
 		break;
 		
@@ -605,17 +536,27 @@ int data_init(int dsp_version, int mem_size, int data_size)
 		if (data_qt_configure(1))
 			return -EIO;
 		break;
-	}
+		}
 
 	return 0;
 }
 #undef SUBNAME
 
-int data_cleanup()
+
+#define SUBNAME "data_init: "
+int data_init(int mem_size, int data_size)
 {
-	frame_buffer_t *dframes = data_frames;
+	//FIX ME:: apperantly vestigial
+
+	return 0;
+}
+#undef SUBNAME
+
+int data_remove(int card)
+{
+	frame_buffer_t *dframes = data_frames + card;
 
 	tasklet_kill(&dframes->grant_tasklet);
-	return data_free();
+	return data_free(card);
 }
 

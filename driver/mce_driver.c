@@ -408,7 +408,7 @@ int mce_da_hst_callback(int error, dsp_message *msg, int card)
 		return -1;
 	}
 
-	if (data_frame_increment() && mce_error_register(card)) {
+	if (data_frame_increment(card) && mce_error_register(card)) {
 		PRINT_ERR(SUBNAME "frame_increment error; packet lost\n");
 	}
 
@@ -434,7 +434,7 @@ int mce_da_hst_now(int card)
 			  "NFY-DA interrupts outstanding HST!\n");
 	}
 
-	data_frame_address(&baddr);
+	data_frame_address(&baddr, card);
 	HST_FILL(cmd, baddr);
 
 	if ((err = dsp_send_command(&cmd, mce_da_hst_callback, DEFAULT_CARD))) {
@@ -620,17 +620,20 @@ int mce_probe(int dsp_version, int card)
 	mdat->initialized = 1;
 
 	//Init data module
-	err = data_init(dsp_version, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
-	if (err) {
-		PRINT_ERR(SUBNAME "mce data module init failure\n");
-		goto out;
-	}
+	//	err = data_init(FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
+	//	if (err) {
+	//		PRINT_ERR(SUBNAME "mce data module init failure\n");
+	//		goto out;
+	//	}
+
+	err = data_probe(dsp_version, card, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
+	if (err !=0 ) goto out;
 
 	err = mce_buffer_allocate(&mdat->buff);
-	if (err) goto out;
+	if (err != 0) goto out;
 
 	err = mce_ops_probe(card);
-	if (err) goto out;
+	if (err != 0) goto out;
 
 	init_MUTEX(&mdat->sem);
 
@@ -690,7 +693,7 @@ int mce_remove(int card)
 
   	mce_buffer_free(&mdat->buff);
 	
-	data_cleanup();
+	data_remove(card);
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;

@@ -68,7 +68,7 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		
 		// Pop count bytes from frame buffer; data_copy frame
 		// will return at most 1 frame of data.
-		this_read = data_copy_frame(buf, NULL, count, 0);
+		this_read = data_copy_frame(buf, NULL, count, 0, DEFAULT_CARD);
 
 		if (this_read < 0) {
 			// On error, exit with the current count.
@@ -173,11 +173,11 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	case DATADEV_IOCT_SET_DATASIZE:
 		PRINT_INFO(SUBNAME "set data_size to %li (%#lx)\n",
 			   arg, arg);
-		return data_frame_resize(arg);
+		return data_frame_resize(arg, DEFAULT_CARD);
 
 	case DATADEV_IOCT_FAKE_STOPFRAME:
 		PRINT_ERR(SUBNAME "fake_stopframe initiated!\n");
-		return data_frame_fake_stop();
+		return data_frame_fake_stop(DEFAULT_CARD);
 
 	case DATADEV_IOCT_WATCH:
 	case DATADEV_IOCT_WATCH_DL:
@@ -192,7 +192,7 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	case DATADEV_IOCT_EMPTY:
 		PRINT_INFO(SUBNAME "reset data buffer\n");
 		mce_error_reset(DEFAULT_CARD);
-		return data_frame_empty_buffers();
+		return data_frame_empty_buffers(DEFAULT_CARD);
 
 	case DATADEV_IOCT_QT_CONFIG:
 		PRINT_INFO(SUBNAME "configure Quiet Transfer mode "
@@ -205,10 +205,10 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		return data_qt_enable(arg);
 
 	case DATADEV_IOCT_FRAME_POLL:
-		return (data_frame_poll() ? dframes->tail_index*dframes->frame_size : -1);
+		return (data_frame_poll(DEFAULT_CARD) ? dframes->tail_index*dframes->frame_size : -1);
 
 	case DATADEV_IOCT_FRAME_CONSUME:
-		return data_tail_increment();
+		return data_tail_increment(DEFAULT_CARD);
 
 	default:
 		PRINT_ERR(SUBNAME "unknown command (%#x)\n", iocmd );

@@ -43,7 +43,7 @@ int mce_qti_handler ( dsp_message *msg, unsigned long data )
 
 	/* Check consistency of buffer_index */
 
- 	data_frame_contribute( qti->dsp_head );
+ 	data_frame_contribute(qti->dsp_head, DEFAULT_CARD);
 	
 	// Schedule a grant update
 
@@ -119,7 +119,7 @@ int data_qt_configure( int qt_interval )
 	int err = 0;
 	PRINT_INFO(SUBNAME "entry\n");
 
-	if ( data_qt_enable(0) || data_reset() )
+	if ( data_qt_enable(0) || data_reset(DEFAULT_CARD) )
 		err = -1;
 
 	if (!err)
