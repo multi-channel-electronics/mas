@@ -11,7 +11,7 @@
 
 #define MCE_DEFAULT_TIMEOUT (HZ*100/100)
 
-typedef int (*mce_callback)(int err, mce_reply* rep);
+typedef int (*mce_callback)(int err, mce_reply* rep, int card);
 
 int mce_init(void);
 

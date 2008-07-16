@@ -70,16 +70,17 @@ int  data_grant_callback( int error, dsp_message *msg, int card)
 
 void data_grant_task(unsigned long data)
 {
+	frame_buffer_t *dframes = data_frames;
 	int err;
 
-	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, frames.tail_index, 0 } };
+	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, dframes->tail_index, 0 } };
 
-	PRINT_INFO(SUBNAME "trying update to tail=%i\n", frames.tail_index);
+	PRINT_INFO(SUBNAME "trying update to tail=%i\n", dframes->tail_index);
 
 	if ( (err=dsp_send_command( &cmd, data_grant_callback, DEFAULT_CARD)) ) {
 		// FIX ME: discriminate between would-block errors and fatals!
 		PRINT_INFO(SUBNAME "dsp busy; rescheduling.\n");
-		tasklet_schedule(&frames.grant_tasklet);
+		tasklet_schedule(&dframes->grant_tasklet);
 		return;
 	}
 	
@@ -100,9 +101,10 @@ int data_qt_cmd( dsp_qt_code code, int arg1, int arg2)
 
 int data_qt_enable(int on)
 {
+	frame_buffer_t *dframes = data_frames;
 	int err = data_qt_cmd(DSP_QT_ENABLE, on, 0);
 	if (!err)
-		frames.data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
+		dframes->data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
 	return err;
 }
 
@@ -113,6 +115,7 @@ int data_qt_enable(int on)
 
 int data_qt_configure( int qt_interval )
 {
+	frame_buffer_t *dframes = data_frames;
 	int err = 0;
 	PRINT_INFO(SUBNAME "entry\n");
 
@@ -120,10 +123,10 @@ int data_qt_configure( int qt_interval )
 		err = -1;
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_DELTA , frames.frame_size, 0);
+		err = data_qt_cmd(DSP_QT_DELTA , dframes->frame_size, 0);
 	
 	if (!err)
-		err = data_qt_cmd(DSP_QT_NUMBER, frames.max_index, 0);
+		err = data_qt_cmd(DSP_QT_NUMBER, dframes->max_index, 0);
 
 	if (!err)
 		err = data_qt_cmd(DSP_QT_INFORM, qt_interval, 0);
@@ -132,21 +135,21 @@ int data_qt_configure( int qt_interval )
 		err = data_qt_cmd(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_SIZE  , frames.data_size, 0);
+		err = data_qt_cmd(DSP_QT_SIZE  , dframes->data_size, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_TAIL  , frames.tail_index, 0);
+		err = data_qt_cmd(DSP_QT_TAIL  , dframes->tail_index, 0);
 
 	if (!err)
-		err = data_qt_cmd(DSP_QT_HEAD  , frames.head_index, 0);
+		err = data_qt_cmd(DSP_QT_HEAD  , dframes->head_index, 0);
 
 	if (!err)
 		err = data_qt_cmd(DSP_QT_DROPS , 0, 0);
 
 	if (!err)
 		err = data_qt_cmd(DSP_QT_BASE,
-				  ((long)frames.base_busaddr      ) & 0xffff,
-				  ((long)frames.base_busaddr >> 16) & 0xffff);
+				  ((long)dframes->base_busaddr      ) & 0xffff,
+				  ((long)dframes->base_busaddr >> 16) & 0xffff);
 	
 	if (!err)
 		err = data_qt_enable(1);

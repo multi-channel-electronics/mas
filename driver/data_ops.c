@@ -49,14 +49,15 @@ typedef struct {
 ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
+	frame_buffer_t *dframes = data_frames;
 	int read_count = 0;
 	int this_read = 0;
 
 	if (filp->f_flags & O_NONBLOCK) {
-		if (down_trylock(&frames.sem))
+		if (down_trylock(&dframes->sem))
 			return -EAGAIN;
 	} else {
-		if (down_interruptible(&frames.sem))
+		if (down_interruptible(&dframes->sem))
 			return -ERESTARTSYS;
 	}
 
@@ -79,10 +80,10 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 			if (filp->f_flags & O_NONBLOCK || read_count > 0)
 				break;
 			if (wait_event_interruptible(
-				    frames.queue,
-				    (frames.flags & FRAME_ERR) ||
-				    (frames.tail_index
-				     != frames.head_index)))
+				    dframes->queue,
+				    (dframes->flags & FRAME_ERR) ||
+				    (dframes->tail_index
+				     != dframes->head_index)))
 				return -ERESTARTSYS;
 		} else {
 			// Update counts and read again.
@@ -91,7 +92,7 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		}
 	}
 
-	up(&frames.sem);
+	up(&dframes->sem);
 	return read_count;
 }
 
@@ -113,6 +114,7 @@ ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
 
 int data_mmap(struct file *filp, struct vm_area_struct *vma)
 {
+	frame_buffer_t *dframes = data_frames;
 	data_ops_t* d = filp->private_data;
 
 	// Do args checking on vma... start, end, prot.
@@ -121,7 +123,7 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
 	remap_pfn_range(vma, vma->vm_start,
-			(unsigned long)frames.base_busaddr >> PAGE_SHIFT,
+			(unsigned long)dframes->base_busaddr >> PAGE_SHIFT,
 			vma->vm_end - vma->vm_start, vma->vm_page_prot);
 
 	d->user_map = (u32*)vma->vm_start;
@@ -137,6 +139,8 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 int data_ioctl(struct inode *inode, struct file *filp,
 	       unsigned int iocmd, unsigned long arg)
 {
+	frame_buffer_t *dframes = data_frames;
+
 	switch(iocmd) {
 
 	case DATADEV_IOCT_RESET:
@@ -147,20 +151,20 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		PRINT_INFO(SUBNAME "query\n");
 		switch (arg) {
 		case QUERY_HEAD:
-			return frames.head_index;
+			return dframes->head_index;
 		case QUERY_TAIL:
-			return frames.tail_index;
+			return dframes->tail_index;
 		case QUERY_MAX:
-			return frames.max_index;
+			return dframes->max_index;
 		case QUERY_PARTIAL:
-			return frames.partial;
+			return dframes->partial;
 		case QUERY_DATASIZE:			
-			return frames.data_size;
+			return dframes->data_size;
 		case QUERY_FRAMESIZE:
-			return frames.frame_size;
+			return dframes->frame_size;
 		case QUERY_BUFSIZE:
-			if (frames.base == NULL) return 0;
-			return frames.size;
+			if (dframes->base == NULL) return 0;
+			return dframes->size;
 		default:
 			return -1;
 		}
@@ -201,7 +205,7 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		return data_qt_enable(arg);
 
 	case DATADEV_IOCT_FRAME_POLL:
-		return (data_frame_poll() ? frames.tail_index*frames.frame_size : -1);
+		return (data_frame_poll() ? dframes->tail_index*dframes->frame_size : -1);
 
 	case DATADEV_IOCT_FRAME_CONSUME:
 		return data_tail_increment();
@@ -256,27 +260,31 @@ struct file_operations data_fops =
 
 #define SUBNAME "data_ops_init: "
 
-int data_ops_init(void) {
+int data_ops_init(void) 
+{
+	frame_buffer_t *dframes = data_frames;
 	int err = 0;
 
 	PRINT_INFO(SUBNAME "entry\n");
 
- 	init_MUTEX(&frames.sem); 
+ 	init_MUTEX(&dframes->sem); 
 	
 	if ((err = register_chrdev(0, MCEDATA_NAME, &data_fops))<=0) {
 		PRINT_ERR(SUBNAME "could not register_chrdev, "
 			  "err=%#x\n", err);
 		return err;
 	}
-	frames.major = err;
+	dframes->major = err;
 
 	return 0;
 }
 
 int data_ops_cleanup(void)
 {
-	if (frames.major != 0) 
-		unregister_chrdev(frames.major, MCEDATA_NAME);
+	frame_buffer_t *dframes = data_frames;
+
+	if (dframes->major != 0) 
+		unregister_chrdev(dframes->major, MCEDATA_NAME);
 
 	return 0;
 }

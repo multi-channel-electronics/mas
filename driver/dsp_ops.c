@@ -88,7 +88,7 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 	int ret_val = 0;
 	int err = 0;
 
-	PRINT_ERR(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
+	PRINT_INFO(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
 	PRINT_INFO(SUBNAME "state=%#x\n", dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
@@ -175,7 +175,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	int ret_val = 0;
 	int err = 0;
 
-	PRINT_ERR(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
+	PRINT_INFO(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
 	PRINT_INFO("write: state=%#x\n", dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
@@ -295,7 +295,7 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 	int x;
 
 	PRINT_INFO(SUBNAME "entry\n");
-	PRINT_ERR(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
+	PRINT_INFO(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
 
 	switch(iocmd) {
 
@@ -336,7 +336,7 @@ int dsp_open(struct inode *inode, struct file *filp)
 	filp->private_data = fpdata;
 
 	PRINT_INFO(SUBNAME "entry\n");
-	PRINT_ERR(SUBNAME "iminor(inode)=%d\n", iminor(inode));
+	PRINT_INFO(SUBNAME "iminor(inode)=%d\n", iminor(inode));
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	MOD_INC_USE_COUNT;
@@ -357,10 +357,10 @@ int dsp_release(struct inode *inode, struct file *filp)
 	struct filp_pdata *fpdata = filp->private_data;
 
 	PRINT_INFO(SUBNAME "entry\n");
-	PRINT_ERR(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
+	PRINT_INFO(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
 
 	if(fpdata != NULL) {
-	  kfree(fpdata);
+		kfree(fpdata);
 	} else PRINT_ERR(SUBNAME "called with NULL private_data!\n");
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)

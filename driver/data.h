@@ -90,7 +90,7 @@ typedef struct {
 
 } frame_buffer_t;
 
-extern frame_buffer_t frames;
+extern frame_buffer_t data_frames[MAX_CARDS];
 
 /* Alternative model: keep track of total index, not circular index.
  * Then a linked list of readers can be installed, each doing whatever

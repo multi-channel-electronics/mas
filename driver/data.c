@@ -22,7 +22,7 @@
 # include "data_watcher.h"
 #endif
 
-frame_buffer_t frames;
+frame_buffer_t data_frames[MAX_CARDS];
 
 
 /**************************************************************************
@@ -55,8 +55,10 @@ frame_buffer_t frames;
 
 int data_frame_address(u32 *dest)
 {
-        *dest = (u32)(frames.base_busaddr)
-                + frames.frame_size*(frames.head_index);
+	frame_buffer_t *dframes = data_frames;
+
+        *dest = (u32)(dframes->base_busaddr)
+                + dframes->frame_size*(dframes->head_index);
 	
         return 0;
 }
@@ -87,27 +89,28 @@ int data_frame_address(u32 *dest)
 
 int data_frame_increment()
 {
+	frame_buffer_t *dframes = data_frames;
 	int d;
 
 #ifdef OPT_WATCHER
 	if (watcher.on)
-		watcher_file((frames.head_index
-			      + frames.max_index
-			      - frames.tail_index)
-			     % frames.max_index);
+		watcher_file((dframes->head_index
+			      + dframes->max_index
+			      - dframes->tail_index)
+			     % dframes->max_index);
 #endif
         
-	wake_up_interruptible(&frames.queue);
+	wake_up_interruptible(&dframes->queue);
 
-	d = (frames.head_index + 1) % frames.max_index;
+	d = (dframes->head_index + 1) % dframes->max_index;
 	barrier();
 
-	if ( d == frames.tail_index) {
-		frames.dropped++;
+	if ( d == dframes->tail_index) {
+		dframes->dropped++;
 		return -1;
 	}
 
-	frames.head_index = d;
+	dframes->head_index = d;
         return 0;
 }
 
@@ -129,14 +132,15 @@ int data_frame_increment()
 
 int data_frame_contribute(int new_head)
 {
+	frame_buffer_t *dframes = data_frames;
 	int d;
 
 #ifdef OPT_WATCHER
 	if (watcher.on)
-		watcher_file((frames.head_index
-			      + frames.max_index
-			      - frames.tail_index)
-			     % frames.max_index);
+		watcher_file((dframes->head_index
+			      + dframes->max_index
+			      - dframes->tail_index)
+			     % dframes->max_index);
 #endif
         
 	// Ensure that new_head >= head >= tail
@@ -144,27 +148,25 @@ int data_frame_contribute(int new_head)
         //   or        tail > new_head >= head
 
 	d = 
-		(new_head >= frames.head_index) +
-		(frames.head_index >= frames.tail_index) +
-		(frames.tail_index > new_head);
+		(new_head >= dframes->head_index) +
+		(dframes->head_index >= dframes->tail_index) +
+		(dframes->tail_index > new_head);
 	
 	if (d != 2) {
 		PRINT_ERR(SUBNAME "buffer trashed!\n");
-		frames.head_index = new_head;
-		frames.tail_index = (new_head+1) % frames.max_index;
+		dframes->head_index = new_head;
+		dframes->tail_index = (new_head+1) % dframes->max_index;
 	} else {
-		frames.head_index = new_head;
+		dframes->head_index = new_head;
 	}
 
-	tasklet_schedule(&frames.grant_tasklet);
+	tasklet_schedule(&dframes->grant_tasklet);
 
-	wake_up_interruptible(&frames.queue);
+	wake_up_interruptible(&dframes->queue);
 
         return 0;
 }
-
 #undef SUBNAME
-
 
 /* data_frame_poll
  *
@@ -175,18 +177,21 @@ int data_frame_contribute(int new_head)
 
 int data_frame_poll( void )
 {
-	return (frames.tail_index != frames.head_index);
+	frame_buffer_t *dframes = data_frames;
+
+	return (dframes->tail_index != dframes->head_index);
 }
 
 
 #define SUBNAME "data_frame_resize: "
-
 int data_frame_resize(int size)
 {
-	if (size == frames.data_size)
+	frame_buffer_t *dframes = data_frames;
+
+	if (size == dframes->data_size)
 		return 0;
 	
-	if (frames.tail_index != frames.head_index) {
+	if (dframes->tail_index != dframes->head_index) {
 		PRINT_ERR(SUBNAME "can't change frame size "
 			  "while buffer not empty\n");
 		return -1;
@@ -202,7 +207,7 @@ int data_frame_resize(int size)
 		return -3;
 	}
 	
-	if (frames.data_mode == DATAMODE_QUIET &&
+	if (dframes->data_mode == DATAMODE_QUIET &&
 	    data_qt_configure(1)!=0) {
 		PRINT_ERR(SUBNAME "can't set DSP quiet mode frame size\n");
 		return -4;
@@ -218,14 +223,15 @@ int data_frame_resize(int size)
 
 int data_frame_fake_stop( void )
 {
+	frame_buffer_t *dframes = data_frames;
 	u32 *frame;
 
 	//Mark current frame filled
-	frames.head_index++;
+	dframes->head_index++;
 	
 	//Pointer to next frame
-	frame = (u32*) (frames.base +
-			frames.head_index*frames.frame_size);
+	frame = (u32*) (dframes->base +
+			dframes->head_index*dframes->frame_size);
 
 	//Flag as stop
 	frame[0] = 1;
@@ -234,10 +240,10 @@ int data_frame_fake_stop( void )
 	frame[1] = 0x33333333;
 
 	//Mark as filled
-	frames.head_index++;
+	dframes->head_index++;
 
 	//Wake up sleepers
-	wake_up_interruptible(&frames.queue);
+	wake_up_interruptible(&dframes->queue);
 
 	return 0;
 
@@ -250,10 +256,11 @@ int data_frame_fake_stop( void )
 
 int data_frame_empty_buffers( void )
 {
+	frame_buffer_t *dframes = data_frames;
 	//Fix: lock?
-	frames.head_index = 0;
-	frames.tail_index = 0;
-	frames.partial = 0;
+	dframes->head_index = 0;
+	dframes->tail_index = 0;
+	dframes->partial = 0;
 	return 0;
 }
 
@@ -262,17 +269,19 @@ int data_frame_empty_buffers( void )
 
 int data_frame_divide( int new_data_size )
 {
+	frame_buffer_t *dframes = data_frames;
+
 	// Recompute the division of the buffer into frames
-	if (new_data_size >= 0) frames.data_size = new_data_size;
+	if (new_data_size >= 0) dframes->data_size = new_data_size;
 
 	// Round the frame size to a size convenient for DMA
-	frames.frame_size =
-		(frames.data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
-	frames.max_index = frames.size / frames.frame_size;
+	dframes->frame_size =
+		(dframes->data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
+	dframes->max_index = dframes->size / dframes->frame_size;
 
-	if (frames.max_index <= 1) {
+	if (dframes->max_index <= 1) {
 		PRINT_ERR("data_frame_divide: buffer can only hold %i data packet!\n",
-			  frames.max_index);
+			  dframes->max_index);
 		return -1;
 	}
 
@@ -296,6 +305,7 @@ int data_frame_divide( int new_data_size )
 int data_copy_frame(void* __user user_buf, void *kern_buf,
 		    int count, int nonblock)
 {
+	frame_buffer_t *dframes = data_frames;
 	void *source;
 	int count_out = 0;
 	int this_read;
@@ -308,13 +318,13 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 	}
 
 	// Exit once supply runs out or demand is satisfied.
-	while ((frames.tail_index != frames.head_index) && count > 0) {
+	while ((dframes->tail_index != dframes->head_index) && count > 0) {
 
-		source = frames.base + frames.tail_index*frames.frame_size + frames.partial;
+		source = dframes->base + dframes->tail_index*dframes->frame_size + dframes->partial;
 
 		// Don't read past end of frame.
-		this_read = (frames.data_size - frames.partial < count) ?
-			frames.data_size - frames.partial : count;
+		this_read = (dframes->data_size - dframes->partial < count) ?
+			dframes->data_size - dframes->partial : count;
 		
 		if (user_buf!=NULL) {
 			PRINT_INFO(SUBNAME "copy_to_user %x->[%x] now\n",
@@ -332,12 +342,12 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 		count_out += this_read;
 	
 		// Update supply
-		frames.partial += this_read;
-		if (frames.partial >= frames.data_size) {
-			unsigned d = (frames.tail_index + 1) % frames.max_index;
+		dframes->partial += this_read;
+		if (dframes->partial >= dframes->data_size) {
+			unsigned d = (dframes->tail_index + 1) % dframes->max_index;
 			barrier();
-			frames.tail_index = d;
-			frames.partial = 0;
+			dframes->tail_index = d;
+			dframes->partial = 0;
 		}
 	}
 
@@ -352,12 +362,13 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 int data_tail_increment()
 {
-	unsigned d = (frames.tail_index + 1) % frames.max_index;
-	if (frames.head_index == frames.tail_index)
+	frame_buffer_t *dframes = data_frames;
+	unsigned d = (dframes->tail_index + 1) % dframes->max_index;
+	if (dframes->head_index == dframes->tail_index)
 		return -1;
 	barrier();
-	frames.tail_index = d;
-	frames.partial = 0;
+	dframes->tail_index = d;
+	dframes->partial = 0;
 	return 0;
 }
 
@@ -368,6 +379,7 @@ int data_tail_increment()
 
 int data_alloc(int mem_size, int data_size)
 {
+	frame_buffer_t *dframes = data_frames;
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
 	caddr_t virt;
 
@@ -395,20 +407,20 @@ int data_alloc(int mem_size, int data_size)
 #endif
 
 	// Save the buffer address and maximum size
-	frames.base = virt;
-	frames.size = mem_size;
+	dframes->base = virt;
+	dframes->size = mem_size;
 
 	// Partition buffer into blocks of some default size
 	data_frame_divide(data_size);
 
 	// Save physical address for hardware
-	frames.base_busaddr = (caddr_t)virt_to_bus(virt);
+	dframes->base_busaddr = (caddr_t)virt_to_bus(virt);
 
 	//Debug
 	PRINT_INFO(SUBNAME "buffer: base=%x + %x of size %x\n",
-		   (int)frames.base, 
-		   frames.max_index,
-		   (int)frames.frame_size);
+		   (int)dframes->base, 
+		   dframes->max_index,
+		   (int)dframes->frame_size);
 	
 	return 0;
 }
@@ -417,12 +429,13 @@ int data_alloc(int mem_size, int data_size)
 
 int data_free(void)
 {
+	frame_buffer_t *dframes = data_frames;
 
-	if (frames.base != NULL) {
+	if (dframes->base != NULL) {
 #ifdef BIGPHYS
-		bigphysarea_free_pages(frames.base);
+		bigphysarea_free_pages(dframes->base);
 #else
-		kfree(frames.base);
+		kfree(dframes->base);
 #endif
 	}
 	return 0;
@@ -431,8 +444,10 @@ int data_free(void)
 
 int data_force_escape()
 {
-	frames.flags |= FRAME_ERR;
-	wake_up_interruptible(&frames.queue);
+	frame_buffer_t *dframes = data_frames;
+
+	dframes->flags |= FRAME_ERR;
+	wake_up_interruptible(&dframes->queue);
 	return 0;
 }
 
@@ -441,15 +456,17 @@ int data_force_escape()
 
 int data_reset()
 {
-	frames.head_index = 0;
-	frames.tail_index = 0;
-	frames.partial = 0;
-	frames.flags = 0;
-	frames.dropped = 0;
+	frame_buffer_t *dframes = data_frames;
+
+	dframes->head_index = 0;
+	dframes->tail_index = 0;
+	dframes->partial = 0;
+	dframes->flags = 0;
+	dframes->dropped = 0;
 	
-	if (frames.data_mode == DATAMODE_QUIET) {
-		if (data_qt_cmd(DSP_QT_TAIL  , frames.tail_index, 0) ||
-		    data_qt_cmd(DSP_QT_HEAD  , frames.head_index, 0) ) {
+	if (dframes->data_mode == DATAMODE_QUIET) {
+		if (data_qt_cmd(DSP_QT_TAIL  , dframes->tail_index, 0) ||
+		    data_qt_cmd(DSP_QT_HEAD  , dframes->head_index, 0) ) {
 			PRINT_ERR(SUBNAME
 				  "Could not reset DSP QT indexes; disabling.");
 			data_qt_enable(0);
@@ -464,28 +481,30 @@ int data_reset()
 
 int data_proc(char *buf, int count)
 {
+	frame_buffer_t *dframes = data_frames;
+
 	int len = 0;
 	if (len < count)
 		len += sprintf(buf+len, "    virtual:  %#010x\n",
-			       (unsigned)frames.base);
+			       (unsigned)dframes->base);
 	if (len < count)
 		len += sprintf(buf+len, "    bus:      %#010x\n",
-			       (unsigned)frames.base_busaddr);
+			       (unsigned)dframes->base_busaddr);
 	if (len < count)
-		len += sprintf(buf+len, "    count:    %10i\n", frames.max_index);
+		len += sprintf(buf+len, "    count:    %10i\n", dframes->max_index);
 	if (len < count)
-		len += sprintf(buf+len, "    head:     %10i\n", frames.head_index);
+		len += sprintf(buf+len, "    head:     %10i\n", dframes->head_index);
 	if (len < count)
-		len += sprintf(buf+len, "    tail:     %10i\n", frames.tail_index);
+		len += sprintf(buf+len, "    tail:     %10i\n", dframes->tail_index);
 	if (len < count)
-		len += sprintf(buf+len, "    drops:    %10i\n", frames.dropped);
+		len += sprintf(buf+len, "    drops:    %10i\n", dframes->dropped);
 	if (len < count)
-		len += sprintf(buf+len, "    size:     %#10x\n", frames.frame_size);
+		len += sprintf(buf+len, "    size:     %#10x\n", dframes->frame_size);
 	if (len < count)
-		len += sprintf(buf+len, "    data:     %#10x\n", frames.data_size);
+		len += sprintf(buf+len, "    data:     %#10x\n", dframes->data_size);
 	if (len < count) {
 		len += sprintf(buf+len, "    mode:     ");
-		switch (frames.data_mode) {
+		switch (dframes->data_mode) {
 		case DATAMODE_CLASSIC:
 			len += sprintf(buf+len, "classic notify\n");
 			break;
@@ -501,19 +520,63 @@ int data_proc(char *buf, int count)
 
 /**************************************************************************
  *                                                                        *
- *      Init and cleanup                                                  *
+ *      Probe, Init, Remove and Cleanup                                   *
  *                                                                        *
  **************************************************************************/
 
-#define SUBNAME "data_init: "
 
+/* #define SUBNAME "data_probe: " */
+/* int data_probe(int card) */
+/* { */
+/* 	frame_buffer_t *dframes = data_frames; */
+
+/* 	init_waitqueue_head(&dframes->queue); */
+
+/* 	tasklet_init(&dframes->grant_tasklet, */
+/* 		     data_grant_task, 0); */
+	
+/* 	data_reset(); */
+
+/* 	err = data_alloc(mem_size, data_size); */
+/* 	if (err) return err; */
+
+/* 	switch (dsp_version) { */
+/* 	case 0: */
+/* 		PRINT_ERR(SUBNAME */
+/* 			  "DSP code is old, you'll get checksum errors.\n"); */
+/* 		break; */
+
+/* 	case DSP_U0103: */
+/* 		PRINT_ERR(SUBNAME "DSP code wants to be upgraded to U0104!\n"); */
+/* 		break; */
+		
+/* 	case DSP_U0104: */
+/* 		if (data_qt_configure(1)) */
+/* 			return -EIO; */
+/* 		break; */
+		
+/* 	default: */
+/* 		PRINT_ERR(SUBNAME */
+/* 			  "DSP code not recognized, attempting quiet transfer mode...\n"); */
+/* 		if (data_qt_configure(1)) */
+/* 			return -EIO; */
+/* 		break; */
+/* 		} */
+
+/* 	return 0; */
+/* } */
+/* #undef SUBNAME */
+
+
+#define SUBNAME "data_init: "
 int data_init(int dsp_version, int mem_size, int data_size)
 {
+	frame_buffer_t *dframes = data_frames;
 	int err = 0;
 
-	init_waitqueue_head(&frames.queue);
+	init_waitqueue_head(&dframes->queue);
 
-	tasklet_init(&frames.grant_tasklet,
+	tasklet_init(&dframes->grant_tasklet,
 		     data_grant_task, 0);
 	
 	err = data_alloc(mem_size, data_size);
@@ -546,12 +609,13 @@ int data_init(int dsp_version, int mem_size, int data_size)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 int data_cleanup()
 {
-	tasklet_kill(&frames.grant_tasklet);
+	frame_buffer_t *dframes = data_frames;
+
+	tasklet_kill(&dframes->grant_tasklet);
 	return data_free();
 }
 

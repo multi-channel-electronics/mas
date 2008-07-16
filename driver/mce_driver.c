@@ -109,18 +109,16 @@ int  mce_HST_dsp_callback( int error, dsp_message *msg, int card);
 
 /* First set: interrupt context, no blocking and no sems! */
 
-#define SUBNAME "mce_command_do_callback: "
-
 /* Generic error handler; reports error to caller and goes to IDLE state */
-
+#define SUBNAME "mce_command_do_callback: "
 int mce_command_do_callback( int error, mce_reply *rep, int card)
 {
- 	struct mce_control *mdat = mce_dat;
+ 	struct mce_control *mdat = mce_dat + card;
 
 	mdat->state = MDAT_IDLE;
 
 	if ( mdat->callback != NULL ) {
-		mdat->callback(error, rep);
+		mdat->callback(error, rep, card);
 	} else {
 		PRINT_INFO(SUBNAME "no callback specified\n");
 	} 
@@ -131,15 +129,13 @@ int mce_command_do_callback( int error, mce_reply *rep, int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_CON_dsp_callback: "
-
 int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 {
- 	struct mce_control *mdat = mce_dat;
+ 	struct mce_control *mdat = mce_dat + card;
 
 	PRINT_INFO(SUBNAME "entry\n");
 
@@ -176,15 +172,13 @@ int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 	
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_NFY_RP_handler: "
-
 int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 {
- 	struct mce_control *mdat = mce_dat;
+ 	struct mce_control *mdat = mce_dat + card;
 
 	// We'll just trust the NFY for now, assuming no error.
 	if ( error || (msg==NULL) ) {
@@ -204,7 +198,6 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
@@ -214,7 +207,6 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 
 
 #define SUBNAME "mce_do_HST_or_schedule: "
-
 void mce_do_HST_or_schedule(unsigned long data)
 {
  	struct mce_control *mdat = (struct mce_control *)data;
@@ -239,15 +231,13 @@ void mce_do_HST_or_schedule(unsigned long data)
 	
 	return;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_HST_dsp_callback: "
-
 int mce_HST_dsp_callback(int error, dsp_message *msg, int card)
 {
- 	struct mce_control *mdat = mce_dat;
+ 	struct mce_control *mdat = mce_dat + card;
 
 	if (mdat->state != MDAT_HST) {
 		PRINT_ERR(SUBNAME "unexpected callback! (state=%i)\n",
@@ -280,17 +270,13 @@ int mce_HST_dsp_callback(int error, dsp_message *msg, int card)
 	mce_command_do_callback(0, mdat->buff.reply, card);
 	return 0;
 }
-
 #undef SUBNAME
 
-
-#define SUBNAME "mce_send_command_now: "
-
 //Command must already be in mdat->buff.command
-
+#define SUBNAME "mce_send_command_now: "
 int mce_send_command_now (int card)
 {
- 	struct mce_control *mdat = mce_dat;
+ 	struct mce_control *mdat = mce_dat + card;
 	int err = 0;
 	u32 baddr = (u32)mdat->buff.command_busaddr;
 	
@@ -318,12 +304,10 @@ int mce_send_command_now (int card)
 	}
 
 	return 0;
- }
-
+}
 #undef SUBNAME
 
 #define SUBNAME "mce_send_command_timer: "
-
 void mce_send_command_timer(unsigned long data)
 {
 	struct mce_control *mdat = (struct mce_control *)data;
@@ -337,12 +321,10 @@ void mce_send_command_timer(unsigned long data)
 	PRINT_ERR(SUBNAME "mce reply timed out!\n");
 	mce_command_do_callback( -MCE_ERR_TIMEOUT, NULL, card);
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_send_command: "
-
 int mce_send_command(mce_command *cmd, mce_callback callback, int non_block, int card)
 {
  	struct mce_control *mdat = mce_dat + card;
@@ -380,7 +362,6 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block, int
 	up(&mdat->sem);
 	return ret_val;
 }
-	
 #undef SUBNAME
 
 //mce_send_command_user lived here once upon a time
@@ -396,7 +377,6 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block, int
 */
 
 #define SUBNAME "mce_da_hst_callback: "
-
 int mce_da_hst_callback(int error, dsp_message *msg, int card)
 {
 	//FIXME: "error" case should be natural and handled smoothly.
@@ -437,14 +417,12 @@ int mce_da_hst_callback(int error, dsp_message *msg, int card)
 	mdat->data_flags &= ~MDAT_DHST;
 	return 0;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "mce_da_hst_now: "
-
 int mce_da_hst_now(int card)
 {
- 	struct mce_control *mdat = mce_dat;
+ 	struct mce_control *mdat = mce_dat + card;
 	int err = 0;
 	u32 baddr;
 	dsp_command cmd;
@@ -473,15 +451,14 @@ int mce_da_hst_now(int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_int_handler: "
-
 int mce_int_handler( dsp_message *msg, unsigned long data )
 {
 	struct mce_control *mdat = (struct mce_control *)data;
+	frame_buffer_t *dframes = data_frames;
 	dsp_notification *note = (dsp_notification*) msg;
 	int packet_size = (note->size_lo | (note->size_hi << 16)) * 4;
 	int card = mdat - mce_dat;
@@ -501,7 +478,7 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 		break;
 
 	case DSP_DA:
-		if (packet_size != frames.data_size) {
+		if (packet_size != dframes->data_size) {
 			if (mce_error_register(card))
 				PRINT_ERR(SUBNAME
 					  "unexpected DA packet size"
@@ -518,7 +495,6 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 
 	return 0;
 }
-
 #undef SUBNAME
 
 //mce_send_command_wait (_callback) lived here once upon a time...
@@ -615,7 +591,6 @@ int mce_interface_reset(int card)
 
 
 #define SUBNAME "mce_init: "
-
 int mce_init()
 {
 	int err = 0;
@@ -624,7 +599,7 @@ int mce_init()
 	err = mce_ops_init();
 	if(err != 0) goto out;
 
-	//add error checking for data_ops
+	//FIX ME:: add error checking for data_ops
 	data_ops_init();
 	
 	PRINT_INFO(SUBNAME "ok\n");
@@ -633,11 +608,9 @@ int mce_init()
 	PRINT_ERR(SUBNAME "exiting with error\n");
 	return err;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "mce_probe: "
-
 int mce_probe(int dsp_version, int card)
 {
  	struct mce_control *mdat = mce_dat + card;
@@ -688,11 +661,9 @@ int mce_probe(int dsp_version, int card)
 	mce_remove(card);
 	return err;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "mce_cleanup: "
-
 int mce_cleanup()
 {
 	PRINT_INFO(SUBNAME "entry\n");
@@ -703,11 +674,9 @@ int mce_cleanup()
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "mce_remove: "
-
 int mce_remove(int card)
 {
  	struct mce_control *mdat = mce_dat + card;
@@ -726,5 +695,4 @@ int mce_remove(int card)
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
 #undef SUBNAME
