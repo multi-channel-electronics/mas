@@ -50,7 +50,7 @@
 
 #else
 
-#  define FRAME_BUFFER_SIZE 10e6
+#  define FRAME_BUFFER_SIZE 32e6
 
 #endif
 
