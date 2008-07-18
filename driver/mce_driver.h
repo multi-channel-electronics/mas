@@ -21,7 +21,7 @@ int mce_cleanup(void);
 
 int mce_remove(int card);
 
-int mce_proc(char *buf, int count);
+int mce_proc(char *buf, int count, int card);
 
 int mce_error_register(int card);
 

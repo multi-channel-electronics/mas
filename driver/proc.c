@@ -56,11 +56,11 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 		PRINT_ERR("proc: i=%d\n", i);
 		if (len < limit) {
 		  len += sprintf(buf+len,"  data buffer:\n");
-		  len += data_proc(buf+len, limit-len);
+		  len += data_proc(buf+len, limit-len, i);
 		}
 		if (len < limit) {
 		  len += sprintf(buf+len,"  mce commander:\n");
-		  len += mce_proc(buf+len, limit-len);
+		  len += mce_proc(buf+len, limit-len, i);
 		}
 		if (len < limit) {
 	          len += sprintf(buf+len,"  dsp commander:\n");

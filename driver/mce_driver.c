@@ -458,10 +458,10 @@ int mce_da_hst_now(int card)
 int mce_int_handler( dsp_message *msg, unsigned long data )
 {
 	struct mce_control *mdat = (struct mce_control *)data;
-	frame_buffer_t *dframes = data_frames;
 	dsp_notification *note = (dsp_notification*) msg;
 	int packet_size = (note->size_lo | (note->size_hi << 16)) * 4;
 	int card = mdat - mce_dat;
+	frame_buffer_t *dframes = data_frames + card;
 
        	if (note->type != DSP_NFY) {
 		PRINT_ERR(SUBNAME "message is not NFY!\n");
@@ -541,9 +541,9 @@ int mce_buffer_free(mce_comm_buffer *buffer)
 }
 
 
-int mce_proc(char *buf, int count)
+int mce_proc(char *buf, int count, int card)
 {
- 	struct mce_control *mdat = mce_dat;
+ 	struct mce_control *mdat = mce_dat + card;
 	int len = 0;
 	if (len < count) {
 		len += sprintf(buf+len, "    state:    ");
@@ -614,6 +614,7 @@ int mce_init()
 int mce_probe(int dsp_version, int card)
 {
  	struct mce_control *mdat = mce_dat + card;
+	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
 	PRINT_INFO(SUBNAME "entry\n");
@@ -651,7 +652,7 @@ int mce_probe(int dsp_version, int card)
 	mdat->data_flags = 0;
 
 	// Set up command and quiet transfer handlers
-	dsp_set_handler(DSP_QTI, mce_qti_handler, (unsigned long)mdat, card);
+	dsp_set_handler(DSP_QTI, mce_qti_handler, (unsigned long)dframes, card);
 	dsp_set_handler(DSP_NFY, mce_int_handler, (unsigned long)mdat, card);
 
 	PRINT_INFO(SUBNAME "init ok.\n");

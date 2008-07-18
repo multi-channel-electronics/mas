@@ -19,10 +19,9 @@
 #endif
 
 
-typedef struct {
-	unsigned minor;
-	u32 *user_map;
-} data_ops_t;
+struct filp_pdata {
+	int minor;
+};
 
 /**************************************************************************
  *                                                                        *
@@ -30,7 +29,6 @@ typedef struct {
  *                                                                        *
  **************************************************************************/
 
-#define SUBNAME "data_read: "
 
 /* Non-blocking behaviour: return -EAGAIN if we can't get the
  * semaphore.  Return 0 if no data is available.  Otherwise, copy as
@@ -45,11 +43,13 @@ typedef struct {
  * flushed and stuff like that.
  */
 
-
+#define SUBNAME "data_read: "
 ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
-	frame_buffer_t *dframes = data_frames;
+	struct filp_pdata *fpdata = filp->private_data;
+	int card = fpdata->minor;
+	frame_buffer_t *dframes = data_frames + card;
 	int read_count = 0;
 	int this_read = 0;
 
@@ -68,7 +68,7 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		
 		// Pop count bytes from frame buffer; data_copy frame
 		// will return at most 1 frame of data.
-		this_read = data_copy_frame(buf, NULL, count, 0, DEFAULT_CARD);
+		this_read = data_copy_frame(buf, NULL, count, 0, card);
 
 		if (this_read < 0) {
 			// On error, exit with the current count.
@@ -95,7 +95,6 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 	up(&dframes->sem);
 	return read_count;
 }
-
 #undef SUBNAME
 
 
@@ -106,16 +105,16 @@ ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
 }
 
 
-#define SUBNAME "data_mmap: "
+
 
 /* Map the DSP buffer into user space (rather than occupying limited
  * kernel space.  The driver doesn't need direct access to the buffer
  * provided we can tell the user how to get the data. */
-
+#define SUBNAME "data_mmap: "
 int data_mmap(struct file *filp, struct vm_area_struct *vma)
 {
-	frame_buffer_t *dframes = data_frames;
-	data_ops_t* d = filp->private_data;
+	struct filp_pdata *fpdata = filp->private_data;
+	frame_buffer_t *dframes = data_frames + fpdata->minor;
 
 	// Do args checking on vma... start, end, prot.
 	PRINT_ERR(SUBNAME "mapping %#lx to user virtual %#lx\n",
@@ -125,21 +124,18 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 	remap_pfn_range(vma, vma->vm_start,
 			(unsigned long)dframes->base_busaddr >> PAGE_SHIFT,
 			vma->vm_end - vma->vm_start, vma->vm_page_prot);
-
-	d->user_map = (u32*)vma->vm_start;
-
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "data_ioctl: "
-
 int data_ioctl(struct inode *inode, struct file *filp,
 	       unsigned int iocmd, unsigned long arg)
 {
-	frame_buffer_t *dframes = data_frames;
+	struct filp_pdata *fpdata = filp->private_data;
+	int card = fpdata->minor;
+	frame_buffer_t *dframes = data_frames + card;
 
 	switch(iocmd) {
 
@@ -173,11 +169,11 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	case DATADEV_IOCT_SET_DATASIZE:
 		PRINT_INFO(SUBNAME "set data_size to %li (%#lx)\n",
 			   arg, arg);
-		return data_frame_resize(arg, DEFAULT_CARD);
+		return data_frame_resize(arg, card);
 
 	case DATADEV_IOCT_FAKE_STOPFRAME:
 		PRINT_ERR(SUBNAME "fake_stopframe initiated!\n");
-		return data_frame_fake_stop(DEFAULT_CARD);
+		return data_frame_fake_stop(card);
 
 	case DATADEV_IOCT_WATCH:
 	case DATADEV_IOCT_WATCH_DL:
@@ -191,24 +187,24 @@ int data_ioctl(struct inode *inode, struct file *filp,
 
 	case DATADEV_IOCT_EMPTY:
 		PRINT_INFO(SUBNAME "reset data buffer\n");
-		mce_error_reset(DEFAULT_CARD);
-		return data_frame_empty_buffers(DEFAULT_CARD);
+		mce_error_reset(card);
+		return data_frame_empty_buffers(card);
 
 	case DATADEV_IOCT_QT_CONFIG:
 		PRINT_INFO(SUBNAME "configure Quiet Transfer mode "
 			   "[inform=%li]\n", arg);
-		return data_qt_configure(arg);
+		return data_qt_configure(arg, card);
 
 	case DATADEV_IOCT_QT_ENABLE:
 		PRINT_INFO(SUBNAME "enable/disable quiet Transfer mode "
 			   "[on=%li]\n", arg);
-		return data_qt_enable(arg);
+		return data_qt_enable(arg, card);
 
 	case DATADEV_IOCT_FRAME_POLL:
-		return (data_frame_poll(DEFAULT_CARD) ? dframes->tail_index*dframes->frame_size : -1);
+		return (data_frame_poll(card) ? dframes->tail_index*dframes->frame_size : -1);
 
 	case DATADEV_IOCT_FRAME_CONSUME:
-		return data_tail_increment(DEFAULT_CARD);
+		return data_tail_increment(card);
 
 	default:
 		PRINT_ERR(SUBNAME "unknown command (%#x)\n", iocmd );
@@ -216,26 +212,28 @@ int data_ioctl(struct inode *inode, struct file *filp,
 
 	return 0;
 }
-
 #undef SUBNAME
 
+#define SUBNAME "data_open: "
 int data_open(struct inode *inode, struct file *filp)
 {
-	// Store details of inode in private data
-	data_ops_t* d = kmalloc(sizeof(data_ops_t), GFP_KERNEL);
-	d->minor = iminor(inode);
-	d->user_map = NULL;
+	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
+	PRINT_INFO(SUBNAME "entry\n");
 
-	filp->private_data = d;
+	fpdata->minor = iminor(inode);
+	filp->private_data = fpdata;
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
+#undef SUBNAME
 
 int data_release(struct inode *inode, struct file *filp)
 {
-	data_ops_t* d = filp->private_data;
-	if (d != NULL) {
-	  kfree(d);
+	struct filp_pdata *fpdata = filp->private_data;
+
+	if (fpdata != NULL) {
+	  kfree(fpdata);
 	}
 	return 0;
 }
@@ -254,38 +252,56 @@ struct file_operations data_fops =
 
 /**************************************************************************
  *                                                                        *
- *      Init and cleanup                                                  *
+ *      Init probe cleanup and remove                                     *
  *                                                                        *
  **************************************************************************/
 
 #define SUBNAME "data_ops_init: "
-
-int data_ops_init(void) 
+int data_ops_init(void)
 {
-	frame_buffer_t *dframes = data_frames;
 	int err = 0;
-
+	int i = 0;
 	PRINT_INFO(SUBNAME "entry\n");
-
- 	init_MUTEX(&dframes->sem); 
 	
-	if ((err = register_chrdev(0, MCEDATA_NAME, &data_fops))<=0) {
+	err = register_chrdev(0, MCEDATA_NAME, &data_fops);
+	if (err<0) {
 		PRINT_ERR(SUBNAME "could not register_chrdev, "
 			  "err=%#x\n", err);
-		return err;
+	} else {
+		for(i=0; i<MAX_CARDS; i++) {
+			frame_buffer_t *dframes = data_frames + i;
+			dframes->major = err;
+		}
+		err = 0;
 	}
-	dframes->major = err;
 
+	PRINT_INFO(SUBNAME "ok\n");
+	return err;
+}
+#undef SUBNAME
+
+#define SUBNAME "data_ops_probe: "
+int data_ops_probe(int card)
+{
+	frame_buffer_t *dframes = data_frames + card;
+	PRINT_INFO(SUBNAME "entry\n");
+
+	init_MUTEX(&dframes->sem); 
+
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
+#undef SUBNAME
 
+#define SUBNAME "data_ops_cleanup: "
 int data_ops_cleanup(void)
 {
-	frame_buffer_t *dframes = data_frames;
+	PRINT_INFO(SUBNAME "entry\n");
 
-	if (dframes->major != 0) 
-		unregister_chrdev(dframes->major, MCEDATA_NAME);
+	if (data_frames->major != 0) 
+		unregister_chrdev(data_frames->major, MCEDATA_NAME);
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
+#undef SUBNAME

@@ -112,7 +112,6 @@ know if the MCE works or not.
 */
 
 #define SUBNAME "mce_read: "
-
 ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
@@ -188,12 +187,10 @@ out:
 	up(&mops->sem);
 	return ret_val;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_write_callback: "
-
 int mce_write_callback( int error, mce_reply* rep, int card)
 {
 	struct mce_ops_t *mops = mce_ops + card;
@@ -221,11 +218,10 @@ int mce_write_callback( int error, mce_reply* rep, int card)
 	wake_up_interruptible(&mops->queue);
 	return 0;
 }
-
 #undef SUBNAME
 
-#define SUBNAME "mce_write: "
 
+#define SUBNAME "mce_write: "
 ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
@@ -300,12 +296,10 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	PRINT_INFO(SUBNAME "exiting [%#x]\n", ret_val);
 	return ret_val;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_ioctl: "
-
 int mce_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
@@ -344,7 +338,6 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 
 	return -1;
 }
-
 #undef SUBNAME
 
 
@@ -359,7 +352,6 @@ int mce_open(struct inode *inode, struct file *filp)
 }
 
 #define SUBNAME "mce_release: "
-
 int mce_release(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata = filp->private_data;
@@ -379,16 +371,13 @@ int mce_release(struct inode *inode, struct file *filp)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "mce_ops_init: "
-
 int mce_ops_init(void)
 {
 	int err = 0;
 	int i = 0;
-
 	PRINT_INFO(SUBNAME "entry\n");
 
 	err = register_chrdev(0, MCEDEV_NAME, &mce_fops);
@@ -406,11 +395,9 @@ int mce_ops_init(void)
 	PRINT_INFO(SUBNAME "ok\n");
 	return err;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "mce_ops_probe: "
-
 int mce_ops_probe(int card)
 {
 	struct mce_ops_t *mops = mce_ops + card;
@@ -421,15 +408,13 @@ int mce_ops_probe(int card)
 	init_MUTEX(&mops->sem);
 
 	mops->state = OPS_IDLE;
-
+ 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "mce_ops_remove: "
-
 int mce_ops_cleanup(void)
 {
 	PRINT_INFO(SUBNAME "entry\n");
@@ -440,5 +425,4 @@ int mce_ops_cleanup(void)
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
 #undef SUBNAME

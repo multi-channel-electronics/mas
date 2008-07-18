@@ -14,6 +14,7 @@
 
 #include "dsp_driver.h"
 #include "data.h"
+#include "data_ops.h"
 #include "data_qt.h"
 #include "mce_driver.h"
 #include "memory.h"
@@ -172,7 +173,7 @@ int data_frame_contribute(int new_head, int card)
 
 int data_frame_poll(int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 
 	return (dframes->tail_index != dframes->head_index);
 }
@@ -203,7 +204,7 @@ int data_frame_resize(int size, int card)
 	}
 	
 	if (dframes->data_mode == DATAMODE_QUIET &&
-	    data_qt_configure(1)!=0) {
+	    data_qt_configure(1, card)!=0) {
 		PRINT_ERR(SUBNAME "can't set DSP quiet mode frame size\n");
 		return -4;
 	}
@@ -439,11 +440,11 @@ int data_reset(int card)
 	dframes->dropped = 0;
 	
 	if (dframes->data_mode == DATAMODE_QUIET) {
-		if (data_qt_cmd(DSP_QT_TAIL  , dframes->tail_index, 0) ||
-		    data_qt_cmd(DSP_QT_HEAD  , dframes->head_index, 0) ) {
+		if (data_qt_cmd(DSP_QT_TAIL  , dframes->tail_index, 0, card) ||
+		    data_qt_cmd(DSP_QT_HEAD  , dframes->head_index, 0, card) ) {
 			PRINT_ERR(SUBNAME
 				  "Could not reset DSP QT indexes; disabling.");
-			data_qt_enable(0);
+			data_qt_enable(0, card);
 		}
 	}
 
@@ -453,9 +454,9 @@ int data_reset(int card)
 #undef SUBNAME
 
 
-int data_proc(char *buf, int count)
+int data_proc(char *buf, int count, int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 
 	int len = 0;
 	if (len < count)
@@ -508,12 +509,16 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 	init_waitqueue_head(&dframes->queue);
 
 	tasklet_init(&dframes->grant_tasklet,
-		     data_grant_task, 0);       
+		     data_grant_task, (unsigned long)dframes);       
 
 	err = data_alloc(mem_size, data_size, card);
-	if (err) return err;
+	if (err != 0) return err;
+
+	err = data_ops_probe(card);
+	if (err != 0) return err;
 
 	data_reset(card);
+
 
 	switch (dsp_version) {
 	case 0:
@@ -526,14 +531,14 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 		break;
 		
 	case DSP_U0104:
-		if (data_qt_configure(1))
+		if (data_qt_configure(1, card))
 			return -EIO;
 		break;
 		
 	default:
 		PRINT_ERR(SUBNAME
 			  "DSP code not recognized, attempting quiet transfer mode...\n");
-		if (data_qt_configure(1))
+		if (data_qt_configure(1, card))
 			return -EIO;
 		break;
 		}
@@ -546,8 +551,16 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 #define SUBNAME "data_init: "
 int data_init(int mem_size, int data_size)
 {
-	//FIX ME:: apperantly vestigial
+	int err = 0;
+	PRINT_INFO(SUBNAME "entry\n");
 
+	err = data_ops_init();
+	if(err != 0) {
+		PRINT_ERR(SUBNAME "data_ops_init returned err\n");
+		return err;
+	}
+
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
 #undef SUBNAME
