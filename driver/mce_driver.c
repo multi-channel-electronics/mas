@@ -290,7 +290,7 @@ int mce_send_command_now (int card)
 		   (int)mdat->buff.command->para_id,
 		   (int)mdat->buff.command->card_id);
 	
-	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback, DEFAULT_CARD))) {
+	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback, card))) {
 		PRINT_INFO(SUBNAME "dsp_send_command failed (%#x)\n",
 			  err);
 		switch(-err) {
@@ -437,7 +437,7 @@ int mce_da_hst_now(int card)
 	data_frame_address(&baddr, card);
 	HST_FILL(cmd, baddr);
 
-	if ((err = dsp_send_command(&cmd, mce_da_hst_callback, DEFAULT_CARD))) {
+	if ((err = dsp_send_command(&cmd, mce_da_hst_callback, card))) {
 		PRINT_INFO(SUBNAME "dsp_send_command failed!\n");
 		if (mce_error_register(card)) {
 			PRINT_ERR(SUBNAME "dsp_send_command error %i; "

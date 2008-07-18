@@ -137,6 +137,8 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	int card = fpdata->minor;
 	frame_buffer_t *dframes = data_frames + card;
 
+	PRINT_ERR(SUBNAME "=========> card: %d \n", card);
+
 	switch(iocmd) {
 
 	case DATADEV_IOCT_RESET:

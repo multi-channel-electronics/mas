@@ -304,7 +304,8 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
 	struct filp_pdata *fpdata = filp->private_data;
-	struct mce_ops_t *mops = mce_ops + fpdata->minor;
+	int card = fpdata->minor;
+	struct mce_ops_t *mops = mce_ops + card;
 	int x;
 
 	switch(iocmd) {
@@ -315,10 +316,10 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 		return -1;
 
 	case MCEDEV_IOCT_HARDWARE_RESET:
-		return mce_hardware_reset(DEFAULT_CARD);
+		return mce_hardware_reset(card);
 	       
 	case MCEDEV_IOCT_INTERFACE_RESET:
-		return mce_interface_reset(DEFAULT_CARD);
+	  return mce_interface_reset(card);
 
 	case MCEDEV_IOCT_LAST_ERROR:
 		x = mops->error;

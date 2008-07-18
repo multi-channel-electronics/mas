@@ -183,6 +183,7 @@ int data_frame_poll(int card)
 int data_frame_resize(int size, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
+	PRINT_ERR(SUBNAME "============>size: %d card: %d \n", size, card);
 
 	if (size == dframes->data_size)
 		return 0;
@@ -261,6 +262,7 @@ int data_frame_empty_buffers(int card)
 int data_frame_divide( int new_data_size, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
+	PRINT_ERR("data_frame_divide:=============> new_data_size: %d\n", new_data_size);
 
 	// Recompute the division of the buffer into frames
 	if (new_data_size >= 0) dframes->data_size = new_data_size;
@@ -268,6 +270,7 @@ int data_frame_divide( int new_data_size, int card)
 	// Round the frame size to a size convenient for DMA
 	dframes->frame_size =
 		(dframes->data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
+	PRINT_ERR("data_frame_divide:=============> size: %d frame_size: %d\n", dframes->size, dframes->frame_size);
 	dframes->max_index = dframes->size / dframes->frame_size;
 
 	if (dframes->max_index <= 1) {

@@ -96,26 +96,23 @@ int data_qt_cmd( dsp_qt_code code, int arg1, int arg2, int card)
 
 
 #define SUBNAME "data_qt_enable: "
-
 int data_qt_enable(int on, int card)
 {
-	frame_buffer_t *dframes = data_frames;
+	frame_buffer_t *dframes = data_frames + card;
 	int err = data_qt_cmd(DSP_QT_ENABLE, on, 0, card);
 	if (!err)
 		dframes->data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
 	return err;
 }
-
 #undef SUBNAME
 
 
-#define SUBNAME "data_qt_setup: "
-
+#define SUBNAME "data_qt_configure: "
 int data_qt_configure(int qt_interval, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
-	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO(SUBNAME "=====================>entry, card: %d\n", card);
 
 	if ( data_qt_enable(0, card) || data_reset(card) )
 		err = -1;
@@ -155,5 +152,4 @@ int data_qt_configure(int qt_interval, int card)
 
 	return err;
 }
-
 #undef SUBNAME
