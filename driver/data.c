@@ -56,9 +56,8 @@ frame_buffer_t frames;
 
 int data_frame_address(u32 *dest)
 {
-        *dest = (u32)(frames.base_busaddr)
-                + frames.frame_size*(frames.head_index);
-	
+        *dest = (u32)(unsigned long)frames.base_busaddr +
+		frames.frame_size*(frames.head_index);
         return 0;
 }
 
@@ -303,8 +302,8 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 	// Are buffers well defined?  Warn...
 	if (  !( (user_buf!=NULL) ^ (kern_buf!=NULL) ) ) {
-		PRINT_ERR(SUBNAME "number of dest'n buffers != 1 (%x | %x)\n",
-			  (int)user_buf, (int)kern_buf);
+		PRINT_ERR(SUBNAME "number of dest'n buffers != 1 (%lx | %lx)\n", /*  */
+			  (unsigned long)user_buf, (unsigned long)kern_buf);
 		return -1;
 	}
 
@@ -318,13 +317,13 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 			frames.data_size - frames.partial : count;
 		
 		if (user_buf!=NULL) {
-			PRINT_INFO(SUBNAME "copy_to_user %x->[%x] now\n",
-				   count, (int)user_buf);
+			PRINT_INFO(SUBNAME "copy_to_user %x->[%lx] now\n",
+				   count, (unsigned long)user_buf);
 			this_read -= copy_to_user(user_buf, source, this_read);
 		}
 		if (kern_buf!=NULL) {
-			PRINT_INFO(SUBNAME "memcpy to kernel %x now\n",
-				   (int)kern_buf);
+			PRINT_INFO(SUBNAME "memcpy to kernel %lx now\n",
+				   (unsigned long)kern_buf);
 			memcpy(kern_buf, source, this_read);
 		}
 
@@ -410,6 +409,9 @@ int data_alloc(int mem_size, int data_size)
 	PRINT_ERR(SUBNAME "!highmem; phys=%lx\n", (unsigned long)phys);
 #endif
 
+/* 	// Force bus address 1GB */
+/* 	phys = (caddr_t) (0x40000000); */
+
 	// Save the buffer address and maximum size
 	frames.base = NULL;
 	frames.size = mem_size;
@@ -423,10 +425,10 @@ int data_alloc(int mem_size, int data_size)
 	data_frame_divide(data_size);
 
 	//Debug
-	PRINT_INFO(SUBNAME "buffer: base=%x + %x of size %x\n",
-		   (int)frames.base, 
+	PRINT_INFO(SUBNAME "buffer: base=%lx + %x of size %x\n",
+		   (unsigned long)frames.base, 
 		   frames.max_index,
-		   (int)frames.frame_size);
+		   frames.frame_size);
 	
 	return 0;
 }
@@ -485,11 +487,11 @@ int data_proc(char *buf, int count)
 {
 	int len = 0;
 	if (len < count)
-		len += sprintf(buf+len, "    virtual:  %#010x\n",
-			       (unsigned)frames.base);
+		len += sprintf(buf+len, "    virtual:  %#010lx\n",
+			       (unsigned long)frames.base);
 	if (len < count)
-		len += sprintf(buf+len, "    bus:      %#010x\n",
-			       (unsigned)frames.base_busaddr);
+		len += sprintf(buf+len, "    bus:      %#010lx\n",
+			       (unsigned long)frames.base_busaddr);
 	if (len < count)
 		len += sprintf(buf+len, "    count:    %10i\n", frames.max_index);
 	if (len < count)

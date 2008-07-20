@@ -297,7 +297,7 @@ int dsp_send_command_now(dsp_command *cmd)
 */
 
 
-void* dsp_allocate_dma(ssize_t size, unsigned int* bus_addr_p)
+void* dsp_allocate_dma(ssize_t size, unsigned long* bus_addr_p)
 {
 #ifdef OLD_KERNEL
 	return pci_alloc_consistent(dev->pci, size, bus_addr_p);
@@ -307,7 +307,7 @@ void* dsp_allocate_dma(ssize_t size, unsigned int* bus_addr_p)
 #endif
 }
 
-void  dsp_free_dma(void* buffer, int size, unsigned int bus_addr)
+void  dsp_free_dma(void* buffer, int size, unsigned long bus_addr)
 {
 #ifdef OLD_KERNEL
  	  pci_free_consistent (dev->pci, size, buffer, bus_addr);
@@ -316,6 +316,7 @@ void  dsp_free_dma(void* buffer, int size, unsigned int bus_addr)
 #endif
 }
 
+#define SUBNAME "dsp_pci_flush: "
 
 int dsp_pci_flush()
 {
@@ -327,12 +328,10 @@ int dsp_pci_flush()
 	while ((dsp_read_hstr(dsp) & HSTR_HRRQ) && (count++ < PCI_MAX_FLUSH))
 	{
 		tmp = dsp_read_hrxs(dsp);
-		if (count<4) PRINT_INFO(" %x", tmp);
-		else if (count==4) PRINT_INFO(" ...");
+		if (count<4) PRINT_INFO(SUBNAME "%x\n", tmp);
 	}
-
-	PRINT_INFO("\n");
-
+	if (count>4) PRINT_INFO(SUBNAME "(%i total)\n", count);
+      
 	if (dsp_read_hstr(dsp) & HSTR_HRRQ) {
 		PRINT_ERR("dsp_pci_flush: could not empty HRXS!\n");
 		return -1;
@@ -340,6 +339,8 @@ int dsp_pci_flush()
 
 	return 0;
 }
+
+#undef SUBNAME
 
 int dsp_pci_configure(dsp_reg_t *dsp)
 {
@@ -446,8 +447,14 @@ int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	err = pci_enable_device(pci);
 	if (err) goto fail;
 
+	// Request regions!!!
+	if (pci_request_regions(pci, DEVICE_NAME)!=0) {
+		PRINT_ERR(SUBNAME "pci_request_regions failed.\n");
+		goto fail;
+	}
+
 	// Map i/o registers into a dsp_reg_t structure
-	dev->dsp = (dsp_reg_t *)ioremap(pci_resource_start(pci, 0) & 
+	dev->dsp = (dsp_reg_t *)ioremap_nocache(pci_resource_start(pci, 0) & 
 					PCI_BASE_ADDRESS_MEM_MASK,
 					sizeof(*dev->dsp));
 	if (dev->dsp==NULL) {
@@ -502,6 +509,7 @@ void dsp_pci_remove(struct pci_dev *pci)
 	if (dev->dsp!=NULL) {
 		dsp_clear_interrupt(dev->dsp);
 		iounmap(dev->dsp);
+		pci_release_regions(pci);
 		dev->dsp = NULL;
 	}
 

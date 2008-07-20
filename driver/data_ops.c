@@ -5,6 +5,7 @@
 #include <linux/poll.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
+#include <linux/mm.h>
 
 #include "kversion.h"
 #include "mce_options.h"
@@ -49,7 +50,6 @@ typedef struct {
 ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
-	data_ops_t* d = filp->private_data;
 	int read_count = 0;
 	int this_read = 0;
 
@@ -61,7 +61,7 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 			return -ERESTARTSYS;
 	}
 
-	PRINT_INFO(SUBNAME "user demands %i with nonblock=%i\n",
+	PRINT_INFO(SUBNAME "user demands %li with nonblock=%i\n",
 		   count, filp->f_flags & O_NONBLOCK);
 
 	while (count > 0) {

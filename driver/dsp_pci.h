@@ -84,8 +84,8 @@ int   dsp_pci_flush(void);
 
 int   dsp_pci_hstr(void);
 
-void* dsp_allocate_dma(ssize_t size, unsigned int* bus_addr_p);
+void* dsp_allocate_dma(ssize_t size, unsigned long* bus_addr_p);
 
-void  dsp_free_dma(void* buffer, int size, unsigned int bus_addr);
+void  dsp_free_dma(void* buffer, int size, unsigned long bus_addr);
 
 #endif

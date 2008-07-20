@@ -25,8 +25,10 @@ typedef struct {
 	mce_command *command;
 	mce_reply   *reply;
 	u32          reply_size;
-	void* command_busaddr;
-	void* reply_busaddr;
+
+	/* Since PCI is 32-bit, our bus addresses are u32. */
+	u32 command_busaddr;
+	u32 reply_busaddr;
 
 	int dma_size;
 
@@ -197,7 +199,7 @@ void mce_do_HST_or_schedule(unsigned long data)
 {
 	int err;
 	dsp_command cmd;
-	HST_FILL(cmd, (u32)mdat.buff.reply_busaddr);
+	HST_FILL(cmd, mdat.buff.reply_busaddr);
 
 	if (mdat.state != MDAT_NFY) {
 		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat.state);
@@ -305,7 +307,7 @@ int mce_qt_command( dsp_qt_code code, int arg1, int arg2)
 int mce_quiet_RP_config(void)
 {
 	int err = 0;
-	unsigned long bus = (unsigned long)mdat.buff.reply_busaddr;
+	u32 bus = mdat.buff.reply_busaddr;
 
 	PRINT_INFO(SUBNAME "configuring...\n");
 	
@@ -332,7 +334,7 @@ int mce_quiet_RP_config(void)
 int mce_send_command_now (void)
 {
 	int err = 0;
-	u32 baddr = (u32)mdat.buff.command_busaddr;
+	u32 baddr = mdat.buff.command_busaddr;
 	
 	dsp_command cmd = {
 		DSP_CON,
@@ -733,6 +735,8 @@ int mce_send_command_wait_callback(int error, mce_reply *rep)
 
 int mce_buffer_allocate(mce_comm_buffer *buffer)
 {
+	unsigned long bus;
+
 	// Create DMA-able area.  Use only one call since the two
 	// buffers are so small.
 
@@ -741,10 +745,14 @@ int mce_buffer_allocate(mce_comm_buffer *buffer)
 
 	int size = offset + sizeof(mce_reply);
 
-	buffer->command = (mce_command*) dsp_allocate_dma(
-		size, (unsigned int*)&buffer->command_busaddr);
+	buffer->command = (mce_command*) dsp_allocate_dma(size, &bus);
 	if (buffer->command==NULL)
 		return -ENOMEM;
+	if (bus >> 32 != 0) {
+		PRINT_ERR("dsp_allocate returned out of bounds address %lx\n", bus);
+		return -ENOMEM;
+	}
+	buffer->command_busaddr = (u32)bus;
 
 	buffer->reply = (mce_reply*) ((char*)buffer->command + offset);
 	buffer->reply_busaddr = buffer->command_busaddr + offset;
@@ -763,7 +771,7 @@ int mce_buffer_free(mce_comm_buffer *buffer)
 {
 	if (buffer->command!=NULL) {
 		dsp_free_dma(buffer->command, buffer->dma_size,
-			     (int)buffer->command_busaddr);
+			     (unsigned long)buffer->command_busaddr);
 	}
 
 	buffer->command = NULL;
