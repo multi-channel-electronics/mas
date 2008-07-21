@@ -519,9 +519,9 @@ int dsp_driver_probe()
 
 void dsp_driver_remove(void)
 {
-	del_timer_sync(&ddat.tim);
-
 	mce_cleanup();
+
+	del_timer_sync(&ddat.tim);
 
 	dsp_ops_cleanup();
 }
@@ -533,14 +533,14 @@ void dsp_driver_remove(void)
 
 void dsp_driver_cleanup(void)
 {
+	remove_proc_entry("mce_dsp", NULL);
+
 #ifdef FAKEMCE
 	dsp_driver_remove();
 	dsp_fake_cleanup();
 #else
 	dsp_pci_cleanup();
 #endif
-
-	remove_proc_entry("mce_dsp", NULL);
 
 	PRINT_INFO(SUBNAME "driver removed\n");
 }    

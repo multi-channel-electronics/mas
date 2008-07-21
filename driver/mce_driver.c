@@ -324,7 +324,7 @@ int mce_quiet_RP_config(int enable)
 	int err = 0;
 	u32 bus = mdat.buff.reply_busaddr;
 
-	PRINT_INFO(SUBNAME "configuring...\n");
+	PRINT_INFO(SUBNAME "disabling...\n");
 	
 	err |= mce_qt_command(DSP_QT_RPENAB, 0, 0);
 	mdat.quiet_rp = 0;
@@ -335,6 +335,8 @@ int mce_quiet_RP_config(int enable)
 	if (!enable) return 0;
 
 	// Enable qt replies
+	PRINT_INFO(SUBNAME "enabling...\n");
+	
 	err |= mce_qt_command(DSP_QT_RPSIZE, sizeof(mce_reply), 0);
 	err |= mce_qt_command(DSP_QT_RPBASE,
 			      (bus      ) & 0xFFFF,
