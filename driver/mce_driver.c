@@ -51,6 +51,7 @@ struct mce_control {
  	struct tasklet_struct hst_tasklet;
 
 	int initialized;
+	int quiet_rp;
 
 	mce_state_t state;
 
@@ -162,6 +163,17 @@ int mce_CON_dsp_callback( int error, dsp_message *msg )
 #undef SUBNAME
 
 
+/* Old-style (<=U0104) MCE reply handling.  DSP signals us that an MCE
+ * reply has arrived by sending an NFY message.  We must, as quickly
+ * as possible, issue an HST command with the destination bus address
+ * for the packet.  Once the reply for the HST comes back, our
+ * packet has been copied.
+ *
+ * mce_NFY_RP_handler: issues HST, or schedules it do be done
+ * mce_do_HST_or_schedule: keeps rescheduling itself until HST issues
+ * mce_HST_dsp_callback: calls backt to commander with the reply.
+ */
+
 #define SUBNAME "mce_NFY_RP_handler: "
 
 int mce_NFY_RP_handler( int error, dsp_message *msg )
@@ -260,9 +272,12 @@ int mce_HST_dsp_callback( int error, dsp_message *msg )
 #undef SUBNAME
 
 
-/* Simplified command system, for DSP >= U0105.  Reply buffer address
+/* Simplified reply system, for DSP >= U0105.  Reply buffer address
  * is pre-loaded to the DSP, so we don't have to hand-shake in
- * real-time. */
+ * real-time.
+ *
+ * mce_NFY_RPQ_handler: immediately calls back with the mce reply.
+ */
 
 
 #define SUBNAME "mce_NFY_RPQ_handler: "
@@ -304,13 +319,22 @@ int mce_qt_command( dsp_qt_code code, int arg1, int arg2)
 
 #define SUBNAME "mce_quiet_RP_config: "
 
-int mce_quiet_RP_config(void)
+int mce_quiet_RP_config(int enable)
 {
 	int err = 0;
 	u32 bus = mdat.buff.reply_busaddr;
 
 	PRINT_INFO(SUBNAME "configuring...\n");
 	
+	err |= mce_qt_command(DSP_QT_RPENAB, 0, 0);
+	mdat.quiet_rp = 0;
+	if (err) {
+		PRINT_ERR(SUBNAME "failed to disable quiet RP\n");
+		return -1;
+	}
+	if (!enable) return 0;
+
+	// Enable qt replies
 	err |= mce_qt_command(DSP_QT_RPSIZE, sizeof(mce_reply), 0);
 	err |= mce_qt_command(DSP_QT_RPBASE,
 			      (bus      ) & 0xFFFF,
@@ -321,6 +345,8 @@ int mce_quiet_RP_config(void)
 		PRINT_ERR(SUBNAME "failed to configure DSP.\n");
 		return -1;
 	}
+
+	mdat.quiet_rp = 1;
 	return 0;
 }
 
@@ -748,7 +774,7 @@ int mce_buffer_allocate(mce_comm_buffer *buffer)
 	buffer->command = (mce_command*) dsp_allocate_dma(size, &bus);
 	if (buffer->command==NULL)
 		return -ENOMEM;
-	if (bus >> 32 != 0) {
+	if ((bus >> 16) >> 16 != 0) {
 		PRINT_ERR("dsp_allocate returned out of bounds address %lx\n", bus);
 		return -ENOMEM;
 	}
@@ -836,6 +862,7 @@ int mce_init_module(int dsp_version)
 	int err = 0;
 
 	mdat.initialized = 1;
+	mdat.quiet_rp = 0;
 
 	//Init data module
 	err = data_init(dsp_version, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
@@ -872,8 +899,8 @@ int mce_init_module(int dsp_version)
 	dsp_set_handler(DSP_NFY, mce_int_handler, 0);
 
 	if (dsp_version >= DSP_U0105) {
+		mce_quiet_RP_config(1);
 		dsp_set_handler(DSP_RPQ, mce_int_handler, 0);
-		mce_quiet_RP_config();
 	}
 
 	PRINT_INFO(SUBNAME "init ok.\n");
@@ -893,6 +920,8 @@ int mce_init_module(int dsp_version)
 int mce_cleanup()
 {
 	if (!mdat.initialized) return 0;
+
+	mce_quiet_RP_config(0);
 
 	del_timer_sync(&mdat.timer);
 	tasklet_kill(&mdat.hst_tasklet);

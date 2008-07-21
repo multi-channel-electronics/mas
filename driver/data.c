@@ -572,6 +572,9 @@ int data_init(int dsp_version, int mem_size, int data_size)
 
 int data_cleanup()
 {
+	if (frames.data_mode != DATAMODE_CLASSIC)
+		data_qt_enable(0);
+
 	tasklet_kill(&frames.grant_tasklet);
 	return data_free();
 }

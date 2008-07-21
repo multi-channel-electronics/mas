@@ -13,6 +13,7 @@
 
 /* PCI register definitions */
 
+#define HSTR_HF3  0x8
 #define HSTR_HRRQ 0x4
 #define HSTR_HTRQ 0x2
 #define HSTR_TRDY 0x1
@@ -33,6 +34,12 @@
 #define PCI_MAX_FLUSH       256
 
 #define DSP_PCI_MODE      0x900 /* for 32->24 bit conversion */
+
+
+/* Soft interrupt generation timer frequency */
+
+#define DSP_POLL_FREQ       100
+#define DSP_POLL_JIFFIES    (HZ / DSP_POLL_FREQ + 1)
 
 
 #pragma pack(1)
@@ -59,6 +66,7 @@ struct dsp_dev_t {
 
 	irq_handler_t int_handler;
 
+	struct timer_list tim;
 };
 
 

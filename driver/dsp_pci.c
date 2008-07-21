@@ -146,6 +146,12 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	if (dev_id != dev) return IRQ_NONE;
 #endif
 
+	// Verify handshake bit
+	if ( !(dsp_read_hstr(dsp) & HSTR_HF3) ) {
+//		PRINT_ERR(SUBNAME "irq entry without HF3 bit!\n");
+		return IRQ_NONE;
+	}
+
 	// Immediately clear interrupt bit
 	dsp_write_hcvr(dsp, HCVR_INT_RST);
 
@@ -171,6 +177,19 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 /* 	dsp_clear_interrupt(dsp); */
 
 	return IRQ_HANDLED;
+}
+
+#undef SUBNAME
+
+
+#define SUBNAME "dsp_timer_function: "
+
+void dsp_timer_function(unsigned long data)
+{
+	struct dsp_dev_t *dev = (struct dsp_dev_t*)data;
+//	PRINT_ERR(SUBNAME "entry!\n");
+	pci_int_handler(0, dev, NULL);
+	mod_timer(&dev->tim, jiffies + DSP_POLL_JIFFIES);
 }
 
 #undef SUBNAME
@@ -474,8 +493,16 @@ int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 				  "mce_dsp");
 	if (err) goto fail;
 
+	// Create timer for soft poll interrupt generation
+	init_timer(&dev->tim);
+	dev->tim.function = dsp_timer_function;
+	dev->tim.data = (unsigned long)dev;
+
 	// Mark dev->pci as non-null to show successful config.
 	dev->pci = pci;
+
+/* 	// Start the interrupt timer, soon */
+/* 	mod_timer(&dev->tim, jiffies + DSP_POLL_JIFFIES); */
 
 	// Call init function for higher levels.
 	dsp_driver_probe();
@@ -503,6 +530,8 @@ void dsp_pci_remove(struct pci_dev *pci)
 	// Disable higher-level features first
 	dsp_driver_remove();
 		
+	del_timer_sync(&dev->tim);
+
 	// Remove int handler, clear remaining ints, unmap i/o memory
 	dsp_pci_remove_handler(dev->pci);
 
