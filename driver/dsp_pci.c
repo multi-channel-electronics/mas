@@ -421,10 +421,6 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 		return -ERESTARTSYS;
 	}
 	
-	pci_read_config_byte(pci, PCI_INTERRUPT_LINE, (char*)&cfg_irq);
-	PRINT_INFO(SUBNAME "pci has irq %i and config space has irq %i\n",
-		   pci->irq, cfg_irq);
-
 	// Free existing handler
 	if (dev->int_handler!=NULL)
 		dsp_pci_remove_handler(pci);
