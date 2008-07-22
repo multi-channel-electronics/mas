@@ -79,7 +79,7 @@ struct dsp_vector {
 	enum dsp_vector_type type;
 };
 
-#define NUM_DSP_CMD 15
+#define NUM_DSP_CMD 17
 
 static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_WRM, 0x8079, VECTOR_STANDARD},
@@ -97,6 +97,8 @@ static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_INT_RPC, HCVR_INT_RPC, VECTOR_QUICK},
 	{DSP_SYS_ERR, HCVR_SYS_ERR, VECTOR_QUICK},
 	{DSP_SYS_RST, HCVR_SYS_RST, VECTOR_QUICK},
+	{DSP_SYS_IRQ0, HCVR_SYS_IRQ0, VECTOR_QUICK},
+	{DSP_SYS_IRQ1, HCVR_SYS_IRQ1, VECTOR_QUICK},
 };
 
 /* DSP register wrappers */
@@ -364,8 +366,18 @@ int dsp_pci_flush()
 int dsp_pci_configure(dsp_reg_t *dsp)
 {
 	dsp_clear_interrupt(dsp);
-
 	dsp_write_hctr(dsp, DSP_PCI_MODE);
+	
+	// Enable / disable PCI interrupts.
+	// These two vector addresses are NOP in PCI firmware before U0105.
+	switch (dev->int_mode) {
+	case DSP_POLL:
+		dsp_write_hcvr(dsp, HCVR_SYS_IRQ0);
+		break;
+	case DSP_PCI:
+		dsp_write_hcvr(dsp, HCVR_SYS_IRQ1);
+		break;
+	}		
 
 	return 0;
 }
@@ -488,21 +500,26 @@ int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	// Configure the card for our purposes
 	dsp_pci_configure(dev->dsp);
 
-	// Install the interrupt handler (cast necessary for backward compat.)
-	err = dsp_pci_set_handler(pci, (irq_handler_t)pci_int_handler,
-				  "mce_dsp");
-	if (err) goto fail;
-
-	// Create timer for soft poll interrupt generation
-	init_timer(&dev->tim);
-	dev->tim.function = dsp_timer_function;
-	dev->tim.data = (unsigned long)dev;
-
 	// Mark dev->pci as non-null to show successful config.
 	dev->pci = pci;
 
-/* 	// Start the interrupt timer, soon */
-/* 	mod_timer(&dev->tim, jiffies + DSP_POLL_JIFFIES); */
+
+	switch (dev->int_mode) {
+	case DSP_PCI:
+		// Install the interrupt handler (cast necessary for backward compat.)
+		err = dsp_pci_set_handler(pci, (irq_handler_t)pci_int_handler,
+					  "mce_dsp");
+		if (err) goto fail;
+		break;
+
+	case DSP_POLL:
+		// Create timer for soft poll interrupt generation
+		init_timer(&dev->tim);
+		dev->tim.function = dsp_timer_function;
+		dev->tim.data = (unsigned long)dev;
+		mod_timer(&dev->tim, jiffies + DSP_POLL_JIFFIES);
+		break;
+	}
 
 	// Call init function for higher levels.
 	dsp_driver_probe();
@@ -530,11 +547,17 @@ void dsp_pci_remove(struct pci_dev *pci)
 	// Disable higher-level features first
 	dsp_driver_remove();
 		
-	del_timer_sync(&dev->tim);
+	switch (dev->int_mode) {
+	case DSP_POLL:
+		del_timer_sync(&dev->tim);
+		break;
 
-	// Remove int handler, clear remaining ints, unmap i/o memory
-	dsp_pci_remove_handler(dev->pci);
+	case DSP_PCI:
+		dsp_pci_remove_handler(dev->pci);
+		break;
+	}
 
+	// Clear remaining ints, unmap i/o memory
 	if (dev->dsp!=NULL) {
 		dsp_clear_interrupt(dev->dsp);
 		iounmap(dev->dsp);
@@ -553,6 +576,11 @@ int dsp_pci_init(char *dev_name)
 	int err = 0;
 	PRINT_INFO(SUBNAME "entry\n");
 
+#ifdef NO_INTERRUPTS
+	dev->int_mode = DSP_POLL;
+#else
+	dev->int_mode = DSP_PCI;
+#endif
 	dev->int_handler = NULL;
 
 	err = pci_register_driver(&pci_driver);

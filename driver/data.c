@@ -553,6 +553,7 @@ int data_init(int dsp_version, int mem_size, int data_size)
 		break;
 		
 	case DSP_U0104:
+	case DSP_U0105:
 		if (data_qt_configure(1)) 
 			return -EIO;
 		break;

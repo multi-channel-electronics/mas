@@ -28,8 +28,10 @@ typedef enum
 	DSP_INT_RST = 0x49525354, // "IRST" Clear interrupt
 	DSP_INT_DON = 0x49444f4e, // "IDON" Indicate interrupt done (?)
 	DSP_INT_RPC = 0x49525043, // "IRPC" Clear RP buffer
-	DSP_SYS_ERR = 0x53455252, // "IERR" Signal fatal error to DSP
-	DSP_SYS_RST = 0x53525354, // "IRST" System reset
+	DSP_SYS_ERR = 0x53455252, // "SERR" Signal fatal error to DSP
+	DSP_SYS_RST = 0x53525354, // "SRST" System reset
+	DSP_SYS_IRQ0= 0x53495230, // "SIR0" Disable int
+	DSP_SYS_IRQ1= 0x53495231, // "SIR1" Enable int
 
 } dsp_command_code;
 

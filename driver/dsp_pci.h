@@ -27,9 +27,11 @@
 
 #define HCVR_INT_RST     0x8073 /* Clear DSP interrupt */
 #define HCVR_INT_DON     0x8075 /* Clear interrupt flag */
-#define HCVR_INT_RPC     0x808D /* Clear RP buffer flag */
 #define HCVR_SYS_ERR     0x8077 /* Set fatal error flag */
-#define HCVR_SYS_RST     0x808B /* Set fatal error flag */
+#define HCVR_SYS_RST     0x808B /* Immediate system reset */
+#define HCVR_INT_RPC     0x808D /* Clear RP buffer flag */
+#define HCVR_SYS_IRQ0    0x808F /* Disable PCI interrupts */
+#define HCVR_SYS_IRQ1    0x8091 /* Enable PCI interrupts */
 
 #define PCI_MAX_FLUSH       256
 
@@ -57,6 +59,7 @@ typedef struct {
 
 #pragma pack()
 
+typedef enum { DSP_PCI, DSP_POLL } dsp_int_mode;
 
 struct dsp_dev_t {
 
@@ -64,8 +67,8 @@ struct dsp_dev_t {
 
 	dsp_reg_t *dsp;
 
+	dsp_int_mode int_mode;
 	irq_handler_t int_handler;
-
 	struct timer_list tim;
 };
 
