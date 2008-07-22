@@ -923,7 +923,9 @@ int mce_cleanup()
 {
 	if (!mdat.initialized) return 0;
 
-	mce_quiet_RP_config(0);
+	if (mdat.quiet_rp) {
+		mce_quiet_RP_config(0);
+	}
 
 	del_timer_sync(&mdat.timer);
 	tasklet_kill(&mdat.hst_tasklet);

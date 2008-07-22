@@ -317,8 +317,6 @@ struct {
 
 int dsp_send_command_wait_callback(int error, dsp_message *msg)
 {
-	wake_up_interruptible(&dsp_local.queue);
-
 	if (dsp_local.flags != LOCAL_CMD) {
 		PRINT_ERR(SUBNAME "unexpected flags, cmd=%x rep=%x err=%x\n",
 			  dsp_local.flags & LOCAL_CMD,
@@ -328,6 +326,7 @@ int dsp_send_command_wait_callback(int error, dsp_message *msg)
 	}
 	memcpy(dsp_local.msg, msg, sizeof(*dsp_local.msg));
 	dsp_local.flags |= LOCAL_REP;
+	wake_up_interruptible(&dsp_local.queue);
 
 	return 0;
 }
