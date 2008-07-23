@@ -17,6 +17,7 @@
 
 #define DSP_U0103          0x550103
 #define DSP_U0104          0x550104
+#define DSP_U0105          0x550105
 
 typedef int (*dsp_callback)(int, dsp_message*, int);
 
@@ -29,6 +30,8 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback,
 
 int dsp_send_command_wait(dsp_command *cmd, dsp_message *msg,
 			  int card);
+
+void dsp_clear_RP(void);
 
 int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
 

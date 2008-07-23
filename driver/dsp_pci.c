@@ -78,7 +78,7 @@ struct dsp_vector {
 	enum dsp_vector_type type;
 };
 
-#define NUM_DSP_CMD 14
+#define NUM_DSP_CMD 17
 
 static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_WRM, 0x8079, VECTOR_STANDARD},
@@ -93,8 +93,11 @@ static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_QTS, 0x8089, VECTOR_STANDARD},
 	{DSP_INT_RST, HCVR_INT_RST, VECTOR_QUICK},
 	{DSP_INT_DON, HCVR_INT_DON, VECTOR_QUICK},
+	{DSP_INT_RPC, HCVR_INT_RPC, VECTOR_QUICK},
 	{DSP_SYS_ERR, HCVR_SYS_ERR, VECTOR_QUICK},
 	{DSP_SYS_RST, HCVR_SYS_RST, VECTOR_QUICK},
+	{DSP_SYS_IRQ0, HCVR_SYS_IRQ0, VECTOR_QUICK},
+	{DSP_SYS_IRQ1, HCVR_SYS_IRQ1, VECTOR_QUICK},
 };
 
 /* DSP register wrappers */
@@ -125,7 +128,6 @@ static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
 
 
 #define SUBNAME "pci_int_handler: "
-
 irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 {
 	/* Note that the regs argument is deprecated in newer kernels,
@@ -139,9 +141,6 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	int k = 0; 
 	int n = sizeof(msg) / sizeof(u32);
 
-	//ISSUE: Continuous stream of general interrupts
-	//PRINT_INFO(SUBNAME "interrupt entry irq=%#x\n", irq);
-
 	for(k=0; k<MAX_CARDS; k++) {
 		dev = dsp_dev + k;
 		if (dev_id == dev) {
@@ -152,8 +151,12 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 
 	if (dev_id != dev) return IRQ_NONE;
 
-	if ( !(dsp_read_hstr(dsp) & HSTR_HC3) )
+	//Verify handshake bit
+	if ( !(dsp_read_hstr(dsp) & HSTR_HC3) ) {
+		//FIX ME:: Continuous stream of general interrupts
+		PRINT_ERR(SUBNAME "irq entry without HF3 bit!\n");
 		return IRQ_NONE;
+	}
 
 	// Immediately clear interrupt bit
 	dsp_write_hcvr(dsp, HCVR_INT_RST);
@@ -182,9 +185,17 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	PRINT_INFO(SUBNAME "ok\n");
 	return IRQ_HANDLED;
 }
-
 #undef SUBNAME
 
+#define SUBNAME "dsp_timer_function: "
+void dsp_timer_function(unsigned long data)
+{
+	struct dsp_dev_t *dev = (struct dsp_dev_t *)data;
+	PRINT_INFO(SUBNAME "entry\n");
+	pci_int_handler(0, dev, NULL);
+	mod_timer(&dev->tim, jiffies + DSP_POLL_JIFFIES);
+}
+#undef SUBNAME
 
 void dsp_clear_interrupt(dsp_reg_t *dsp)
 {
@@ -210,7 +221,6 @@ void dsp_clear_interrupt(dsp_reg_t *dsp)
 
 
 #define SUBNAME "dsp_send_command_now_vector: "
-
 int dsp_send_command_now_vector(dsp_command *cmd, u32 vector, int card) 
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
@@ -237,12 +247,10 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector, int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_quick_command: "
-
 int dsp_quick_command(u32 vector, int card) 
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
@@ -250,12 +258,10 @@ int dsp_quick_command(u32 vector, int card)
 	dsp_write_hcvr(dev->dsp, vector);
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_lookup_vector: "
-
 struct dsp_vector *dsp_lookup_vector(dsp_command *cmd)
 {
 	int i;
@@ -267,12 +273,10 @@ struct dsp_vector *dsp_lookup_vector(dsp_command *cmd)
 		  cmd->command);
 	return NULL;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_send_command_now: "
-
 int dsp_send_command_now(dsp_command *cmd, int card) 
 {
 	struct dsp_vector *vect = dsp_lookup_vector(cmd);
@@ -297,7 +301,6 @@ int dsp_send_command_now(dsp_command *cmd, int card)
 		  vect->type, cmd->command);
 	return -ERESTARTSYS;
 }
-
 #undef SUBNAME
 
 
@@ -312,8 +315,8 @@ int dsp_send_command_now(dsp_command *cmd, int card)
 
 void* dsp_allocate_dma(ssize_t size, unsigned int* bus_addr_p)
 {
-//ISSUE: mce will call these with out card info currently
 #ifdef OLD_KERNEL
+//FIX_ME: mce will call this with out card info currently
 	return pci_alloc_consistent(dev->pci, size, bus_addr_p);
 #else
 	return dma_alloc_coherent(NULL, size, (dma_addr_t*)bus_addr_p,
@@ -323,18 +326,18 @@ void* dsp_allocate_dma(ssize_t size, unsigned int* bus_addr_p)
 
 void  dsp_free_dma(void* buffer, int size, unsigned int bus_addr)
 {
-//ISSUE: mce will call these with out card info currently
 #ifdef OLD_KERNEL
+//FIX_ME: mce will call this with out card info currently
  	  pci_free_consistent (dev->pci, size, buffer, bus_addr);
 #else
 	  dma_free_coherent(NULL, size, buffer, bus_addr);
 #endif
 }
 
-
+#define SUBNAME "dsp_pci_flush: "
 int dsp_pci_flush()
 {
-	//ISSUE: unknown caller & needs card info
+	//FIX ME: no current called, needs card info
 	struct dsp_dev_t *dev = dsp_dev;
 	dsp_reg_t *dsp = dev->dsp;
 
@@ -357,19 +360,31 @@ int dsp_pci_flush()
 
 	return 0;
 }
+#undef SUBNAME
 
-int dsp_pci_configure(dsp_reg_t *dsp)
+int dsp_pci_configure(struct dsp_dev_t *dev)
 {
-	dsp_clear_interrupt(dsp);
+	dsp_reg_t *dsp = dev->dsp;
 
+	dsp_clear_interrupt(dsp);
 	dsp_write_hctr(dsp, DSP_PCI_MODE);
+	
+	// Enable / disable PCI interrupts.
+	// These two vector addresses are NOP in PCI firmware before U0105.
+	switch (dev->int_mode) {
+	case DSP_POLL:
+		dsp_write_hcvr(dsp, HCVR_SYS_IRQ0);
+		break;
+	case DSP_PCI:
+		dsp_write_hcvr(dsp, HCVR_SYS_IRQ1);
+		break;
+	}
 
 	return 0;
 }
 
 
 #define SUBNAME "dsp_pci_remove_handler: "
-
 int dsp_pci_remove_handler(struct dsp_dev_t *dev)
 {
 	struct pci_dev *pci = dev->pci;
@@ -389,12 +404,10 @@ int dsp_pci_remove_handler(struct dsp_dev_t *dev)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_pci_set_handler: "
-
 int dsp_pci_set_handler(struct dsp_dev_t *dev,
 			irq_handler_t handler,
 			char *dev_name)
@@ -440,12 +453,10 @@ int dsp_pci_set_handler(struct dsp_dev_t *dev,
 	dev->int_handler = handler;
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_probe: "
-
 int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	struct dsp_dev_t *dev = dsp_dev;
@@ -474,8 +485,14 @@ int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	err = pci_enable_device(pci);
 	if (err) goto fail;
 
+        // Request regions!!!!
+	if (pci_request_regions(pci, DEVICE_NAME)!=0) {
+		PRINT_ERR(SUBNAME "pci_request_regions failed.\n");
+		goto fail;
+	}
+
 	// Map i/o registers into a dsp_reg_t structure
-	dev->dsp = (dsp_reg_t *)ioremap(pci_resource_start(pci, 0) & 
+	dev->dsp = (dsp_reg_t *)ioremap_nocache(pci_resource_start(pci, 0) & 
 					PCI_BASE_ADDRESS_MEM_MASK,
 					sizeof(*dev->dsp));
 	if (dev->dsp==NULL) {
@@ -488,16 +505,27 @@ int dsp_pci_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	pci_set_master(pci);
 	
 	// Configure the card for our purposes
-	dsp_pci_configure(dev->dsp);
+	dsp_pci_configure(dev);
 
 	// Mark dev->pci as non-null to show successful config.
 	dev->pci = pci;
-
-	// Install the interrupt handler (cast necessary for backward compat.)
 	dev->int_handler = NULL;
-	err = dsp_pci_set_handler(dev, (irq_handler_t)pci_int_handler,
-				  "mce_dsp");
-	if (err) goto fail;
+
+	switch (dev->int_mode) {
+	case DSP_PCI:
+		// Install the interrupt handler (cast necessary for backward compat.)
+		err = dsp_pci_set_handler(dev, (irq_handler_t)pci_int_handler,
+					  "mce_dsp");		
+		if (err) goto fail;
+		break;
+	case DSP_POLL:
+		// Create timer for soft poll interrupt generation
+		init_timer(&dev->tim);
+		dev->tim.function = dsp_timer_function;
+		dev->tim.data = (unsigned long)dev;
+		mod_timer(&dev->tim, jiffies + DSP_POLL_JIFFIES);
+		break;
+	}
 
 	// Call init function for higher levels.
 	dsp_driver_probe(i);
@@ -509,11 +537,9 @@ fail:
 	PRINT_ERR(SUBNAME "failed with code %i\n", err);
 	return -1;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "dsp_pci_remove: "
-
 void dsp_pci_remove(struct pci_dev *pci)
 {
 	int i = 0;
@@ -533,12 +559,20 @@ void dsp_pci_remove(struct pci_dev *pci)
 			// Disable higher-level features first
 			dsp_driver_remove(i);
 			
-			// Remove int handler, clear remaining ints, unmap i/o memory
-			dsp_pci_remove_handler(dev);
-			
+			// Remove int handler or poll timer
+			switch (dev->int_mode) {
+			case DSP_PCI:
+				dsp_pci_remove_handler(dev);
+				break;
+			case DSP_POLL:
+				del_timer_sync(&dev->tim);
+				break;
+			}
+
 			if (dev->dsp!=NULL) {
 				dsp_clear_interrupt(dev->dsp);
 				iounmap(dev->dsp);
+				pci_release_regions(pci);
 				dev->dsp = NULL;
 			}
 			
@@ -551,11 +585,9 @@ void dsp_pci_remove(struct pci_dev *pci)
 	PRINT_ERR(SUBNAME "called with unknown device!\n");
 	return;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "dsp_pci_init: "
-
 int dsp_pci_init(char *dev_name)
 {
 	struct dsp_dev_t *dev = dsp_dev;
@@ -569,22 +601,24 @@ int dsp_pci_init(char *dev_name)
 		memset(dev, 0, sizeof(dev));
 	}
 
+#ifdef NO_INTERRUPTS
+	dev->int_mode = DSP_POLL;
+#else
+	dev->int_mode = DSP_PCI;
+#endif
 	err = pci_register_driver(&pci_driver);
 
 	if (err) {
-		PRINT_ERR(SUBNAME
-			  "pci_register_driver failed with code %i.\n", err);
+		PRINT_ERR(SUBNAME "pci_register_driver failed with code %i.\n", err);
 		return -1;
 	}			  
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "dsp_pci_cleanup: "
-
 int dsp_pci_cleanup()
 {
 	int i = 0;
@@ -605,12 +639,10 @@ int dsp_pci_cleanup()
 	return 0;
 		
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_driver_ioctl: "
-
 int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg, int card)
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
@@ -654,7 +686,6 @@ int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg, int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
@@ -663,7 +694,7 @@ int dsp_pci_proc(char *buf, int count, int card)
 	struct dsp_dev_t *dev = dsp_dev + card;
 	int len = 0;
 
-	PRINT_ERR("dsp_pci_proc: card = %d\n", card);
+	PRINT_INFO("dsp_pci_proc: card = %d\n", card);
 	if (len < count && dev->dsp != NULL) {
 		len += sprintf(buf+len, "    hstr:     %#06x\n"
 			                "    hctr:     %#06x\n",

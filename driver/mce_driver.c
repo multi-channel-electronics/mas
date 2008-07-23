@@ -690,6 +690,7 @@ int mce_remove(int card)
 	if (!mdat->initialized) return 0;
 
 	del_timer_sync(&mdat->timer);
+
 	tasklet_kill(&mdat->hst_tasklet);
 
   	mce_buffer_free(&mdat->buff);

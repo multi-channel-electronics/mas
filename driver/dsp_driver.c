@@ -85,8 +85,6 @@ struct dsp_control {
 
 
 #define SUBNAME "dsp_set_handler: "
-
-//ISSUE: called from mce_driver.c in 2 places
 int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data, int card)
 {
 	struct dsp_control *ddat = dsp_dat + card;
@@ -116,16 +114,13 @@ int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data, int card)
 	PRINT_ERR(SUBNAME "no available handler slots\n");
 	return -1;
 }
-
 #undef SUBNAME
 
-
-#define SUBNAME "dsp_clear_handler: "
-
 //Can be called in the future to clear a handler, not in use atm
+#define SUBNAME "dsp_clear_handler: "
 int dsp_clear_handler(u32 code, int card)
 {
-  	struct dsp_control *ddat = dsp_dat;
+  	struct dsp_control *ddat = dsp_dat + card;
 	int i = 0;
 
 	PRINT_INFO(SUBNAME "entry\n");
@@ -150,7 +145,6 @@ int dsp_clear_handler(u32 code, int card)
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
 #undef SUBNAME
 
 
@@ -168,7 +162,6 @@ int dsp_clear_handler(u32 code, int card)
 
 
 #define SUBNAME "dsp_int_handler: "
-
 int dsp_int_handler(dsp_message *msg, int card)
 {
   	struct dsp_control *ddat = dsp_dat + card;
@@ -195,16 +188,13 @@ int dsp_int_handler(dsp_message *msg, int card)
 	PRINT_ERR(SUBNAME "unknown message type: %#06x\n", msg->type);
 	return -1;
 }
-
 #undef SUBNAME
 
-
-#define SUBNAME "dsp_reply_handler: "
-
-/* This will handle REP interrupts from the DSP, which correspond to
+/* 
+ * This will handle REP interrupts from the DSP, which correspond to
  * replies to DSP commands.
  */
-
+#define SUBNAME "dsp_reply_handler: "
 int dsp_reply_handler(dsp_message *msg, unsigned long data)
 {
   	struct dsp_control *ddat = (struct dsp_control *)data;
@@ -228,28 +218,22 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 	}
 	return 0;
 }
-
 #undef SUBNAME
-
-
-#define SUBNAME "dsp_hey_handler: "
 
 /* This will handle HEY interrupts from the DSP, which are generic
  * communications from the DSP typically used for debugging.
  */
-
+#define SUBNAME "dsp_hey_handler: "
 int dsp_hey_handler(dsp_message *msg, unsigned long data)
 {
 	PRINT_ERR(SUBNAME "dsp HEY received: %06x %06x %06x\n",
 		  msg->command, msg->reply, msg->data);
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_timeout: "
-
 void dsp_timeout(unsigned long data)
 {
 	struct dsp_control *ddat = (struct dsp_control*)data;
@@ -266,7 +250,6 @@ void dsp_timeout(unsigned long data)
 	}
 	ddat->state = DDAT_IDLE;
 }
-
 #undef SUBNAME
 
 
@@ -291,13 +274,13 @@ void dsp_timeout(unsigned long data)
 */
 
 
-#define SUBNAME "dsp_send_command: "
+
 
 /* For better or worse, this routine returns linux error codes.
    
    The callback error codes are 0 (success, msg will be non-null) or
    DSP_ERR_TIMEOUT (failure, msg will be null).                    */
-
+#define SUBNAME "dsp_send_command: "
 int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 {
   	struct dsp_control *ddat = dsp_dat + card;
@@ -325,18 +308,9 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 	up(&ddat->sem);
 	return err;
 }
-	
 #undef SUBNAME
 
-
-/*
- * Completely blocking commander - why do we have this?
- *
- * If this isn't in use by 2008, delete it.
- */
-
 #define SUBNAME "dsp_send_command_wait_callback"
-
 int dsp_send_command_wait_callback(int error, dsp_message *msg, int card)
 {
 	struct dsp_control *ddat = dsp_dat + card;
@@ -355,12 +329,10 @@ int dsp_send_command_wait_callback(int error, dsp_message *msg, int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_send_command_wait: "
-
 int dsp_send_command_wait(dsp_command *cmd,
 			  dsp_message *msg, int card)
 {
@@ -397,7 +369,6 @@ int dsp_send_command_wait(dsp_command *cmd,
 	up(&ddat->local.sem);
 	return err;
 }
-
 #undef SUBNAME
 
 
@@ -406,7 +377,6 @@ int dsp_send_command_wait(dsp_command *cmd,
  */
 
 #define SUBNAME "dsp_driver_ioctl: "
-
 int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card)
 {
   	struct dsp_control *ddat = dsp_dat + card;
@@ -428,7 +398,6 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
@@ -437,7 +406,7 @@ int dsp_proc(char *buf, int count, int card)
   	struct dsp_control *ddat = dsp_dat + card;
 	int len = 0;
 
-	PRINT_ERR("dsp_proc: card = %d\n", card);
+	PRINT_INFO("dsp_proc: card = %d\n", card);
 
 	if (len < count) {
 		len += sprintf(buf+len, "    state:    ");
@@ -466,7 +435,6 @@ int dsp_proc(char *buf, int count, int card)
 
 
 #define SUBNAME "dsp_query_version: "
-
 int dsp_query_version(int card)
 {
   	struct dsp_control *ddat = dsp_dat + card;
@@ -493,14 +461,19 @@ int dsp_query_version(int card)
 	PRINT_ERR(SUBNAME " discovered PCI card DSP code version %s\n", version);
 	return 0;
 }
-
 #undef SUBNAME
 
+void dsp_clear_RP(void)
+{
+	int card = DEFAULT_CARD;
 
-
+	dsp_command cmd = { DSP_INT_RPC, {0, 0, 0} };
+	
+	// This is interrupt safe because it is a vector command
+	dsp_send_command_now(&cmd, card);
+}
 
 #define SUBNAME "dsp_driver_probe: "
-
 int dsp_driver_probe(int card)
 {	
   	struct dsp_control *ddat = dsp_dat + card;
@@ -532,7 +505,6 @@ int dsp_driver_probe(int card)
 		err = -1;
 		goto out;
 	}
-
 	
 	if (mce_probe(ddat->version, card)) {
 		err = -1;
@@ -548,30 +520,26 @@ int dsp_driver_probe(int card)
 	PRINT_ERR(SUBNAME "exiting with errors!\n");
 	return err;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "dsp_driver_remove: "
-
 void dsp_driver_remove(int card)
 {
   	struct dsp_control *ddat = dsp_dat + card;
 	
-	PRINT_INFO(SUBNAME "entry\n");
-		
-	del_timer_sync(&ddat->tim);
+	PRINT_INFO(SUBNAME "entry\n");	       
 
 	mce_remove(card);
 	
+	del_timer_sync(&ddat->tim);
+
 	PRINT_INFO(SUBNAME "ok\n");
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "cleanup_module: "
-
 void dsp_driver_cleanup(void)
 {
 	PRINT_INFO(SUBNAME "entry\n");

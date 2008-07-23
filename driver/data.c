@@ -2,6 +2,7 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
+#include <linux/mm.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
@@ -57,7 +58,7 @@ int data_frame_address(u32 *dest, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
 
-        *dest = (u32)(dframes->base_busaddr)
+        *dest = (u32)(unsigned long)(dframes->base_busaddr)
                 + dframes->frame_size*(dframes->head_index);
 	
         return 0;
@@ -183,7 +184,8 @@ int data_frame_poll(int card)
 int data_frame_resize(int size, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
-	PRINT_ERR(SUBNAME "============>size: %d card: %d \n", size, card);
+	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO(SUBNAME "size: %d card: %d \n", size, card);
 
 	if (size == dframes->data_size)
 		return 0;
@@ -258,11 +260,12 @@ int data_frame_empty_buffers(int card)
 }
 #undef SUBNAME
 
-
+#define SUBNAME "data_frame_divide: "
 int data_frame_divide( int new_data_size, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
-	PRINT_ERR("data_frame_divide:=============> new_data_size: %d\n", new_data_size);
+	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO(SUBNAME "new_data_size: %d\n", new_data_size);
 
 	// Recompute the division of the buffer into frames
 	if (new_data_size >= 0) dframes->data_size = new_data_size;
@@ -270,7 +273,7 @@ int data_frame_divide( int new_data_size, int card)
 	// Round the frame size to a size convenient for DMA
 	dframes->frame_size =
 		(dframes->data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
-	PRINT_ERR("data_frame_divide:=============> size: %d frame_size: %d\n", dframes->size, dframes->frame_size);
+	PRINT_ERR(SUBNAME "size: %d frame_size: %d\n", dframes->size, dframes->frame_size);
 	dframes->max_index = dframes->size / dframes->frame_size;
 
 	if (dframes->max_index <= 1) {
@@ -279,9 +282,10 @@ int data_frame_divide( int new_data_size, int card)
 		return -1;
 	}
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
+#undef SUBNAME
 
 /****************************************************************************/
 
@@ -306,8 +310,8 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 	// Are buffers well defined?  Warn...
 	if (  !( (user_buf!=NULL) ^ (kern_buf!=NULL) ) ) {
-		PRINT_ERR(SUBNAME "number of dest'n buffers != 1 (%x | %x)\n",
-			  (int)user_buf, (int)kern_buf);
+		PRINT_ERR(SUBNAME "number of dest'n buffers != 1 (%lx | %lx)\n",
+			  (unsigned long)user_buf, (unsigned long)kern_buf);
 		return -1;
 	}
 
@@ -321,13 +325,13 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 			dframes->data_size - dframes->partial : count;
 		
 		if (user_buf!=NULL) {
-			PRINT_INFO(SUBNAME "copy_to_user %x->[%x] now\n",
-				   count, (int)user_buf);
+			PRINT_INFO(SUBNAME "copy_to_user %x->[%lx] now\n",
+				   count, (unsigned long)user_buf);
 			this_read -= copy_to_user(user_buf, source, this_read);
 		}
 		if (kern_buf!=NULL) {
-			PRINT_INFO(SUBNAME "memcpy to kernel %x now\n",
-				   (int)kern_buf);
+			PRINT_INFO(SUBNAME "memcpy to kernel %lx now\n",
+				   (unsigned long)kern_buf);
 			memcpy(kern_buf, source, this_read);
 		}
 
@@ -378,60 +382,106 @@ int data_alloc(int mem_size, int data_size, int card)
 	mem_size = npg * PAGE_SIZE;
 
 #ifdef BIGPHYS	
-	// Virtual address?
+	
+        // Virtual address?
 	virt = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
+	PRINT_ERR(SUBNAME "BIGPHYS selected\n");
 
 	if (virt==NULL) {
 		PRINT_ERR(SUBNAME "bigphysarea_alloc_pages failed!\n");
 		return -ENOMEM;
 	}
 
-#else
-	virt = kmalloc(mem_size, GFP_KERNEL);
-
-	if (virt==NULL) {
-		PRINT_ERR(SUBNAME "kmalloc failed to allocate %i bytes\n",
-			  mem_size);
-		return -ENOMEM;
-	}
-#endif
-
-	// Save the buffer address and maximum size
+	// Save the buffer address
 	dframes->base = virt;
-	dframes->size = mem_size;
-
-	// Partition buffer into blocks of some default size
-	data_frame_divide(data_size, card);
-
+	
 	// Save physical address for hardware
 	dframes->base_busaddr = (caddr_t)virt_to_bus(virt);
 
+#else
+	// phys is not used in bigphys
+	caddr_t phys;
+
+#ifdef MEMMAP 
+
+#ifdef CONFIG_HIGHMEM
+
+	phys = (caddr_t) (num_physpages * PAGE_SIZE);
+	PRINT_ERR(SUBNAME "highmem; phys=%lx\n", (unsigned long)phys);
+#else
+	phys = (caddr_t)__pa( high_memory );
+	PRINT_ERR(SUBNAME "!highmem; phys=%lx\n", (unsigned long)phys);
+#endif
+	// Save the buffer address
+	dframes->base = NULL;
+
+	// Save physical address for hardware
+	dframes->base_busaddr = phys;
+
+#else /*!MEMMAP*/
+
+	PRINT_ERR(SUBNAME "kernel DMA selected\n");
+
+	virt  = dsp_allocate_dma(mem_size, &phys);
+
+	if (virt==NULL) {
+		PRINT_ERR(SUBNAME "dsp_allocate_dma failed to allocate %i bytes\n",
+			  mem_size);
+		return -ENOMEM;
+	}
+
+	// Save physical address for hardware
+	dframes->base_busaddr = phys;
+	dframes->base = &virt;
+
+#endif /* MEMMAP */
+
+#endif /* BIG PHYS */
+
+	// Save the maximum size
+	dframes->size = mem_size;
+ 
+	// Partition buffer into blocks of some default size
+	data_frame_divide(data_size, card);
+
 	//Debug
-	PRINT_INFO(SUBNAME "buffer: base=%x + %x of size %x\n",
-		   (int)dframes->base, 
+	PRINT_INFO(SUBNAME "buffer: base=%lx + %x of size %x\n",
+		   (unsigned long)dframes->base, 
 		   dframes->max_index,
-		   (int)dframes->frame_size);
+		   dframes->frame_size);
 	
 	return 0;
 }
 #undef SUBNAME
 
+#define SUBNAME "dma_free: "
 int data_free(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
 
 	if (dframes->base != NULL) {
 #ifdef BIGPHYS
+		PRINT_ERR(SUBNAME "freeing BIGPHYS\n");
 		bigphysarea_free_pages(dframes->base);
+		return 0;
 #else
-		kfree(dframes->base);
-#endif
+#ifndef MEMMAP
+		PRINT_ERR(SUBNAME "freeing kernel DMA\n");
+		dsp_free_dma(dframes->base, dframes->size, 
+			     dframes->base_busaddr);
+		dframes->size = 0;
+		return 0;
+#endif /* CONFIG_HIGH MEM */
+
+#endif /* BIGPHYS */
 	}
+	
+	PRINT_ERR(SUBNAME "freeing MEMMAP\n");
 	return 0;
 }
+#undef SUBNAME
 
 #define SUBNAME "data_alloc: "
-
 int data_reset(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -453,7 +503,6 @@ int data_reset(int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 
@@ -463,11 +512,11 @@ int data_proc(char *buf, int count, int card)
 
 	int len = 0;
 	if (len < count)
-		len += sprintf(buf+len, "    virtual:  %#010x\n",
-			       (unsigned)dframes->base);
+		len += sprintf(buf+len, "    virtual:  %#010lx\n",
+			       (unsigned long)dframes->base);
 	if (len < count)
-		len += sprintf(buf+len, "    bus:      %#010x\n",
-			       (unsigned)dframes->base_busaddr);
+		len += sprintf(buf+len, "    bus:      %#010lx\n",
+			       (unsigned long)dframes->base_busaddr);
 	if (len < count)
 		len += sprintf(buf+len, "    count:    %10i\n", dframes->max_index);
 	if (len < count)
@@ -522,7 +571,6 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 
 	data_reset(card);
 
-
 	switch (dsp_version) {
 	case 0:
 		PRINT_ERR(SUBNAME
@@ -534,6 +582,7 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 		break;
 		
 	case DSP_U0104:
+	case DSP_U0105:
 		if (data_qt_configure(1, card))
 			return -EIO;
 		break;
@@ -571,6 +620,9 @@ int data_init(int mem_size, int data_size)
 int data_remove(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
+
+	if(dframes->data_mode != DATAMODE_CLASSIC)
+		data_qt_enable(0, card);
 
 	tasklet_kill(&dframes->grant_tasklet);
 	return data_free(card);
