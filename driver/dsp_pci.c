@@ -372,6 +372,7 @@ int dsp_pci_configure(dsp_reg_t *dsp)
 	// These two vector addresses are NOP in PCI firmware before U0105.
 	switch (dev->int_mode) {
 	case DSP_POLL:
+		PRINT_ERR("Disabling PCI interrupts\n");
 		dsp_write_hcvr(dsp, HCVR_SYS_IRQ0);
 		break;
 	case DSP_PCI:
@@ -413,7 +414,6 @@ int dsp_pci_set_handler(struct pci_dev *pci,
 			char *dev_name)
 {
 	int err = 0;
-	int cfg_irq = 0;
 
 	if (pci==NULL || dev==NULL) {
 		PRINT_ERR(SUBNAME "Null pointers! pci=%lx dev=%lx\n",

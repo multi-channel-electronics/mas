@@ -735,23 +735,19 @@ int mce_send_command_wait_callback(int error, mce_reply *rep)
 		return -1;
 	}
 
-        // Packet expected, so sleepers must awaken
-
-	wake_up_interruptible(&local_rep.queue);
-
-	// On error, ignore reply and set flags
-
+        // On error, ignore reply and set flags
 	if (error) {
 		PRINT_ERR(SUBNAME "called with error %i\n", error);
 		memset(local_rep.rep, 0, sizeof(*local_rep.rep));
 		local_rep.flags |= LOCAL_ERR;
+		wake_up_interruptible(&local_rep.queue);
 		return -1;
 	}
 
 	// Copy, flag, and exit.
-
 	memcpy(local_rep.rep, rep, sizeof(*local_rep.rep));
 	local_rep.flags |= LOCAL_REP;
+	wake_up_interruptible(&local_rep.queue);
 
 	return 0;
 }
