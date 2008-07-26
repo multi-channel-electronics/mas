@@ -31,6 +31,9 @@ int mce_send_command( mce_command *cmd,
 		      mce_callback callback,
 		      int nonblock, int card );
 
+int mce_qt_command( dsp_qt_code code, int arg1, 
+		    int arg2, int card);
+
 int mce_get_reply( __user void* reply_user,
 		   void* reply_kern, int count );
 

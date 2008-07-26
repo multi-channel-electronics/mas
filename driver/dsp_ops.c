@@ -78,7 +78,6 @@ struct dsp_ops_t {
 */
 
 #define SUBNAME "dsp_read: "
-
 ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
@@ -88,8 +87,8 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 	int ret_val = 0;
 	int err = 0;
 
-	PRINT_INFO(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
-	PRINT_INFO(SUBNAME "state=%#x\n", dops->state);
+	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d state=%#x\n", 
+		   fpdata->minor, dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
 		if (down_trylock(&dops->sem))
@@ -147,7 +146,6 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 	up(&dops->sem);
 	return ret_val;
 }
-
 #undef SUBNAME
 
 
@@ -166,7 +164,6 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 int dsp_write_callback(int error, dsp_message* msg, int card);
 
 #define SUBNAME "dsp_write: "
-
 ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
@@ -175,8 +172,8 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	int ret_val = 0;
 	int err = 0;
 
-	PRINT_INFO(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
-	PRINT_INFO("write: state=%#x\n", dops->state);
+	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d state=%#x\n", 
+		   fpdata->minor, dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
 		if (down_trylock(&dops->sem))
@@ -233,9 +230,9 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
  out:
 	up(&dops->sem);
 
+	PRINT_INFO(SUBNAME "exiting with code %i.\n", ret_val);
 	return ret_val;
 }
-
 #undef SUBNAME
 
 /* 
@@ -247,7 +244,6 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 */
 
 #define SUBNAME "dsp_write_callback: "
-
 int dsp_write_callback(int error, dsp_message* msg, int card)
 {
         struct dsp_ops_t *dops = dsp_ops + card;
@@ -282,11 +278,9 @@ int dsp_write_callback(int error, dsp_message* msg, int card)
 
 	return 0;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "dsp_ioctl: "
-
 int dsp_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
@@ -294,8 +288,7 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 	struct dsp_ops_t *dops = dsp_ops + fpdata->minor;
 	int x;
 
-	PRINT_INFO(SUBNAME "entry\n");
-	PRINT_INFO(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
+	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d\n", fpdata->minor);
 
 	switch(iocmd) {
 
@@ -324,19 +317,16 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 	return 0;
 
 }
-
 #undef SUBNAME
 
 #define SUBNAME "dsp_open: "
-
 int dsp_open(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
         fpdata->minor = iminor(inode);
 	filp->private_data = fpdata;
 
-	PRINT_INFO(SUBNAME "entry\n");
-	PRINT_INFO(SUBNAME "iminor(inode)=%d\n", iminor(inode));
+	PRINT_INFO(SUBNAME "entry! iminor(inode)=%d\n", iminor(inode));
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	MOD_INC_USE_COUNT;
@@ -347,17 +337,14 @@ int dsp_open(struct inode *inode, struct file *filp)
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "dsp_release: "
-
 int dsp_release(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 
-	PRINT_INFO(SUBNAME "entry\n");
-	PRINT_INFO(SUBNAME "fpdata->minor=%d\n", fpdata->minor);
+	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d\n", fpdata->minor);
 
 	if(fpdata != NULL) {
 		kfree(fpdata);
@@ -371,7 +358,6 @@ int dsp_release(struct inode *inode, struct file *filp)
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
-
 #undef SUBNAME
 
 struct file_operations dsp_fops = 

@@ -65,10 +65,6 @@ ifeq ($(FAKEMCE),1)
 	$(FAKEMCE_DIR)mce_fake.o \
 	$(FAKEMCE_DIR)dsp_state.o
 
-else
-
-  SOURCE_OBJ += dsp_pci.o
-
 endif #FAKEMCE=1
 
 

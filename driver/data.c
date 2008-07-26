@@ -493,8 +493,8 @@ int data_reset(int card)
 	dframes->dropped = 0;
 	
 	if (dframes->data_mode == DATAMODE_QUIET) {
-		if (data_qt_cmd(DSP_QT_TAIL  , dframes->tail_index, 0, card) ||
-		    data_qt_cmd(DSP_QT_HEAD  , dframes->head_index, 0, card) ) {
+		if (mce_qt_command(DSP_QT_TAIL  , dframes->tail_index, 0, card) ||
+		    mce_qt_command(DSP_QT_HEAD  , dframes->head_index, 0, card) ) {
 			PRINT_ERR(SUBNAME
 				  "Could not reset DSP QT indexes; disabling.");
 			data_qt_enable(0, card);
@@ -595,24 +595,6 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 		break;
 		}
 
-	return 0;
-}
-#undef SUBNAME
-
-
-#define SUBNAME "data_init: "
-int data_init(int mem_size, int data_size)
-{
-	int err = 0;
-	PRINT_INFO(SUBNAME "entry\n");
-
-	err = data_ops_init();
-	if(err != 0) {
-		PRINT_ERR(SUBNAME "data_ops_init returned err\n");
-		return err;
-	}
-
-	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
 #undef SUBNAME

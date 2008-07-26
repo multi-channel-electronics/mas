@@ -404,8 +404,8 @@ int dsp_state_nfy_rp(int size)
 
 int dsp_retdat_callback(int frame_size, int ticks, int nframes)
 {
-	PRINT_ERR("dsp_retdat_callback: ting-a-ling! %i %i %i\n",
-		  frame_size, ticks, nframes);
+	PRINT_INFO("dsp_retdat_callback: ting-a-ling! %i %i %i\n",
+		   frame_size, ticks, nframes);
 
 	// If this is a stop, kill the timer
 	if (frame_size < 0) {

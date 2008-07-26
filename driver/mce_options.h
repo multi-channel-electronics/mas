@@ -2,8 +2,6 @@
 #define _MCE_OPTIONS_H_
 
 #define MAX_CARDS 2
-#define DEFAULT_CARD 0
-
 
 #define DEVICE_NAME "mceds"
 
@@ -34,7 +32,6 @@
 #  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
 #endif
 
-#define OPT_VERBOSE
 #ifdef OPT_VERBOSE
 #  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
 #else
@@ -50,7 +47,7 @@
 
 #ifndef BIGPHYS
 
-#  define FRAME_BUFFER_SIZE 128000
+#  define FRAME_BUFFER_SIZE (32*1024*1024)
 
 #else
 

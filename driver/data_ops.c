@@ -3,9 +3,9 @@
 #include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/poll.h>
-#include <linux/mm.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
+#include <linux/mm.h>
 
 #include "kversion.h"
 #include "mce_options.h"
@@ -61,8 +61,8 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 			return -ERESTARTSYS;
 	}
 
-	PRINT_INFO(SUBNAME "user demands %i with nonblock=%i\n",
-		   count, filp->f_flags & O_NONBLOCK);
+	PRINT_INFO(SUBNAME "user demands %li with nonblock=%i\n",
+		   (long) count, filp->f_flags & O_NONBLOCK);
 
 	while (count > 0) {
 		
@@ -73,22 +73,25 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		if (this_read < 0) {
 			// On error, exit with the current count.
 			break;
-		} else if (this_read == 0) {
-			// Buffer is empty, for now, so unless we
-			// haven't copied any bytes yet or we're
-			// O_NONBLOCK, exit back to the user.
-			if (filp->f_flags & O_NONBLOCK || read_count > 0)
-				break;
-			if (wait_event_interruptible(
-				    dframes->queue,
-				    (dframes->flags & FRAME_ERR) ||
-				    (dframes->tail_index
-				     != dframes->head_index)))
-				return -ERESTARTSYS;
-		} else {
-			// Update counts and read again.
+		} else if (this_read > 0) {
+			// More reading, more reading...
 			read_count += this_read;
 			count -= this_read;
+			continue;
+		}
+ 
+		/* Buffer is empty.  O_NONBLOCK exits now, other
+		   readers exit as long as *some* data has been
+		   copied. */
+		if (filp->f_flags & O_NONBLOCK || read_count > 0)
+			break;
+
+		if (wait_event_interruptible(dframes->queue,
+					      (dframes->flags & FRAME_ERR) ||
+					      (dframes->tail_index
+					       != dframes->head_index))) {
+			read_count = -ERESTARTSYS;
+			break;
 		}
 	}
 
@@ -116,9 +119,13 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct filp_pdata *fpdata = filp->private_data;
 	frame_buffer_t *dframes = data_frames + fpdata->minor;
 
+	// Mark memory as reserved (prevents core dump inclusion) and
+	// IO (prevents caching)
+	vma->vm_flags |= VM_IO | VM_RESERVED;
+
 	// Do args checking on vma... start, end, prot.
-	PRINT_ERR(SUBNAME "mapping %#lx to user virtual %#lx\n",
-		  vma->vm_start, vma->vm_end - vma->vm_start);
+	PRINT_INFO(SUBNAME "mapping %#lx bytes to user address %#lx\n",
+		   vma->vm_end - vma->vm_start, vma->vm_start);
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
 	remap_pfn_range(vma, vma->vm_start,
@@ -136,8 +143,6 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	struct filp_pdata *fpdata = filp->private_data;
 	int card = fpdata->minor;
 	frame_buffer_t *dframes = data_frames + card;
-
-	PRINT_ERR(SUBNAME "=========> card: %d \n", card);
 
 	switch(iocmd) {
 
@@ -161,7 +166,6 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		case QUERY_FRAMESIZE:
 			return dframes->frame_size;
 		case QUERY_BUFSIZE:
-			if (dframes->base == NULL) return 0;
 			return dframes->size;
 		default:
 			return -1;
@@ -234,9 +238,7 @@ int data_release(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 
-	if (fpdata != NULL) {
-	  kfree(fpdata);
-	}
+	if (fpdata != NULL) kfree(fpdata);
 	return 0;
 }
 

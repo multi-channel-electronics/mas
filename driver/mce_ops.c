@@ -220,7 +220,6 @@ int mce_write_callback( int error, mce_reply* rep, int card)
 }
 #undef SUBNAME
 
-
 #define SUBNAME "mce_write: "
 ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
@@ -319,7 +318,7 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 		return mce_hardware_reset(card);
 	       
 	case MCEDEV_IOCT_INTERFACE_RESET:
-	  return mce_interface_reset(card);
+		return mce_interface_reset(card);
 
 	case MCEDEV_IOCT_LAST_ERROR:
 		x = mops->error;

@@ -11,7 +11,7 @@ int  mce_qti_handler (dsp_message *msg, unsigned long data);
 
 void data_grant_task(unsigned long data);
 
-int  data_qt_cmd( dsp_qt_code code, int arg1, int arg2, int card);
+//int  data_qt_cmd( dsp_qt_code code, int arg1, int arg2, int card);
 
 int  data_qt_enable(int on, int card);
 

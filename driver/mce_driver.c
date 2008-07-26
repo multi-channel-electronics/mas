@@ -25,8 +25,10 @@ typedef struct {
 	mce_command *command;
 	mce_reply   *reply;
 	u32          reply_size;
-	void* command_busaddr;
-	void* reply_busaddr;
+
+	/* Since PCI is 32-bit, our bus addresses are u32. */
+	u32 command_busaddr;
+	u32 reply_busaddr;
 
 	int dma_size;
 
@@ -51,7 +53,7 @@ struct mce_local {
 #define   LOCAL_REP 0x02
 #define   LOCAL_ERR 0x08
 
-}; //was local_rep
+};
 
 struct mce_control {
 	
@@ -61,6 +63,7 @@ struct mce_control {
  	struct tasklet_struct hst_tasklet;
 
 	int initialized;
+	int quiet_rp;
 
 	mce_state_t state;
 
@@ -210,10 +213,10 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 void mce_do_HST_or_schedule(unsigned long data)
 {
  	struct mce_control *mdat = (struct mce_control *)data;
-	int err; // MATT: why is err not returned or used?
+	int err;
 	int card = mdat - mce_dat;
 	dsp_command cmd;
-	HST_FILL(cmd, (u32)mdat->buff.reply_busaddr);
+	HST_FILL(cmd, mdat->buff.reply_busaddr);
 
 	if (mdat->state != MDAT_NFY) {
 		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat->state);
@@ -222,13 +225,16 @@ void mce_do_HST_or_schedule(unsigned long data)
 
 	mdat->state = MDAT_HST;;
 	if ( (err=dsp_send_command(&cmd, mce_HST_dsp_callback, card)) ) {
-		// FIX ME: discriminate between would-block errors and fatals!
-		PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
-		mdat->state = MDAT_NFY;
-		tasklet_schedule(&mdat->hst_tasklet);
+		if(err == -EAGAIN) {
+			PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
+			mdat->state = MDAT_NFY;
+			tasklet_schedule(&mdat->hst_tasklet);
+		} else {
+			PRINT_ERR(SUBNAME "dsp_send_cmd failed, calling back with err.\n");
+			mce_command_do_callback(-MCE_ERR_INT_FAILURE, NULL, card);
+		}
 		return;
-	}
-	
+	}	
 	return;
 }
 #undef SUBNAME
@@ -272,13 +278,92 @@ int mce_HST_dsp_callback(int error, dsp_message *msg, int card)
 }
 #undef SUBNAME
 
+/* Simplified reply system, for DSP >= U0105.  Reply buffer address
+ * is pre-loaded to the DSP, so we don't have to hand-shake in
+ * real-time.
+ *
+ * mce_NFY_RPQ_handler: immediately calls back with the mce reply.
+ */
+
+
+#define SUBNAME "mce_NFY_RPQ_handler: "
+int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
+{
+ 	struct mce_control *mdat = mce_dat + card;
+
+	// We'll just trust the NFY for now, assuming no error.
+	if ( error || (msg==NULL) ) {
+		PRINT_ERR(SUBNAME "called error=%i, msg=%lx\n",
+			  error, (unsigned long)msg);
+		mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL, card);
+		return 0;
+	}
+
+	if (mdat->state != MDAT_CONOK) {
+		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat->state);
+		return -1;
+	}
+
+	// Callback, which must copy away the reply
+	mce_command_do_callback(0, mdat->buff.reply, card);
+
+	// Signal DSP that reply buffer can be re-used
+	dsp_clear_RP(card);
+	
+	return 0;
+}
+#undef SUBNAME
+
+int mce_qt_command( dsp_qt_code code, int arg1, int arg2, int card)
+{
+	dsp_command cmd = { DSP_QTS, {code,arg1,arg2} };
+	dsp_message reply;
+	return dsp_send_command_wait(&cmd, &reply, card);
+}	
+
+#define SUBNAME "mce_quiet_RP_config: "
+int mce_quiet_RP_config(int enable, int card)
+{
+ 	struct mce_control *mdat = mce_dat + card;
+	int err = 0;
+	u32 bus = mdat->buff.reply_busaddr;
+
+	PRINT_INFO(SUBNAME "disabling...\n");
+	
+	err |= mce_qt_command(DSP_QT_RPENAB, 0, 0, card);
+	mdat->quiet_rp = 0;
+	if (err) {
+		PRINT_ERR(SUBNAME "failed to disable quiet RP\n");
+		return -1;
+	}
+	if (!enable) return 0;
+
+	// Enable qt replies
+	PRINT_INFO(SUBNAME "enabling...\n");
+	
+	err |= mce_qt_command(DSP_QT_RPSIZE, sizeof(mce_reply), 0, card);
+	err |= mce_qt_command(DSP_QT_RPBASE,
+			      (bus      ) & 0xFFFF,
+			      (bus >> 16) & 0xFFFF, card );
+	err |= mce_qt_command(DSP_QT_RPENAB, 1, 0, card);
+	
+	if (err) {
+		PRINT_ERR(SUBNAME "failed to configure DSP.\n");
+		return -1;
+	}
+
+	mdat->quiet_rp = 1;
+	return 0;
+}
+#undef SUBNAME
+
 //Command must already be in mdat->buff.command
 #define SUBNAME "mce_send_command_now: "
 int mce_send_command_now (int card)
 {
  	struct mce_control *mdat = mce_dat + card;
 	int err = 0;
-	u32 baddr = (u32)mdat->buff.command_busaddr;
+	u32 baddr = mdat->buff.command_busaddr;
 	
 	dsp_command cmd = {
 		DSP_CON,
@@ -302,7 +387,6 @@ int mce_send_command_now (int card)
 			return -MCE_ERR_INT_UNKNOWN;
 		}
 	}
-
 	return 0;
 }
 #undef SUBNAME
@@ -379,7 +463,7 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block, int
 #define SUBNAME "mce_da_hst_callback: "
 int mce_da_hst_callback(int error, dsp_message *msg, int card)
 {
-	//FIXME: "error" case should be natural and handled smoothly.
+	//FIX ME: "error" case should be natural and handled smoothly.
 	// What will happen to this "data"?
  	struct mce_control *mdat = mce_dat + card;
 
@@ -477,6 +561,13 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 
 		break;
 
+	case DSP_RPQ:
+
+		PRINT_INFO(SUBNAME "NFY RPQ identified\n");
+		mce_NFY_RPQ_handler(0, msg, card);
+
+		break;
+
 	case DSP_DA:
 		if (packet_size != dframes->data_size) {
 			if (mce_error_register(card))
@@ -492,7 +583,6 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 	default:
 		PRINT_ERR(SUBNAME "unknown packet type, ignoring\n");
 	}
-
 	return 0;
 }
 #undef SUBNAME
@@ -501,6 +591,8 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 
 int mce_buffer_allocate(mce_comm_buffer *buffer)
 {
+	unsigned long bus;
+
 	// Create DMA-able area.  Use only one call since the two
 	// buffers are so small.
 
@@ -509,10 +601,14 @@ int mce_buffer_allocate(mce_comm_buffer *buffer)
 
 	int size = offset + sizeof(mce_reply);
 
-	buffer->command = (mce_command*) dsp_allocate_dma(
-		size, (unsigned int*)&buffer->command_busaddr);
+	buffer->command = (mce_command*) dsp_allocate_dma(size, &bus);
 	if (buffer->command==NULL)
 		return -ENOMEM;
+	if ((bus >> 16) >> 16 != 0) {
+		PRINT_ERR("dsp_allocate returned out of bounds address %lx\n", bus);
+		return -ENOMEM;
+	}
+	buffer->command_busaddr = (u32)bus;
 
 	buffer->reply = (mce_reply*) ((char*)buffer->command + offset);
 	buffer->reply_busaddr = buffer->command_busaddr + offset;
@@ -531,7 +627,7 @@ int mce_buffer_free(mce_comm_buffer *buffer)
 {
 	if (buffer->command!=NULL) {
 		dsp_free_dma(buffer->command, buffer->dma_size,
-			     (int)buffer->command_busaddr);
+			     (unsigned long)buffer->command_busaddr);
 	}
 
 	buffer->command = NULL;
@@ -618,14 +714,9 @@ int mce_probe(int dsp_version, int card)
 	int err = 0;
 
 	PRINT_INFO(SUBNAME "entry\n");
-	mdat->initialized = 1;
 
-	//Init data module
-	//	err = data_init(FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
-	//	if (err) {
-	//		PRINT_ERR(SUBNAME "mce data module init failure\n");
-	//		goto out;
-	//	}
+	mdat->initialized = 1;
+	mdat->quiet_rp = 0;
 
 	err = data_probe(dsp_version, card, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
 	if (err !=0 ) goto out;
@@ -637,7 +728,6 @@ int mce_probe(int dsp_version, int card)
 	if (err != 0) goto out;
 
 	init_MUTEX(&mdat->sem);
-
 	init_MUTEX(&mdat->local.sem);
 	init_waitqueue_head(&mdat->local.queue);
 
@@ -654,13 +744,18 @@ int mce_probe(int dsp_version, int card)
 	// Set up command and quiet transfer handlers
 	dsp_set_handler(DSP_QTI, mce_qti_handler, (unsigned long)dframes, card);
 	dsp_set_handler(DSP_NFY, mce_int_handler, (unsigned long)mdat, card);
+	
+	if (dsp_version >= DSP_U0105) {
+		mce_quiet_RP_config(1, card);
+		dsp_set_handler(DSP_RPQ, mce_int_handler, (unsigned long)mdat, card);
+	}
 
-	PRINT_INFO(SUBNAME "init ok.\n");
+	PRINT_INFO(SUBNAME "ok.\n");
 
 	return 0;
 
  out:
-	PRINT_ERR(SUBNAME "init error!\n");
+	PRINT_ERR(SUBNAME "error!\n");
 
 	mce_remove(card);
 	return err;
@@ -689,8 +784,9 @@ int mce_remove(int card)
 
 	if (!mdat->initialized) return 0;
 
-	del_timer_sync(&mdat->timer);
+	mce_quiet_RP_config(1, card);
 
+	del_timer_sync(&mdat->timer);
 	tasklet_kill(&mdat->hst_tasklet);
 
   	mce_buffer_free(&mdat->buff);
