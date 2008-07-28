@@ -5,15 +5,11 @@
 #include "mce/dsp.h"
 #include "mce/dsp_errors.h"
 
-//#ifdef FAKEMCE
-//#  include <dsp_fake.h>
-//#else
+#ifdef FAKEMCE
+#  include <dsp_fake.h>
+#else
 //#  include "dsp_pci.h"
-//#endif
-
-/*
- * dsp_driver.h
- */
+#endif
 
 #define DSPDEV_NAME "mce_dsp"
 #define DSP_DEFAULT_TIMEOUT (HZ*50/100)
@@ -24,34 +20,6 @@
 #define DSP_U0104          0x550104
 #define DSP_U0105          0x550105
 
-typedef int (*dsp_callback)(int, dsp_message*, int);
-
-typedef int (*dsp_handler)(dsp_message *, unsigned long data);
-
-/* Prototypes */
-
-int dsp_send_command(dsp_command *cmd, dsp_callback callback,
-		     int card);
-
-int dsp_send_command_wait(dsp_command *cmd, dsp_message *msg,
-			  int card);
-
-void dsp_clear_RP(int card);
-
-int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
-
-int dsp_proc(char *buf, int count, int card);
-
-int dsp_int_handler(dsp_message *msg, int card);
-
-int dsp_set_handler(u32 code, dsp_handler handler, unsigned long data,
-		    int card);
-
-int dsp_clear_handler(u32 code, int card);
-
-/*
- * dsp_pci.h
- */
 
 /* PCI DMA alignment */
 
@@ -106,25 +74,28 @@ typedef struct {
 
 typedef enum { DSP_PCI, DSP_POLL } dsp_int_mode;
 
-struct dsp_dev_t {
+typedef int (*dsp_callback)(int, dsp_message*, int);
 
-	struct pci_dev *pci;
-
-	dsp_reg_t *dsp;
-
-	dsp_int_mode int_mode;
-	irq_handler_t int_handler;
-	struct timer_list tim;
-};
-
+typedef int (*dsp_handler)(dsp_message *, unsigned long data);
 
 /* Prototypes */
 
+int dsp_send_command(dsp_command *cmd, dsp_callback callback,
+		     int card);
 
-int   dsp_send_command_now( dsp_command *cmd, int card);
+int dsp_send_command_wait(dsp_command *cmd, dsp_message *msg,
+			  int card);
 
-int   dsp_send_command_now_vector( dsp_command *cmd, u32 vector,
-				   int card);
+void dsp_clear_RP(int card);
+
+int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
+
+int dsp_proc(char *buf, int count, int card);
+
+int dsp_set_msg_handler(u32 code, dsp_handler handler, unsigned long data,
+		    int card);
+
+int dsp_clear_handler(u32 code, int card);
 
 int   dsp_pci_flush(void);
 

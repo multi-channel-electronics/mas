@@ -742,12 +742,12 @@ int mce_probe(int dsp_version, int card)
 	mdat->data_flags = 0;
 
 	// Set up command and quiet transfer handlers
-	dsp_set_handler(DSP_QTI, mce_qti_handler, (unsigned long)dframes, card);
-	dsp_set_handler(DSP_NFY, mce_int_handler, (unsigned long)mdat, card);
+	dsp_set_msg_handler(DSP_QTI, mce_qti_handler, (unsigned long)dframes, card);
+	dsp_set_msg_handler(DSP_NFY, mce_int_handler, (unsigned long)mdat, card);
 	
 	if (dsp_version >= DSP_U0105) {
 		mce_quiet_RP_config(1, card);
-		dsp_set_handler(DSP_RPQ, mce_int_handler, (unsigned long)mdat, card);
+		dsp_set_msg_handler(DSP_RPQ, mce_int_handler, (unsigned long)mdat, card);
 	}
 
 	PRINT_INFO(SUBNAME "ok.\n");
