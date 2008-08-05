@@ -240,8 +240,6 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 
 int dsp_write_callback( int error, dsp_message* msg )
 {
-	wake_up_interruptible(&dsp_ops.queue);
-
 	if (dsp_ops.state != OPS_CMD) {
 		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
 			  dsp_ops.state, OPS_CMD);
@@ -253,7 +251,7 @@ int dsp_write_callback( int error, dsp_message* msg )
 		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
 		dsp_ops.state = OPS_ERR;
 		dsp_ops.error = error;
-		return 0;
+		goto out;
 	}
 
 	if (msg==NULL) {
@@ -261,13 +259,15 @@ int dsp_write_callback( int error, dsp_message* msg )
 		memset(&dsp_ops.msg, 0, sizeof(dsp_ops.msg));
 		dsp_ops.state = OPS_ERR;
 		dsp_ops.error = -DSP_ERR_UNKNOWN;
-		return 0;
+		goto out;
 	}
 
 	PRINT_INFO(SUBNAME "type=%#x\n", msg->type);
 	memcpy(&dsp_ops.msg, msg, sizeof(dsp_ops.msg));
 	dsp_ops.state = OPS_REP;
 
+out:
+	wake_up_interruptible(&dsp_ops.queue);
 	return 0;
 }
 

@@ -609,6 +609,7 @@ up_and_out:
 
 int mce_send_command_wait_callback(int error, mce_reply *rep)
 {
+	int err = 0;
 	PRINT_INFO(SUBNAME "entry\n");
 
 	// Unexpected replies are logged but rejected from system
@@ -631,25 +632,24 @@ int mce_send_command_wait_callback(int error, mce_reply *rep)
 		return -1;
 	}
 
-        // Packet expected, so sleepers must awaken
-
-	wake_up_interruptible(&local_rep.queue);
-
 	// On error, ignore reply and set flags
-
 	if (error) {
 		PRINT_ERR(SUBNAME "called with error %i\n", error);
 		memset(local_rep.rep, 0, sizeof(*local_rep.rep));
 		local_rep.flags |= LOCAL_ERR;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	// Copy, flag, and exit.
 
 	memcpy(local_rep.rep, rep, sizeof(*local_rep.rep));
 	local_rep.flags |= LOCAL_REP;
+out:
+        // Packet expected, so sleepers must awaken
+	wake_up_interruptible(&local_rep.queue);
 
-	return 0;
+	return err;
 }
 
 #undef SUBNAME

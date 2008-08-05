@@ -95,8 +95,6 @@ int data_frame_increment()
 			     % frames.max_index);
 #endif
         
-	wake_up_interruptible(&frames.queue);
-
 	d = (frames.head_index + 1) % frames.max_index;
 	barrier();
 
@@ -106,6 +104,10 @@ int data_frame_increment()
 	}
 
 	frames.head_index = d;
+	barrier();
+
+	wake_up_interruptible(&frames.queue);
+
         return 0;
 }
 
