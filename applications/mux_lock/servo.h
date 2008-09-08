@@ -16,6 +16,8 @@
 #define MAXROWS 41
 #define MAXTEMP 1024
 
+#define PRESERVO 10
+
 #define SA_CARD  "sa"
 #define SQ2_CARD "sq2"
 #define SQ1_CARD "sq1"

@@ -89,7 +89,7 @@ int main ( int argc, char **argv )
    int  soffset;
    int  skip_sq2bias = 0;
    int  biasing_ac = 0;     /* does MCE have a biasing address card? */
-   int  preservo = 0;
+   int  preservo = PRESERVO;
 
    int  error = 0;
    char errmsg_temp[256];
@@ -280,7 +280,7 @@ int main ( int argc, char **argv )
       }
 
       // Load starting fb values
-      for (snum=0; snum<MAXCHANNELS; snum++)
+      for (snum=0; snum<MAXVOLTS; snum++)
 	      ssafb[snum] = ssafb_init[snum];
 
       // Set starting sa fb and sq2 fb
