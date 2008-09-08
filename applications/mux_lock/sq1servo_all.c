@@ -61,7 +61,7 @@ int main ( int argc, char **argv )
    char *datadir;
    char sq2fb_initfile[256];      /* filename for sq2fb.init*/
    
-   u32 temparr[MAXROWS];
+   u32 temparr[MAXTEMP];
   
    int i, j, r, snum;       /* loop counters */
  
@@ -77,6 +77,7 @@ int main ( int argc, char **argv )
    char *endptr;
    int nbias;
    int nfeed;
+   u32 row_order[MAXROWS];  /* MCE multiplexing order */
    u32 sq2fb[MAXVOLTS][MAXROWS];     /* sq2 feedback voltages */
    int sq1bias;             /* SQ2 bias voltage */
    int sq1bstep;            /* SQ2 bias voltage step */
@@ -163,8 +164,9 @@ int main ( int argc, char **argv )
 
    // Lookup MCE parameters, or exit with error message.
    mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_nrows_rep, m_retdat,
-     m_sq2fb_col[MAXVOLTS];
+     m_sq2fb_col[MAXVOLTS], m_row_order;
 
+   load_param_or_exit(mce, &m_row_order, RO_CARD, ROW_ORDER, 0);
    load_param_or_exit(mce, &m_sq1fb,   SQ1_CARD, SQ1_FB, 0);
    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
    load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported", 0);
@@ -191,6 +193,12 @@ int main ( int argc, char **argv )
    u32 nrows_rep;
    if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0){
      sprintf(errmsg_temp, "rb cc num_rows_reported failed with %d", error);
+     ERRPRINT(errmsg_temp);
+     return ERR_MCE_RB;
+   }
+
+   if ((error=mcecmd_read_range(mce, &m_row_order, 0, row_order, MAXROWS)) != 0) {
+     sprintf(errmsg_temp, "rb ac row_order failed with %d", error);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_RB;
    }
@@ -285,8 +293,9 @@ int main ( int argc, char **argv )
    for ( j=0; j<nbias; j++ ){
 
       if (!skip_sq1bias){
+	// Write *all* sq1bias here, or row-order destroys you.
 	duplicate_fill(sq1bias + j*sq1bstep, temparr, MAXROWS);
-        if ((error = mcecmd_write_block(mce, &m_sq1bias, nrows_rep, temparr)) != 0) 
+        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, temparr)) != 0) 
           error_action("mcecmd_write_block sq1bias", error);
       }
 
@@ -294,8 +303,12 @@ int main ( int argc, char **argv )
 
 	// Write all rows fb to each squid 2
 	for (snum=0; snum<MAXCHANNELS; snum++) {
-	  write_range_or_exit(mce, m_sq2fb_col+snum, 0, sq2fb[snum+soffset],
-			      nrows_rep, "sq2fb_col");
+	  //Dereference by row number
+	  duplicate_fill(0, temparr, MAXROWS);
+	  for (r=0; r<nrows_rep; r++)
+	    temparr[row_order[r]] = sq2fb[snum+soffset][r];
+	  write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr,
+			      MAXROWS, "sq2fb_col");
 	}
 
 	// Next sq1 fb ramp value.
@@ -334,8 +347,8 @@ int main ( int argc, char **argv )
    write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");	
    
    if (!skip_sq1bias){
-     duplicate_fill((u32)(-8192), temparr, MAXROWS);
-     if ((error = mcecmd_write_block(mce, &m_sq1bias, nrows_rep, temparr)) != 0) 
+     duplicate_fill(0, temparr, MAXROWS);
+     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, temparr)) != 0) 
        error_action("mcecmd_write_block sq1bias", error);
    }
    else

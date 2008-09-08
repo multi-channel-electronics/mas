@@ -53,11 +53,9 @@ int main ( int argc, char **argv )
    char sq2fb_initfile[256];      /* filename for sq2fb.init*/
    char row_initfile[256];
    
-   u32 temparr[MAXROWS];
+   u32 temparr[MAXTEMP];
   
-   int i;
-   int j;
-   int snum;                /* loop counter */
+   int i, j, r, snum;       /* loop counters */
  
    FILE *fd;                /* pointer to output file*/
    FILE *tempf;             /* pointer to sq2fb.init file*/
@@ -65,12 +63,13 @@ int main ( int argc, char **argv )
    char line[MAXLINE];
    char init_line1[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char init_line2[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
-   char tempbuf[30];
+   char tempbuf[MAXLINE];
 
    double gain;             /* servo gain (=P=I) */
    char *endptr;
    int nbias;
    int nfeed;
+   u32 row_order[MAXROWS];  /* MCE multiplexing order */
    u32 sq2fb[MAXVOLTS];     /* sq2 feedback voltages */
    int sq1bias;             /* SQ2 bias voltage */
    int sq1bstep;            /* SQ2 bias voltage step */
@@ -158,8 +157,9 @@ int main ( int argc, char **argv )
 
    // Lookup MCE parameters, or exit with error message.
    mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_nrows_rep, m_retdat,
-     m_sq2fb_col[MAXVOLTS];
+     m_sq2fb_col[MAXVOLTS], m_row_order;
 
+   load_param_or_exit(mce, &m_row_order, RO_CARD, ROW_ORDER, 0);
    load_param_or_exit(mce, &m_sq1fb,   SQ1_CARD, SQ1_FB, 0);
    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
    load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported", 0);
@@ -190,6 +190,12 @@ int main ( int argc, char **argv )
    u32 nrows_rep;
    if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0){
      sprintf(errmsg_temp, "rb cc num_rows_reported failed with %d", error);
+     ERRPRINT(errmsg_temp);
+     return ERR_MCE_RB;
+   }
+
+   if ((error=mcecmd_read_range(mce, &m_row_order, 0, row_order, MAXROWS)) != 0) {
+     sprintf(errmsg_temp, "rb ac row_order failed with %d", error);
      ERRPRINT(errmsg_temp);
      return ERR_MCE_RB;
    }
@@ -310,10 +316,13 @@ int main ( int argc, char **argv )
       for ( i=0; i<nfeed; i++ ){
 
 	if (biasing_ac) {
+	  duplicate_fill( 0, temparr, MAXROWS );
 	  for (snum=0; snum<MAXCHANNELS; snum++) {
-	    duplicate_fill( 0, temparr, MAXROWS );
-	    temparr[sq1servo.row_num[snum+soffset]] =  sq2fb[snum+soffset];
+	    // Dereference based on multiplexing order
+	    r = row_order[sq1servo.row_num[snum+soffset]];
+	    temparr[r] = sq2fb[snum+soffset];
 	    write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");
+	    temparr[r] = 0;
 	  }
 	} else {
 	  write_range_or_exit(mce, &m_sq2fb, soffset, sq2fb + soffset, MAXCHANNELS, "sq2fb");

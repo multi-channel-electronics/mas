@@ -68,6 +68,7 @@ int main ( int argc, char **argv )
    
    FILE *fd;                /* pointer to output file*/
    FILE *tempf;             /* pointer to safb.init file*/
+   char outfile[256];       /* output data file */
    char line[MAXLINE]; 
    char init_line[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char tempbuf[MAXLINE];
@@ -77,7 +78,6 @@ int main ( int argc, char **argv )
    int nbias;
    int nfeed;
    u32 nrows_rep;
-   char outfile[256];       /* output data file */
    u32 ssafb_init[MAXVOLTS]; /* starting values for feedback */
    u32 ssafb[MAXVOLTS];     /* series array feedback voltages */
    int sq2bias;             /* SQ2 bias voltage */
@@ -241,7 +241,7 @@ int main ( int argc, char **argv )
    
    /* prepare a line of init values for runfile*/   
    sprintf(init_line, "<safb.init> ");
-  for ( j=0; j<(which_rc)*MAXCHANNELS; j++ ){
+   for ( j=0; j<(which_rc)*MAXCHANNELS; j++ ){
      if ( fgets (line, MAXLINE, tempf) == NULL){
        ERRPRINT("reading safb.init quitting...."); 
        return ERR_INI_READ;
@@ -301,6 +301,8 @@ int main ( int argc, char **argv )
 	 write_range_or_exit(mce, &m_safb, soffset, ssafb + soffset, MAXCHANNELS, "safb");
 
 	 if (biasing_ac) {
+	   // Must write all rows here, since row_order may bring any
+	   // real row into the smaller subset we're tuning.
 	   duplicate_fill(sq2feed + i*sq2fstep, temparr, MAXROWS);
 	   for (snum=0; snum<MAXCHANNELS; snum++) {
 	     write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");

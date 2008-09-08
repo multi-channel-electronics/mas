@@ -18,10 +18,12 @@
 
 #define PRESERVO 10
 
+#define RO_CARD  "ac"
 #define SA_CARD  "sa"
 #define SQ2_CARD "sq2"
 #define SQ1_CARD "sq1"
 
+#define ROW_ORDER "row_order"
 #define SQ2_BIAS "bias"
 #define SQ1_BIAS "bias"
 #define SA_FB    "fb"
