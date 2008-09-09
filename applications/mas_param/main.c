@@ -11,7 +11,7 @@
 
 options_t options = {
 	config_file: "/etc/mce/mas.cfg",
-	source_file: "/etc/mce/experiment.cfg",
+	source_file: "/data/cryo/current_data/experiment.cfg",
 	mode:        MODE_IDLE,
 	format:      FORMAT_BASH,
 };
