@@ -24,13 +24,10 @@
  * frame_callback: to store the frame to a file and fill row_data
  *
  *********************************************************/ 
-int frame_callback(unsigned user_data, int frame_size, u32 *data){
-  
-  //Re-type 
+int frame_callback(unsigned long user_data, int frame_size, u32 *data){
   servo_t *myservo = (servo_t*)user_data;
-  
-  fwrite(data, frame_size, sizeof(u32), myservo->df);
-  
+
+  fwrite(data, sizeof(u32), frame_size, myservo->df);
   myservo->fcount ++;
   
   int i;
@@ -196,13 +193,13 @@ int main ( int argc, char **argv )
 
    // setup a call back function
    mcedata_storage_t* ramb;
-   ramb = mcedata_rambuff_create(frame_callback, (unsigned) &sq2servo);
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned long) &sq2servo);
    
    // Pick a card (won't work for rcs!!)
    int cards=(1<<(which_rc-1));
    printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
    mce_acq_t acq;
-   mcedata_acq_create(&acq, mce, 0, cards, (int) nrows_rep, ramb);
+   mcedata_acq_create(&acq, mce, 0, cards, (int)nrows_rep, ramb);
 
    if ( (datadir=getenv("MAS_DATA")) == NULL){
       ERRPRINT("Enviro var. $MAS_DATA not set, quit");
@@ -216,7 +213,7 @@ int main ( int argc, char **argv )
      ERRPRINT(errmsg_temp);
      return ERR_DATA_FIL;
    }
-   
+
 /* Open output file to append modified data set */
    sprintf(outfile, "%s%s.bias", datadir, datafile);
    fd = fopen ( outfile, "a" );

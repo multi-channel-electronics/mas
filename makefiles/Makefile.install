@@ -1,7 +1,7 @@
 # Install destination and configuration information
 
 MAS_DIR ?= /usr/mce/
-MAS_USER ?= mce
+MAS_USER ?= bicep
 MAS_GROUP ?= mce
 
 MAS_BIN ?= $(MAS_DIR)bin/
