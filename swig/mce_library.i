@@ -19,7 +19,6 @@ functionality. */
 
 %typedef unsigned u32;
 %array_class(u32, u32array)
-/* fix me! type breaks on x64! */
 %array_class(int, i32array) 
 
 /* Prototypes to wrap */
@@ -50,7 +49,7 @@ functionality. */
 	
 	/* Frame-getter, using rambuff storage_t */
 		
-	int frame_callback(unsigned user_data, int size, u32 *data)
+	int frame_callback(unsigned long user_data, int size, u32 *data)
 	{
 		int i;
 
@@ -75,7 +74,7 @@ functionality. */
 		f.select = 0;
 		mcedata_storage_t* ramb; 
 		mce_acq_t acq;
-		ramb = mcedata_rambuff_create( frame_callback, (unsigned)&f );
+		ramb = mcedata_rambuff_create( frame_callback, (unsigned long)&f );
 		mcedata_acq_create(&acq, context, 0, cards, -1, ramb);
 		mcedata_acq_go(&acq, count);
 		mcedata_acq_destroy(&acq);
@@ -93,7 +92,7 @@ functionality. */
 		
 		mcedata_storage_t* ramb; 
 		mce_acq_t acq;
-		ramb = mcedata_rambuff_create( frame_callback, (unsigned)&f );
+		ramb = mcedata_rambuff_create( frame_callback, (unsigned long)&f );
 		mcedata_acq_create(&acq, context, 0, cards, -1, ramb);
 		mcedata_acq_go(&acq, count);
 		mcedata_acq_destroy(&acq);
@@ -108,6 +107,10 @@ functionality. */
 		return 0;
 	}
 
+	u32* u32_from_int_p(int *i) {
+	        return (u32*)i;
+	}	     
+
 %}
 
 int read_frames(mce_context_t *context, u32 *buf, int cards, int count);
@@ -116,6 +119,8 @@ int read_channels(mce_context_t *context, u32 *buf, int cards, int count,
 		  u32 *channels, int n_channels);
 
 int u32_to_int(int *dst, u32 *src, int n);
+
+u32* u32_from_int_p(int *i);
 
 /* Class definitions */
 

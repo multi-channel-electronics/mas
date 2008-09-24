@@ -189,10 +189,10 @@ class mce:
         if count > p.param.count - offset:
             raise ParamError, "Count is too big for parameter."
 
-        d = u32array(count)
+        d = i32array(count)
         for i in range(count): d[i] = data[i]
 
-        err = mcecmd_write_range(self.context, p, offset, d.cast(), count)
+        err = mcecmd_write_range(self.context, p, offset, u32_from_int_p(d.cast()), count)
         if err != 0:
             raise MCEError, mcelib_error_string(err)
 
