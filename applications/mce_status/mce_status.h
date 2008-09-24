@@ -35,11 +35,11 @@ int process_options(options_t *options, int argc, char **argv);
 
 typedef struct {
 
-	int (*init)(unsigned user_data, const options_t* options);
-	int (*item)(unsigned user_data, const mce_param_t *m);
-	int (*cleanup)(unsigned user_data);
+	int (*init)(unsigned long user_data, const options_t* options);
+	int (*item)(unsigned long user_data, const mce_param_t *m);
+	int (*cleanup)(unsigned long user_data);
 
-	unsigned user_data;
+	unsigned long user_data;
 
 } crawler_t;
 

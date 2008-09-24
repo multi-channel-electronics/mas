@@ -10,9 +10,9 @@ typedef struct {
 	int echo_only;
 } das_t;
 
-int  das_init(unsigned user_data, const options_t *options);
-int  das_item(unsigned user_data, const mce_param_t *p);
-int  das_cleanup(unsigned user_data);
+int  das_init(unsigned long user_data, const options_t *options);
+int  das_item(unsigned long user_data, const mce_param_t *p);
+int  das_cleanup(unsigned long user_data);
 
 int das_crawler(options_t *options, crawler_t *crawler)
 {
@@ -29,12 +29,12 @@ int das_crawler(options_t *options, crawler_t *crawler)
 	crawler->cleanup = das_cleanup;
 	crawler->item = das_item;
 
-	crawler->user_data = (unsigned) das;
+	crawler->user_data = (unsigned long) das;
 
 	return 0;	
 }
 
-int  das_init(unsigned user_data, const options_t *options)
+int  das_init(unsigned long user_data, const options_t *options)
 {
 	das_t *das = (das_t*)user_data;
 	das->out = stdout;
@@ -50,7 +50,7 @@ int  das_init(unsigned user_data, const options_t *options)
 	return 0;
 }
 
-int das_cleanup(unsigned user_data)
+int das_cleanup(unsigned long user_data)
 {
 	das_t *das = (das_t*) user_data;
 	fprintf(das->out, "</HEADER>\n");
@@ -58,7 +58,7 @@ int das_cleanup(unsigned user_data)
 	return 0;
 }
 
-int  das_item(unsigned user_data, const mce_param_t *p)
+int  das_item(unsigned long user_data, const mce_param_t *p)
 {
 	das_t *das = (das_t*) user_data;
 	u32 buf[MCE_REP_DATA_MAX];

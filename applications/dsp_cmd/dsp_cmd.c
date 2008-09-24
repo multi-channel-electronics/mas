@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 
 	while (!done) {
 
-		unsigned int n = LINE_LEN;
+		size_t n = LINE_LEN;
 
 		if ( options.cmd_now ) {
 			strcpy(line, options.cmd_command);

@@ -86,7 +86,7 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 	ALLOC_N(d->channels, n, err);
 	if (err) {
 		fprintf(stderr, "First stage alloc failed in dirfile_alloc!\n");
-		printf("n = %i\n", n*sizeof(*d->channels));
+		printf("n = %i\n", (int)(n*sizeof(*d->channels)));
 		return -1;
 	}
 

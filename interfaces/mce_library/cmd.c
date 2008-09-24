@@ -202,65 +202,15 @@ int mcecmd_load_param(mce_context_t* context, mce_param_t *param,
 int mcecmd_write_block(mce_context_t* context, const mce_param_t *param,
 		       int count, const u32 *data)
 {
-	mce_command cmd;
-	int error = 0;
-	int i;
-	 
-	C_cmd_check;
-	 
-	if (count < 0)
-		count = param->param.count;
-
-	// Redirect Virtual cards, though virtual system will recurse here
-	if (param->card.nature == MCE_NATURE_VIRTUAL)
-		return mcecmd_write_virtual(context, param, 0, data, count);
-	
-	// Separate writes for each target card.
-	for (i=0; i<param->card.card_count; i++) {
-		error = mcecmd_load_command(
-			&cmd, MCE_WB,
-			param->card.id[i], param->param.id,
-			count, count, data);
-		if (error) return error;
-		mce_reply rep;
-		
-		error = mcecmd_send_command(context, &cmd, &rep);
-		if (error) return error;
-	}
-	return 0;
+	// This used to run the show, but these days we pass it to write_range
+	return mcecmd_write_range(context, param, 0, data, count);
 }
 
 int mcecmd_read_block(mce_context_t* context, const mce_param_t *param,
 		      int count, u32 *data)
 {
-	mce_command cmd;
-	mce_reply rep;
-	int error = 0;
-	int i;
-
-	C_cmd_check;
-
-	if (count < 0)
-		count = param->param.count;
-
-	// Redirect Virtual cards, though virtual system will recurse here
-	if (param->card.nature == MCE_NATURE_VIRTUAL)
-		return mcecmd_read_virtual(context, param, 0, data, count);
-	
-	for (i=0; i<param->card.card_count; i++) {
-		error = mcecmd_load_command(&cmd, MCE_RB, 
-					 param->card.id[i], param->param.id,
-					 count, 0, data);
-		if (error) return error;
-
-		error = mcecmd_send_command(context, &cmd, &rep);
-		if (error) return error;
-
-		// I guess the data must be valid then.
-		memcpy(data+i*count, rep.data, count*sizeof(u32));
-	}
-	
-	return 0;
+	// Boring... 
+	return mcecmd_read_range(context, param, 0, data, count);
 }
 
 #define QUICK_FILL(cmd, card, para, n) {		\
@@ -328,40 +278,82 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 		       int data_index, const u32 *data, int count)
 {
 	int error = 0;
-	u32 block[MCE_CMD_DATA_MAX];
+	u32 _block[MCE_CMD_DATA_MAX];
+	u32* block = _block;
+	int i;
+
+	C_cmd_check;
+	 
+	if (count < 0)
+		count = param->param.count - data_index;
 
 	// Redirect Virtual cards, though virtual system will recurse here
 	if (param->card.nature == MCE_NATURE_VIRTUAL)
 		return mcecmd_write_virtual(context, param, data_index, data, count);
 	
-	if (param->card.card_count != 1)
-		return -MCE_ERR_MULTICARD;
+	// Separate writes for each target card.
+	for (i=0; i<param->card.card_count; i++) {
+		mce_reply rep;
+		mce_command cmd;
 
-	error =  mcecmd_read_block(context, param, data_index+count, block);
-	if (error != 0)	return error;
+		// Read any leading data in the block
+		if (data_index != 0) {
+			error = mcecmd_load_command(&cmd, MCE_RB, 
+						    param->card.id[i], param->param.id,
+						    data_index, 0, block);
+			if (error) return error;
 
-	memcpy(block+data_index, data, count*sizeof(*block));
+			error = mcecmd_send_command(context, &cmd, &rep);
+			if (error) return error;
 
-	return mcecmd_write_block(context, param, data_index+count, block);
+			memcpy(block, rep.data, data_index*sizeof(*block));
+		}
+
+		// Append our data
+		memcpy(block+data_index, data, count*sizeof(*data));
+
+		// Map the card, write the block
+		error = mcecmd_load_command(
+			&cmd, MCE_WB,
+			param->card.id[i], param->param.id,
+			count+data_index, count+data_index, block);
+		if (error) return error;
+		
+		error = mcecmd_send_command(context, &cmd, &rep);
+		if (error) return error;
+	}
+	return 0;
 }
 
 int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
 		      int data_index, u32 *data, int count)
 {
-	int error = 0;
-	u32 block[MCE_CMD_DATA_MAX];
+	int error = 0, i;
+
+	C_cmd_check;
+
+	if (count < 0)
+		count = param->param.count;
 
 	// Redirect Virtual cards, though virtual system will recurse here
 	if (param->card.nature == MCE_NATURE_VIRTUAL)
 		return mcecmd_read_virtual(context, param, data_index, data, count);
 	
-	if (param->card.card_count != 1)
-		return -MCE_ERR_MULTICARD;
+	for (i=0; i<param->card.card_count; i++) {
+		mce_command cmd;
+		mce_reply rep;
+		error = mcecmd_load_command(&cmd, MCE_RB, 
+					 param->card.id[i], param->param.id,
+					 count+data_index, 0, NULL);
+		if (error) return error;
 
-	error = mcecmd_read_block(context, param, data_index+count, block);
-	if (error != 0) return error;
+		error = mcecmd_send_command(context, &cmd, &rep);
+		if (error) return error;
 
-	memcpy(data, block + data_index, count*sizeof(*data));
+		// I guess the data must be valid then.
+		memcpy(data+i*count, rep.data+data_index, count*sizeof(u32));
+	}
+	
 	return 0;
 }
 

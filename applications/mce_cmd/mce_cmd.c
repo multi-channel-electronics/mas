@@ -269,7 +269,7 @@ int  main(int argc, char **argv)
 
 	while (!done) {
 		cmdtree_token_t args[NARGS];
-		unsigned int n = LINE_LEN;
+		size_t n = LINE_LEN;
 
 		if ( options.cmds_now > 0 ) {
 			line = options.cmd_set[options.cmds_idx++];
@@ -583,7 +583,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			}
 		} else {
 			if ( tokens[1].type == CMDTREE_SELECT ) {
-				mceconfig_cfg_card ((config_setting_t*)tokens[1].value,
+				mceconfig_cfg_card ((config_setting_t*)tokens[1].data,
 						    &mcep.card);
 			} else {
 				mcep.card.id[0] = tokens[1].value;
@@ -670,7 +670,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 						buf, tokens[4].value);
 			if (err) break;
 
-			errmsg += data_string(errmsg, buf, tokens[4].value, &mcep);
+			errmsg += data_string(errmsg, buf, tokens[4].value *
+					      mcep.card.card_count, &mcep);
 
 			break;
 
