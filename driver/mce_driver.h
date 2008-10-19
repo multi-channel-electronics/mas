@@ -15,7 +15,7 @@ typedef int (*mce_callback)(int err, mce_reply* rep, int card);
 
 int mce_init(void);
 
-int mce_probe(int dsp_version, int card);
+int mce_probe(int card, int dsp_version);
 
 int mce_cleanup(void);
 

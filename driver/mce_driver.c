@@ -707,25 +707,14 @@ int mce_init()
 #undef SUBNAME
 
 #define SUBNAME "mce_probe: "
-int mce_probe(int dsp_version, int card)
+int mce_probe(int card, int dsp_version)
 {
  	struct mce_control *mdat = mce_dat + card;
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
 	PRINT_INFO(SUBNAME "entry\n");
-
-	mdat->initialized = 1;
-	mdat->quiet_rp = 0;
-
-	err = data_probe(dsp_version, card, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
-	if (err !=0 ) goto out;
-
-	err = mce_buffer_allocate(&mdat->buff);
-	if (err != 0) goto out;
-
-	err = mce_ops_probe(card);
-	if (err != 0) goto out;
+	memset(mdat, 0, sizeof(*mdat));
 
 	init_MUTEX(&mdat->sem);
 	init_MUTEX(&mdat->local.sem);
@@ -740,6 +729,17 @@ int mce_probe(int dsp_version, int card)
 
 	mdat->state = MDAT_IDLE;
 	mdat->data_flags = 0;
+	mdat->quiet_rp = 0;
+	mdat->initialized = 1;
+
+	err = data_probe(dsp_version, card, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
+	if (err !=0 ) goto out;
+
+	err = mce_buffer_allocate(&mdat->buff);
+	if (err != 0) goto out;
+
+	err = mce_ops_probe(card);
+	if (err != 0) goto out;
 
 	// Set up command and quiet transfer handlers
 	dsp_set_msg_handler(DSP_QTI, mce_qti_handler, (unsigned long)dframes, card);
@@ -751,7 +751,6 @@ int mce_probe(int dsp_version, int card)
 	}
 
 	PRINT_INFO(SUBNAME "ok.\n");
-
 	return 0;
 
  out:
@@ -784,7 +783,9 @@ int mce_remove(int card)
 
 	if (!mdat->initialized) return 0;
 
-	mce_quiet_RP_config(1, card);
+	if (mdat->quiet_rp) {
+		mce_quiet_RP_config(0, card);
+	}
 
 	del_timer_sync(&mdat->timer);
 	tasklet_kill(&mdat->hst_tasklet);

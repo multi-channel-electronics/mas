@@ -7,8 +7,6 @@
 
 #ifdef FAKEMCE
 #  include <dsp_fake.h>
-#else
-//#  include "dsp_pci.h"
 #endif
 
 #define DSPDEV_NAME "mce_dsp"

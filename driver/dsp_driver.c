@@ -47,14 +47,7 @@
 #include <linux/types.h>
 #include <linux/proc_fs.h>
 #include <linux/fcntl.h>
-
 #include <asm/uaccess.h>
-
-//#ifdef FAKEMCE
-//#  include <dsp_fake.h>
-//#else
-//#  include "dsp_pci.h"
-//#endif
 
 #include "mce_driver.h"
 #include "dsp_ops.h"
@@ -905,23 +898,55 @@ int dsp_proc(char *buf, int count, int card)
 }
 
 
-#define SUBNAME "dsp_pci_configure: "
-int dsp_pci_configure(int card)
+#define SUBNAME "dsp_configure: "
+int dsp_configure(struct pci_dev *pci)
 {
-	struct dsp_dev_t *dev = dsp_dev + card;
 	int err = 0;
+	int card;
+	struct dsp_dev_t *dev;
+
 	PRINT_INFO(SUBNAME "entry\n");
 
-	err = pci_enable_device(dev->pci);
-	if (err) goto failed;
+	// Find a free slot in dsp_dev array; this defines the card id
+	if (pci==NULL) {
+		PRINT_ERR(SUBNAME "Called with NULL pci_dev!\n");
+		return -EPERM;
+	}
+	for (card=0; card<MAX_CARDS; card++) {
+		dev = dsp_dev + card;
+		if(dev->pci == NULL) break;
+	} 	
+	if (dev->pci != NULL) {
+		PRINT_ERR(SUBNAME "too many cards, dsp_dev[] is full.\n");
+		return -EPERM;
+	}
 
-        // Request regions and map i/o registers.
+        // Initialize device structure
+	memset(dev, 0, sizeof(dev));
+	dev->pci = pci;
+
+	init_MUTEX(&dev->sem);
+	init_MUTEX(&dev->local.sem);
+	init_waitqueue_head(&dev->local.queue);
+
+	init_timer(&dev->tim_dsp);
+	dev->tim_dsp.function = dsp_timeout;
+	dev->tim_dsp.data = (unsigned long)dev;
+	dev->state = DDAT_IDLE;
+#ifdef NO_INTERRUPTS
+	dev->int_mode = DSP_POLL;
+#else
+	dev->int_mode = DSP_PCI;
+#endif
+
+	// PCI paperwork
+	err = pci_enable_device(dev->pci);
+	if (err) goto fail;
 	if (pci_request_regions(dev->pci, DEVICE_NAME)!=0) {
 		PRINT_ERR(SUBNAME "pci_request_regions failed.\n");
 		err = -1;
-		goto failed;
+		goto fail;
 	}
-
 	dev->dsp = (dsp_reg_t *)ioremap_nocache(pci_resource_start(dev->pci, 0) & 
 						PCI_BASE_ADDRESS_MEM_MASK,
 						sizeof(*dev->dsp));
@@ -929,17 +954,21 @@ int dsp_pci_configure(int card)
 		PRINT_ERR(SUBNAME "Could not map PCI registers!\n");
 		pci_release_regions(dev->pci);			
 		err = -EIO;
-		goto failed;
+		goto fail;
 	}
-
-	// Mark PCI card as bus master
 	pci_set_master(dev->pci);
 
+	/* Card configuration - now we're done with the kernel and
+	 * talk to the card */
+
+	// Clear any outstanding interrupts
 	dsp_clear_interrupt(dev->dsp);
+
+	// Set the mode of the data path for reads (24->32 conversion)
 	dsp_write_hctr(dev->dsp, DSP_PCI_MODE);
 	
-	// Enable / disable PCI interrupts.
-	// These two vector addresses are NOP in PCI firmware before U0105.
+	// Enable / disable interrupts from the card (these two vector
+	// addresses are NOP in PCI firmware before U0105)
 	switch (dev->int_mode) {
 	case DSP_POLL:
 		dsp_write_hcvr(dev->dsp, HCVR_SYS_IRQ0);
@@ -949,161 +978,15 @@ int dsp_pci_configure(int card)
 		break;
 	}
 
-	PRINT_INFO(SUBNAME "ok\n");
-	return 0;
+	/* The card knows the deal now, so we enable interrupts and
+	 * assign handlers for the REP and HEY interrupt. */
 
- failed:
-	PRINT_ERR(SUBNAME "failed!\n");
-	return err;
-}
-#undef SUBNAME
-
-
-#define SUBNAME "dsp_driver_configure: "
-int dsp_driver_configure(int card)
-{	
-  	struct dsp_dev_t *dev = dsp_dev + card;
-	int err = 0;
-
-	PRINT_INFO(SUBNAME "entry\n");
-		
-	init_MUTEX(&dev->sem);
-	init_MUTEX(&dev->local.sem);
-	init_waitqueue_head(&dev->local.queue);
-	init_timer(&dev->tim_dsp);
-
-	dev->tim_dsp.function = dsp_timeout;
-	dev->tim_dsp.data = (unsigned long)dev;
-	dev->state = DDAT_IDLE;
-
-	// Set up handlers for the DSP interrupts - additional
-	//  handlers will be set up by sub-modules.
-	dsp_set_msg_handler(DSP_REP, dsp_reply_handler, (unsigned long)dev, card);
-	dsp_set_msg_handler(DSP_HEY, dsp_hey_handler, (unsigned long)dev, card);
-
-	// Version can only be obtained after REP handler has been set
-	if (dsp_query_version(card)) {
-		err = -1;
-		goto out;
-	}
-
-	if(dsp_ops_probe(card) != 0) {
-		err = -1;
-		goto out;
-	}
-	
-	if (mce_probe(dev->version, card)) {
-		err = -1;
-		goto out;
-	}
-
-	PRINT_INFO(SUBNAME "driver ok\n");
-	return 0;
-
- out:
-	PRINT_ERR(SUBNAME "exiting with errors!\n");
-	return err;
-}
-#undef SUBNAME
-
-
-#define SUBNAME "dsp_driver_remove: "
-void dsp_driver_remove(struct pci_dev *pci)
-{
-	int i = 0;
-
-	PRINT_INFO(SUBNAME "entry\n");
-
-	if (pci == NULL) {
-		PRINT_ERR(SUBNAME "called with null pointer!\n");
-		return;
-	}
-	
-	for (i=0; i < MAX_CARDS; i++) {
-		struct dsp_dev_t *dev = dsp_dev + i;
-
-		if (pci != dev->pci)
-			continue;
-			
-		// Disable higher-level features first
-		mce_remove(i);	
-		del_timer_sync(&dev->tim_dsp);
-			
-		// Remove int handler or poll timer
-		switch (dev->int_mode) {
-		case DSP_PCI:
-			dsp_pci_remove_handler(dev);
-			break;
-		case DSP_POLL:
-			del_timer_sync(&dev->tim_poll);
-			break;
-		}
-		
-		if (dev->dsp!=NULL) {
-			dsp_clear_interrupt(dev->dsp);
-			iounmap(dev->dsp);
-			pci_release_regions(pci);			
-			dev->dsp = NULL;
-		}
-
-		dev->pci = NULL;
-		PRINT_INFO(SUBNAME "ok\n");
-		return;
-	}
-
-	PRINT_ERR(SUBNAME "called with unknown device!\n");
-	return;
-}
-#undef SUBNAME
-
-
-#define SUBNAME "dsp_driver_probe: "
-int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
-{
-	struct dsp_dev_t *dev = dsp_dev;
-	int err = 0;
-	int i = 0;
-
-	PRINT_INFO(SUBNAME "entry\n");
-
-	for(i=0; i<MAX_CARDS; i++) {
-		dev = dsp_dev + i;
-		if(dev->pci == NULL) break;
-	} 	
-
-	if (pci==NULL) {
-		PRINT_ERR(SUBNAME "Called with NULL pci_dev!\n");
-		err = -EPERM;
-		goto fail;
-	}
-
-	if (dev->pci != NULL) {
-		PRINT_ERR(SUBNAME "called after device configured or dsp_dev[] is full.\n");
-		err = -EPERM;
-		goto fail;
-	}
-
-	// Intialize dev and set dev->pci
-	memset(dev, 0, sizeof(dev));
-	dev->pci = pci;
-
-#ifdef NO_INTERRUPTS
-	dev->int_mode = DSP_POLL;
-#else
-	dev->int_mode = DSP_PCI;
-#endif
-	
-	// Configure the card for our purposes
-	if (dsp_pci_configure(i)) {
-		goto fail;
-	}
-
+	// Install interrupt handler or polling timer
 	dev->int_handler = NULL;
-
 	switch (dev->int_mode) {
 	case DSP_PCI:
 		// Install the interrupt handler (cast necessary for backward compat.)
-		err = dsp_pci_set_handler(i, (irq_handler_t)pci_int_handler,
+		err = dsp_pci_set_handler(card, (irq_handler_t)pci_int_handler,
 					  "mce_dsp");		
 		if (err) goto fail;
 		break;
@@ -1116,17 +999,125 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 		break;
 	}
 
-	// Call init function for higher levels.
-	err = dsp_driver_configure(i);
-	if (err) goto fail;
+	// Assign handlers for REP and HEY interrupts.  These are for
+	// DSP communications (rather than the MCE protocol).
+	dsp_set_msg_handler(DSP_REP, dsp_reply_handler, (unsigned long)dev, card);
+	dsp_set_msg_handler(DSP_HEY, dsp_hey_handler, (unsigned long)dev, card);
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 
 fail:
-	dsp_driver_remove(pci);
+	PRINT_ERR(SUBNAME "failed!\n");
+	return err;
+}
+#undef SUBNAME
 
-	PRINT_ERR(SUBNAME "failed with code %i\n", err);
+
+#define SUBNAME "dsp_unconfigure: "
+int dsp_unconfigure(int card)
+{
+	struct dsp_dev_t *dev = dsp_dev + card;
+
+	// Remove int handler or poll timer
+	switch (dev->int_mode) {
+	case DSP_PCI:
+		dsp_pci_remove_handler(dev);
+		break;
+	case DSP_POLL:
+		del_timer_sync(&dev->tim_poll);
+		break;
+	}
+		
+	if (dev->dsp!=NULL) {
+		// Clear any outstanding interrupts from the card
+		dsp_clear_interrupt(dev->dsp);
+
+		// PCI un-paperwork
+		iounmap(dev->dsp);
+		dev->dsp = NULL;
+	}
+
+	if (dev->pci != NULL) {
+		pci_release_regions(dev->pci);
+		dev->pci = NULL;
+	}
+
+	return card;
+}
+#undef SUBNAME
+
+#define SUBNAME "dsp_driver_remove: "
+void dsp_driver_remove(struct pci_dev *pci)
+{
+	int card;
+	struct dsp_dev_t *dev;
+
+	PRINT_INFO(SUBNAME "entry\n");
+	if (pci == NULL) {
+		PRINT_ERR(SUBNAME "called with null pointer, ignoring.\n");
+		return;
+	}
+
+	// Match to existing card
+	for (card=0; card < MAX_CARDS; card++) {
+		dev = dsp_dev + card;
+		if (pci == dev->pci)
+			break;
+	}
+	if (card >= MAX_CARDS) {
+		PRINT_ERR(SUBNAME "could not match configured device, ignoring.\n");
+		return;
+	}
+			
+	// Disable higher-level features first
+	mce_remove(card);
+	del_timer_sync(&dev->tim_dsp);
+
+	// Do DSP cleanup, free PCI resources
+	dsp_unconfigure(card);
+
+	PRINT_INFO(SUBNAME "ok\n");
+}
+#undef SUBNAME
+
+/*
+  dsp_driver_probe
+
+  Called by kernel's PCI manager with each PCI device.  We first find
+  a place to keep the card, then do the PCI level initialization
+
+*/
+
+#define SUBNAME "dsp_driver_probe: "
+int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
+{
+	int card;
+	PRINT_INFO(SUBNAME "entry\n");
+
+	// Setup data structure for the card, configure PCI stuff and
+	// the DSP.  After this call, the DSP is ready to go.
+	if ((card = dsp_configure(pci)) < 0)
+		goto fail;
+
+	// Get DSP version, which MCE driver likes to know...
+	if (dsp_query_version(card) != 0)
+		goto fail;
+
+	// Enable the character device for this card.
+	if(dsp_ops_probe(card) != 0)
+		goto fail;
+
+	// DSP is ready, setup a structure for MCE driver
+	if (mce_probe(card, dsp_dev[card].version))
+		goto fail;
+
+	PRINT_INFO(SUBNAME "ok\n");
+	return 0;
+
+fail:
+	PRINT_ERR(SUBNAME "failed, calling removal routine.\n");
+	dsp_driver_remove(pci);
 	return -1;
 }
 #undef SUBNAME
@@ -1170,13 +1161,18 @@ inline int dsp_driver_init(void)
 	int err = 0;
 
 	PRINT_INFO(SUBNAME "driver init...\n");
-
 	for(i=0; i<MAX_CARDS; i++) {
 		struct dsp_dev_t *dev = dsp_dev + i;
 		memset(dev, 0, sizeof(*dev));
 	}
   
 	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
+
+	err = dsp_ops_init();
+	if(err != 0) goto out;
+
+	err = mce_init();
+	if(err != 0) goto out;
 
 #ifdef FAKEMCE
 	dsp_fake_init( DSPDEV_NAME );
@@ -1190,15 +1186,9 @@ inline int dsp_driver_init(void)
 	}			  
 #endif //FAKEMCE
 
-	err = dsp_ops_init();
-	if(err != 0) goto out;
-
-	err = mce_init();
-	if(err != 0) goto out;
-
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
- out:
+out:
 	PRINT_ERR(SUBNAME "exiting with error\n");
 	return err;
 }
