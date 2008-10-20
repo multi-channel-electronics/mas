@@ -753,7 +753,6 @@ int mce_probe(int card, int dsp_version)
 	
 	if (dsp_version >= DSP_U0105) {
 		mce_quiet_RP_config(1, card);
-		dsp_set_msg_handler(DSP_RPQ, mce_int_handler, (unsigned long)mdat, card);
 	}
 
 	PRINT_INFO(SUBNAME "ok.\n");
