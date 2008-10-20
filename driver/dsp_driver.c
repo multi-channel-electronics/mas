@@ -192,6 +192,7 @@ struct dsp_dev_t {
 
 	dsp_state_t state;
 	int version;
+	char version_string[32];
 
 	int n_handlers;
 	dsp_handler_entry handlers[MAX_HANDLERS];
@@ -560,7 +561,7 @@ int dsp_query_version(int card)
 	int err = 0;
 	dsp_command cmd = { DSP_VER, {0,0,0} };
 	dsp_message msg;
-	char version[8] = "<=U0103";
+	strcpy(dev->version_string,  "<=U0103");
 	
 	dev->version = 0;
 	if ( (err=dsp_send_command_wait(&cmd, &msg, card)) != 0 )
@@ -570,14 +571,15 @@ int dsp_query_version(int card)
 
 	if (msg.reply == DSP_ACK) {
 	
-		version[0] = msg.data >> 16;
-		sprintf(version+1, "%02i%02i",
+		dev->version_string[0] = msg.data >> 16;
+		sprintf(dev->version_string+1, "%02i%02i",
 			(msg.data >> 8) & 0xff, msg.data & 0xff);
 
 		dev->version = msg.data;
 	}
 		
-	PRINT_ERR(SUBNAME " discovered PCI card DSP code version %s\n", version);
+	PRINT_ERR(SUBNAME " discovered PCI card DSP code version %s\n",
+		  dev->version_string);
 	return 0;
 }
 #undef SUBNAME
@@ -865,35 +867,42 @@ int dsp_proc(char *buf, int count, int card)
 	struct dsp_dev_t *dev = dsp_dev + card;
 	int len = 0;
 
-
 	PRINT_INFO("dsp_proc: card = %d\n", card);
-
+	if (dev->pci == NULL) 
+		return len;
 	if (len < count) {
-		len += sprintf(buf+len, "    state:    ");
+		len += sprintf(buf+len, "    %-15s %25s\n",
+			       "bus address:", pci_name(dev->pci));
+	}
+	if (len < count) {
+		len += sprintf(buf+len, "    %-15s %25s\n",
+			       "interrupt:",
+			       (dev->int_mode == DSP_POLL) ? "polling" : "enabled");
+	}
+	if (len < count) {
+		len += sprintf(buf+len,  "    %-32s %#08x\n    %-32s %#08x\n",
+			       "hstr:", dsp_read_hstr(dev->dsp),
+			       "hctr:", dsp_read_hctr(dev->dsp));
+	}
+	if (len < count) {
+		len += sprintf(buf+len, "    %-20s %20s\n",
+			       "firmware version:", dev->version_string);
+	}
+	if (len < count) {
+		len += sprintf(buf+len, "    %-30s ", "state:");
 		switch (dev->state) {
 		case DDAT_IDLE:
-			len += sprintf(buf+len, "idle\n");
+			len += sprintf(buf+len, "      idle\n");
 			break;
 		case DDAT_CMD:
-			len += sprintf(buf+len, "commanded\n");
+			len += sprintf(buf+len, " commanded\n");
 			break;
 		default:
-			len += sprintf(buf+len, "unknown! [%i]\n", dev->state);
+			len += sprintf(buf+len, "   unknown! [%i]\n", dev->state);
 			break;
 		}
 	}
 
-	if (len < count && dev->dsp != NULL) {
-		len += sprintf(buf+len, "    hstr:     %#06x\n"
-			                "    hctr:     %#06x\n",
-			       dsp_read_hstr(dev->dsp),
-			       dsp_read_hctr(dev->dsp));
-	} else if (len < count) {
-		len += sprintf(buf+len, "    Card not present/intialized\n");
-	}
-	
-/* 	len += sprintf(buf+len, "    virtual: %#010x\n", */
-/* 		       (unsigned)frames.base); */
 	return len;
 }
 
@@ -1039,6 +1048,7 @@ int dsp_unconfigure(int card)
 	}
 
 	if (dev->pci != NULL) {
+		pci_disable_device(dev->pci);
 		pci_release_regions(dev->pci);
 		dev->pci = NULL;
 	}

@@ -511,34 +511,44 @@ int data_proc(char *buf, int count, int card)
 	frame_buffer_t *dframes = data_frames + card;
 
 	int len = 0;
-	if (len < count)
-		len += sprintf(buf+len, "    virtual:  %#010lx\n",
-			       (unsigned long)dframes->base);
-	if (len < count)
-		len += sprintf(buf+len, "    bus:      %#010lx\n",
-			       (unsigned long)dframes->base_busaddr);
-	if (len < count)
-		len += sprintf(buf+len, "    count:    %10i\n", dframes->max_index);
-	if (len < count)
-		len += sprintf(buf+len, "    head:     %10i\n", dframes->head_index);
-	if (len < count)
-		len += sprintf(buf+len, "    tail:     %10i\n", dframes->tail_index);
-	if (len < count)
-		len += sprintf(buf+len, "    drops:    %10i\n", dframes->dropped);
-	if (len < count)
-		len += sprintf(buf+len, "    size:     %#10x\n", dframes->frame_size);
-	if (len < count)
-		len += sprintf(buf+len, "    data:     %#10x\n", dframes->data_size);
+	if (dframes->size <= 0)
+		return 0;
 	if (len < count) {
-		len += sprintf(buf+len, "    mode:     ");
+		if (sizeof(long) > 4) {
+			len += sprintf(buf+len, "    %-22s %#018lx\n",
+				       "virtual:", (unsigned long)dframes->base);
+			len += sprintf(buf+len, "    %-22s %#018lx\n",
+				       "bus:", (unsigned long)dframes->base_busaddr);
+		} else {
+			len += sprintf(buf+len, "    %-30s %#010lx\n",
+				       "virtual:", (unsigned long)dframes->base);
+			len += sprintf(buf+len, "    %-30s %#010lx\n",
+				       "bus:", (unsigned long)dframes->base_busaddr);
+		}
+	}
+	if (len < count)
+		len += sprintf(buf+len, "    %-15s %25i\n", "count:", dframes->max_index);
+	if (len < count)
+		len += sprintf(buf+len, "    %-15s %25i\n", "head:", dframes->head_index);
+	if (len < count)
+		len += sprintf(buf+len, "    %-15s %25i\n", "tail:", dframes->tail_index);
+	if (len < count)
+		len += sprintf(buf+len, "    %-15s %25i\n", "drops:", dframes->dropped);
+	if (len < count)
+		len += sprintf(buf+len, "    %-15s %#25x\n", "size:", dframes->frame_size);
+	if (len < count)
+		len += sprintf(buf+len, "    %-15s %#25x\n", "data:", dframes->data_size);
+	if (len < count) {
+		char sstr[64];
 		switch (dframes->data_mode) {
 		case DATAMODE_CLASSIC:
-			len += sprintf(buf+len, "classic notify\n");
+			strcpy(sstr, "classic notify");
 			break;
 		case DATAMODE_QUIET:
-			len += sprintf(buf+len, "quiet mode\n");
+			strcpy(sstr, "quiet mode");
 			break;
 		}
+		len += sprintf(buf+len, "    %-15s %25s\n", "mode:", sstr);
 	}
 
 	return len;

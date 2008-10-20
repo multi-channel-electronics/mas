@@ -641,30 +641,36 @@ int mce_proc(char *buf, int count, int card)
 {
  	struct mce_control *mdat = mce_dat + card;
 	int len = 0;
+	if (!mdat->initialized)
+		return len;
 	if (len < count) {
-		len += sprintf(buf+len, "    state:    ");
+		char sstr[64];
 		switch (mdat->state) {
 		case MDAT_IDLE:
-			len += sprintf(buf+len, "idle\n");
+			strcpy(sstr, "idle");
 			break;
 		case MDAT_CON:
-			len += sprintf(buf+len, "command initiated\n");
+			strcpy(sstr, "command initiated");
 			break;
 		case MDAT_CONOK:
-			len += sprintf(buf+len, "command sent\n");
+			strcpy(sstr, "command sent");
 			break;
 		case MDAT_NFY:
-			len += sprintf(buf+len, "reply notified\n");
+			strcpy(sstr, "reply notified");
 			break;
 		case MDAT_HST:
-			len += sprintf(buf+len, "reply queried\n");
+			strcpy(sstr, "reply queried");
 			break;
 		case MDAT_ERR:
-			len += sprintf(buf+len, "error\n");
+			strcpy(sstr, "error");
 			break;
 		}
+		len += sprintf(buf+len, "    %-15s %25s\n", "state:", sstr);
 	}
-
+	if (len < count) {
+		len += sprintf(buf+len, "    %-15s %25s\n", "quiet_RP:",
+			       mdat->quiet_rp ? "on" : "off");
+	}
 	return len;
 }
 
