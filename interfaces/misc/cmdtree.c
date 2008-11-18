@@ -103,7 +103,7 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 			if ( ((my_opt->flags & CMDTREE_NOCASE) &&
 			      nocase_cmp(arg_s, my_opt->name)==0) ||
 			     strcmp(arg_s, my_opt->name)==0) {
-				t->value = my_opt->user_cargo;  // We either store this, or i.
+				t->value = (int)my_opt->user_cargo;
 				t->type = CMDTREE_SELECT;
 			}
 			break;
@@ -131,6 +131,9 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 
 	if (t->type == CMDTREE_TERMINATOR)
 		return 0;
+
+	// All selections should return the user cargo.
+	t->data = my_opt->user_cargo;
 
 	// Get additional args
 	int count = 0;
@@ -277,6 +280,7 @@ int match_menu( cmdtree_token_t *t, const cmdtree_opt_t *menu )
 			if ( ((opt->flags & CMDTREE_NOCASE) &&
 			      nocase_cmp(arg, opt->name)==0) ||
 			     strcmp(arg, opt->name)==0) {
+				t->value = (int)opt->user_cargo;
 				t->data = opt->user_cargo;
 				t->type = CMDTREE_SELECT;
 				return index;
@@ -286,6 +290,7 @@ int match_menu( cmdtree_token_t *t, const cmdtree_opt_t *menu )
 		case CMDTREE_INTEGER:
 			if (get_int(arg, &argi)==0) {
 				t->value = argi;
+				t->data = opt->user_cargo;
 				t->type = CMDTREE_INTEGER;
 				return index;
 			}
