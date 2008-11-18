@@ -243,7 +243,6 @@ int copy_frames_mmap(mce_acq_t *acq)
 	acq->n_frames_complete = 0;
 
 	/* memmap loop */
-	printf("Data map at %#lx\n", (long)acq->context->data.map);
 	while (!done) {
 
 		if (acq->storage->pre_frame != NULL &&

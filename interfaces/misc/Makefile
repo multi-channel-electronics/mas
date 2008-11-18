@@ -9,7 +9,7 @@ HEADERS = $(MAS_INCLUDE_F)mce/socks.h $(MAS_INCLUDE_F)mce/cmdtree.h \
 	$(MAS_INCLUDE_F)masconfig.h
 CC = gcc
 
-CFLAGS += -Wall -I$(MAS_INCLUDE_F)
+CFLAGS += -Wall -I$(MAS_INCLUDE_F) -fPIC
 
 all: $(OBJECTS)
 

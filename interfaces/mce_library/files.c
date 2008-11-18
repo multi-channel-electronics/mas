@@ -175,7 +175,7 @@ typedef struct rambuff_struct {
 	int frame_size;
 	u32 *buffer;
 	
-	unsigned user_data;
+	unsigned long user_data;
 	rambuff_callback_t callback;
 
 } rambuff_t;
@@ -320,7 +320,7 @@ void mcedata_fileseq_destroy(mce_acq_t *acq)
 */
 
 mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
-					  unsigned user_data)
+					  unsigned long user_data)
 {
 	rambuff_t *f = (rambuff_t*)malloc(sizeof(rambuff_t));
 	mcedata_storage_t *storage = (mcedata_storage_t*)malloc(sizeof(mcedata_storage_t));

@@ -66,11 +66,11 @@ int mcedata_consume_frame(mce_context_t* context);
 
 /* rambuff: a user-defined callback routine services each frame */
 
-typedef int (*rambuff_callback_t)(unsigned user_data,
+typedef int (*rambuff_callback_t)(unsigned long user_data,
 				  int frame_size, u32 *buffer);
 
 mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
-					  unsigned user_data);
+					  unsigned long user_data);
 
 //void mcedata_rambuff_destroy(mce_acq_t *acq);
 
