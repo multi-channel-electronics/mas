@@ -15,12 +15,12 @@ install: $(HEADERS) $(HEADERS_MCE) mas_base_install
 	@for h in $(HEADERS); do \
 		install -m ug+rw,o+r --owner=$(MAS_USER) --group=$(MAS_GROUP) \
 			$$h $(MAS_INSTALL_INC); \
-		if [ -f $(MAS_SYS_INC)$$h ]; then rm $(MAS_SYS_INC)$$h ; fi ; \
+		[ -h $(MAS_SYS_INC)$$h ] && rm $(MAS_SYS_INC)$$h ; \
 		ln -s $(MAS_INSTALL_INC)$$h $(MAS_SYS_INC)$$h ; \
 	done
-	install -d $(MAS_INSTALL_INC)/mce
-	if [ -f $(MAS_SYS_INC)mce ]; then rm -rf $(MAS_SYS_INC)mce; fi
-	ln -s $(MAS_INSTALL_INC)mce $(MAS_SYS_INC)mce
+	@install -d $(MAS_INSTALL_INC)/mce
+	@[ -h $(MAS_SYS_INC)mce ] && rm -rf $(MAS_SYS_INC)mce
+	@ln -s $(MAS_INSTALL_INC)mce $(MAS_SYS_INC)mce
 	@for h in $(HEADERS_MCE); do \
 		install -m ug+rw,o+r --owner=$(MAS_USER) --group=$(MAS_GROUP) \
 			$$h $(MAS_INSTALL_INC)mce; \
