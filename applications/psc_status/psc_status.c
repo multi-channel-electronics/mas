@@ -30,33 +30,45 @@ int main (int argc, char **argv){
      cmd_device:    DEFAULT_CMDFILE,
      data_device:   DEFAULT_DATAFILE,
      hardware_file: DEFAULT_HARDWAREFILE,
+     read_stdin:    0,
    };
-	 
-   // Create MCE context 
-   mce_context_t *mce = mcelib_create();
    
-   // Load MCE hardware inforamtion
-   if (mceconfig_open(mce, options.hardware_file, NULL) != 0) {
-     fprintf(stderr, "Failed to open %s as hardware configuration file.", options.config_file);
-     return 2;
+   if (process_options(&options, argc, argv) < 0) {
+     exit(1);
    }
-   // connect to an mce_cmd device 
-   if (mcecmd_open(mce, options.cmd_device)) {
-     fprintf(stderr, "Failed to open %s as command device.", options.cmd_device);
-     return 3;     
+
+   if (!options.read_stdin) {
+     // Create MCE context 
+     mce_context_t *mce = mcelib_create();
+     
+     // Load MCE hardware inforamtion
+     if (mceconfig_open(mce, options.hardware_file, NULL) != 0) {
+       fprintf(stderr, "Failed to open %s as hardware configuration file.", options.config_file);
+       return 2;
+     }
+     // connect to an mce_cmd device 
+     if (mcecmd_open(mce, options.cmd_device)) {
+       fprintf(stderr, "Failed to open %s as command device.", options.cmd_device);
+       return 3;     
+     }
+     
+     // Lookup MCE parameters, or exit with error message
+     mce_param_t m_psc_status;
+     if (mcecmd_load_param (mce, &m_psc_status, "psc","psc_status") ) {   
+       fprintf(stderr, "load param psc and psc_status failed.\n");
+       return 1;
+     }
+     
+     if ( mcecmd_read_block(mce, &m_psc_status, (PSC_DATA_BLK_SIZE)/8, data) ) {
+       fprintf(stderr, "mce_cmd_read_block psc psc_status failed.\n");
+       return 1;
+     }     
+   } else { //read_stdin
+     printf("Reading ascii from stdin: ");
+     for (index=0; index< PSC_DATA_BLK_SIZE / 8; index++) {
+       scanf("%u", data + index);
+     }
    }
-   
-   // Lookup MCE parameters, or exit with error message
-   mce_param_t m_psc_status;
-   if (mcecmd_load_param (mce, &m_psc_status, "psc","psc_status") ) {   
-     fprintf(stderr, "load param psc and psc_status failed.\n");
-     return 1;
-   }
-   
-   if ( mcecmd_read_block(mce, &m_psc_status, (PSC_DATA_BLK_SIZE)/8, data) ) {
-     fprintf(stderr, "mce_cmd_read_block psc psc_status failed.\n");
-     return 1;
-   }     
 
    // print the value read back
    for (index=0 ; index< PSC_DATA_BLK_SIZE/8; index++){
@@ -68,7 +80,7 @@ int main (int argc, char **argv){
    // now parse the psc_status_block   
    strncpy (card_id, psc_data_blk+SILICON_ID, 8);    
    
-   card_id[9] = '\0';
+   card_id[8] = '\0';
    printf ("card_id\t\t%s\n", card_id);
    printf("PSUC firmware version\t %c.%c\n", psc_data_blk[SOFTWARE_VERSION], psc_data_blk[SOFTWARE_VERSION+1]);
 

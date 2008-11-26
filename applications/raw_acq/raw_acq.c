@@ -20,6 +20,18 @@
 
 #define NCOLS        8
 
+/* Frame header */
+
+#define FRAME_STATUS                  0
+#define FRAME_COUNTER                 1
+#define FRAME_NUM_ROWS_REP            3
+#define FRAME_NUM_ROWS                9
+
+enum STORE_SCHEME {
+	SINGLE_ROW, MULTI_ROW
+};
+
+
 /* Our acquisition structure and callback */
 
 typedef struct {
@@ -85,13 +97,13 @@ mce_context_t* mce_connect()
 	return mce;		
 }
 
-
 int main(int argc, char **argv)
 {
 	int err = 0;
 	char card_str[] = "rcx";
 	char *filename = NULL;
 	int card = 0;
+	int store_scheme = SINGLE_ROW;
 	mce_context_t *mce = mce_connect();
 
 	if (mce == NULL) exit(1);
@@ -187,18 +199,53 @@ int main(int argc, char **argv)
 	FILE *fout = fopen(filename, "w");
 	u32 *buf = (u32*)malloc((HEADER_SIZE + raw_data.data_size + 1) * sizeof(u32));
 
-	for (int i=0; i<raw_data.max_frames; i++) {
-		raw_data.header[1] = i;
-		memcpy(buf, raw_data.header, HEADER_SIZE*sizeof(u32));
-		for (int j=0; j<num_rows; j++) {
-			memcpy(buf + HEADER_SIZE + j*NCOLS, raw_data.raw_data + (j*row_len+i)*NCOLS,
-			       NCOLS*sizeof(u32));
-		}
-		buf[HEADER_SIZE + raw_data.data_size] =
-			mcecmd_checksum(buf, HEADER_SIZE + raw_data.data_size);
+	switch (store_scheme) {
 
-		fwrite(buf, 1, (HEADER_SIZE + raw_data.data_size + 1)*sizeof(u32), fout);
+	case SINGLE_ROW:
+		/* In this mode, the data appear as 8 columns of
+		   single row data, time-ordered.  We write a header
+		   for each time sample, which is inefficent but
+		   necessary. */
+
+		// Hack the header into shape
+		memcpy(buf, raw_data.header, HEADER_SIZE*sizeof(u32));
+		buf[FRAME_NUM_ROWS_REP] = 1;
+				
+		for (int i=0; i<raw_data.max_frames; i++) {
+			for (int j=0; j<num_rows; j++) {
+				buf[FRAME_COUNTER] = i*num_rows + j;
+				memcpy(buf + HEADER_SIZE,
+				       raw_data.raw_data + (i*num_rows + j)*NCOLS,
+				       NCOLS*sizeof(u32));
+				buf[HEADER_SIZE + NCOLS] =
+					mcecmd_checksum(buf, HEADER_SIZE + raw_data.data_size);
+				fwrite(buf, 1, (HEADER_SIZE + raw_data.data_size + 1) *
+				       sizeof(u32), fout);
+			}
+		}
+		break;
+
+	case MULTI_ROW:
+		/* In this mode, the data are organized by row and
+		 column.  The data associated with the visits to a
+		 certain row are grouped together. */
+
+		for (int i=0; i<raw_data.max_frames; i++) {
+			raw_data.header[1] = i;
+			memcpy(buf, raw_data.header, HEADER_SIZE*sizeof(u32));
+			for (int j=0; j<num_rows; j++) {
+				memcpy(buf + HEADER_SIZE + j*NCOLS,
+				       raw_data.raw_data + (j*row_len+i)*NCOLS,
+				       NCOLS*sizeof(u32));
+			}
+			buf[HEADER_SIZE + raw_data.data_size] =
+				mcecmd_checksum(buf, HEADER_SIZE + raw_data.data_size);
+
+			fwrite(buf, 1, (HEADER_SIZE + raw_data.data_size + 1)*sizeof(u32), fout);
+		}
+		break;
 	}
+
 	fclose(fout);
 
 	// Rewrite
