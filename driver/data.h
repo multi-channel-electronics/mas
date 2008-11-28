@@ -68,7 +68,7 @@ typedef struct {
 	int       partial;
 
 	// Low level equivalent information
-	caddr_t   base_busaddr;
+	unsigned long base_busaddr;
 	
 	// Semaphore should be held when modifying structure, but
 	// interrupt routines may modify head_index if DATA_GO flag is

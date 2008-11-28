@@ -17,6 +17,7 @@
 "        -d <data device>        override default data device\n"\
 "        -w <hardware file>      override default hardware configuration file\n"\
 "        -m <MAS config file>    override default MAS configuration file\n"\
+"        -p <steps>              enable preservoing for some number of steps\n"\
 ""
 
 int process_options(option_t *options, int argc, char **argv)
@@ -24,7 +25,7 @@ int process_options(option_t *options, int argc, char **argv)
   int option;
   // Note the "+" at the beginning of the options string forces the
   // first non-option string to return a -1, which is what we want.
-  while ( (option = getopt(argc, argv, "+?hm:c:d:w:0123456789")) >=0) {
+  while ( (option = getopt(argc, argv, "+?hm:c:d:w:p:0123456789")) >=0) {
 
     switch(option) {
     case '?':
@@ -46,6 +47,10 @@ int process_options(option_t *options, int argc, char **argv)
 
     case 'w':
       strcpy(options->hardware_file, optarg);
+      break;
+
+    case 'p':
+      options->preservo = atoi(optarg);
       break;
 
     case '0' ... '9':

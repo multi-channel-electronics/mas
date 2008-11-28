@@ -376,6 +376,9 @@ int data_alloc(int mem_size, int data_size, int card)
 	frame_buffer_t *dframes = data_frames + card;
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
 	caddr_t virt;
+#ifndef BIGPHYS
+	unsigned long phys;               // Not needed / used with bigphys
+#endif
 
 	PRINT_INFO(SUBNAME "entry\n");
 
@@ -396,11 +399,12 @@ int data_alloc(int mem_size, int data_size, int card)
 	dframes->base = virt;
 	
 	// Save physical address for hardware
-	dframes->base_busaddr = (caddr_t)virt_to_bus(virt);
+
+	// Note virt_to_bus is on the deprecation list... we will want
+	// to switch to the DMA-API, dma_map_single does what we want.
+	dframes->base_busaddr = virt_to_bus(virt);
 
 #else
-	// phys is not used in bigphys
-	caddr_t phys;
 
 #ifdef MEMMAP 
 

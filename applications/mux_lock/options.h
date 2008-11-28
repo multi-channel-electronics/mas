@@ -9,6 +9,7 @@ typedef struct {
   char cmd_device[OPTSTR];
   char data_device[OPTSTR];
   char hardware_file[OPTSTR];
+  int preservo;
 
 } option_t;
 

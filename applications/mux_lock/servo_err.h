@@ -35,6 +35,7 @@
 #define ERR_S2FB_INI 6
 #define ERR_DATA_FIL 7
 #define ERR_DATA_ROW 8
+#define ERR_UNIMPL   9
 
 #define ERR_RUN_FILE 3
 #define ERR_TMP_FILE 6
