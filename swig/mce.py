@@ -215,7 +215,8 @@ class mce:
         if channel_set == False:
             channel_set = ChannelSet()
             
-        cards = channel_set.cards_span()
+#        cards = channel_set.cards_span()
+        cards = 0xf
         indices = channel_set.frame_indices()
         n_cols = 8*self.card_count(cards)
         n_extra = 44

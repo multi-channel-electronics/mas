@@ -6,7 +6,7 @@ include $(BASE)Makefile.children
 EXTRA = $(MASMISC_F)socks.o
 INCLUDE = -I$(MAS_INCLUDE_F)
 
-CFLAGS += $(INCLUDE) -Wall -fPIC
+CFLAGS += $(INCLUDE) -Wall -fPIC -fno-stack-protector
 
 CC=gcc
 

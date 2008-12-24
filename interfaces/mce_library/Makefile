@@ -17,7 +17,7 @@ HEADERS = data_thread.h virtual.h
 
 INCLUDE += -I. -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I$(DSP_DIR)
 
-CFLAGS += -O2 -Wall $(INCLUDE) -fPIC
+CFLAGS += -O2 -Wall $(INCLUDE) -fPIC -fno-stack-protector
 
 CC = gcc
 

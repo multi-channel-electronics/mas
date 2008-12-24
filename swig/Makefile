@@ -18,13 +18,13 @@ LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 include $(MAKERULES)Makefile.defaults
 DEFS += $(CONFIGFILE_DEFS)
 
-CFLAGS += $(INCLUDE) -Wall $(DEFS) -fPIC
+CFLAGS += $(INCLUDE) -Wall $(DEFS) -fPIC -fno-stack-protector
 CC=gcc
 
 all: _mce_library.so
 
 _mce_library.so: mce_library_wrap.o
-	ld -shared -fPIC -o $@ $^ $(LIBRARY)
+	ld -shared -fPIC -fno-stack-protector -o $@ $^ $(LIBRARY)
 
 mce_library_wrap.o: mce_library_wrap.c
 
