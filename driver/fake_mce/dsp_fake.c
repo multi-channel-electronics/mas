@@ -83,7 +83,7 @@ void* dsp_allocate_dma(ssize_t size, unsigned int* bus_addr_p)
 	if (ptr != NULL) *bus_addr_p = virt_to_bus(ptr);
 	return ptr;
 #else
-	return dma_alloc_coherent(NULL, size, bus_addr_p, GFP_KERNEL);
+	return dma_alloc_coherent(NULL, size, (dma_addr_t*)bus_addr_p, GFP_KERNEL);
 #endif
 }
 

@@ -49,7 +49,7 @@ int watcher_dump(int *dest, int user) {
 	return watcher.max;
 }
 
-int watcher_ioctl(int iocmd, int arg)
+int watcher_ioctl(int iocmd, unsigned long arg)
 {
 	switch (iocmd)	{
 		

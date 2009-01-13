@@ -197,7 +197,7 @@ void mce_do_HST_or_schedule(unsigned long data)
 {
 	int err;
 	dsp_command cmd;
-	HST_FILL(cmd, (u32)mdat.buff.reply_busaddr);
+	HST_FILL(cmd, (u32)(long)mdat.buff.reply_busaddr);
 
 	if (mdat.state != MDAT_NFY) {
 		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat.state);
@@ -265,7 +265,7 @@ int mce_HST_dsp_callback( int error, dsp_message *msg )
 int mce_send_command_now (void)
 {
 	int err = 0;
-	u32 baddr = (u32)mdat.buff.command_busaddr;
+	u32 baddr = (u32)(long)mdat.buff.command_busaddr;
 	
 	dsp_command cmd = {
 		DSP_CON,
@@ -703,7 +703,7 @@ int mce_buffer_free(mce_comm_buffer *buffer)
 {
 	if (buffer->command!=NULL && buffer->dma_size!=0) {
 		dsp_free_dma(buffer->command, buffer->dma_size,
-			     (int)buffer->command_busaddr);
+			     (int)(long)buffer->command_busaddr);
 	}
 
 	buffer->command = NULL;
