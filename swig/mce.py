@@ -172,8 +172,9 @@ class mce:
         p = self.lookup(card,para)
         if count < 0: count = p.param.count - offset
 
-        d = u32array(count)
-        err = mcecmd_read_range(self.context, p, offset, d.cast(), count)
+        d = i32array(count)
+        err = mcecmd_read_range(self.context, p, offset, \
+                                u32_from_int_p(d.cast()), count)
         if (err != 0):
             raise MCEError, mcelib_error_string(err)
 
@@ -210,11 +211,9 @@ class mce:
         return (cards & 0x1 != 0) + (cards & 0x2 != 0) + \
                (cards & 0x4 != 0) + (cards & 0x8 != 0)
     
-    def read_frames(self, count, channel_set = False, data_only=False):
-
+    def read_frames(self, count, channel_set=False, data_only=False):
         if channel_set == False:
             channel_set = ChannelSet()
-            
 #        cards = channel_set.cards_span()
         cards = 0xf
         indices = channel_set.frame_indices()
@@ -224,7 +223,6 @@ class mce:
         num_rows_rep = self.read('cc', 'num_rows_reported', array=False)
         frame_size = n_cols*num_rows_rep + n_extra
         d = u32array(frame_size*count)
-
         read_frames(self.context, d.cast(), cards, count);
 
         # Extract headers, and data.
@@ -232,7 +230,7 @@ class mce:
 
         # This will break if user asks for rows beyond num_rows_rep...
         ii = i32array(frame_size*count)
-        u32_to_int(ii.cast(), d.cast(), frame_size*count)
+        u32_to_i32(ii.cast(), d.cast(), frame_size*count)
         
         dd = [ [ii[frame_size*f + i] for i in indices] for f in range(count) ]
 
@@ -240,7 +238,6 @@ class mce:
         return dd, hh
 
     def read_frame(self, channel_set = False, data_only=False):
-
         if data_only:
             d = self.read_frames(1, channel_set=channel_set, data_only=True)
             return d[0]
