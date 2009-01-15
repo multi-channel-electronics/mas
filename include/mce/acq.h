@@ -65,8 +65,11 @@ struct mce_acq_struct {
 	int frame_size;                 // Active frame size
 
 	int status;
-	int cards;
-	int rows;
+	int cards;                      // Bit mask of RCs reporting
+	int rows;                       // Number of rows reported
+	int cols;                       // Number of columns reported
+	int row0[MCEDATA_CARDS];        // Index, by RC, of first row reported
+	int col0[MCEDATA_CARDS];        // Index, by RC, of first column reported
 
 	mcedata_storage_t* storage;
 

@@ -37,36 +37,77 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 		       int options, int cards, int rows_reported,
 		       mcedata_storage_t *storage)
 {
+	int i;
 	int ret_val = 0;
 	int n_cards = card_count(cards);
-	mce_param_t para;
-	u32 datum;
+	int rectangle = 0;
+	int cols_reported = MCEDATA_COLUMNS; // columns reported, per-card
+	mce_param_t para_nrow, para_ncol, para_0;
+	u32 data[64]; //Buffer for MCE reply data
 
 	// Zero the structure!
 	memset(acq, 0, sizeof(*acq));
 
-	if ((ret_val=mcecmd_load_param(context, &para, "cc", "num_rows_reported")) != 0)
+	// Test for rectangle readout mode (CC 5.0.0 / RC 5.0.0)
+	if ((ret_val=mcecmd_load_param(context, &para_ncol, "sys",
+				       "num_cols_reported")) == 0) {
+		rectangle = 1;
+		if ((ret_val=mcecmd_load_param(context, &para_nrow, "sys",
+					       "num_rows_reported")) != 0) {
+			return ret_val;
+		}
+	} else if ((ret_val=mcecmd_load_param(context, &para_nrow, "cc",
+					      "num_rows_reported")) != 0) {
 		return ret_val;
+	}
 
 	// If rows_reported is passed as negative, use the existing value.
 	if (rows_reported < 0) {
-		if (mcecmd_read_block(context, &para, 1, &datum) != 0)
+		if (mcecmd_read_block(context, &para_nrow, 1, data) != 0)
 			return -MCE_ERR_FRAME_ROWS;
-		rows_reported = (int)datum;
+		rows_reported = (int)data[0];
 	} else {
-		datum = (u32)rows_reported;
-		if (mcecmd_write_block(context, &para, 1, &datum) != 0)
+		data[0] = (u32)rows_reported;
+		if (mcecmd_write_block(context, &para_nrow, 1, data) != 0)
 			return -MCE_ERR_FRAME_ROWS;
 	}
 
+	// With rectangle firmware, cols_reported and col0 are configurable
+	if (rectangle) {
+		if (mcecmd_read_block(context, &para_ncol, 1, data) != 0)
+			return -MCE_ERR_FRAME_COLS;
+		cols_reported = (int)data[0];
+	}
+
+	// Load the row and column starting indices (for, e.g. dirfile field naming)
+	for (i=0; i<MCEDATA_CARDS; i++) {
+		char* rc = "rc0";
+		if (!(cards & (1<<i))) 
+			continue;
+		rc[2] = '1'+i;
+		if ((mcecmd_load_param(context, &para_0, rc,
+				       "readout_row_index")==0) &&
+		    (mcecmd_read_block(context, &para_0, 1, data)==0))
+			acq->row0[i] = data[0];
+		acq->col0[i] = 0;
+		if (!rectangle)
+			continue;
+		if ((mcecmd_load_param(context, &para_0, rc,
+				       "readout_col_index")==0) &&
+		    (mcecmd_read_block(context, &para_0, 1, data)==0))
+			acq->col0[i] = data[0];
+	}
+
+
 	// Save frame size and other options
-	acq->frame_size = rows_reported * MCEDATA_COLUMNS * n_cards + 
+	acq->frame_size = rows_reported * cols_reported * n_cards + 
 		MCEDATA_HEADER + MCEDATA_FOOTER;
 	acq->cards = cards;
 	acq->options = options;
 	acq->context = context;
 	acq->storage = storage;
 	acq->rows = rows_reported;
+	acq->cols = cols_reported;
 
 	// Lookup "rc# ret_dat" (go address) location or fail.
 	if (load_ret_dat(acq) != 0)

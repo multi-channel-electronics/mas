@@ -103,6 +103,9 @@ char *mcelib_error_string(int error)
 	case MCE_ERR_FRAME_ROWS:
 		return "Frame rows could not be determined or was invalid.";
 
+	case MCE_ERR_FRAME_COLS:
+		return "Frame columns could not be determined or was invalid.";
+
 	case 0:
 		return "Success.";
 	}
