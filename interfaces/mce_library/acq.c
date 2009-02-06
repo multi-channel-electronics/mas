@@ -31,89 +31,40 @@ static int get_n_frames(mce_acq_t *acq);
 
 static int card_count(int cards);
 
-static int load_ret_dat(mce_acq_t *acq);
+static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
+			     int cards);
+
+static int load_ret_dat(mce_acq_t *acq, int cards);
+
+static int cards_to_rcsflags(int c);
+
+static int rcsflags_to_cards(int c);
 
 int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 		       int options, int cards, int rows_reported,
 		       mcedata_storage_t *storage)
 {
-	int i;
 	int ret_val = 0;
-	int n_cards = card_count(cards);
-	int rectangle = 0;
-	int cols_reported = MCEDATA_COLUMNS; // columns reported, per-card
-	mce_param_t para_nrow, para_ncol, para_0;
-	u32 data[64]; //Buffer for MCE reply data
 
 	// Zero the structure!
 	memset(acq, 0, sizeof(*acq));
 
-	// Test for rectangle readout mode (CC 5.0.0 / RC 5.0.0)
-	if ((ret_val=mcecmd_load_param(context, &para_ncol, "sys",
-				       "num_cols_reported")) == 0) {
-		rectangle = 1;
-		if ((ret_val=mcecmd_load_param(context, &para_nrow, "sys",
-					       "num_rows_reported")) != 0) {
-			return ret_val;
-		}
-	} else if ((ret_val=mcecmd_load_param(context, &para_nrow, "cc",
-					      "num_rows_reported")) != 0) {
-		return ret_val;
-	}
-
-	// If rows_reported is passed as negative, use the existing value.
-	if (rows_reported < 0) {
-		if (mcecmd_read_block(context, &para_nrow, 1, data) != 0)
-			return -MCE_ERR_FRAME_ROWS;
-		rows_reported = (int)data[0];
-	} else {
-		data[0] = (u32)rows_reported;
-		if (mcecmd_write_block(context, &para_nrow, 1, data) != 0)
-			return -MCE_ERR_FRAME_ROWS;
-	}
-
-	// With rectangle firmware, cols_reported and col0 are configurable
-	if (rectangle) {
-		if (mcecmd_read_block(context, &para_ncol, 1, data) != 0)
-			return -MCE_ERR_FRAME_COLS;
-		cols_reported = (int)data[0];
-	}
-
-	// Load the row and column starting indices (for, e.g. dirfile field naming)
-	for (i=0; i<MCEDATA_CARDS; i++) {
-		char* rc = "rc0";
-		if (!(cards & (1<<i))) 
-			continue;
-		rc[2] = '1'+i;
-		if ((mcecmd_load_param(context, &para_0, rc,
-				       "readout_row_index")==0) &&
-		    (mcecmd_read_block(context, &para_0, 1, data)==0))
-			acq->row0[i] = data[0];
-		acq->col0[i] = 0;
-		if (!rectangle)
-			continue;
-		if ((mcecmd_load_param(context, &para_0, rc,
-				       "readout_col_index")==0) &&
-		    (mcecmd_read_block(context, &para_0, 1, data)==0))
-			acq->col0[i] = data[0];
-	}
-
-
+	// Load frame size parameters from MCE
+	ret_val = load_frame_params(context, acq, cards);
+	if (ret_val != 0) return ret_val;
+	
 	// Save frame size and other options
-	acq->frame_size = rows_reported * cols_reported * n_cards + 
+	acq->frame_size = acq->rows * acq->cols * card_count(acq->cards) + 
 		MCEDATA_HEADER + MCEDATA_FOOTER;
-	acq->cards = cards;
 	acq->options = options;
 	acq->context = context;
 	acq->storage = storage;
-	acq->rows = rows_reported;
-	acq->cols = cols_reported;
 
 	// Lookup "rc# ret_dat" (go address) location or fail.
-	if (load_ret_dat(acq) != 0)
+	if (load_ret_dat(acq, cards) != 0)
 		return -MCE_ERR_FRAME_CARD;
 	
-	// Lookup "cc ret_data_s" (frame count) or fail
+	// Lookup "cc ret_dat_s" (frame count) or fail
 	if ((ret_val=mcecmd_load_param(
 		     acq->context, &acq->ret_dat_s, "cc", "ret_dat_s")) != 0) {
 /* 		fprintf(stderr, "Could not load 'cc ret_dat_s'\n"); */
@@ -245,11 +196,99 @@ static int get_n_frames(mce_acq_t *acq)
 	return args[1] - args[0] + 1;
 }
 
+static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
+			     int cards)
+{
+	/* Determine frame size parameters
+	      acq->rows     number of rows returning data
+	      acq->cols     number of columns returning data
+	      acq->cards    bit-mask (MCEDATA_RC?) of cards returning data
+	      acq->row0     per-card values of first row reporting data
+	      acq->col0     per-card values of first col reporting data
 
-int load_ret_dat(mce_acq_t *acq)
+	   The acq->cards parameter is determined as follows: if the
+	   function argument "cards" is positive, it is ANDed with
+	   MCEDATA_RCS and stored in acq->cards.  If "cards" is 0 or
+	   negative, acq->cards is determined by reading the
+	   "rcs_to_report_data" register and recasting the result into
+	   the MCEDATA_RC? bit-mask form.
+	*/
+
+	mce_param_t para_nrow, para_ncol, para_0, para_rcs;
+	u32 data[64];
+	int fw_rectangle = 0;         //firmware supports rectangle readout
+	int fw_rcsflags = 0;          //firmware supports rcs_to_report_data
+	int ret_val = 0;
+	int i;
+	
+	/* Load MCE parameters to determine fw_* supported by this firmware */
+	if (mcecmd_load_param(context, &para_ncol, "sys",
+			      "num_cols_reported") == 0) {
+		fw_rectangle = 1;
+		if ((ret_val=mcecmd_load_param(context, &para_nrow, "sys",
+					       "num_rows_reported")) != 0)
+			return ret_val;
+	} else if ((ret_val=mcecmd_load_param(context, &para_nrow, "cc",
+					      "num_rows_reported")) != 0) {
+		return ret_val;
+	}
+	if ((ret_val=mcecmd_load_param(context, &para_rcs, "cc",
+				       "rcs_to_report_data")) == 0)
+		fw_rcsflags = 1;
+
+	/* Determine cards that will be returning data */
+	if (cards <= 0) {
+		acq->cards = MCEDATA_RCS;
+		if (fw_rcsflags) {
+			if (mcecmd_read_block(context, &para_rcs, 1, data) != 0)
+				return -MCE_ERR_FRAME_COLS;
+			acq->cards = rcsflags_to_cards((int)data[0]);
+		}
+	} else {
+		acq->cards = (cards & MCEDATA_RCS);
+	}
+
+	/* Determine cols and rows reported */
+	acq->cols = MCEDATA_COLUMNS;
+	if (fw_rectangle) {
+		if (mcecmd_read_block(context, &para_ncol, 1, data) != 0)
+			return -MCE_ERR_FRAME_COLS;
+		acq->cols = (int)data[0];
+	}
+	if (mcecmd_read_block(context, &para_nrow, 1, data) != 0)
+		return -MCE_ERR_FRAME_ROWS;
+	acq->rows = (int)data[0];
+	
+	// Load the row and column starting indices (for, e.g. dirfile field naming)
+	for (i=0; i<MCEDATA_CARDS; i++) {
+		char* rc = "rc0";
+		if (!(acq->cards & (1<<i))) 
+			continue;
+		rc[2] = '1'+i;
+		acq->row0[i] = 0;
+		acq->col0[i] = 0;
+		if ((mcecmd_load_param(context, &para_0, rc,
+				       "readout_row_index")==0) &&
+		    (mcecmd_read_block(context, &para_0, 1, data)==0))
+			acq->row0[i] = data[0];
+		if (!fw_rectangle)
+			continue;
+		if ((mcecmd_load_param(context, &para_0, rc,
+				       "readout_col_index")==0) &&
+		    (mcecmd_read_block(context, &para_0, 1, data)==0))
+			acq->col0[i] = data[0];
+	}
+	return 0;
+}
+
+
+int load_ret_dat(mce_acq_t *acq, int cards)
 {
 	/* Return value is non-zero on error, but is not an mcelib error code! */
-
+	if (cards <=0 || acq->cards==MCEDATA_RCS) {
+		return mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
+	}
+	
 	// Lookup the go command location for the specified card set.
 	switch (acq->cards) {
 	case MCEDATA_RC1:
@@ -260,8 +299,6 @@ int load_ret_dat(mce_acq_t *acq)
 		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc3", "ret_dat");
 	case MCEDATA_RC4:
 		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc4", "ret_dat");
-	case MCEDATA_RCS:
-		return mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
 	}
 
 	fprintf(stderr, "Invalid card set selection [%#x]\n",
@@ -462,16 +499,32 @@ int copy_frames_read(mce_acq_t *acq)
 
 int card_count(int cards)
 {
-	switch (cards) {
+	int n = 0;
+	if (cards & MCEDATA_RC1) n++;
+	if (cards & MCEDATA_RC2) n++;
+	if (cards & MCEDATA_RC3) n++;
+	if (cards & MCEDATA_RC4) n++;
+	return n;
+}
 
-	case MCEDATA_RC1:
-	case MCEDATA_RC2:
-	case MCEDATA_RC3:
-	case MCEDATA_RC4:
-		return 1;
+static int cards_to_rcsflags(int c)
+{
+	//Sure, there are cuter ways.
+	int out = 0;
+	if (c & MCEDATA_RC1) out |= MCEDATA_RCSFLAG_RC1;
+	if (c & MCEDATA_RC2) out |= MCEDATA_RCSFLAG_RC2;
+	if (c & MCEDATA_RC3) out |= MCEDATA_RCSFLAG_RC3;
+	if (c & MCEDATA_RC4) out |= MCEDATA_RCSFLAG_RC4;
+	return out;
+}
 
-	case MCEDATA_RCS:
-		return 4;
-	}
-	return -1;
+static int rcsflags_to_cards(int c)
+{
+	//Sure, there are cuter ways.
+	int out = 0;
+	if (c & MCEDATA_RCSFLAG_RC1) out |= MCEDATA_RC1;
+	if (c & MCEDATA_RCSFLAG_RC2) out |= MCEDATA_RC2;
+	if (c & MCEDATA_RCSFLAG_RC3) out |= MCEDATA_RC3;
+	if (c & MCEDATA_RCSFLAG_RC4) out |= MCEDATA_RC4;
+	return out;
 }

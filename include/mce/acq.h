@@ -36,6 +36,12 @@
 #define MCEDATA_HEADER            43
 #define MCEDATA_FOOTER            1
 
+/* Card bits to use for the rcs_to_report_data register */
+#define MCEDATA_RCSFLAG_RC1       (1 << 5)
+#define MCEDATA_RCSFLAG_RC2       (1 << 4)
+#define MCEDATA_RCSFLAG_RC3       (1 << 3)
+#define MCEDATA_RCSFLAG_RC4       (1 << 2)
+
 struct mce_acq_struct;
 typedef struct mce_acq_struct mce_acq_t;
 

@@ -147,8 +147,7 @@ cmdtree_opt_t rc_list[] = {
 	{ SEL_NO, "rc2", 0, 0, MCEDATA_RC2, NULL },
 	{ SEL_NO, "rc3", 0, 0, MCEDATA_RC3, NULL },
 	{ SEL_NO, "rc4", 0, 0, MCEDATA_RC4, NULL },
-	{ SEL_NO, "rcs", 0, 0, 
-	  MCEDATA_RC1 | MCEDATA_RC2 | MCEDATA_RC3 | MCEDATA_RC4, NULL },
+	{ SEL_NO, "rcs", 0, 0, 0, NULL},
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 
