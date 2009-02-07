@@ -112,8 +112,8 @@ cmdtree_opt_t display_opts[] = {
 cmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
 	{ SEL_NO, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
-	{ SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts},
-	{ SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts},
+/* 	{ SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts}, */
+/* 	{ SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts}, */
 	{ SEL_NO, "RRA"     , 4, 4, COMMAND_RRA, command_placeholder_opts},
 	{ SEL_NO, "WRA"     , 4,-1, COMMAND_WRA, command_placeholder_opts},
 	{ SEL_NO, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
@@ -564,7 +564,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	int err = 0;
 	int i;
 	mce_param_t mcep;
-	int to_read, to_write, card_mul;
+	int to_read, to_request, to_write, card_mul, index;
 	u32 buf[DATA_SIZE];
 	char s[LINE_LEN];
 
@@ -585,7 +585,6 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			(tokens[2].type != CMDTREE_SELECT);
 		card_mul = 1;
 		to_read = 0;
-		to_write = tokens[3].n;
 
 		if (!raw_mode) {
 			char card_word[MCE_SHORT];
@@ -664,34 +663,39 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case COMMAND_RB:
-			err = mcecmd_read_block(mce, &mcep, -1, buf);
+			to_request = -1;
+			to_read = mcecmd_read_size(&mcep, to_request);
+			err = mcecmd_read_block(mce, &mcep, to_request, buf);
 			if (err) break;
 
-			errmsg += data_string(errmsg, buf, mcep.param.count * 
-					      mcep.card.card_count, &mcep);
+			errmsg += data_string(errmsg, buf, to_read, &mcep);
 
 			break;
 
 		case COMMAND_REL:
+			to_request = -1;
+			to_read = mcecmd_read_size(&mcep, to_request);
 			err = mcecmd_read_element(mce, &mcep,
 						  tokens[3].value, buf);
 			if (err) break;
 
-			errmsg += data_string(errmsg, buf, 1, &mcep);
+			errmsg += data_string(errmsg, buf, to_read, &mcep);
 
 			break;
 
 		case COMMAND_RRA:
-			err = mcecmd_read_range(mce, &mcep, tokens[3].value,
-						buf, tokens[4].value);
+			index = tokens[3].value;
+			to_request = tokens[4].value;
+			to_read = mcecmd_read_size(&mcep, to_request);
+			err = mcecmd_read_range(mce, &mcep, index, buf, to_request);
 			if (err) break;
 
-			errmsg += data_string(errmsg, buf, tokens[4].value *
-					      mcep.card.card_count, &mcep);
+			errmsg += data_string(errmsg, buf, to_read, &mcep);
 
 			break;
 
 		case COMMAND_WB:
+			to_write = tokens[3].n;
 			for (i=0; i<tokens[3].n && i<NARGS; i++)
 				buf[i] = tokens[3+i].value;
 
@@ -705,11 +709,12 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 			
 		case COMMAND_WRA:
-			for (i=0; i<tokens[4].n && i<NARGS; i++)
+			index = tokens[3].value;
+			to_write = tokens[4].n;
+			for (i=0; i<to_write && i<NARGS; i++)
 				buf[i] = tokens[4+i].value;
 
-			err = mcecmd_write_range(mce, &mcep, tokens[3].value,
-						 buf, tokens[4].n);
+			err = mcecmd_write_range(mce, &mcep, index, buf, to_write);
 			break;
 			
 		default:

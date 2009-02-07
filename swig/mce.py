@@ -168,11 +168,14 @@ class mce:
         return p
 
     def read(self, card, para, count=-1, offset=0, array=True):
+        #Note this has the usual mce_library bizarro conventions for
+        #offset and count when it comes to broadcast cards.
 
         p = self.lookup(card,para)
         if count < 0: count = p.param.count - offset
+        count_out = mcecmd_read_size(p, count)
 
-        d = i32array(count)
+        d = i32array(count_out)
         err = mcecmd_read_range(self.context, p, offset, \
                                 u32_from_int_p(d.cast()), count)
         if (err != 0):
@@ -180,7 +183,7 @@ class mce:
 
         if array == False: return d[0]
 
-        dd = [ d[i] for i in range(count) ]
+        dd = [ d[i] for i in range(count_out) ]
         return dd
 
     def write(self, card, para, data, offset=0):
@@ -268,7 +271,7 @@ class mce:
         read_channels(self.context, d.cast(), cards, count, cc.cast(), 1);
 
         ii = i32array(count)
-        u32_to_int(ii.cast(), d.cast(), count)
+        u32_to_i32(ii.cast(), d.cast(), count)
 
         return ii
 

@@ -272,6 +272,14 @@ int mcecmd_reset(mce_context_t* context,  const mce_param_t *param)
 }
 
 
+int mcecmd_read_size(const mce_param_t *p, int count)
+{
+	if (count < 0)
+		count = p->param.count;
+	return p->card.card_count * count;
+}
+
+
 /* MCE special commands - these provide additional logical support */
 
 int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,

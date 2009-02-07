@@ -94,6 +94,8 @@ int mcecmd_send_command     (mce_context_t* context,
 int mcecmd_load_param       (mce_context_t* context, mce_param_t *param,
 			  const char *card_str, const char *param_str);
 
+int mcecmd_read_size        (const mce_param_t *p, int count);
+
 
 /* Interface (PCI card) control */
 
