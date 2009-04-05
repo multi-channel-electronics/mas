@@ -1,15 +1,12 @@
-TARGET ?= all
-default: $(TARGET)
+default: all
 
 BASE = ../
 include $(BASE)Makefile.children
 
 OBJECTS = socks.o cmdtree.o masconfig.o
+
 HEADERS = $(MAS_INCLUDE_F)mce/socks.h $(MAS_INCLUDE_F)mce/cmdtree.h \
 	$(MAS_INCLUDE_F)masconfig.h
-CC = gcc
-
-CFLAGS += -Wall -I$(MAS_INCLUDE_F) -fPIC -fno-stack-protector
 
 all: $(OBJECTS)
 

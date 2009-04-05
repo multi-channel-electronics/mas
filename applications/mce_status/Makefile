@@ -8,18 +8,12 @@ include $(MAKERULES)Makefile.version
 include $(MAKERULES)Makefile.defaults
 DEFS = -DVERSION_STRING="$(REPO_VER)" $(CONFIGFILE_DEFS)
 
-INCLUDE=-I$(MAS_INCLUDE_F)
+LIBRARY=$(MAS_LIB)
 
-LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
-	-L$(LOGLIB_F) -l$(LOGLIB) \
-	-lpthread -lconfig 
-
-CFLAGS += $(INCLUDE) $(DEFS) -Wall
+CFLAGS += $(DEFS)
 
 OBJECTS = mce_status.o options.o das.o mas.o cfg_dump.o
 HEADERS = mce_status.h das.h mas.h cfg_dump.h
-
-CC=gcc
 
 # targets
 

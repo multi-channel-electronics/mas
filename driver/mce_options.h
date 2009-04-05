@@ -8,10 +8,9 @@
 
 /*
 
-  These parameters are passed in from the Makefile; instead of
-  enabling them here, change the default value in Makefile or set a
-  local override in Makefile.local; e.g.
-          FAKEMCE ?= 1
+  The following parameters may be set in the Makefile to control
+  certain behaviours. Some defaults are set through the ./configure
+  script.
 
   FAKEMCE - replace PCI card support with the fake_mce emulator
   REALTIME - use RTAI.  This only affects the PCI card interrupt.

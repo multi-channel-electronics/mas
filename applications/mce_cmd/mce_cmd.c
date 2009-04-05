@@ -7,8 +7,6 @@
  *  standard input or from the command line using the -x option.
  */
 
-#define _GNU_SOURCE
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>

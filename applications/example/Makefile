@@ -1,11 +1,12 @@
+# Note that this lives outside the MAS build system!  It can survive out of tree.
+
 default: all
 
 CC=gcc
-
-LIB=-lmcecmd -lconfig -lmaslog -lpthread
+LIB=-L/usr/local/lib -lmcecmd -lconfig -lmaslog -lpthread
 
 # -std=c99 lets us define vars anywhere...
-CFLAGS=-Wall -std=c99
+CFLAGS=-Wall -std=c99 -I/usr/local/include
 
 all: example example_data
 

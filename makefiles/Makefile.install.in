@@ -1,10 +1,7 @@
 # Install destination and configuration information
 
-MAS_DIR ?= /usr/mce/
-MAS_USER ?= mce
-MAS_GROUP ?= mce
-
-MAS_BIN ?= $(MAS_DIR)bin/
+MAS_USER ?= @MAS_USER@
+MAS_GROUP ?= @MAS_GROUP@
 
 mas_base_install:
 	install -m u+rwx,g+rx,o+rx --owner=$(MAS_USER) --group=$(MAS_GROUP) \

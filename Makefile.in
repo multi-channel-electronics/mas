@@ -1,0 +1,55 @@
+# Program names from configure script
+CC= @CC@
+
+# Compilation options from configure script
+MAKE_DRIVER=@DO_MAS_DRIVER@
+MAKE_SWIG=@DO_MAS_SWIG@
+
+# Set up the sets of folders to recurse into for each target
+all_dirs = interfaces applications
+clean_dirs = interfaces applications swig
+install_dirs = include interfaces applications
+
+# Set up dependencies for each target
+all_deps = 
+clean_deps = clean_driver
+install_deps = all
+
+ifeq ($(MAKE_SWIG),yes)
+all_dirs += swig
+install_dirs += swig
+endif
+
+ifeq ($(MAKE_DRIVER),yes)
+all_deps += make_driver
+install_deps += install_driver
+endif
+
+# Target definitions.  This should be a loop or something...
+
+default: all
+
+all: $(all_deps)
+	for d in $(all_dirs); do make -C $$d; done
+
+clean: $(clean_deps)
+	for d in $(all_dirs); do make -C $$d clean; done
+
+install: $(install_deps)
+	for d in $(all_dirs); do make -C $$d install; done
+
+.PHONY: default all clean install
+
+# Supporting targets; driver needs some hand-holding...
+
+make_driver:
+	cd driver; make
+
+clean_driver:
+	cd driver; make clean
+
+install_driver:
+	cd driver; make install
+
+.PHONY: make_driver clean_driver install_driver
+

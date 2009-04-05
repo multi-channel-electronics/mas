@@ -3,30 +3,24 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-EXTRA = $(MASMISC_F)socks.o
-INCLUDE = -I$(MAS_INCLUDE_F)
-
-CFLAGS += $(INCLUDE) -Wall -fPIC -fno-stack-protector
-
-CC=gcc
+EXTERN_OBJ = $(MASMISC_F)socks.o
 
 # Target name for logger client library
-LOGLIB = libmaslog.a
+LIBNAME = lib$(LOGLIB).a
 
+all: $(LIBNAME)
 
-all: $(LOGLIB)
+$(LIBNAME): $(EXTERN_OBJ) libmaslog.o $(MAS_INCLUDE_F)libmaslog.h
+	$(AR) rs $@ $(EXTERN_OBJ) libmaslog.o
 
-$(LOGLIB): $(EXTRA) libmaslog.o $(MAS_INCLUDE_F)libmaslog.h
-	$(AR) rs $@ $(EXTRA) libmaslog.o
-
-# Make the install__libmaslog.a
-INSTALL_TARGET=$(LOGLIB)
+# Make the install__libmaslog.a rule
+INSTALL_TARGET=$(LIBNAME)
 include $(MAKERULES)Makefile.install_rule_lib
 
-install: install__$(LOGLIB)
+install: install__$(LIBNAME)
 
 tidy:
 	-rm *~ *.o
 
 clean:	tidy
-	-rm $(LOGLIB)
+	-rm $(LIBNAME)

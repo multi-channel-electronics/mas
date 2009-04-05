@@ -10,15 +10,11 @@ RTAI_DIR   ?= /usr/src/rtai
 REPO_VERSION   = $(shell svnversion $(PWD))
 BRANCH_ID = $(shell cat ../branch_id.txt)
 
-# Use Makefile.local to set up default configuration options.
+# Module configuration options, set to 'yes' or 'no'
 
-include $(PWD)/Makefile.local
-
-# Module configuration options, set to 0 or 1.
-
-FAKEMCE    ?= 0
-REALTIME   ?= 0
-BIGPHYS    ?= 1
+FAKEMCE    ?= @DRIVER_FAKEMCE@
+REALTIME   ?= no
+BIGPHYS    ?= @DRIVER_BIGPHYS@
 
 
 # Compilation options - don't trash CFLAGS, everything breaks.
@@ -28,27 +24,27 @@ INCLUDES = -I$(PWD) -I$(PWD)/../include
 LIBS = 
 MY_CFLAGS = -Wall
 
-ifeq ($(FAKEMCE),1)
+ifeq ($(FAKEMCE),yes)
 
   DEFS += -DFAKEMCE
   INCLUDES += -I$(PWD)/$(FAKEMCE_DIR)
 
-endif #FAKEMCE=1
+endif #FAKEMCE=yes
 
 
-ifeq ($(REALTIME),1)
+ifeq ($(REALTIME),yes)
 
   DEFS += -DREALTIME
   INCLUDES += -I$(RTAI_DIR)/include -I$(RTAI_DIR)
 
-endif #REALTIME=1
+endif #REALTIME=yes
 
 
-ifeq ($(BIGPHYS),1)
+ifeq ($(BIGPHYS),yes)
 
   DEFS += -DBIGPHYS
 
-endif #BIGPHYS=1
+endif #BIGPHYS=yes
 
 
 
@@ -59,13 +55,13 @@ SOURCE_OBJ := mce_driver.o mce_ops.o \
 	data.o data_qt.o data_ops.o data_watcher.o \
 	proc.o
 
-ifeq ($(FAKEMCE),1)
+ifeq ($(FAKEMCE),yes)
 
   SOURCE_OBJ += $(FAKEMCE_DIR)dsp_fake.o \
 	$(FAKEMCE_DIR)mce_fake.o \
 	$(FAKEMCE_DIR)dsp_state.o
 
-endif #FAKEMCE=1
+endif #FAKEMCE=yes
 
 
 # Get kernel version -> KVER
@@ -93,16 +89,13 @@ endif
 
 # General rules
 
-$(PWD)/Makefile.local:
-	touch $(PWD)/Makefile.local
-
 fault:
 	@echo Unknown kernel version $(TARGET_KERNEL) : $(KVER)
 
 clean: kversion_clean
 	-rm -rf *.o *~ core version.h \
 		.depend .*.cmd *.mod.c .tmp_versions Module.symvers
-ifeq ($(FAKEMCE),1)
+ifeq ($(FAKEMCE),yes)
 	make -C $(FAKEMCE_DIR) clean
 endif #FAKEMCE=1
 

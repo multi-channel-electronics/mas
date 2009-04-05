@@ -2,9 +2,7 @@ default: all
 
 include ../Makefile.children
 
-LIBRARY = -L$(LOGLIB_F) -l$(LOGLIB) \
-	-L/usr/local/lib -lconfig
-
+LIBRARY = $(MAS_LIB)
 SOCK = $(MASMISC_F)/socks.o
 
 SOURCE = logger.c main.c init.c
@@ -12,11 +10,8 @@ HEADER = logger.h init.h
 
 include $(MAKERULES)Makefile.defaults
 DEFS += $(CONFIGFILE_DEFS)
-INCLUDE += -I$(MAS_INCLUDE_F)
 
-CFLAGS += -Wall $(INCLUDE) $(DEFS)
-
-CC=gcc
+CFLAGS += $(DEFS)
 
 # Target name for logger application
 

@@ -5,7 +5,6 @@
 
 #include <mce_library.h>
 
-
 /* Default device, config files */
 
 #define CMD_DEVICE "/dev/mce_cmd0"
@@ -43,7 +42,7 @@ void print_u32(u32 *data, int count)
 	int i;
 	for (i=0; i<count; i++) {
 		printf("%u ", data[i]);
-	}
+ 	}
 	printf("\n");
 }
 

@@ -1,0 +1,92 @@
+dnl Use branch_id.txt to verify the tree identity.
+
+AC_INIT(branch_id.txt)
+
+
+dnl We need C, and some stuff for installing.
+
+AC_PROG_CC
+AC_PROG_LN_S
+AC_CHECK_PROG(HAS_INSTALLX, install, yes, no, [$PATH],)
+test "$HAS_INSTALLX" = yes && fail=:
+
+
+dnl Allow the user to suppress driver compile / install
+
+AC_ARG_WITH([driver],
+            [AS_HELP_STRING([--with-driver=(yes|no)],
+                            [enable/disable driver compilation and installation])],
+            [DO_MAS_DRIVER=$withval], [DO_MAS_DRIVER=yes])
+AC_SUBST(DO_MAS_DRIVER)
+
+
+dnl Some driver options
+
+AC_ARG_WITH([bigphysarea],
+            [AS_HELP_STRING([--without-bigphysarea], [disable bigphysarea])],
+            [DRIVER_BIGPHYS=$withval], [DRIVER_BIGPHYS=yes])
+AC_SUBST(DRIVER_BIGPHYS)
+AC_ARG_WITH([fakemce],
+            [AS_HELP_STRING([--with-fakemce], [enable fakemce])],
+            [DRIVER_FAKEMCE=$withval], [DRIVER_FAKEMCE=no])
+AC_SUBST(DRIVER_FAKEMCE)
+
+
+dnl Allow the user to suppress swig/python compile/install
+
+AC_ARG_WITH([python],
+            [AS_HELP_STRING([--with-python=(yes|no)],
+                            [enable/disable swig/python compilation and installation])],
+            [DO_MAS_SWIG=$withval], [DO_MAS_SWIG=yes])
+AC_SUBST(DO_MAS_SWIG)
+
+
+dnl MAS user and group are configurable
+
+AC_ARG_WITH([user],
+            [AS_HELP_STRING([--with-user=LOGIN],[set default MAS user])],
+	    [MAS_USER=$withval], [MAS_USER=mce])
+AC_ARG_WITH([group],
+            [AS_HELP_STRING([--with-group=GROUP],[set default MAS group])],
+	    [MAS_GROUP=$withval], [MAS_GROUP=mce])
+AC_SUBST(MAS_USER)
+AC_SUBST(MAS_GROUP)
+
+
+dnl MAS install path is configurable
+
+AC_ARG_WITH([prefix],
+            [AS_HELP_STRING([--with-prefix=PATH],[set default MAS install location, e.g. /usr/mce])],
+	    [MAS_PREFIX=$withval/], [MAS_PREFIX=/usr/mce/])
+AC_SUBST(MAS_PREFIX)
+
+
+dnl The location of libconfig is configurable.
+
+AC_ARG_WITH([libconfig],
+            [AS_HELP_STRING([--with-libconfig=PATH],
+              [specify location of libconfig, e.g. /usr/local/])],
+            [LIBCONFIG_DIR=$withval],
+            [LIBCONFIG_DIR=])
+if test "$LIBCONFIG_DIR" != ""; then 
+  LIBCONFIG_ARGS="-L$LIBCONFIG_DIR/lib"
+else
+  LIBCONFIG_ARGS=""
+fi
+LIBCONFIG_ARGS="$LIBCONFIG_ARGS -lconfig"
+AC_SUBST(LIBCONFIG_ARGS)
+
+dnl Check for libconfig.
+
+AC_CHECK_LIB([config], [config_init], ,
+             [AC_MSG_FAILURE([could not find libconfig, please install it from www.hyperrealm.com/libconfig/!])],
+             "$LIBCONFIG_ARGS" )
+
+
+dnl Write.
+
+AC_OUTPUT(Makefile)
+AC_OUTPUT(makefiles/Makefile.install)
+AC_OUTPUT(makefiles/Makefile.paths)
+AC_OUTPUT(driver/Makefile)
+

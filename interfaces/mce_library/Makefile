@@ -3,10 +3,7 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-LIB     = mcecmd
-LIBNAME = lib$(LIB).a
-
-DSP_DIR = ../driver
+LIBNAME = lib$(MCELIB).a
 
 OBJECTS = context.o errors.o \
 	cmd.o packet.o virtual.o \
@@ -14,12 +11,6 @@ OBJECTS = context.o errors.o \
 	dirfile.o config.o
 
 HEADERS = data_thread.h virtual.h
-
-INCLUDE += -I. -I$(MAS_INCLUDE_F) -I$(LOGLIB_F) -I$(DSP_DIR)
-
-CFLAGS += -O2 -Wall $(INCLUDE) -fPIC -fno-stack-protector
-
-CC = gcc
 
 REPO_VERSION=$(shell svnversion)
 
