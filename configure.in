@@ -1,9 +1,9 @@
-dnl Use branch_id.txt to verify the tree identity.
+# Use branch_id.txt to verify the tree identity?
 
 AC_INIT(branch_id.txt)
 
 
-dnl We need C, and some stuff for installing.
+# We need C, and some stuff for installing.
 
 AC_PROG_CC
 AC_PROG_LN_S
@@ -11,7 +11,7 @@ AC_CHECK_PROG(HAS_INSTALLX, install, yes, no, [$PATH],)
 test "$HAS_INSTALLX" = yes && fail=:
 
 
-dnl Allow the user to suppress driver compile / install
+# Allow the user to suppress driver compile / install.
 
 AC_ARG_WITH([driver],
             [AS_HELP_STRING([--with-driver=(yes|no)],
@@ -20,7 +20,7 @@ AC_ARG_WITH([driver],
 AC_SUBST(DO_MAS_DRIVER)
 
 
-dnl Some driver options
+# Some driver options.
 
 AC_ARG_WITH([bigphysarea],
             [AS_HELP_STRING([--without-bigphysarea], [disable bigphysarea])],
@@ -30,6 +30,15 @@ AC_ARG_WITH([fakemce],
             [AS_HELP_STRING([--with-fakemce], [enable fakemce])],
             [DRIVER_FAKEMCE=$withval], [DRIVER_FAKEMCE=no])
 AC_SUBST(DRIVER_FAKEMCE)
+
+
+# Configure the kernel source directory.
+
+KERNEL_DIR=/lib/modules/`uname -r`/
+AC_ARG_WITH([kernel-dir],
+            [AS_HELP_STRING([--with-kernel-dir], [set the target kernel source tree (e.g. $KERNEL_DIR)])],
+	    [KERNEL_DIR=$withval], [])
+AC_SUBST(KERNEL_DIR)
 
 
 dnl Allow the user to suppress swig/python compile/install
@@ -61,7 +70,7 @@ AC_ARG_WITH([prefix],
 AC_SUBST(MAS_PREFIX)
 
 
-dnl The location of libconfig is configurable.
+dnl The location of libconfig is configurable.  libconfigurable.
 
 AC_ARG_WITH([libconfig],
             [AS_HELP_STRING([--with-libconfig=PATH],
@@ -76,11 +85,40 @@ fi
 LIBCONFIG_ARGS="$LIBCONFIG_ARGS -lconfig"
 AC_SUBST(LIBCONFIG_ARGS)
 
+
 dnl Check for libconfig.
 
 AC_CHECK_LIB([config], [config_init], ,
              [AC_MSG_FAILURE([could not find libconfig, please install it from www.hyperrealm.com/libconfig/!])],
              "$LIBCONFIG_ARGS" )
+
+
+dnl Check for libreadline
+
+AC_CHECK_HEADER([readline/readline.h], ,
+             [AC_MSG_FAILURE([please install the libreadline-dev package.])])
+AC_CHECK_LIB([readline], [readline], ,
+             [AC_MSG_FAILURE([please install the libreadline package.])])
+	     
+
+dnl Check for bigphysarea.
+
+echo check $DO_MAS_DRIVER $DRIVER_BIGPHYS
+if test "$DO_MAS_DRIVER" != "no" && test "$DRIVER_BIGPHYS" != "no"; then
+BIGPHYS_H=${KERNEL_DIR}/build/include/linux/bigphysarea.h
+AC_CHECK_HEADER([$BIGPHYS_H],
+		[],
+		[AC_MSG_FAILURE([could not find bigphysarea.h in the kernel build tree; perhaps you want --without-bigphysarea])])
+fi
+
+
+dnl Check for swig
+
+if test "$DO_MAS_SWIG" != "no"; then
+   AC_CHECK_PROG(HAS_SWIG, swig, yes, no)
+   test "HAS_SWIG" != "yes" && \
+      AC_MSG_FAILURE([please install swig package or pass --without-python.])
+fi
 
 
 dnl Write.

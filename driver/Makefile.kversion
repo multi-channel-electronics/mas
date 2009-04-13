@@ -1,6 +1,0 @@
-TARGET_KERNEL ?= $(shell uname -r)
-
-SPLIT=$(subst ., ,$(TARGET_KERNEL))
-KMAJ=$(word 1, $(SPLIT))
-KMIN=$(word 2, $(SPLIT))
-KVER=$(KMAJ).$(KMIN)

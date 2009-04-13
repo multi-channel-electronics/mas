@@ -4,9 +4,8 @@ else
   MY_CFLAGS += -O2
 endif
 
-KERNELVER ?= $(shell uname -r)
-KERNELDIR ?= /lib/modules/$(KERNELVER)/build
-INSTALLDIR ?= /lib/modules/$(KERNELVER)/kernel/drivers/misc
+KERNELDIR ?= $(KERNEL_SOURCE)/build
+INSTALLDIR ?= $(KERNEL_SOURCE)/kernel/drivers/misc
 
 DRIVER_FILE = $(DRIVER_NAME).ko
 

@@ -16,6 +16,7 @@ FAKEMCE    ?= @DRIVER_FAKEMCE@
 REALTIME   ?= no
 BIGPHYS    ?= @DRIVER_BIGPHYS@
 
+KERNEL_SOURCE = @KERNEL_DIR@
 
 # Compilation options - don't trash CFLAGS, everything breaks.
 
@@ -64,27 +65,9 @@ ifeq ($(FAKEMCE),yes)
 endif #FAKEMCE=yes
 
 
-# Get kernel version -> KVER
-
-include $(PWD)/Makefile.kversion
-
-
-#2.4 Kernel
-
-ifeq ($(KVER),2.4)
-
-include $(PWD)/Makefile.2.4
-
-endif # KVER==2.4
-
-
-#2.6 Kernel
-
-ifeq ($(KVER),2.6)
+# Do the standard 2.6 kernel build stuff.
 
 include $(PWD)/Makefile.2.6
-
-endif
 
 
 # General rules

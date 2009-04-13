@@ -53,3 +53,7 @@ install_driver:
 
 .PHONY: make_driver clean_driver install_driver
 
+
+configure: configure.in
+	autoconf -o $@ $<
+
