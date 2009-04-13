@@ -3,12 +3,6 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-ifeq ($(wildcard /usr/include/python2.5/Python.h),/usr/include/python2.5/Python.h)
-PYTHON_INC := /usr/include/python2.5/
-else
-PYTHON_INC := /usr/include/python2.4/
-endif
-
 INCLUDE=-I$(MAS_INCLUDE_F) -I$(PYTHON_INC)
 
 LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \

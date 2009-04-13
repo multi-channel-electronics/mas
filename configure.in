@@ -7,8 +7,6 @@ AC_INIT(branch_id.txt)
 
 AC_PROG_CC
 AC_PROG_LN_S
-AC_CHECK_PROG(HAS_INSTALLX, install, yes, no, [$PATH],)
-test "$HAS_INSTALLX" = yes && fail=:
 
 
 # Allow the user to suppress driver compile / install.
@@ -41,16 +39,19 @@ AC_ARG_WITH([kernel-dir],
 AC_SUBST(KERNEL_DIR)
 
 
-dnl Allow the user to suppress swig/python compile/install
+# Allow the user to suppress/relocate swig/python compile/install
 
+PYTHON_DIR=/usr/include/python2.5/
 AC_ARG_WITH([python],
-            [AS_HELP_STRING([--with-python=(yes|no)],
-                            [enable/disable swig/python compilation and installation])],
-            [DO_MAS_SWIG=$withval], [DO_MAS_SWIG=yes])
+            [AS_HELP_STRING([--with-python=(PATH|yes|no)],
+                            [enable/disable swig/python compilation and installation, PATH default is $PYTHON_DIR])],
+            [PYTHON_DIR=$withval])
+AC_SUBST(PYTHON_DIR)
+DO_MAS_SWIG=yes
+test "$PYTHON_DIR" = "no" && DO_MAS_SWIG=no
 AC_SUBST(DO_MAS_SWIG)
 
-
-dnl MAS user and group are configurable
+# MAS user and group are configurable
 
 AC_ARG_WITH([user],
             [AS_HELP_STRING([--with-user=LOGIN],[set default MAS user])],
@@ -62,7 +63,7 @@ AC_SUBST(MAS_USER)
 AC_SUBST(MAS_GROUP)
 
 
-dnl MAS install path is configurable
+# MAS install path is configurable
 
 AC_ARG_WITH([prefix],
             [AS_HELP_STRING([--with-prefix=PATH],[set default MAS install location, e.g. /usr/mce])],
@@ -70,7 +71,7 @@ AC_ARG_WITH([prefix],
 AC_SUBST(MAS_PREFIX)
 
 
-dnl The location of libconfig is configurable.  libconfigurable.
+# The location of libconfig is configurable.  libconfigurable.
 
 AC_ARG_WITH([libconfig],
             [AS_HELP_STRING([--with-libconfig=PATH],
@@ -86,14 +87,14 @@ LIBCONFIG_ARGS="$LIBCONFIG_ARGS -lconfig"
 AC_SUBST(LIBCONFIG_ARGS)
 
 
-dnl Check for libconfig.
+# Check for libconfig.
 
 AC_CHECK_LIB([config], [config_init], ,
              [AC_MSG_FAILURE([could not find libconfig, please install it from www.hyperrealm.com/libconfig/!])],
              "$LIBCONFIG_ARGS" )
 
 
-dnl Check for libreadline
+# Check for libreadline
 
 AC_CHECK_HEADER([readline/readline.h], ,
              [AC_MSG_FAILURE([please install the libreadline-dev package.])])
@@ -101,9 +102,8 @@ AC_CHECK_LIB([readline], [readline], ,
              [AC_MSG_FAILURE([please install the libreadline package.])])
 	     
 
-dnl Check for bigphysarea.
+# Check for bigphysarea.
 
-echo check $DO_MAS_DRIVER $DRIVER_BIGPHYS
 if test "$DO_MAS_DRIVER" != "no" && test "$DRIVER_BIGPHYS" != "no"; then
 BIGPHYS_H=${KERNEL_DIR}/build/include/linux/bigphysarea.h
 AC_CHECK_HEADER([$BIGPHYS_H],
@@ -112,12 +112,14 @@ AC_CHECK_HEADER([$BIGPHYS_H],
 fi
 
 
-dnl Check for swig
+dnl Check for swig and python dev headers.
 
-if test "$DO_MAS_SWIG" != "no"; then
+if test "$PYTHON_DIR" != "no"; then
    AC_CHECK_PROG(HAS_SWIG, swig, yes, no)
-   test "HAS_SWIG" != "yes" && \
+   test "$HAS_SWIG" != "yes" && \
       AC_MSG_FAILURE([please install swig package or pass --without-python.])
+   AC_CHECK_HEADER([$PYTHON_DIR/Python.h], ,
+                   [AC_MSG_FAILURE([could not find Python.h; perhaps you want --with-python=... or you need to install python-dev])])
 fi
 
 

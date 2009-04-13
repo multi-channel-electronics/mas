@@ -1,4 +1,4 @@
-# Important locatiosn in the source tree
+# Important locations in the source tree
 MAS_INTERFACES=$(BASE)interfaces/
 MAS_APPLICATIONS=$(BASE)applications/
 MAS_INCLUDE_F=$(BASE)include/
@@ -12,6 +12,9 @@ MASMISC_F=$(MAS_INTERFACES)misc/
 MCELIB=mcecmd
 DSPLIB=mcedsp
 LOGLIB=maslog
+
+# Special includes
+PYTHON_INC = @PYTHON_DIR@
 
 # Linking arguments, including libconfig
 MAS_LIB = -L$(MCELIB_F) -l$(MCELIB) -L$(DSPLIB_F) -l$(DSPLIB) \
