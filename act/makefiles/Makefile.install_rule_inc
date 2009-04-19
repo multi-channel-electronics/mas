@@ -1,0 +1,7 @@
+# Create install rule for an header target
+
+install__$(INSTALL_TARGET): mas_base_install
+	install -m u+rw,g+rw,o+r --owner=$(MAS_USER) --group=$(MAS_GROUP) \
+		$(@:install__%=%) $(MAS_INSTALL_INC)
+	-rm $(MAS_SYS_INC)$(@:install__%=%)
+	ln -s $(MAS_INSTALL_INC)$(@:install__%=%) $(MAS_SYS_INC)

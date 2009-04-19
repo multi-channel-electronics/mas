@@ -1,0 +1,21 @@
+# Install destination and configuration information
+
+MAS_DIR ?= /usr/mce/
+MAS_USER ?= mce
+MAS_GROUP ?= mce
+
+MAS_BIN ?= $(MAS_DIR)bin/
+
+mas_base_install:
+	install -m u+rwx,g+rx,o+rx --owner=$(MAS_USER) --group=$(MAS_GROUP) \
+		-d $(MAS_INSTALL_BIN)
+	install -m u+rwx,g+rx,o+rx --owner=$(MAS_USER) --group=$(MAS_GROUP) \
+		-d $(MAS_INSTALL_LIB)
+	install -m u+rwx,g+rx,o+rx --owner=$(MAS_USER) --group=$(MAS_GROUP) \
+		-d $(MAS_INSTALL_INC)
+	install -m u+rwx,g+rx,o+rx --owner=$(MAS_USER) --group=$(MAS_GROUP) \
+		-d $(MAS_INSTALL_SWIG)
+	install -m u+rwx,g+rx,o+rx --owner=$(MAS_USER) --group=$(MAS_GROUP) \
+		-d $(MAS_INSTALL_PYTHON)
+
+mas_bin_install: mas_base_install
