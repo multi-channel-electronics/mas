@@ -8,8 +8,6 @@ int run_ramp(loop_t* loop)
 	int l, v, p;
 	int totals[MAX_VALUES];
 
-	if (loop == NULL) return 0;
-
 	for (v=0; v<loop->value_count; v++) {
 		totals[v] = loop->values[v].start;
 	}
@@ -23,8 +21,8 @@ int run_ramp(loop_t* loop)
 			}
 			totals[v] += loop->values[v].step;
 		}
-		if ( run_ramp(loop->sub_loop) != 0 )
-			return -1;
+		if (loop->sub_loop != NULL)
+  		        run_ramp(loop->sub_loop);
 	}
 	return 0;
 }

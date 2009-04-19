@@ -10,10 +10,10 @@
 
 */
 
-#define MAX_AMBLES         10
+#define MAX_AMBLES         20
 #define MAX_LOOPS          5
-#define MAX_VALUES         3
-#define MAX_OPERATIONS     5
+#define MAX_VALUES         20
+#define MAX_OPERATIONS     100
 
 #define AMBLE_LEN 1024
 

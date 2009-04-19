@@ -11,23 +11,21 @@ int main(int argc, char** argv)
 	memset(&options, 0, sizeof(options));
 
 	char ambles[MAX_AMBLES][LINE_LEN];
-	loop_t loops[MAX_LOOPS];
-	value_t values[MAX_VALUES];
-	operation_t operations[MAX_OPERATIONS];
 
+	// If we don't zero these, it's segfault city.
 	options.ambles = ambles;
-	options.loops = loops;
-	options.values = values;
-	options.operations = operations;
+	options.loops = calloc(MAX_LOOPS, sizeof(*options.loops));
+	options.values = calloc(MAX_VALUES, sizeof(*options.values));
+	options.operations = calloc(MAX_VALUES, sizeof(*options.operations));
 
 	process_options(&options, argc, argv);
 
 	print_ambles(options.preambles, options.preamble_count);
 
 	if (options.status_block) {
-		print_status_block(loops, "  ");
+		print_status_block(options.loops, "  ");
 	} else {
-		run_ramp(loops);
+		run_ramp(options.loops);
 	}
 	print_ambles(options.postambles, options.postamble_count);
 
