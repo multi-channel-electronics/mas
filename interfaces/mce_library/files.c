@@ -110,7 +110,6 @@ typedef struct flatfile_struct {
 	char filename[MCE_LONG];
 	int frame_size;
 	FILE *fout;
-	int bytes_out;
 
 } flatfile_t;
 
@@ -148,13 +147,6 @@ static int flatfile_post(mce_acq_t *acq, int frame_index, u32 *data)
 
 	fwrite(data, acq->frame_size*sizeof(*data), 1, f->fout);
 
-	// Manage disk flushing - some systems wait too long to flush? (64 MB problem?)
-	f->bytes_out += acq->frame_size*sizeof(*data);
-	if (f->bytes_out > 4*1024*1024) {
-		fflush(f->fout);
-		f->bytes_out = 0;
-	}
-
 	return 0;
 }
 
@@ -183,7 +175,7 @@ typedef struct rambuff_struct {
 	int frame_size;
 	u32 *buffer;
 	
-	unsigned user_data;
+	unsigned long user_data;
 	rambuff_callback_t callback;
 
 } rambuff_t;
@@ -328,7 +320,7 @@ void mcedata_fileseq_destroy(mce_acq_t *acq)
 */
 
 mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
-					  unsigned user_data)
+					  unsigned long user_data)
 {
 	rambuff_t *f = (rambuff_t*)malloc(sizeof(rambuff_t));
 	mcedata_storage_t *storage = (mcedata_storage_t*)malloc(sizeof(mcedata_storage_t));

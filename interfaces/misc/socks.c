@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "socks.h"
+#include "mce/socks.h"
 
 char default_addr[1024] = "";
 int  default_port = 0;
@@ -200,10 +200,9 @@ int listener_close( listener_t *list )
 int accept_now( int sock )
 {
 	struct sockaddr_in client;
-	int sin_size = sizeof(struct sockaddr);
+	socklen_t sin_size = sizeof(struct sockaddr);
 	
-	int fd = accept(sock, (struct sockaddr*)&client,
-			    (size_t*)&sin_size);
+	int fd = accept(sock, (struct sockaddr*)&client, &sin_size);
 	if (fd<0)
 		fprintf(stderr, SUBNAME
 			"could not accept connection [%i]\n", errno);

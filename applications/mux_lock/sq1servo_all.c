@@ -23,7 +23,7 @@
  * frame_callback: to store the frame to a file and fill row_data
  * 
  **********************************************************/
-int frame_callback(unsigned user_data, int frame_size, u32 *data)
+int frame_callback(unsigned long user_data, int frame_size, u32 *data)
 {
   //Re-type 
   servo_t *myservo = (servo_t*)user_data;
@@ -31,7 +31,7 @@ int frame_callback(unsigned user_data, int frame_size, u32 *data)
   u32 *lastrow_base;
   int i;
   
-  fwrite(data, frame_size, sizeof(u32), myservo->df);
+  fwrite(data, sizeof(u32), frame_size, myservo->df);
 
   memcpy(myservo->last_header, data, HEADER_OFFSET*sizeof(*data));
 
@@ -54,7 +54,7 @@ int frame_callback(unsigned user_data, int frame_size, u32 *data)
 /************************************************************
  *          M A I N
  ************************************************************/
-int main ( int argc, char **argv )
+int main(int argc, char **argv)
 {
    char datafile[256];     /* datafile being written by DAS */
    char full_datafilename[256]; /*full path for datafile*/
@@ -67,7 +67,7 @@ int main ( int argc, char **argv )
  
    FILE *bias_fd[MAXROWS];  /* Output files for error and bias entries; one per row */
    FILE *tempf;             /* pointer to sq2fb.init file*/
-   char outfile[256];       /* output data file */
+   char outfile[MAXLINE];   /* output data file */
    char line[MAXLINE];
    char init_line1[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char init_line2[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
@@ -90,16 +90,16 @@ int main ( int argc, char **argv )
    int skip_sq1bias = 0;
    
    int error=0;
-   char errmsg_temp[256];
+   char errmsg_temp[MAXLINE];
    
    time_t start, finish;
 
    /* Define default MAS options */
    option_t options = {
-     config_file:   MASCONFIG_FILE,
-     cmd_device:    CMD_DEVICE,
-     data_device:   DATA_DEVICE,
-     hardware_file: HARDWARE_FILE,
+     config_file:   DEFAULT_MASFILE,
+     cmd_device:    DEFAULT_CMDFILE,
+     data_device:   DEFAULT_DATAFILE,
+     hardware_file: DEFAULT_HARDWAREFILE,
    };
    int arg_offset = 0;
    
@@ -109,29 +109,33 @@ int main ( int argc, char **argv )
    arg_offset = process_options(&options, argc, argv) - 1;
    if (arg_offset < 0)
      exit(ERR_NUM_ARGS);
+   if (options.preservo > 0) {
+     fprintf(stderr, "This application does not yet support preservo steps!\n");
+     exit(ERR_UNIMPL);
+   }
    
    // Correct argc and argv for the remaining options (hack!)
    argc -= arg_offset;
    argv += arg_offset;
 
    /* check command-line arguments */
-   if ( argc != 12 && argc != 13){  
-      printf ( "Rev. 2.0\n");
-      printf ( "usage:- sq1servo_all outfile sq1bias sq1bstep nbias " );
-      printf ( "sq1fb sq1fstep nfb N target total_row gain skip_sq1bias\n" );
-      printf ( "   outfile = filename for output data\n" );
-      printf ( "   sq1bias = starting SQ1 bias\n" );
-      printf ( "   sq1bstep = step size for SQ1 bias\n" );
-      printf ( "   nbias = number of bias steps\n" );
-      printf ( "   sq1fb = starting SQ1 feedback\n" );
-      printf ( "   sq1fstep = step size for SQ1 feedback\n" );
-      printf ( "   nfb = number of feedback steps\n" );
-      printf ( "   N = readout-card number (1 to 4)\n");
-      printf ( "   target = lock target \n");
-      printf ( "   total_row = total number of rows in the system \n");
-      printf ( "   gain = gain of the servo (double)\n");
-      printf ( "   skip_sq1bias (optional) = if specified as 1, no SQ1 bias is applied\n");
-      printf ( "*NOTE*: Make sure sq2fb.init (32 single-entry lines) is present in the data directory\n"); 
+   if (argc != 12 && argc != 13){  
+      printf("Rev. 2.0\n");
+      printf("usage:- sq1servo_all outfile sq1bias sq1bstep nbias " );
+      printf("sq1fb sq1fstep nfb N target total_row gain skip_sq1bias\n" );
+      printf("   outfile = filename for output data\n" );
+      printf("   sq1bias = starting SQ1 bias\n" );
+      printf("   sq1bstep = step size for SQ1 bias\n" );
+      printf("   nbias = number of bias steps\n" );
+      printf("   sq1fb = starting SQ1 feedback\n" );
+      printf("   sq1fstep = step size for SQ1 feedback\n" );
+      printf("   nfb = number of feedback steps\n" );
+      printf("   N = readout-card number (1 to 4)\n");
+      printf("   target = lock target \n");
+      printf("   total_row = total number of rows in the system \n");
+      printf("   gain = gain of the servo (double)\n");
+      printf("   skip_sq1bias (optional) = if specified as 1, no SQ1 bias is applied\n");
+      printf("*NOTE*: Make sure sq2fb.init (32 single-entry lines) is present in the data directory\n"); 
       ERRPRINT("no argument specified");
       return ERR_NUM_ARGS;
    }
@@ -211,7 +215,7 @@ int main ( int argc, char **argv )
 
    // setup a call back function
    mcedata_storage_t* ramb;
-   ramb = mcedata_rambuff_create(frame_callback, (unsigned) &sq1servo);
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned long) &sq1servo);
    
    // Pick a card (won't work for rcs!!)
    int cards=(1<<(which_rc-1));
@@ -224,14 +228,14 @@ int main ( int argc, char **argv )
      return ERR_MCE_GO;
    }
 
-   if ( (datadir=getenv("MAS_DATA")) == NULL){
+   if ((datadir=getenv("MAS_DATA")) == NULL){
      ERRPRINT("Enviro var. $MAS_DATA not set, quit");
      return ERR_DATA_DIR;
    }
    sprintf(full_datafilename, "%s%s",datadir, datafile);
    
    // open a datafile 
-   if( (sq1servo.df = fopen(full_datafilename, "w")) == NULL){
+   if ((sq1servo.df = fopen(full_datafilename, "w")) == NULL){
      sprintf(errmsg_temp, "opening data file: %s", full_datafilename);
      ERRPRINT(errmsg_temp);
      return ERR_DATA_FIL;
@@ -242,7 +246,7 @@ int main ( int argc, char **argv )
    /* Open output file to append modified data set */
    for (i=0; i<nrows_rep; i++) {
        sprintf(outfile, "%s%s.r%02i.bias", datadir, datafile, i);
-       bias_fd[i] = fopen ( outfile, "a" );
+       bias_fd[i] = fopen (outfile, "a" );
    }
 
    /* Get starting SQ2 feedback values  from a file called sq2fb.init*/
@@ -255,13 +259,13 @@ int main ( int argc, char **argv )
    }
    /*prepare a line of init values for runfile*/
    sprintf(init_line1, "<sq2fb.init> ");
-   for ( j=0; j< which_rc*MAXCHANNELS; j++ ) {
+   for (j=0; j< which_rc*MAXCHANNELS; j++ ) {
      if (fgets (line, MAXLINE, tempf) == NULL) {
        ERRPRINT ("reading sq2fb.init quitting....");
        return ERR_INI_READ;
      }
      sq2fb[j][0] = atoi(line);
-     for ( i=1; i<nrows_rep; i++)
+     for (i=1; i<nrows_rep; i++)
        sq2fb[j][i] = sq2fb[j][0];
    
      sprintf(tempbuf, "%d ", sq2fb[j][0]);
@@ -282,15 +286,15 @@ int main ( int argc, char **argv )
 
    /* generate the header line for the bias files*/
    for (i=0; i<nrows_rep; i++) {
-       for ( snum=0; snum<MAXCHANNELS; snum++)
-	   fprintf ( bias_fd[i], "<error%02d_r%02i> ", snum + soffset, i);
-       for ( snum=0; snum<MAXCHANNELS; snum++)
-	   fprintf ( bias_fd[i], "<sq2fb%02d_r%02i> ", snum + soffset, i); 
-       fprintf ( bias_fd[i], "\n");
+       for (snum=0; snum<MAXCHANNELS; snum++)
+	   fprintf (bias_fd[i], "<error%02d_r%02i> ", snum + soffset, i);
+       for (snum=0; snum<MAXCHANNELS; snum++)
+	   fprintf (bias_fd[i], "<sq2fb%02d_r%02i> ", snum + soffset, i); 
+       fprintf (bias_fd[i], "\n");
    }
 
    /* start the servo*/
-   for ( j=0; j<nbias; j++ ){
+   for (j=0; j<nbias; j++ ){
 
       if (!skip_sq1bias){
 	// Write *all* sq1bias here, or row-order destroys you.
@@ -299,7 +303,7 @@ int main ( int argc, char **argv )
           error_action("mcecmd_write_block sq1bias", error);
       }
 
-      for ( i=0; i<nfeed; i++ ){
+      for (i=0; i<nfeed; i++ ){
 
 	// Write all rows fb to each squid 2
 	for (snum=0; snum<MAXCHANNELS; snum++) {
@@ -320,10 +324,10 @@ int main ( int argc, char **argv )
 	  error_action("data acquisition failed", error);
 
 	// Compute new feedback for each column, row
-	for ( snum=0; snum<MAXCHANNELS; snum++) {
+	for (snum=0; snum<MAXCHANNELS; snum++) {
 	  for (r=0; r<nrows_rep; r++) {
 	    sq2fb[snum + soffset][r] += gain *
-		( (int)sq1servo.last_frame[r*MAXVOLTS + snum + soffset] - z );
+		((int)sq1servo.last_frame[r*MAXVOLTS + snum + soffset] - z );
 	  }
 	}
 
@@ -333,7 +337,7 @@ int main ( int argc, char **argv )
 		fprintf(bias_fd[r], "%13d ", sq1servo.last_frame[r*MAXVOLTS + snum+soffset]);
 	    for (snum=0; snum<MAXCHANNELS; snum++)	 
 		fprintf(bias_fd[r], "%13d ", sq2fb[snum+soffset][r]);
-	    fprintf ( bias_fd[r], "\n" );
+	    fprintf (bias_fd[r], "\n" );
 	}
 
       }

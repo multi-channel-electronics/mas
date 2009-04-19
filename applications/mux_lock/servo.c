@@ -8,14 +8,12 @@
 /******************************************************************
  * servo.c contains subroutines called by sq1servo.c and sq2servo.c
  * 
- * Revision History:
- * <date $Date> 
- * $Log: servo.c,v $
- * Revision 1.1  2007/10/03 23:03:15  mce
- * MA contains subroutines used by sq1servo and sq2servo, for now, only genrunfile
- *
+ * Contains subroutines used by sq1servo and sq2servo, especially
+ * generic utility calls for generating runfiles and connecting to
+ * the MCE library.
  *
  ******************************************************************/
+
 int error_action(char *msg, int code){
   char temp[1024];
   

@@ -9,8 +9,8 @@
 
 #include "mce_ops.h"
 #include "mce_driver.h"
-#include "mce_ioctl.h"
-#include "mce_errors.h"
+#include "mce/mce_ioctl.h"
+#include "mce/mce_errors.h"
 
 struct file_operations mce_fops = 
 {
@@ -29,6 +29,10 @@ typedef enum {
 	OPS_ERR
 } mce_ops_state_t;
 
+struct filp_pdata {
+	int minor;
+};
+
 struct mce_ops_t {
 
 	int major;
@@ -44,7 +48,7 @@ struct mce_ops_t {
 
 	int properties; /* accessed through MCEDEV_IOCT_GET / SET */
 
-} mce_ops;
+} mce_ops[MAX_CARDS];
 
 
 /* The operations states are defined as follows:
@@ -107,94 +111,94 @@ know if the MCE works or not.
 
 */
 
-
 #define SUBNAME "mce_read: "
-
 ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
+	struct filp_pdata *fpdata = filp->private_data;
+	struct mce_ops_t *mops = mce_ops + fpdata->minor;
 	int err = 0;
 	int ret_val = 0;
 
-	PRINT_INFO(SUBNAME "state=%#x\n", mce_ops.state);
+	PRINT_INFO(SUBNAME "state=%#x\n", mops->state);
 
 	// Lock semaphore
 
 	if (filp->f_flags & O_NONBLOCK) {
 		PRINT_INFO(SUBNAME "non-blocking call\n");
-		if (down_trylock(&mce_ops.sem))
+		if (down_trylock(&mops->sem))
 			return -EAGAIN;
 	} else {
 		PRINT_INFO(SUBNAME "blocking call\n");
-		if (down_interruptible(&mce_ops.sem))
+		if (down_interruptible(&mops->sem))
 			return -ERESTARTSYS;
 	}
 
 
 	// If command in progress, block if we're allowed.
 
-	while ( !(filp->f_flags & O_NONBLOCK) && (mce_ops.state == OPS_CMD) ) {
-		if (wait_event_interruptible(mce_ops.queue,
-					     mce_ops.state != OPS_CMD)) {
+	while ( !(filp->f_flags & O_NONBLOCK) && (mops->state == OPS_CMD) ) {
+		if (wait_event_interruptible(mops->queue,
+					     mops->state != OPS_CMD)) {
 			ret_val = -ERESTARTSYS;
 			goto out;
 		}
 	}
 
-	switch (mce_ops.state) {
+	switch (mops->state) {
 
 	case OPS_IDLE:
 		ret_val = 0;
-		mce_ops.error = -MCE_ERR_ACTIVE;
+		mops->error = -MCE_ERR_ACTIVE;
 		goto out;
 		
 	case OPS_CMD:
 		// Not possible in blocking calls
 		ret_val = -EAGAIN;
-		mce_ops.error = 0;
+		mops->error = 0;
 		goto out;
 			
 	case OPS_REP:
 		// Fix me: partial packet reads not supported
-		ret_val = sizeof(mce_ops.rep);
+		ret_val = sizeof(mops->rep);
 		if (ret_val > count) ret_val = count;
 	
-		err = copy_to_user(buf, (void*)&mce_ops.rep, ret_val);
+		err = copy_to_user(buf, (void*)&mops->rep, ret_val);
 		ret_val -= err;
 		if (err) {
 			PRINT_ERR(SUBNAME
 				  "could not copy %#x bytes to user\n", err );
-			mce_ops.error = -MCE_ERR_KERNEL;
+			mops->error = -MCE_ERR_KERNEL;
 		}
-		mce_ops.state = OPS_IDLE;
-		mce_ops.error = 0;
+		mops->state = OPS_IDLE;
+		mops->error = 0;
 		break;
 		
 	case OPS_ERR:
 	default:
 		ret_val = 0;
-		// mce_ops.error is set when state <= OPS_ERR
-		mce_ops.state = OPS_IDLE;
+		// mops->error is set when state <= OPS_ERR
+		mops->state = OPS_IDLE;
 	}
 		
 out:
 	PRINT_INFO(SUBNAME "exiting (%i)\n", ret_val);
 	
-	up(&mce_ops.sem);
+	up(&mops->sem);
 	return ret_val;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_write_callback: "
-
-int mce_write_callback( int error, mce_reply* rep )
+int mce_write_callback( int error, mce_reply* rep, int card)
 {
+	struct mce_ops_t *mops = mce_ops + card;
+
 	// Reject unexpected interrupts
-	if (mce_ops.state != OPS_CMD) {
+	if (mops->state != OPS_CMD) {
 		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
-			  mce_ops.state, OPS_CMD);
+			  mops->state, OPS_CMD);
 		return -1;
 	}			  
 
@@ -202,47 +206,47 @@ int mce_write_callback( int error, mce_reply* rep )
 	if (error || rep==NULL) {
 		PRINT_ERR(SUBNAME "called with error=-%#x, rep=%lx\n",
 			  -error, (unsigned long)rep);
-		memset(&mce_ops.rep, 0, sizeof(mce_ops.rep));
-		mce_ops.state = OPS_ERR;
-		mce_ops.error = error ? error : -MCE_ERR_INT_UNKNOWN;
+		memset(&mops->rep, 0, sizeof(mops->rep));
+		mops->state = OPS_ERR;
+		mops->error = error ? error : -MCE_ERR_INT_UNKNOWN;
 	} else {
 		PRINT_INFO(SUBNAME "type=%#x\n", rep->ok_er);
-		memcpy(&mce_ops.rep, rep, sizeof(mce_ops.rep));
-		mce_ops.state = OPS_REP;
+		memcpy(&mops->rep, rep, sizeof(mops->rep));
+		mops->state = OPS_REP;
 	}
 
-	wake_up_interruptible(&mce_ops.queue);
+	wake_up_interruptible(&mops->queue);
 	return 0;
 }
-
 #undef SUBNAME
 
 #define SUBNAME "mce_write: "
-
 ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
+	struct filp_pdata *fpdata = filp->private_data;
+	struct mce_ops_t *mops = mce_ops + fpdata->minor;
 	int err = 0;
 	int ret_val = 0;
 
-	PRINT_INFO(SUBNAME "state=%#x\n", mce_ops.state);
+	PRINT_INFO(SUBNAME "state=%#x\n", mops->state);
 
 	// Non-blocking version may not wait on semaphore.
 
 	if (filp->f_flags & O_NONBLOCK) {
 		PRINT_INFO(SUBNAME "non-blocking call\n");
-		if (down_trylock(&mce_ops.sem))
+		if (down_trylock(&mops->sem))
 			return -EAGAIN;
 	} else {
 		PRINT_INFO(SUBNAME "blocking call\n");
-		if (down_interruptible(&mce_ops.sem))
+		if (down_interruptible(&mops->sem))
 			return -ERESTARTSYS;
 	}
 
 	// Reset error flag
-	mce_ops.error = 0;
+	mops->error = 0;
 
-	switch (mce_ops.state) {
+	switch (mops->state) {
 
 	case OPS_IDLE:
 		break;
@@ -252,20 +256,20 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	case OPS_ERR:
 	default:
 		ret_val = 0;
-		mce_ops.error = -MCE_ERR_ACTIVE;
+		mops->error = -MCE_ERR_ACTIVE;
 		goto out;
 	}
 
 	// Command size check
-	if (count != sizeof(mce_ops.cmd)) {
+	if (count != sizeof(mops->cmd)) {
 		PRINT_ERR(SUBNAME "count != sizeof(mce_command)\n");
 		ret_val = -EPROTO;
 		goto out;
 	}
 
 	// Copy command to local buffer
-	if ( (err=copy_from_user(&mce_ops.cmd, buf,
-				 sizeof(mce_ops.cmd)))!=0) {
+	if ( (err=copy_from_user(&mops->cmd, buf,
+				 sizeof(mops->cmd)))!=0) {
 		PRINT_ERR(SUBNAME "copy_from_user incomplete\n");
 		ret_val = count - err;
 		goto out;
@@ -275,31 +279,32 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	//  - leaves us vulnerable to unexpected interrupts
 	//  - the alternative risks losing expected interrupts
 
-	mce_ops.state = OPS_CMD;
-	if ((err=mce_send_command(&mce_ops.cmd, mce_write_callback, 1))!=0) {
+	mops->state = OPS_CMD;
+	if ((err=mce_send_command(&mops->cmd, mce_write_callback, 1, fpdata->minor))!=0) {
 		PRINT_ERR(SUBNAME "mce_send_command failed\n");
-		mce_ops.state = OPS_IDLE;
-		mce_ops.error = err;
+		mops->state = OPS_IDLE;
+		mops->error = err;
 		ret_val = 0;
 		goto out;
 	}
  
 	ret_val = count;
  out:
-	up(&mce_ops.sem);
+	up(&mops->sem);
 
 	PRINT_INFO(SUBNAME "exiting [%#x]\n", ret_val);
 	return ret_val;
 }
-
 #undef SUBNAME
 
 
 #define SUBNAME "mce_ioctl: "
-
 int mce_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
+	struct filp_pdata *fpdata = filp->private_data;
+	int card = fpdata->minor;
+	struct mce_ops_t *mops = mce_ops + card;
 	int x;
 
 	switch(iocmd) {
@@ -310,21 +315,21 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 		return -1;
 
 	case MCEDEV_IOCT_HARDWARE_RESET:
-		return mce_hardware_reset();
+		return mce_hardware_reset(card);
 	       
 	case MCEDEV_IOCT_INTERFACE_RESET:
-		return mce_interface_reset();
+		return mce_interface_reset(card);
 
 	case MCEDEV_IOCT_LAST_ERROR:
-		x = mce_ops.error;
-		mce_ops.error = 0;
+		x = mops->error;
+		mops->error = 0;
 		return x;
 
 	case MCEDEV_IOCT_GET:
-		return mce_ops.properties;
+		return mops->properties;
 		
 	case MCEDEV_IOCT_SET:
-		mce_ops.properties = (int)arg;
+		mops->properties = (int)arg;
 		return 0;
 		
 	default:
@@ -333,58 +338,91 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 
 	return -1;
 }
-
 #undef SUBNAME
 
 
 int mce_open(struct inode *inode, struct file *filp)
 {
+	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
+	fpdata->minor = iminor(inode);
+	filp->private_data = fpdata;
+
 	PRINT_INFO("mce_open\n");
 	return 0;
 }
 
-
+#define SUBNAME "mce_release: "
 int mce_release(struct inode *inode, struct file *filp)
 {
-	PRINT_INFO("mce_release\n");
+	struct filp_pdata *fpdata = filp->private_data;
+	struct mce_ops_t *mops = mce_ops + fpdata->minor;
+
+	PRINT_INFO(SUBNAME "entry\n");
+
+	if(fpdata != NULL) {
+		kfree(fpdata);
+	} else PRINT_ERR(SUBNAME "called with NULL private_data\n");
 
 	// Re-idle the state so subsequent commands don't (necessarily) fail
-
-	if ((mce_ops.properties & MCEDEV_CLOSE_CLEANLY) && mce_ops.state == OPS_CMD) {
+	if ((mops->properties & MCEDEV_CLOSE_CLEANLY) && mops->state == OPS_CMD) {
 		PRINT_ERR("mce_release: closure forced, setting state to idle.\n");
-		mce_ops.state = OPS_IDLE;
+		mops->state = OPS_IDLE;
 	}
 
 	return 0;
 }
+#undef SUBNAME
 
-
-int mce_ops_init(void) {
+#define SUBNAME "mce_ops_init: "
+int mce_ops_init(void)
+{
 	int err = 0;
-
-	PRINT_INFO("mce_ops_init: entry\n");
-
-	init_waitqueue_head(&mce_ops.queue);
-	init_MUTEX(&mce_ops.sem);
-
-	mce_ops.state = OPS_IDLE;
+	int i = 0;
+	PRINT_INFO(SUBNAME "entry\n");
 
 	err = register_chrdev(0, MCEDEV_NAME, &mce_fops);
 	if (err<0) {
 		PRINT_ERR("mce_ops_init: could not register_chrdev,"
 			  "err=%#x\n", -err);
-	} else {	  
-		mce_ops.major = err;
+	} else {
+		for(i=0; i<MAX_CARDS; i++) {
+			struct mce_ops_t *mops = mce_ops + i;		
+			mops->major = err;
+		}
 		err = 0;
 	}
 
+	PRINT_INFO(SUBNAME "ok\n");
 	return err;
 }
+#undef SUBNAME
 
-int mce_ops_cleanup(void)
+#define SUBNAME "mce_ops_probe: "
+int mce_ops_probe(int card)
 {
-	if (mce_ops.major != 0) 
-		unregister_chrdev(mce_ops.major, MCEDEV_NAME);
+	struct mce_ops_t *mops = mce_ops + card;
 
+	PRINT_INFO(SUBNAME "entry\n");
+
+	init_waitqueue_head(&mops->queue);
+	init_MUTEX(&mops->sem);
+
+	mops->state = OPS_IDLE;
+ 
+	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
+#undef SUBNAME
+
+#define SUBNAME "mce_ops_remove: "
+int mce_ops_cleanup(void)
+{
+	PRINT_INFO(SUBNAME "entry\n");
+
+	if (mce_ops->major != 0) 
+		unregister_chrdev(mce_ops->major, MCEDEV_NAME);
+
+	PRINT_INFO(SUBNAME "ok\n");
+	return 0;
+}
+#undef SUBNAME

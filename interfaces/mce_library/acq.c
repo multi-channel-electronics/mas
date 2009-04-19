@@ -9,10 +9,10 @@
 #include <sys/ioctl.h>
 
 #include <mce_library.h>
-#include "data_ioctl.h"
+#include <mce/data_ioctl.h>
 
-#include "frame.h"
 #include "data_thread.h"
+#include "frame_manip.h"
 
 /* #define LOG_LEVEL_CMD     LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_OK  LOGGER_DETAIL */
@@ -21,14 +21,9 @@
 #define FRAME_USLEEP 1000
 
 
-// We'll have to generalize this if the frame structure ever changes.
+static int copy_frames_mmap(mce_acq_t *acq);
 
-#define FRAME_HEADER 43
-#define FRAME_COLUMNS 8 /* per card */
-#define FRAME_FOOTER 1
-
-
-static int copy_frames(mce_acq_t *acq);
+static int copy_frames_read(mce_acq_t *acq);
 
 static int set_n_frames(mce_acq_t *acq, int n_frames);
 
@@ -65,8 +60,8 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	}
 
 	// Save frame size and other options
-	acq->frame_size = rows_reported * FRAME_COLUMNS * n_cards + 
-		FRAME_HEADER + FRAME_FOOTER;
+	acq->frame_size = rows_reported * MCEDATA_COLUMNS * n_cards + 
+		MCEDATA_HEADER + MCEDATA_FOOTER;
 	acq->cards = cards;
 	acq->options = options;
 	acq->context = context;
@@ -157,7 +152,11 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 
 	} else {
 		/* Block for frames, and return */
-		ret_val = copy_frames(acq);
+		if (acq->context->data.map != NULL) {
+			ret_val = copy_frames_mmap(acq);
+		} else {
+			ret_val = copy_frames_read(acq);
+		}
 	}
 
 	return ret_val;
@@ -230,7 +229,91 @@ int load_ret_dat(mce_acq_t *acq)
 }
 
 
-int copy_frames(mce_acq_t *acq)
+int copy_frames_mmap(mce_acq_t *acq)
+{
+	int ret_val = 0;
+	int done = 0;
+	int count = 0;
+	int index = 0;
+	u32 *data;
+
+	int waits = 0;
+	int max_waits = 1000;
+	
+	acq->n_frames_complete = 0;
+
+	/* memmap loop */
+	while (!done) {
+
+		if (acq->storage->pre_frame != NULL &&
+		    acq->storage->pre_frame(acq) != 0) {
+				fprintf(stderr, "pre_frame action failed\n");
+		}
+
+		while (mcedata_poll_offset(acq->context, &ret_val) == 0) {
+			usleep(1000);
+			waits++;
+			if (waits >= max_waits)
+				done = EXIT_TIMEOUT;
+			continue;
+		}
+		waits = 0;
+
+		// New frame at offset ret_val
+		data = acq->context->data.map + ret_val;
+
+		// Logical formatting
+		sort_columns( acq, data );
+
+		if ( (acq->storage->post_frame != NULL) &&
+		     acq->storage->post_frame( acq, count, data ) ) {
+			fprintf(stderr, "post_frame action failed\n");
+		}
+
+		index = 0;
+		if (++count >= acq->n_frames)
+			done = EXIT_COUNT;
+
+		if (frame_property(data, &frame_header_v6, status_v6)
+		    & FRAME_STATUS_V6_STOP)
+			done = EXIT_STOP;
+
+		if (frame_property(data, &frame_header_v6, status_v6)
+		    & FRAME_STATUS_V6_LAST)
+			done = EXIT_LAST;
+
+		// Inform driver of consumption
+		mcedata_consume_frame(acq->context);
+	}
+
+	switch (done) {
+	case EXIT_COUNT:
+	case EXIT_LAST:
+		acq->status = MCEDATA_IDLE;
+		break;
+
+	case EXIT_TIMEOUT:
+		acq->status = MCEDATA_TIMEOUT;
+		break;
+
+	case EXIT_STOP:
+		acq->status = MCEDATA_STOP;
+		break;
+		
+	case EXIT_READ:
+	case EXIT_WRITE:
+	case EXIT_EOF:
+	default:
+		acq->status = MCEDATA_ERROR;
+		break;
+	}
+
+	acq->n_frames_complete = count;
+
+	return 0;
+}
+
+int copy_frames_read(mce_acq_t *acq)
 {
 	int ret_val = 0;
 	int done = 0;
@@ -249,13 +332,14 @@ int copy_frames(mce_acq_t *acq)
 		return -MCE_ERR_FRAME_SIZE;
 	}
 
+	/* read method loop */
 	while (!done) {
 
 		if (acq->storage->pre_frame != NULL &&
 		    acq->storage->pre_frame(acq) != 0) {
 				fprintf(stderr, "pre_frame action failed\n");
 		}
-	
+
 		ret_val = read(acq->context->data.fd, (void*)data + index,
 			       acq->frame_size*sizeof(*data) - index);
 
@@ -333,6 +417,7 @@ int copy_frames(mce_acq_t *acq)
 	free(data);
 	return 0;
 }
+
 
 int card_count(int cards)
 {

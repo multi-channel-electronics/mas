@@ -1,6 +1,7 @@
 #ifndef _MCE_OPTIONS_H_
 #define _MCE_OPTIONS_H_
 
+#define MAX_CARDS 2
 
 #define DEVICE_NAME "mceds"
 
@@ -46,13 +47,19 @@
 
 #ifndef BIGPHYS
 
-#  define FRAME_BUFFER_SIZE 128000
+#  define FRAME_BUFFER_SIZE (32*1024*1024)
 
 #else
 
-#  define FRAME_BUFFER_SIZE 30e6
+#  define FRAME_BUFFER_SIZE 10e6
 
 #endif
+
+
+/* DEFAULT_DATA_SIZE - doesn't affect very much, just the initial
+ * frame size.  5424, as the current MCE maximum, is fine. */
+
+#define DEFAULT_DATA_SIZE   5424
 
 
 /*

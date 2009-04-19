@@ -12,9 +12,9 @@ typedef struct {
 	int echo_only;
 } mas_t;
 
-int  mas_init(unsigned user_data, const options_t *options);
-int  mas_item(unsigned user_data, const mce_param_t *p);
-int  mas_cleanup(unsigned user_data);
+int  mas_init(unsigned long user_data, const options_t *options);
+int  mas_item(unsigned long user_data, const mce_param_t *p);
+int  mas_cleanup(unsigned long user_data);
 
 int mas_crawler(options_t *options, crawler_t *crawler)
 {
@@ -31,12 +31,12 @@ int mas_crawler(options_t *options, crawler_t *crawler)
 	crawler->cleanup = mas_cleanup;
 	crawler->item = mas_item;
 
-	crawler->user_data = (unsigned) mas;
+	crawler->user_data = (unsigned long) mas;
 
 	return 0;	
 }
 
-int  mas_init(unsigned user_data, const options_t *options)
+int  mas_init(unsigned long user_data, const options_t *options)
 {
 	mas_t *mas = (mas_t*)user_data;
 	mas->time = time(NULL);
@@ -55,7 +55,7 @@ int  mas_init(unsigned user_data, const options_t *options)
 	return 0;
 }
 
-int mas_cleanup(unsigned user_data)
+int mas_cleanup(unsigned long user_data)
 {
 	mas_t *mas = (mas_t*) user_data;
 	fprintf(mas->out, "# End snapshot, ctime=%u\n", (int)mas->time);
@@ -63,7 +63,7 @@ int mas_cleanup(unsigned user_data)
 	return 0;
 }
 
-int  mas_item(unsigned user_data, const mce_param_t *p)
+int  mas_item(unsigned long user_data, const mce_param_t *p)
 {
 	mas_t *mas = (mas_t*) user_data;
 	u32 buf[MCE_REP_DATA_MAX];

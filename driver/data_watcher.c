@@ -1,7 +1,7 @@
 #include <linux/kernel.h>
 #include <asm/uaccess.h>
 
-#include "data_ioctl.h"
+#include "mce/data_ioctl.h"
 #include "data_watcher.h"
 
 struct buffer_watcher watcher;
@@ -74,9 +74,9 @@ int watcher_ioctl(int iocmd, int arg)
 		return 0;
 
 	case DATADEV_IOCT_WATCH_DL:
-		
-		return watcher_dump((int*)arg, 1 /*user*/);
-
+		// Probably not x64 safe!
+		//return watcher_dump((int*)arg, 1 /*user*/);
+		return -1;
 	}
 	return -1;
 }

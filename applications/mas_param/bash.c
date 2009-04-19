@@ -11,9 +11,9 @@ typedef struct {
 	int echo_only;
 } bash_t;
 
-int  bash_init(unsigned user_data, const options_t *options);
-int  bash_item(unsigned user_data, const mas_param_t *p);
-int  bash_cleanup(unsigned user_data);
+int  bash_init(unsigned long user_data, const options_t *options);
+int  bash_item(unsigned long user_data, const mas_param_t *p);
+int  bash_cleanup(unsigned long user_data);
 
 int bash_crawler(options_t *options, crawler_t *crawler)
 {
@@ -32,12 +32,12 @@ int bash_crawler(options_t *options, crawler_t *crawler)
 	crawler->item = bash_item;
 
 	crawler->passes = 1;
-	crawler->user_data = (unsigned) bash;
+	crawler->user_data = (unsigned long) bash;
 
 	return 0;	
 }
 
-int  bash_init(unsigned user_data, const options_t *options)
+int  bash_init(unsigned long user_data, const options_t *options)
 {
 	bash_t *bash = (bash_t*)user_data;
 	bash->out = stdout;
@@ -53,7 +53,7 @@ int  bash_init(unsigned user_data, const options_t *options)
 	return 0;
 }
 
-int bash_cleanup(unsigned user_data)
+int bash_cleanup(unsigned long user_data)
 {
 	bash_t *bash = (bash_t*) user_data;
 	fprintf(bash->out, "# END mas_param output\n");
@@ -61,7 +61,7 @@ int bash_cleanup(unsigned user_data)
 	return 0;
 }
 
-int  bash_item(unsigned user_data, const mas_param_t *p)
+int  bash_item(unsigned long user_data, const mas_param_t *p)
 {
 	bash_t *bash = (bash_t*) user_data;
 	int i;

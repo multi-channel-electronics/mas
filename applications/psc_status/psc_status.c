@@ -13,11 +13,6 @@
 #include "options.h"
 #include "psc_status.h"
 
-#define MASCONFIG_FILE "/etc/mce/mas.cfg"
-#define CMD_DEVICE "/dev/mce_cmd0"
-#define DATA_DEVICE "/dev/mce_data0"
-#define HARDWARE_FILE "/etc/mce/mce.cfg"
-
 int main (int argc, char **argv){
    int index;
    int width;
@@ -31,10 +26,10 @@ int main (int argc, char **argv){
 
    /* Define default MAS options */
    option_t options = {
-     config_file:   MASCONFIG_FILE,
-     cmd_device:    CMD_DEVICE,
-     data_device:   DATA_DEVICE,
-     hardware_file: HARDWARE_FILE,
+     config_file:   DEFAULT_MASFILE,
+     cmd_device:    DEFAULT_CMDFILE,
+     data_device:   DEFAULT_DATAFILE,
+     hardware_file: DEFAULT_HARDWAREFILE,
      read_stdin:    0,
    };
    

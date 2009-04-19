@@ -12,4 +12,6 @@ int mce_fake_host(void *dest);
 
 int mce_fake_reset( void );
 
+int fake_data_fill(u32 *data);
+
 #endif

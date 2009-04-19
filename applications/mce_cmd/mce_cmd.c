@@ -14,13 +14,12 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include <mce_library.h>
-
-#include <cmdtree.h>
+#include <mce/cmdtree.h>
 
 #include "cmd.h"
 #include "options.h"
@@ -161,20 +160,27 @@ char *line = NULL;
 char *line_buffer = NULL;
 
 options_t options = {
-	cmd_device:    DEFAULT_DEVICE,
-	data_device:   DEFAULT_DATA,
-	config_file:   DEFAULT_XML,
+	cmd_device:     DEFAULT_CMDFILE,
+	data_device:    DEFAULT_DATAFILE,
+	hardware_file:  DEFAULT_HARDWAREFILE,
+	masconfig_file: DEFAULT_MASFILE,
 	display:       SPECIAL_DEF,
 	acq_path:      "./",
 	use_readline: 1,
 };
 
+
+/* kill_switch increments with each Ctrl-C (SIGINT).  When it gets to
+   2, exit(1) is called by the signal handler.  If SIGINT is received
+   while waiting for input (input_switch), the handler calls exit(0). */
+
+int kill_switch = 0;
+int input_switch = 0;
+
 mce_acq_t* acq;
 
 mce_param_t ret_dat_s;
 mce_param_t num_rows_reported;
-
-//int  preload_mce_params();
 
 int  bit_count(int k);
 
@@ -184,8 +190,11 @@ int  process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 int pathify_filename(char *dest, const char *src);
 
+void die(int sig);
+
 int  main(int argc, char **argv)
 {
+	char msg[1024];
 	FILE *ferr = stderr;
 	FILE *fin  = stdin;
 	int err = 0;
@@ -193,6 +202,11 @@ int  main(int argc, char **argv)
 	if (process_options(&options, argc, argv)) {
 		err = ERR_OPT;
 		goto exit_now;
+	}
+
+	if (options.version_only) {
+		printf("%s\n", VERSION_STRING);
+		exit(0);
 	}
 
 	if (!options.nonzero_only) {
@@ -229,33 +243,36 @@ int  main(int argc, char **argv)
 		goto exit_now;
 	}
 	
-	if (mceconfig_open(mce, options.config_file, NULL)!=0) {
+	if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
-			options.config_file);
+			options.hardware_file);
 		err = ERR_MCE;
 		goto exit_now;
 	}
 
+	// Log!
+	logger_connect( &options.logger, options.masconfig_file, "mce_cmd" );
+
 	menuify_mceconfig(root_opts);
 
-/* 	// Preload useful MCE parameter id's */
-/* 	if (preload_mce_params()) { */
-/* 		fprintf(ferr, "Could not pre-load useful MCE parameter id's.\n"); */
-/* 		err = ERR_MCE; */
-/* 		goto exit_now; */
-/* 	} */
-	
 	//Open batch file, if given
 	if (options.batch_now) {
 		fin = fopen(options.batch_file, "r");
 		if (fin==NULL) {
-			fprintf(ferr, "Could not open batch file '%s'\n",
+			fprintf(ferr, "could not open batch file '%s'\n",
 				options.batch_file);
+			sprintf(msg, "failed to read script '%s'\n", options.batch_file);
+			logger_print( &options.logger, msg );
 			err = ERR_MCE;
 			goto exit_now;
 		}
+		sprintf(msg, "reading commands from '%s'\n", options.batch_file);
+		logger_print( &options.logger, msg );
 	}
 				
+	// Install signal handler for Ctrl-C and normal kill
+	signal(SIGTERM, die);
+	signal(SIGINT, die);
 
 	char errmsg[1024] = "";
 	char premsg[1024] = "";
@@ -264,7 +281,11 @@ int  main(int argc, char **argv)
 
 	while (!done) {
 		cmdtree_token_t args[NARGS];
-		unsigned int n = LINE_LEN;
+		size_t n = LINE_LEN;
+
+		// Set input semaphore, then check kill condition.
+		input_switch = 1;
+		if (kill_switch) break;
 
 		if ( options.cmds_now > 0 ) {
 			line = options.cmd_set[options.cmds_idx++];
@@ -289,6 +310,9 @@ int  main(int argc, char **argv)
 			line_count++;
 		}
 
+		// Clear input semaphore; SIGs now will just set kill_switch
+		input_switch = 0;
+		
 		if (options.no_prefix)
 			premsg[0] = 0;
 		else
@@ -332,9 +356,12 @@ int  main(int argc, char **argv)
 				printf("%sok : %s\n", premsg, errmsg);
 		} else if (err < 0) {
 			printf("%serror : %s\n", premsg, errmsg);
-			if (options.interactive)
-				continue;
-			done = 1;
+			if (!options.interactive) {
+				sprintf(msg, "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
+					line_count, line, -err, errmsg);
+				logger_print(&options.logger, msg);
+				done = 1;
+			}
 		}
 	}
 
@@ -573,7 +600,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			}
 		} else {
 			if ( tokens[1].type == CMDTREE_SELECT ) {
-				mceconfig_cfg_card ((config_setting_t*)tokens[1].value,
+				mceconfig_cfg_card ((config_setting_t*)tokens[1].data,
 						    &mcep.card);
 			} else {
 				mcep.card.id[0] = tokens[1].value;
@@ -660,7 +687,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 						buf, tokens[4].value);
 			if (err) break;
 
-			errmsg += data_string(errmsg, buf, tokens[4].value, &mcep);
+			errmsg += data_string(errmsg, buf, tokens[4].value *
+					      mcep.card.card_count, &mcep);
 
 			break;
 
@@ -871,3 +899,25 @@ int pathify_filename(char *dest, const char *src)
 
 	return 0;
 }
+
+void die(int sig)
+{
+	// If we're accepting input, just cleanup and exit.
+	if (input_switch) {
+		// Clean up acq!
+		if (acq != NULL)
+			mcedata_acq_destroy(acq);
+		exit(0);
+	} else {
+		switch (kill_switch++) {
+		case 1:
+			fprintf(stderr, "Your eagerness to exit has been noted. "
+				"Press Ctrl-C again to force quit.\n");
+			break;
+		case 2:
+			fprintf(stderr, "Killed inopportunely! mce_reset recommended!\n");
+			exit(1);
+		}
+	}
+}
+

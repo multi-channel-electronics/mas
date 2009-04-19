@@ -10,7 +10,7 @@
 
 /* dsp.h defines the structures used by the dsp driver */
 
-#include <dsp.h>
+#include <mce/dsp.h>
 
 
 /* Maximum number of handles available */
@@ -56,8 +56,6 @@ int dsp_write_word_P(int handle, int address, u32 value);
 int dsp_version(int handle);
 
 int dsp_reset(int handle);
-
-int dsp_clear(int handle);
 
 int dsp_start_application(int handle, int data);
 

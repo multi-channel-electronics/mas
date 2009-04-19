@@ -10,8 +10,8 @@
 #include "masconfig.h"
 
 options_t options = {
-	config_file: "/etc/mce/mas.cfg",
-	source_file: "/data/cryo/current_data/experiment.cfg",
+	config_file: DEFAULT_MASFILE,
+	source_file: DEFAULT_EXPERIMENTFILE,
 	mode:        MODE_IDLE,
 	format:      FORMAT_BASH,
 };

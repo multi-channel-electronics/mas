@@ -1,4 +1,4 @@
-#include "dsp_errors.h"
+#include "mce/dsp_errors.h"
 
 char *dsp_error_string(int error)
 {

@@ -44,7 +44,7 @@ typedef struct {
 } raw_data_t;
 
 
-int frame_callback(unsigned user_data, int size, u32 *data)
+int frame_callback(unsigned long user_data, int size, u32 *data)
 {
 	//Re-type 
 	raw_data_t *c = (raw_data_t*)user_data;
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 
 	// Storage object calls our callback.
 	mcedata_storage_t* ramb;
-	ramb = mcedata_rambuff_create( frame_callback, (unsigned)&raw_data );
+	ramb = mcedata_rambuff_create(frame_callback, (unsigned long)&raw_data);
 
 	// Setup an acquisition structure, associated with the rambuff.
 	mce_acq_t acq;
