@@ -215,15 +215,21 @@ class mce:
                (cards & 0x4 != 0) + (cards & 0x8 != 0)
     
     def read_frames(self, count, channel_set=False, data_only=False):
-        if channel_set == False:
+        # Channel_sets aren't supported yet; they need to be smarter.
+        if channel_set != False:
+            print 'Sorry, channel_set=False only!'
+            return None
+        else:
             channel_set = ChannelSet()
-#        cards = channel_set.cards_span()
-        cards = 0xf
-        indices = channel_set.frame_indices()
-        n_cols = 8*self.card_count(cards)
-        n_extra = 44
+            cards = 0xf
+            n_cols = 8*self.card_count(cards)
+            num_rows_rep = self.read('cc', 'num_rows_reported', array=False)
+            channel_set.rows = range(num_rows_rep)
+            channel_set.columns = range(n_cols)
 
-        num_rows_rep = self.read('cc', 'num_rows_reported', array=False)
+        indices = channel_set.frame_indices()
+
+        n_extra = 44
         frame_size = n_cols*num_rows_rep + n_extra
         d = u32array(frame_size*count)
         read_frames(self.context, d.cast(), cards, count);

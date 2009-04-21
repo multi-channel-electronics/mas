@@ -7,7 +7,7 @@ DSP_DEV=mce_dsp
 MCEC_DEV=mce_cmd
 MCED_DEV=mce_data
 
-GRP=mce
+GRP=@MAS_GROUP@
 
 awkp="\$2==\"$DSP_DEV\" {print \$1;}"
 DSP_MAJOR=`awk "$awkp" /proc/devices`
@@ -18,7 +18,8 @@ MCEC_MAJOR=`awk "$awkp" /proc/devices`
 awkp="\$2==\"$MCED_DEV\" {print \$1;}"
 MCED_MAJOR=`awk "$awkp" /proc/devices`
 
-for i in $(seq 0 1); do
+n_dev=1
+for i in $(seq 0 $(( $n_dev-1 )) ); do
 
 sudo mknod $DSP_FILE$i c $DSP_MAJOR $i
 sudo chgrp $GRP $DSP_FILE$i

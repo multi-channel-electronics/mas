@@ -129,4 +129,5 @@ AC_OUTPUT(Makefile)
 AC_OUTPUT(makefiles/Makefile.install)
 AC_OUTPUT(makefiles/Makefile.paths)
 AC_OUTPUT(driver/Makefile)
+AC_OUTPUT(driver/mcedsp_mknodes)
 
