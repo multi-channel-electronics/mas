@@ -8,7 +8,7 @@ MAKE_SWIG=@DO_MAS_SWIG@
 # Set up the sets of folders to recurse into for each target
 all_dirs = interfaces applications
 clean_dirs = interfaces applications swig
-install_dirs = include interfaces applications
+install_dirs = include interfaces applications scripts
 
 # Set up dependencies for each target
 all_deps = 
@@ -33,10 +33,10 @@ all: $(all_deps)
 	for d in $(all_dirs); do make -C $$d; done
 
 clean: $(clean_deps)
-	for d in $(all_dirs); do make -C $$d clean; done
+	for d in $(clean_dirs); do make -C $$d clean; done
 
 install: $(install_deps)
-	for d in $(all_dirs); do make -C $$d install; done
+	for d in $(install_dirs); do make -C $$d install; done
 
 .PHONY: default all clean install
 

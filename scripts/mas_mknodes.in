@@ -20,7 +20,7 @@ DSP_DEV=mce_dsp
 MCEC_DEV=mce_cmd
 MCED_DEV=mce_data
 
-GRP=mce
+GRP=@MAS_GROUP@
 
 awkp="\$2==\"$DSP_DEV\" {print \$1;}"
 DSP_MAJOR=`awk "$awkp" /proc/devices`
