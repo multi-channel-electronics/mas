@@ -1,0 +1,38 @@
+/* Command description file - libconfig syntax */
+
+        {
+            name = "bias commands";
+
+            parameters = (
+                {
+                    name = "flux_fb";
+                    id = 0x20;
+                    count = 32;
+                },
+
+                {
+                    name = "bias";
+                    id = 0x21;
+                }
+#ifdef SUBRACK_SMALL
+                ,
+				{
+					name = "flux_fb_upper";
+					id = 0x24;
+					count = 16;
+				}
+#endif /* SUBRACK_SMALL */
+/*,
+                {
+                    name = "sa_htr0";
+                    id = 0x22;
+                },
+
+                {
+                    name = "sa_htr01";
+                    id = 0x23;
+                }
+*/
+            );
+
+        }, // bias commands
