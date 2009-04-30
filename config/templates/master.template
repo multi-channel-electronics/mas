@@ -4,7 +4,7 @@
    For now this system supports:
 	- full and small sub-racks
 	- biasing address card
-	- 16 TES line configuration for small sub-racks
+	- 16 TES bias line configuration for small sub-racks
  */
 
 hardware:
@@ -23,7 +23,6 @@ hardware:
 #       include "cards/bc-1.4.2"
 #       include "cards/psc"
 #       include "cards/sys-4"
-
 #ifdef BIASING_AC
 #       include "cards/bac-2.0.7"
 #endif /* BIASING_AC */
@@ -31,7 +30,7 @@ hardware:
         {
             name = "dummy";
             parameters = ();
-        };
+        }
     );
 
     mappings = (
@@ -47,7 +46,7 @@ hardware:
         {
             name = "dummy";
             parameters = ();
-        };
+        }
     );
 
 
