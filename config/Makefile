@@ -1,7 +1,10 @@
 DEFS_ALL = 
-OPTIONS = -P -nostdinc -I ../ $(DEFS_ALL)
 
-DEPS = master.template
+TEMPLATES=templates/
+
+OPTIONS = -P -nostdinc -I ./ $(DEFS_ALL)
+
+DEPS = $(TEMPLATES)master.template
 
 all: mce_v1.cfg mce_v2.cfg mce_v1_bac.cfg mce_v2_bac.cfg mce_v2_16tes.cfg
 
