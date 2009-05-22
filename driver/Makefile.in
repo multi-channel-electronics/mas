@@ -1,13 +1,19 @@
 # Output module basename
 DRIVER_NAME ?= mce_dsp
 
+ifeq ($(KERNELRELEASE),)  # we are in the source folder now!
+src := $(shell pwd)/
+else
+# Kbuild defines src
+endif
+
+
 # Special directories - must be ?= or they get overwritten
-PWD ?= $(shell pwd)/
 FAKEMCE_DIR ?= fake_mce/
 RTAI_DIR   ?= /usr/src/rtai
 
 # Get svn repository version number
-REPO_VERSION   = $(shell svnversion $(PWD))
+REPO_VERSION   = $(shell svnversion $(src))
 BRANCH_ID = $(shell cat ../branch_id.txt)
 
 # Module configuration options, set to 'yes' or 'no'
@@ -21,14 +27,14 @@ KERNEL_SOURCE = @KERNEL_DIR@
 # Compilation options - don't trash CFLAGS, everything breaks.
 
 DEFS = 
-INCLUDES = -I$(PWD) -I$(PWD)/../include
+INCLUDES = -I$(src) -I$(src)/../include
 LIBS = 
 MY_CFLAGS = -Wall
 
 ifeq ($(FAKEMCE),yes)
 
   DEFS += -DFAKEMCE
-  INCLUDES += -I$(PWD)/$(FAKEMCE_DIR)
+  INCLUDES += -I$(src)/$(FAKEMCE_DIR)
 
 endif #FAKEMCE=yes
 
@@ -67,7 +73,7 @@ endif #FAKEMCE=yes
 
 # Do the standard 2.6 kernel build stuff.
 
-include $(PWD)/Makefile.2.6
+include $(src)/Makefile.2.6
 
 
 # General rules
@@ -84,8 +90,10 @@ endif #FAKEMCE=1
 
 
 # Version header file generation
+version_last:
+	@[ "`svnversion`" != "`cat version_last`" ] && svnversion > version_last
 
-version.h: version.h.template FORCE
+version.h: version.h.template version_last
 	grep -v '^\/\*-' version.h.template | \
 		sed 's:\$$REPO\.:$(BRANCH_ID):g' | \
 		sed 's/\$$SVN\./$(REPO_VERSION)/g' > version.h

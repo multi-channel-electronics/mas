@@ -6,11 +6,11 @@
 #include "mce/dsp_errors.h"
 
 #ifdef FAKEMCE
-#  include <dsp_fake.h>
+#  include "fake_mce/dsp_fake.h"
 #endif
 
 #define DSPDEV_NAME "mce_dsp"
-#define DSP_DEFAULT_TIMEOUT (HZ*50/100)
+#define DSP_DEFAULT_TIMEOUT (HZ*500/1000)
 
 /* DSP code versions */
 
