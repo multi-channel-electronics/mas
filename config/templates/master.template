@@ -19,7 +19,11 @@ hardware:
 #       include "cards/open-4"
 #       include "cards/ac-2.0.7"
 #       include "cards/cc-4.0.9"
+#ifdef RC_40E
+#	include "cards/rc-4.0.e"
+#else
 #       include "cards/rc-4.0.d"
+#endif /* RC_40E */
 #       include "cards/bc-1.4.2"
 #       include "cards/psc"
 #       include "cards/sys-4"
