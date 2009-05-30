@@ -59,6 +59,11 @@
                     default_set = 0;
                     write_only = 1;
                 },
+
+                {
+		    name = "readout_col_index";
+                    id = 0x19;
+                },
 /*
                 {
                     name = "filt_coef";
@@ -122,6 +127,7 @@
                     id = 0x37;
                     write_only = 1;
                 }
+
             );
         }, // readout-all commands
 
