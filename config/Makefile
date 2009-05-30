@@ -4,7 +4,7 @@ TEMPLATES=templates/
 
 OPTIONS = -P -nostdinc -I ./ $(DEFS_ALL)
 
-DEPS = $(TEMPLATES)master.template
+DEPS = $(TEMPLATES)master-4.template
 
 all: mce_v1.cfg mce_v2.cfg mce_v1_bac.cfg mce_v2_bac.cfg mce_v2_16tes.cfg
 
@@ -32,3 +32,6 @@ mce_v2_bac.cfg: $(DEPS)
 mce_v2_16tes.cfg: $(DEPS)
 	cpp $(OPTIONS) -DSUBRACK_SMALL -DTES_16 $< $@ || rm $@
 
+# Trunk stuff
+dev/mce_v1_raw.cfg: $(DEPS)
+	cpp $(OPTIONS) -DRC_40E $< $@ || rm $@

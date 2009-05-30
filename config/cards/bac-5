@@ -1,0 +1,92 @@
+/* Command description file - libconfig syntax */
+
+        {
+            name = "biasing-address commands";
+
+            parameters = (
+
+                {
+                    name = "bias";
+                    id = 0xE7;
+                },
+                //-----------------------------
+                {
+                    name = "row_order";
+                    id = 0x01;
+                    count = 41;
+                    default_items = (
+                         0, 1, 2, 3, 4, 5,
+                         6, 7, 8, 9,10,11,
+                        12,13,14,15,16,17,
+                        18,19,20,21,22,23,
+                        24,25,26,27,28,29,
+                        30,31,32,33,34,35,
+                        36,37,38,39,40 );
+                },
+
+                {
+                    name = "on_bias";
+                    id = 0x02;
+                    count = 41;
+                    min = 0;
+                    max = 16383;
+                },
+
+                {
+                    name = "off_bias";
+                    id = 0x03;
+                    count = 41;
+                    min = 0;
+                    max = 16383;
+                },
+
+                {
+                    name = "enbl_mux";
+                    id = 0x05;
+                },
+
+                {
+                    name = "const_mode";
+                    id = 0x06;
+                },
+
+                {
+                    name = "const_val";
+                    id = 0x07;
+                },
+
+                { name = "fb_col0";  id = 0xE3; count = 41; },
+                { name = "fb_col1";  id = 0xE1; count = 41; },
+                { name = "fb_col2";  id = 0xDF; count = 41; },
+                { name = "fb_col3";  id = 0xDD; count = 41; },
+                { name = "fb_col4";  id = 0xDB; count = 41; },
+                { name = "fb_col5";  id = 0xD9; count = 41; },
+                { name = "fb_col6";  id = 0xD7; count = 41; },
+                { name = "fb_col7";  id = 0xD5; count = 41; },
+                { name = "fb_col8";  id = 0xD3; count = 41; },
+                { name = "fb_col9";  id = 0xD1; count = 41; },
+                { name = "fb_col10"; id = 0xCF; count = 41; },
+                { name = "fb_col11"; id = 0xCD; count = 41; },
+                { name = "fb_col12"; id = 0xCB; count = 41; },
+                { name = "fb_col13"; id = 0xC9; count = 41; },
+                { name = "fb_col14"; id = 0xC7; count = 41; },
+                { name = "fb_col15"; id = 0xC5; count = 41; },
+                { name = "fb_col16"; id = 0xE2; count = 41; },
+                { name = "fb_col17"; id = 0xE0; count = 41; },
+                { name = "fb_col18"; id = 0xDE; count = 41; },
+                { name = "fb_col19"; id = 0xDC; count = 41; },
+                { name = "fb_col20"; id = 0xDA; count = 41; },
+                { name = "fb_col21"; id = 0xD8; count = 41; },
+                { name = "fb_col22"; id = 0xD6; count = 41; },
+                { name = "fb_col23"; id = 0xD4; count = 41; },
+                { name = "fb_col24"; id = 0xD2; count = 41; },
+                { name = "fb_col25"; id = 0xD0; count = 41; },
+                { name = "fb_col26"; id = 0xCE; count = 41; },
+                { name = "fb_col27"; id = 0xCC; count = 41; },
+                { name = "fb_col28"; id = 0xCA; count = 41; },
+                { name = "fb_col29"; id = 0xC8; count = 41; },
+                { name = "fb_col30"; id = 0xC6; count = 41; },
+                { name = "fb_col31"; id = 0xC4; count = 41; }
+            );
+
+        }, // biasing-address commands
