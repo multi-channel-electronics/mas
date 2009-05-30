@@ -6,10 +6,12 @@ OPTIONS = -P -nostdinc -I ./ $(DEFS_ALL)
 
 DEPS = $(TEMPLATES)master-4.template
 
-all: mce_v1.cfg mce_v2.cfg mce_v1_bac.cfg mce_v2_bac.cfg mce_v2_16tes.cfg
+TARGETS = mce_v1.cfg mce_v2.cfg mce_v1_bac.cfg mce_v2_bac.cfg mce_v2_16tes.cfg
+
+all: $(TARGETS)
 
 clean:
-	-rm *cfg
+	-rm $(TARGETS)
 
 # Rule for general template -> cfg construction
 %.cfg: %.template
