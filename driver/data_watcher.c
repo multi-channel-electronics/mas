@@ -49,7 +49,7 @@ int watcher_dump(int *dest, int user) {
 	return watcher.max;
 }
 
-int watcher_ioctl(int iocmd, unsigned long arg)
+int watcher_ioctl(int iocmd, int arg)
 {
 	switch (iocmd)	{
 		
@@ -74,9 +74,9 @@ int watcher_ioctl(int iocmd, unsigned long arg)
 		return 0;
 
 	case DATADEV_IOCT_WATCH_DL:
-		
-		return watcher_dump((int*)arg, 1 /*user*/);
-
+		// Probably not x64 safe!
+		//return watcher_dump((int*)arg, 1 /*user*/);
+		return -1;
 	}
 	return -1;
 }

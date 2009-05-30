@@ -7,16 +7,8 @@ VER_TARGET := .
 include $(MAKERULES)Makefile.version
 DEFS += -DVERSION_STRING="$(REPO_VER)"
 
-INCLUDE=-I$(MAS_INCLUDE_F)
-
-LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
-	-L$(LOGLIB_F) -l$(LOGLIB) \
-	$(MASMISC_F)cmdtree.o \
-	-lpthread -lconfig -lreadline
-
-CFLAGS += $(INCLUDE) -Wall -std=c99 $(DEFS)
-
-CC=gcc
+LIBRARY=$(MAS_LIB) $(MASMISC_F)cmdtree.o
+CFLAGS += $(DEFS)
 
 # targets
 

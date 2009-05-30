@@ -35,8 +35,6 @@ int main()
 	char ts[1024];
 	time_t t;
 
-	int mode_flags = MON_PRINT;
-
 	if ((mce=mcelib_create())==NULL ||
 	    (mcedata_open(mce, DEFAULT_DATAFILE)!=0)) {
 		fprintf(stderr, "Failed to connect data device.\n");

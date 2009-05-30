@@ -48,9 +48,9 @@ typedef struct {
 "    return,0\n"\
 "end\n\n"\
 
-int  idl_init(unsigned user_data, const options_t *options);
-int  idl_item(unsigned user_data, const mas_param_t *p);
-int  idl_cleanup(unsigned user_data);
+int  idl_init(unsigned long user_data, const options_t *options);
+int  idl_item(unsigned long user_data, const mas_param_t *p);
+int  idl_cleanup(unsigned long user_data);
 
 int idl_crawler(options_t *options, crawler_t *crawler)
 {
@@ -70,12 +70,12 @@ int idl_crawler(options_t *options, crawler_t *crawler)
 	crawler->item = idl_item;
 
 	crawler->passes = 2;
-	crawler->user_data = (unsigned) idl;
+	crawler->user_data = (unsigned long) idl;
 
 	return 0;	
 }
 
-int  idl_init(unsigned user_data, const options_t *options)
+int  idl_init(unsigned long user_data, const options_t *options)
 {
 	idl_t *idl = (idl_t*)user_data;
 	idl->out = stdout;
@@ -110,7 +110,7 @@ int  idl_init(unsigned user_data, const options_t *options)
 	return 0;
 }
 
-int idl_cleanup(unsigned user_data)
+int idl_cleanup(unsigned long user_data)
 {
 	idl_t *idl = (idl_t*) user_data;
 	switch (idl->pass) {
@@ -168,7 +168,7 @@ int idl_item_save(idl_t *idl, const mas_param_t *p)
 	return 0;
 }
 
-int  idl_item(unsigned user_data, const mas_param_t *p)
+int  idl_item(unsigned long user_data, const mas_param_t *p)
 {
 	idl_t *idl = (idl_t*) user_data;
 

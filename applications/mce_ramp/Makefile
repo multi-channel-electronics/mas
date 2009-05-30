@@ -7,13 +7,9 @@ VER_TARGET := .
 include $(MAKERULES)Makefile.version
 DEFS = -DVERSION_STRING="$(REPO_VER)"
 
-INCLUDE=-I$(MAS_INCLUDE_F)
+LIBRARY=
 
-LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
-	-L$(LOGLIB_F) -l$(LOGLIB) \
-	-lpthread -lconfig 
-
-CFLAGS += $(INCLUDE) $(DEFS) -Wall
+CFLAGS += $(DEFS)
 
 OBJECTS = ramp.o options.o main.o
 HEADERS = ramp.h options.h

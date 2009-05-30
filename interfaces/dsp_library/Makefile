@@ -3,23 +3,16 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-LIB     = mcedsp
-LIBNAME = lib$(LIB).a
+LIBNAME = lib$(DSPLIB).a
 
-HEADER = $(MAS_INCLUDE_F)mcedsp.h
-
-INCLUDE += -I$(MAS_INCLUDE_F) -I.
-
-CFLAGS += -O2 -Wall -fPIC $(INCLUDE)
-
-CC = gcc
+HEADERS = $(MAS_INCLUDE_F)mcedsp.h
 
 all: $(LIBNAME)
 
 $(LIBNAME): dsp_library.o errors.o
 	$(AR) rs $@ $^
 
-dsp_library.o: dsp_library.c $(HEADER)
+dsp_library.o: dsp_library.c $(HEADERS)
 	$(CC) $(CFLAGS) dsp_library.c -c
 
 

@@ -8,17 +8,12 @@ include $(MAKERULES)Makefile.version
 include $(MAKERULES)Makefile.defaults
 DEFS = -DVERSION_STRING="$(REPO_VER)" $(CONFIGFILE_DEFS)
 
-INCLUDE=-I$(MAS_INCLUDE_F)
+LIBRARY=$(MAS_LIB) $(MASMISC_F)masconfig.o
 
-LIBRARY=-L$(LOGLIB_F) -l$(LOGLIB) \
-	-lconfig $(MASMISC_F)masconfig.o
-
-CFLAGS += $(INCLUDE) $(DEFS) -Wall
+CFLAGS += $(DEFS)
 
 OBJECTS = main.o options.o get.o crawl.o bash.o csh.o idl.o
 HEADERS = mas_param.h get.h crawl.h bash.h csh.h idl.h
-
-CC=gcc
 
 # targets
 

@@ -23,6 +23,6 @@ int watcher_size(void);
 
 int watcher_dump(int *dest, int user);
 
-int watcher_ioctl(int iocmd, unsigned long arg);
+int watcher_ioctl(int iocmd, int arg);
 
 #endif

@@ -5,7 +5,7 @@
 #ifdef FAKEMCE
 # include <dsp_fake.h>
 #else
-# include "dsp_pci.h"
+# include "dsp_driver.h"
 #endif
 
 // Ensure that address alignment is configured

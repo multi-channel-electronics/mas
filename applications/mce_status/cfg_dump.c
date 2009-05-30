@@ -10,9 +10,9 @@ typedef struct {
 	int echo_only;
 } cfg_t;
 
-int cfg_init(unsigned user_data, const options_t *options);
-int cfg_item(unsigned user_data, const mce_param_t *p);
-int cfg_cleanup(unsigned user_data);
+int cfg_init(unsigned long user_data, const options_t *options);
+int cfg_item(unsigned long user_data, const mce_param_t *p);
+int cfg_cleanup(unsigned long user_data);
 
 int cfg_crawler(options_t *options, crawler_t *crawler)
 {
@@ -28,12 +28,12 @@ int cfg_crawler(options_t *options, crawler_t *crawler)
 	crawler->cleanup = cfg_cleanup;
 	crawler->item = cfg_item;
 
-	crawler->user_data = (unsigned) cfg;
+	crawler->user_data = (unsigned long) cfg;
 
 	return 0;	
 }
 
-int  cfg_init(unsigned user_data, const options_t *options)
+int  cfg_init(unsigned long user_data, const options_t *options)
 {
 	cfg_t *cfg = (cfg_t*)user_data;
 	cfg->out = stdout;
@@ -50,7 +50,7 @@ int  cfg_init(unsigned user_data, const options_t *options)
 	return 0;
 }
 
-int cfg_cleanup(unsigned user_data)
+int cfg_cleanup(unsigned long user_data)
 {
 	cfg_t *cfg = (cfg_t*) user_data;
 	fclose(cfg->out);
@@ -58,7 +58,7 @@ int cfg_cleanup(unsigned user_data)
 	return 0;
 }
 
-int cfg_item(unsigned user_data, const mce_param_t *p)
+int cfg_item(unsigned long user_data, const mce_param_t *p)
 {
 	int i;
 	cfg_t *cfg = (cfg_t*) user_data;

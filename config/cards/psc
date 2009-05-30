@@ -1,0 +1,31 @@
+/* Command description file - libconfig syntax */
+
+        {
+            name = "power commands";
+
+            parameters = (
+                {
+                    name = "brst";
+                    id = 0x60;
+                    type = "rst";
+                },
+
+                {
+                    name = "cycle_pow";
+                    id = 0x61;
+                    type = "rst";
+                },
+
+                {
+                    name = "cut_pow";
+                    id = 0x62;
+                    type = "rst";
+                },
+
+                {
+                    name = "psc_status";
+                    id = 0x63;
+                    count = 9;
+                }
+            );
+        },  // power commands

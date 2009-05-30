@@ -1,0 +1,48 @@
+#!/bin/bash
+
+if [ "`whoami`" != "root" ]; then
+    echo "Must be run as root or sudo."
+    exit 1
+fi
+
+if [ "$1" == "" ]; then
+    echo "No argument given; creating a single device node."
+    ndev=1
+else
+    ndev=$1
+fi
+
+DSP_FILE=/dev/mce_dsp
+MCEC_FILE=/dev/mce_cmd
+MCED_FILE=/dev/mce_data
+
+DSP_DEV=mce_dsp
+MCEC_DEV=mce_cmd
+MCED_DEV=mce_data
+
+GRP=@MAS_GROUP@
+
+awkp="\$2==\"$DSP_DEV\" {print \$1;}"
+DSP_MAJOR=`awk "$awkp" /proc/devices`
+
+awkp="\$2==\"$MCEC_DEV\" {print \$1;}"
+MCEC_MAJOR=`awk "$awkp" /proc/devices`
+
+awkp="\$2==\"$MCED_DEV\" {print \$1;}"
+MCED_MAJOR=`awk "$awkp" /proc/devices`
+
+for i in $(seq 0 $(( $ndev - 1 )) ); do
+
+    mknod $DSP_FILE$i c $DSP_MAJOR $i
+    chgrp $GRP $DSP_FILE$i
+    chmod g+rw  $DSP_FILE$i
+
+    mknod $MCEC_FILE$i c $MCEC_MAJOR $i
+    chgrp $GRP $MCEC_FILE$i
+    chmod g+rw  $MCEC_FILE$i
+
+    mknod $MCED_FILE$i c $MCED_MAJOR $i
+    chgrp $GRP $MCED_FILE$i
+    chmod g+rw  $MCED_FILE$i
+
+done

@@ -86,7 +86,7 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 	ALLOC_N(d->channels, n, err);
 	if (err) {
 		fprintf(stderr, "First stage alloc failed in dirfile_alloc!\n");
-		printf("n = %i\n", n*sizeof(*d->channels));
+		printf("n = %i\n", (int)(n*sizeof(*d->channels)));
 		return -1;
 	}
 
@@ -199,14 +199,14 @@ int write_format_file(dirfile_t* f)
  */
 
 static int add_column_info(dirfile_t *dirfile, int data_start,
-			   int n_rows, int n_cols,
+			   int n_rows, int n_cols, int row_id,
 			   int col_id, int col_count, int col_ofs)
 {
 	int c, r;
 	for (c=0; c<col_count; c++) 
 		for (r=0; r<n_rows; r++) {
 			channel_t *ch = dirfile->channels + dirfile->channel_count;
-			sprintf(ch->name, TESDATA_FORMAT, r, c + col_id);
+			sprintf(ch->name, TESDATA_FORMAT, r + row_id, c + col_id);
 			ch->frame_offset = r*n_cols + (c + col_ofs) + data_start;
 			dirfile->channel_count++;
 		}
@@ -276,8 +276,8 @@ static int dirfile_init(mce_acq_t *acq)
 	cards[3] = (acq->cards & MCEDATA_RC4) ? 1 : 0;
 
 	// Setup data description
-	for (i=0; i<4; i++) 
-		n_cols += MCEDATA_COLUMNS*cards[i];
+	for (i=0; i<MCEDATA_CARDS; i++) 
+		n_cols += acq->cols*cards[i];
 	n_data += n_cols*acq->rows;
 
 	n_header = count_items(header_items);
@@ -293,11 +293,11 @@ static int dirfile_init(mce_acq_t *acq)
 	// Set up tesdata fields; assumes cards requested are exactly
         // the cards in the data stream
 	ofs = 0;
-	for (i=0; i<4; i++) {
+	for (i=0; i<MCEDATA_CARDS; i++) {
 		if (cards[i]) {
-			add_column_info(f, MCEDATA_HEADER, acq->rows, n_cols,
-					MCEDATA_COLUMNS*i, MCEDATA_COLUMNS, ofs);
-			ofs += MCEDATA_COLUMNS;
+			add_column_info(f, MCEDATA_HEADER, acq->rows, n_cols, acq->row0[i],
+					MCEDATA_COLUMNS*i+acq->col0[i], acq->cols, ofs);
+			ofs += acq->cols;
 		}
 	}
 

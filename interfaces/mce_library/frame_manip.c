@@ -48,7 +48,7 @@ int sort_columns( mce_acq_t *acq, u32 *data )
 	int header_size = MCEDATA_HEADER;
 	int footer_size = MCEDATA_FOOTER;
 
-	int columns = MCEDATA_COLUMNS;
+	int columns = acq->cols;
 	int cards_in = count_bits(acq->cards);
 	int cards_out = cards_in;
 	int rows = (acq->frame_size - header_size - footer_size) /
@@ -75,7 +75,6 @@ int sort_columns( mce_acq_t *acq, u32 *data )
 	for (c=0; c<cards_out; c++) {
 		if ( (acq->cards & (1 << c)) == 0 ) 
 			continue;
-		
 		for (r=0; r<rows; r++) {
 			memcpy(temp+header_size + (r*cards_out + c)*columns,
 			       data+header_size + (rows*c_in + r)*columns,

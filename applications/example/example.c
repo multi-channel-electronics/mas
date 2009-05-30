@@ -134,9 +134,12 @@ int main()
 		return 1;
 	}
 	
-	// Number of values read must be corrected for card count.
+	// The natural 'size' of the parameter is obtained like this:
 	int n_write = sys_row_len.param.count;
-	int n_read  = n_write * sys_row_len.card.card_count;
+
+	// On reads, some parameters query multiple cards and return
+        // n_cards * n_write data elements.
+	int n_read  = mcecmd_read_size(&sys_row_len, n_write);
 	
 	// mce_param_t contains much useful information...
 	printf("'%s %s' operates on %i cards\n",

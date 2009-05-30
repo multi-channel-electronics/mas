@@ -15,6 +15,7 @@
 "  -r                     don't use readline on stdin (faster input in scripts)\n"\
 "\n"\
 "  -d <device file>       choose a particular mce device\n"\
+"  -D <device file>       choose a particular data device\n"\
 "  -c <config file>       choose a particular mce config file\n"\
 "  -f <batch file>        run commands from file instead of stdin\n"\
 "  -X \"cmd string\"        execute this command and exit (these can be stacked)\n"\
@@ -33,7 +34,7 @@ int process_options(options_t *options, int argc, char **argv)
 {
 	char *s;
 	int option;
-	while ( (option = getopt(argc, argv, "?hiqepf:c:d:C:ro:X:xv")) >=0) {
+	while ( (option = getopt(argc, argv, "?hiqepf:c:d:D:C:ro:X:xv")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -69,6 +70,10 @@ int process_options(options_t *options, int argc, char **argv)
 
 		case 'd':
 			strcpy(options->cmd_device, optarg);
+			break;
+
+		case 'D':
+			strcpy(options->data_device, optarg);
 			break;
 
 		case 'o':

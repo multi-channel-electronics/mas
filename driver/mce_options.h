@@ -1,16 +1,16 @@
 #ifndef _MCE_OPTIONS_H_
 #define _MCE_OPTIONS_H_
 
+#define MAX_CARDS 2
 
 #define DEVICE_NAME "mceds"
 
 
 /*
 
-  These parameters are passed in from the Makefile; instead of
-  enabling them here, change the default value in Makefile or set a
-  local override in Makefile.local; e.g.
-          FAKEMCE ?= 1
+  The following parameters may be set in the Makefile to control
+  certain behaviours. Some defaults are set through the ./configure
+  script.
 
   FAKEMCE - replace PCI card support with the fake_mce emulator
   REALTIME - use RTAI.  This only affects the PCI card interrupt.
@@ -46,13 +46,19 @@
 
 #ifndef BIGPHYS
 
-#  define FRAME_BUFFER_SIZE 128000
+#  define FRAME_BUFFER_SIZE (32*1024*1024)
 
 #else
 
 #  define FRAME_BUFFER_SIZE 10e6
 
 #endif
+
+
+/* DEFAULT_DATA_SIZE - doesn't affect very much, just the initial
+ * frame size.  5424, as the current MCE maximum, is fine. */
+
+#define DEFAULT_DATA_SIZE   5424
 
 
 /*

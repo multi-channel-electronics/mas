@@ -5,7 +5,6 @@
 
 #include <mce_library.h>
 
-
 /* Default device, config files */
 
 #define CMD_DEVICE "/dev/mce_cmd0"
@@ -24,7 +23,7 @@ typedef struct {
 } my_counter_t;
 
 
-int frame_callback(unsigned user_data, int size, u32 *data)
+int frame_callback(unsigned long user_data, int size, u32 *data)
 {
 	//Re-type 
 	my_counter_t *c = (my_counter_t*)user_data;
@@ -43,7 +42,7 @@ void print_u32(u32 *data, int count)
 	int i;
 	for (i=0; i<count; i++) {
 		printf("%u ", data[i]);
-	}
+ 	}
 	printf("\n");
 }
 
@@ -88,7 +87,7 @@ int main()
 	// each received frame.  (Other options here are to set up an
 	// output file, or a file sequence.)
 	mcedata_storage_t* ramb;
-	ramb = mcedata_rambuff_create( frame_callback, (unsigned)&counter );
+	ramb = mcedata_rambuff_create( frame_callback, (unsigned long)&counter );
 
 	// Setup an acqusition structure, associated with the rambuff.
 	// We can specify the number of readout rows, or pass -1 to use the

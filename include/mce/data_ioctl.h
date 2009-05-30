@@ -17,6 +17,7 @@
 #define      QUERY_PARTIAL   3
 #define      QUERY_DATASIZE  4
 #define      QUERY_FRAMESIZE 5
+#define      QUERY_BUFSIZE   6
   
 /* for use by data_watcher routine */
 #define DATADEV_IOCT_WATCH      _IO(DATADEV_IOC_MAGIC,  2)
@@ -36,5 +37,9 @@
 #define DATADEV_IOCT_QT_CONFIG  _IO(DATADEV_IOC_MAGIC, 7)
 
 #define DATADEV_IOCT_QT_ENABLE  _IO(DATADEV_IOC_MAGIC, 8)
+
+#define DATADEV_IOCT_FRAME_POLL _IO(DATADEV_IOC_MAGIC, 9)
+
+#define DATADEV_IOCT_FRAME_CONSUME _IO(DATADEV_IOC_MAGIC, 10)
 
 #endif

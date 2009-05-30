@@ -23,7 +23,7 @@
  * frame_callback: to store the frame to a file and fill row_data
  * 
  **********************************************************/
-int frame_callback(unsigned user_data, int frame_size, u32 *data)
+int frame_callback(unsigned long user_data, int frame_size, u32 *data)
 {
   //Re-type 
   servo_t *myservo = (servo_t*)user_data;
@@ -31,7 +31,7 @@ int frame_callback(unsigned user_data, int frame_size, u32 *data)
   u32 *lastrow_base;
   int i;
   
-  fwrite(data, frame_size, sizeof(u32), myservo->df);
+  fwrite(data, sizeof(u32), frame_size, myservo->df);
 
   memcpy(myservo->last_header, data, HEADER_OFFSET*sizeof(*data));
 
@@ -215,7 +215,7 @@ int main(int argc, char **argv)
 
    // setup a call back function
    mcedata_storage_t* ramb;
-   ramb = mcedata_rambuff_create(frame_callback, (unsigned) &sq1servo);
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned long) &sq1servo);
    
    // Pick a card (won't work for rcs!!)
    int cards=(1<<(which_rc-1));

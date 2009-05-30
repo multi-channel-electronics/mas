@@ -36,6 +36,12 @@
 #define MCEDATA_HEADER            43
 #define MCEDATA_FOOTER            1
 
+/* Card bits to use for the rcs_to_report_data register */
+#define MCEDATA_RCSFLAG_RC1       (1 << 5)
+#define MCEDATA_RCSFLAG_RC2       (1 << 4)
+#define MCEDATA_RCSFLAG_RC3       (1 << 3)
+#define MCEDATA_RCSFLAG_RC4       (1 << 2)
+
 struct mce_acq_struct;
 typedef struct mce_acq_struct mce_acq_t;
 
@@ -65,8 +71,11 @@ struct mce_acq_struct {
 	int frame_size;                 // Active frame size
 
 	int status;
-	int cards;
-	int rows;
+	int cards;                      // Bit mask of RCs reporting
+	int rows;                       // Number of rows reported
+	int cols;                       // Number of columns reported
+	int row0[MCEDATA_CARDS];        // Index, by RC, of first row reported
+	int col0[MCEDATA_CARDS];        // Index, by RC, of first column reported
 
 	mcedata_storage_t* storage;
 

@@ -6,16 +6,9 @@ include $(BASE)Makefile.children
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
 
-INCLUDE=-I$(MAS_INCLUDE_F)
+LIBRARY=$(MAS_LIB) $(MASMISC_F)cmdtree.o
 
-LIBRARY=-L$(DSPLIB_F) -l$(DSPLIB) \
-	-L$(LOGLIB_F) -l$(LOGLIB) \
-	$(MASMISC_F)cmdtree.o \
-	-lconfig 
-
-CFLAGS += $(INCLUDE) -Wall -DVERSION_STRING="$(REPO_VER)"
-
-CC=gcc
+CFLAGS += -DVERSION_STRING="$(REPO_VER)"
 
 #targets
 

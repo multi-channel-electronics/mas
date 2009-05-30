@@ -4,9 +4,10 @@
 
 /* Prototypes */
 
+int dsp_ops_probe(int card);
+
+void dsp_ops_cleanup(void);
+
 int dsp_ops_init(void);
-
-int dsp_ops_cleanup(void);
-
 
 #endif

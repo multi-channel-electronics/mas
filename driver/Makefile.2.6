@@ -4,16 +4,15 @@ else
   MY_CFLAGS += -O2
 endif
 
-KERNELVER ?= $(shell uname -r)
-KERNELDIR ?= /lib/modules/$(KERNELVER)/build
-INSTALLDIR ?= /lib/modules/$(KERNELVER)/kernel/drivers/misc
+KERNELDIR ?= $(KERNEL_SOURCE)/build
+INSTALLDIR ?= $(KERNEL_SOURCE)/kernel/drivers/misc
 
 DRIVER_FILE = $(DRIVER_NAME).ko
 
 ifeq ($(KERNELRELEASE),) # we are in the source folder
 
 modules: version.h
-	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) modules
+	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(src) modules
 
 else # we are in the kernel source tree
 

@@ -15,12 +15,13 @@
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 DESC="MCE Aquisition Software"
 NAME=mas
-USER=mce
-GROUP=mce
+USER=@MAS_USER@
+GROUP=@MAS_GROUP@
+NUM_DEV=1
 DAEMON=/usr/mce/bin/maslog_server
 DAEMON_ARGS=
 DRIVER=mce_dsp
-POSTOPS=/usr/mce/bin/mas_mknodes
+MKNODES=/usr/mce/bin/mas_mknodes
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
@@ -64,7 +65,7 @@ do_start()
 	modprobe $DRIVER || return 2
 
 	# Create device nodes
-	$POSTOPS
+	$MKNODES $NUM_DEV
 }
 
 #

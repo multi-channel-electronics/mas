@@ -68,7 +68,7 @@ typedef struct {
 	int       partial;
 
 	// Low level equivalent information
-	caddr_t   base_busaddr;
+	unsigned long base_busaddr;
 	
 	// Semaphore should be held when modifying structure, but
 	// interrupt routines may modify head_index if DATA_GO flag is
@@ -90,7 +90,7 @@ typedef struct {
 
 } frame_buffer_t;
 
-extern frame_buffer_t frames;
+extern frame_buffer_t data_frames[MAX_CARDS];
 
 /* Alternative model: keep track of total index, not circular index.
  * Then a linked list of readers can be installed, each doing whatever
@@ -101,30 +101,31 @@ extern frame_buffer_t frames;
 
 /* Prototypes */
 
-void* data_init(int dsp_version, int mem_size, int data_size, int borrow);
-int   data_cleanup(void);
+int data_probe(int dsp_version, int card, int mem_size, int data_size);
+int data_init(int mem_size, int data_size);
+int data_remove(int card);
 
 
 int data_force_escape( void );
-int data_reset( void );
+int data_reset(int card);
 
-void data_report(void);
-
-int  data_frame_address(u32 *dest);
-int  data_frame_increment(void);
-int  data_frame_contribute(int count);
-int  data_frame_divide(int new_data_size);
+int  data_frame_address(u32 *dest, int card);
+int  data_frame_increment(int card);
+int  data_frame_contribute(int count, int card);
+int  data_frame_divide(int new_data_size, int card);
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count, int nonblock);
-int data_frame_fake_stop( void );
+		    int count, int nonblock, int card);
+int data_frame_fake_stop(int card);
 
-int data_frame_resize(int size);
+int data_frame_resize(int size, int card);
 
-int data_frame_empty_buffers( void );
+int data_frame_empty_buffers(int card);
 
-int data_frame_poll( void );
+int data_frame_poll(int card);
 
-int data_proc(char *buf, int count);
+int data_tail_increment(int card);
+
+int data_proc(char *buf, int count, int card);
 
 #endif
