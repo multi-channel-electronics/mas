@@ -75,7 +75,7 @@ void data_grant_task(unsigned long data)
 
 	if ( (err=dsp_send_command( &cmd, data_grant_callback, card)) ) {
 		// FIX ME: discriminate between would-block errors and fatals!
-		PRINT_INFO(SUBNAME "dsp busy; rescheduling.\n");
+		PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
 		tasklet_schedule(&dframes->grant_tasklet);
 		return;
 	}

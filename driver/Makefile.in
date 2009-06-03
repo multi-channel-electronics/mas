@@ -21,6 +21,7 @@ BRANCH_ID = $(shell cat ../branch_id.txt)
 FAKEMCE    ?= @DRIVER_FAKEMCE@
 REALTIME   ?= no
 BIGPHYS    ?= @DRIVER_BIGPHYS@
+SETMODE    ?= @DRIVER_SETMODE@
 
 KERNEL_SOURCE = @KERNEL_DIR@
 
@@ -32,26 +33,22 @@ LIBS =
 MY_CFLAGS = -Wall
 
 ifeq ($(FAKEMCE),yes)
-
   DEFS += -DFAKEMCE
   INCLUDES += -I$(src)/$(FAKEMCE_DIR)
-
 endif #FAKEMCE=yes
 
-
 ifeq ($(REALTIME),yes)
-
   DEFS += -DREALTIME
   INCLUDES += -I$(RTAI_DIR)/include -I$(RTAI_DIR)
-
 endif #REALTIME=yes
 
-
 ifeq ($(BIGPHYS),yes)
-
   DEFS += -DBIGPHYS
-
 endif #BIGPHYS=yes
+
+ifeq ($(SETMODE),yes)
+  DEFS += -DSETMODE
+endif #SETMODE=yes
 
 
 

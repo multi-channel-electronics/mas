@@ -59,8 +59,6 @@ MODULE_AUTHOR ("Matthew Hasselfield");
 
 /* Internal prototypes */
 
-void  dsp_clear_interrupt(dsp_reg_t *dsp);
-
 void  dsp_driver_remove(struct pci_dev *pci);
 
 int   dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id);
@@ -98,24 +96,24 @@ struct dsp_vector {
 
 #define NUM_DSP_CMD 17
 
+#define MY_HMNI 0 /* HCVR_HNMI */
+
 static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
-	{DSP_WRM, 0x8079, VECTOR_STANDARD},
-	{DSP_RDM, 0x807B, VECTOR_STANDARD},
-	{DSP_VER, 0x807B, VECTOR_STANDARD},
-	{DSP_GOA, 0x807D, VECTOR_STANDARD},
-	{DSP_STP, 0x807F, VECTOR_STANDARD},
-	{DSP_RST, 0x8081, VECTOR_STANDARD},
-	{DSP_CON, 0x8083, VECTOR_STANDARD},
-	{DSP_HST, 0x8085, VECTOR_STANDARD},
-	{DSP_RCO, 0x8087, VECTOR_STANDARD},
-	{DSP_QTS, 0x8089, VECTOR_STANDARD},
+	{DSP_WRM, MY_HMNI | 0x0079, VECTOR_STANDARD},
+	{DSP_RDM, MY_HMNI | 0x007B, VECTOR_STANDARD},
+	{DSP_VER, MY_HMNI | 0x007B, VECTOR_STANDARD},
+	{DSP_GOA, MY_HMNI | 0x007D, VECTOR_STANDARD},
+	{DSP_STP, MY_HMNI | 0x007F, VECTOR_STANDARD},
+	{DSP_RST, MY_HMNI | 0x0081, VECTOR_STANDARD},
+	{DSP_CON, MY_HMNI | 0x0083, VECTOR_STANDARD},
+	{DSP_HST, MY_HMNI | 0x0085, VECTOR_STANDARD},
+	{DSP_RCO, MY_HMNI | 0x0087, VECTOR_STANDARD},
+	{DSP_QTS, MY_HMNI | 0x0089, VECTOR_STANDARD},
 	{DSP_INT_RST, HCVR_INT_RST, VECTOR_QUICK},
 	{DSP_INT_DON, HCVR_INT_DON, VECTOR_QUICK},
 	{DSP_INT_RPC, HCVR_INT_RPC, VECTOR_QUICK},
 	{DSP_SYS_ERR, HCVR_SYS_ERR, VECTOR_QUICK},
 	{DSP_SYS_RST, HCVR_SYS_RST, VECTOR_QUICK},
-	{DSP_SYS_IRQ0, HCVR_SYS_IRQ0, VECTOR_QUICK},
-	{DSP_SYS_IRQ1, HCVR_SYS_IRQ1, VECTOR_QUICK},
 };
 
 /* DSP register wrappers */
@@ -126,6 +124,10 @@ static inline int dsp_read_hrxs(dsp_reg_t *dsp) {
 
 static inline int dsp_read_hstr(dsp_reg_t *dsp) {
 	return ioread32((void*)&(dsp->hstr));
+}
+
+static inline int dsp_read_hcvr(dsp_reg_t *dsp) {
+	return ioread32((void*)&(dsp->hcvr));
 }
 
 static inline int dsp_read_hctr(dsp_reg_t *dsp) {
@@ -174,21 +176,38 @@ struct dsp_local {
 
 };
 
+
+/* Mode bits in DSP firmware (U0105+) - in particular, we want to set
+ * up NOIRQ and HANDSHAKE before issuing any DSP commands that will
+ * interrupt and reply.  */
+
+#define DSP_MODE_APP          0x0001
+#define DSP_MODE_MCE          0x0002
+#define DSP_MODE_QUIETDA      0x0004
+#define DSP_MODE_QUIETRP      0x0008
+#define DSP_MODE_NOIRQ        0x0010
+#define DSP_MODE_HANDSHAKE    0x0020
+
+
 struct dsp_dev_t {
 
 	struct pci_dev *pci;
 
 	dsp_reg_t *dsp;
-	
-	dsp_int_mode int_mode;
+
+	int comm_mode;
 	irq_handler_t int_handler;
 
+ 	struct tasklet_struct handshake_tasklet;
 	struct timer_list tim_poll;
 
 	struct dsp_local local;
 
-	struct semaphore sem;
 	struct timer_list tim_dsp;
+
+	spinlock_t lock;
+	int cmd_count;
+	int rep_count;
 
 	dsp_state_t state;
 	int version;
@@ -202,16 +221,28 @@ struct dsp_dev_t {
 } dsp_dev[MAX_CARDS];
 
 
-/*
- *  dsp_int_handler use to live here...
- */
+#define DDAT_LOCK    spin_lock_irqsave(&dev->lock, irqflags)
+#define DDAT_UNLOCK  spin_unlock_irqrestore(&dev->lock, irqflags)
+
+void dsp_ack_int_or_schedule(unsigned long data)
+{
+	struct dsp_dev_t *dev = (struct dsp_dev_t*)data;
+	/* Check that DSP has dropped HF3 */
+	if (dsp_read_hstr(dev->dsp) & HSTR_HC3) {
+		PRINT_ERR("Rescheduling int ack.");
+		tasklet_schedule(&dev->handshake_tasklet);
+	} else {
+		dsp_write_hctr(dev->dsp, DSP_PCI_MODE);
+	}
+}
+
 
 #define SUBNAME "pci_int_handler: "
 irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 {
 	/* Note that the regs argument is deprecated in newer kernels,
 	   do not use it.  It is left here for compatibility with
-	   2.6.18-                                                    */
+	   -2.6.18                                                    */
 
 	struct dsp_dev_t *dev = NULL;
 	dsp_reg_t *dsp = NULL;
@@ -231,25 +262,35 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 
 	//Verify handshake bit
 	if ( !(dsp_read_hstr(dsp) & HSTR_HC3) ) {
-		//FIX ME:: Continuous stream of general interrupts
+		//FIX ME: Continuous stream of general interrupts
 		PRINT_ERR(SUBNAME "irq entry without HF3 bit!\n");
 		return IRQ_NONE;
 	}
 
-	// Immediately clear interrupt bit
-	dsp_write_hcvr(dsp, HCVR_INT_RST);
+	// Interrupt hand-shaking changed in U0105.
+	if (dev->comm_mode & DSP_MODE_HANDSHAKE) {
+		// Raise HF0 to acknowledge that IRQ is being handled.
+		// DSP will lower INTA and then HF3, and wait for HF0 to fall.
+		dsp_write_hctr(dev->dsp, DSP_PCI_MODE | HCTR_HF0);
+	} else {
+		// Host command to clear INTA
+		dsp_write_hcvr(dsp, HCVR_INT_RST | HCVR_HC);
+	}
 
 	// Read data into dsp_message structure
 	while ( i<n && (dsp_read_hstr(dsp) & HSTR_HRRQ) ) {
 		((u32*)&msg)[i++] = dsp_read_hrxs(dsp) & DSP_DATAMASK;
 	}
-
-	//Completed reads?
 	if (i<n)
-		PRINT_ERR(SUBNAME "could not obtain entire message.\n");
-	
-	PRINT_INFO(SUBNAME "%6x %6x %6x %6x\n",
-		  msg.type, msg.command, msg.reply, msg.data);
+   	        PRINT_ERR(SUBNAME "incomplete message %i/%i.\n", i, n);
+
+	// We are done with the DSP, so release it.
+	if (dev->comm_mode & DSP_MODE_HANDSHAKE) {
+		dsp_ack_int_or_schedule((unsigned long)dev);
+	} else {
+		// Host command to clear HF3
+		dsp_write_hcvr(dsp, HCVR_INT_DON | HCVR_HC);
+	}
 
 	// Discover message handler 	
 	for (j=0; j < dev->n_handlers; j++) {
@@ -258,12 +299,6 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 			dev->handlers[j].handler(&msg, dev->handlers[j].data);
 		}
 	}
-
-	// At end, clear DSP handshake bit
-	dsp_write_hcvr(dsp, HCVR_INT_DON);
-
- 	// Clear DSP interrupt flags
- 	// dsp_clear_interrupt(dsp);
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return IRQ_HANDLED;
@@ -278,25 +313,33 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 #define SUBNAME "dsp_reply_handler: "
 int dsp_reply_handler(dsp_message *msg, unsigned long data)
 {
+	unsigned long irqflags;
   	struct dsp_dev_t *dev = (struct dsp_dev_t *)data;
+	dsp_callback callback = NULL;
 
+	DDAT_LOCK;
 	if (dev->state == DDAT_CMD) {
 		PRINT_INFO(SUBNAME
 			   "REP received, calling back.\n");
-
-		// Call the registered callbacks
-		if (dev->callback != NULL) {
-			int card = dev - dsp_dev;
-			dev->callback(0, msg, card);
-		} else {
-			PRINT_ERR(SUBNAME "no handler defined\n");
-		}
+		// Store a copy of the callback address before going to IDLE
+		callback = dev->callback;
 		dev->state = DDAT_IDLE;
+		dev->rep_count++;
 	} else {
 		PRINT_ERR(SUBNAME
-			  "unexpected REP received [state=%i].\n",
-			  dev->state);
+			  "unexpected REP received [state=%i, %i %i].\n",
+			  dev->state, dev->cmd_count, dev->rep_count);
 	}
+	PRINT_ERR(SUBNAME "%i %x %x %x %x\n", dev->rep_count, msg->type,
+		  msg->command, msg->reply, msg->data);
+	DDAT_UNLOCK;
+		
+	// Command state is IDLE, so callback routines may issue DSP cmds.
+	if (callback != NULL) {
+		int card = dev - dsp_dev;
+		callback(0, msg, card);
+	}
+
 	return 0;
 }
 #undef SUBNAME
@@ -317,19 +360,25 @@ int dsp_hey_handler(dsp_message *msg, unsigned long data)
 #define SUBNAME "dsp_timeout: "
 void dsp_timeout(unsigned long data)
 {
+	unsigned long irqflags;
 	struct dsp_dev_t *dev = (struct dsp_dev_t*)data;
+	dsp_callback callback = dev->callback;
 
-	if (dev->state == DDAT_IDLE) {
+	DDAT_LOCK;
+	if (dev->state == DDAT_CMD) {
+		callback = dev->callback;
+		dev->state = DDAT_IDLE;
+		DDAT_UNLOCK;
+
+		PRINT_ERR(SUBNAME "dsp reply timed out!\n");
+		if (callback != NULL) {
+			int card = dev - dsp_dev;
+			callback(-DSP_ERR_TIMEOUT, NULL, card);
+		}
+	} else {
+		DDAT_UNLOCK;
 		PRINT_INFO(SUBNAME "timer ignored\n");
-		return;
 	}
-
-	PRINT_ERR(SUBNAME "dsp reply timed out!\n");
-	if (dev->callback != NULL) {
-		int card = dev - dsp_dev;
-		dev->callback(-DSP_ERR_TIMEOUT, NULL, card);
-	}
-	dev->state = DDAT_IDLE;
 }
 #undef SUBNAME
 
@@ -353,7 +402,18 @@ int dsp_quick_command(u32 vector, int card)
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
 	PRINT_INFO(SUBNAME "sending vector %#x\n", vector);
-	dsp_write_hcvr(dev->dsp, vector);
+	dsp_write_hcvr(dev->dsp, vector | HCVR_HC);
+	return 0;
+}
+#undef SUBNAME
+
+
+#define SUBNAME "dsp_set_mode: "
+int dsp_set_mode(struct dsp_dev_t* dev, int mode) 
+{
+	PRINT_ERR(SUBNAME "setting DSP mode %#x\n", mode);
+	dsp_write_htxr(dev->dsp, mode);
+	dsp_write_hcvr(dev->dsp, HCVR_SYS_MODE | HCVR_HC);
 	return 0;
 }
 #undef SUBNAME
@@ -381,6 +441,10 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector, int card)
 	int i = 0;
 	int n = sizeof(dsp_command) / sizeof(u32);
 
+	// DSP may block while HCVR interrupts in some cases.
+	if (dsp_read_hcvr(dev->dsp) & HCVR_HC)
+		return -EAGAIN;
+
 	// HSTR must be ready to receive
 	if ( !(dsp_read_hstr(dev->dsp) & HSTR_TRDY) ) {
 		PRINT_ERR(SUBNAME "HSTR not ready to transmit!\n");
@@ -397,7 +461,7 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector, int card)
 		return -EIO;
 	}
 	
-	dsp_write_hcvr(dev->dsp, vector);
+	dsp_write_hcvr(dev->dsp, vector | HCVR_HC);
 
 	return 0;
 }
@@ -412,7 +476,7 @@ int dsp_send_command_now(dsp_command *cmd, int card)
 	PRINT_INFO(SUBNAME "cmd=%06x\n", cmd->command);
 
 	if (vect==NULL) return -ERESTARTSYS;
-	
+
 	switch (vect->type) {
 
 	case VECTOR_STANDARD:
@@ -460,29 +524,30 @@ int dsp_send_command_now(dsp_command *cmd, int card)
 #define SUBNAME "dsp_send_command: "
 int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 {
+	unsigned int irqflags;
   	struct dsp_dev_t *dev = dsp_dev + card;
 	int err = 0;
 
-	// This will often be called in atomic context
-	if (down_trylock(&dev->sem)) {
-		PRINT_ERR(SUBNAME "could not get sem\n");
+	DDAT_LOCK;
+	if (dev->state != DDAT_IDLE) {
+		PRINT_ERR(SUBNAME "ddat not idle at %i, EAGAIN.\n", dev->cmd_count);
+		DDAT_UNLOCK;
 		return -EAGAIN;
 	}
 	
+	
 	PRINT_INFO(SUBNAME "entry\n");
-		
-	dev->callback = callback;
-	dev->state = DDAT_CMD;
 
-	if ( (err = dsp_send_command_now(cmd, card)) ) {
-		dev->callback = NULL;
-		dev->state = DDAT_IDLE;
-	} else {
+	PRINT_ERR(SUBNAME "send %i\n", dev->cmd_count+1);
+	if ((err = dsp_send_command_now(cmd, card)) == 0) {
+		dev->cmd_count++;
+		dev->callback = callback;
 		mod_timer(&dev->tim_dsp, jiffies + DSP_DEFAULT_TIMEOUT);
+		dev->state = DDAT_CMD;
 	}
 
 	PRINT_INFO(SUBNAME "returning [%i]\n", err);
-	up(&dev->sem);
+	DDAT_UNLOCK;
 	return err;
 }
 #undef SUBNAME
@@ -602,11 +667,12 @@ void dsp_timer_function(unsigned long data)
 }
 #undef SUBNAME
 
+
 void dsp_clear_interrupt(dsp_reg_t *dsp)
 {
 	// Clear interrupt flags
-	dsp_write_hcvr(dsp, HCVR_INT_RST);
-	dsp_write_hcvr(dsp, HCVR_INT_DON);
+	dsp_write_hcvr(dsp, HCVR_INT_RST | HCVR_HC);
+	dsp_write_hcvr(dsp, HCVR_INT_DON | HCVR_HC);
 }
 
 
@@ -877,12 +943,14 @@ int dsp_proc(char *buf, int count, int card)
 	if (len < count) {
 		len += sprintf(buf+len, "    %-15s %25s\n",
 			       "interrupt:",
-			       (dev->int_mode == DSP_POLL) ? "polling" : "enabled");
+			       (dev->comm_mode & DSP_MODE_NOIRQ) ? "polling" : "enabled");
 	}
 	if (len < count) {
-		len += sprintf(buf+len,  "    %-32s %#08x\n    %-32s %#08x\n",
+		len += sprintf(buf+len, "    %-32s %#08x\n    %-32s %#08x\n"
+			       "    %-32s %#08x\n",
 			       "hstr:", dsp_read_hstr(dev->dsp),
-			       "hctr:", dsp_read_hctr(dev->dsp));
+			       "hctr:", dsp_read_hctr(dev->dsp),
+			       "hcvr:", dsp_read_hcvr(dev->dsp));
 	}
 	if (len < count) {
 		len += sprintf(buf+len, "    %-20s %20s\n",
@@ -927,14 +995,17 @@ int dsp_configure(struct pci_dev *pci)
 	} 	
 	if (dev->pci != NULL) {
 		PRINT_ERR(SUBNAME "too many cards, dsp_dev[] is full.\n");
-		return -EPERM;
+	return -EPERM;
 	}
 
         // Initialize device structure
-	memset(dev, 0, sizeof(dev));
+	memset(dev, 0, sizeof(*dev));
 	dev->pci = pci;
 
-	init_MUTEX(&dev->sem);
+	tasklet_init(&dev->handshake_tasklet,
+		     dsp_ack_int_or_schedule, (unsigned long)dev);
+	spin_lock_init(&dev->lock);
+/* 	init_MUTEX(&dev->sem); */
 	init_MUTEX(&dev->local.sem);
 	init_waitqueue_head(&dev->local.queue);
 
@@ -942,11 +1013,6 @@ int dsp_configure(struct pci_dev *pci)
 	dev->tim_dsp.function = dsp_timeout;
 	dev->tim_dsp.data = (unsigned long)dev;
 	dev->state = DDAT_IDLE;
-#ifdef NO_INTERRUPTS
-	dev->int_mode = DSP_POLL;
-#else
-	dev->int_mode = DSP_PCI;
-#endif
 
 	// PCI paperwork
 	err = pci_enable_device(dev->pci);
@@ -975,37 +1041,32 @@ int dsp_configure(struct pci_dev *pci)
 
 	// Set the mode of the data path for reads (24->32 conversion)
 	dsp_write_hctr(dev->dsp, DSP_PCI_MODE);
+
+#ifdef SETMODE
+#ifdef NO_INTERRUPTS
+	dev->comm_mode |= DSP_NOIRQ;
+#endif /* NO_INTERRUPTS */
+	// Write the communication mode (NOIRQ?)
+	dsp_set_mode(dev, dev->comm_mode);
+#else /* SETMODE */
+#ifdef NO_INTERRUPTS
+#error "Can't support NO_INTERRUPTS without SETMODE firmware."
+#endif /* NO_INTERRUPTS */
+#endif /* SETMODE */
 	
-	// Enable / disable interrupts from the card (these two vector
-	// addresses are NOP in PCI firmware before U0105)
-	switch (dev->int_mode) {
-	case DSP_POLL:
-		dsp_write_hcvr(dev->dsp, HCVR_SYS_IRQ0);
-		break;
-	case DSP_PCI:
-		dsp_write_hcvr(dev->dsp, HCVR_SYS_IRQ1);
-		break;
-	}
-
-	/* The card knows the deal now, so we enable interrupts and
-	 * assign handlers for the REP and HEY interrupt. */
-
 	// Install interrupt handler or polling timer
 	dev->int_handler = NULL;
-	switch (dev->int_mode) {
-	case DSP_PCI:
-		// Install the interrupt handler (cast necessary for backward compat.)
-		err = dsp_pci_set_handler(card, (irq_handler_t)pci_int_handler,
-					  "mce_dsp");		
-		if (err) goto fail;
-		break;
-	case DSP_POLL:
+	if (dev->comm_mode & DSP_MODE_NOIRQ) {
 		// Create timer for soft poll interrupt generation
 		init_timer(&dev->tim_poll);
 		dev->tim_poll.function = dsp_timer_function;
 		dev->tim_poll.data = (unsigned long)dev;
 		mod_timer(&dev->tim_poll, jiffies + DSP_POLL_JIFFIES);
-		break;
+	} else {
+		// Install the interrupt handler (cast necessary for backward compat.)
+		err = dsp_pci_set_handler(card, (irq_handler_t)pci_int_handler,
+					  "mce_dsp");		
+		if (err) goto fail;
 	}
 
 	// Assign handlers for REP and HEY interrupts.  These are for
@@ -1029,13 +1090,10 @@ int dsp_unconfigure(int card)
 	struct dsp_dev_t *dev = dsp_dev + card;
 
 	// Remove int handler or poll timer
-	switch (dev->int_mode) {
-	case DSP_PCI:
-		dsp_pci_remove_handler(dev);
-		break;
-	case DSP_POLL:
+	if (dev->comm_mode & DSP_MODE_NOIRQ) {
 		del_timer_sync(&dev->tim_poll);
-		break;
+	} else {
+		dsp_pci_remove_handler(dev);
 	}
 		
 	if (dev->dsp!=NULL) {
@@ -1084,6 +1142,14 @@ void dsp_driver_remove(struct pci_dev *pci)
 	mce_remove(card);
 	del_timer_sync(&dev->tim_dsp);
 
+	// Hopefully this isn't still running...
+	tasklet_kill(&dev->handshake_tasklet);
+
+#ifdef SETMODE
+	// Revert card to default mode
+	dsp_set_mode(dev, 0);
+#endif
+
 	// Do DSP cleanup, free PCI resources
 	dsp_unconfigure(card);
 
@@ -1103,16 +1169,29 @@ void dsp_driver_remove(struct pci_dev *pci)
 int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	int card;
+	struct dsp_dev_t *dev = NULL;
 	PRINT_INFO(SUBNAME "entry\n");
 
 	// Setup data structure for the card, configure PCI stuff and
 	// the DSP.  After this call, the DSP is ready to go.
 	if ((card = dsp_configure(pci)) < 0)
 		goto fail;
+	dev = dsp_dev + card;
 
 	// Get DSP version, which MCE driver likes to know...
 	if (dsp_query_version(card) != 0)
 		goto fail;
+
+	// Enable interrupt hand-shaking for newer firmware
+	if (dev->version >= DSP_U0105) {
+#ifdef SETMODE
+		dev->comm_mode |= DSP_MODE_HANDSHAKE;
+		dsp_set_mode(dev, dev->comm_mode);
+#else
+		PRINT_ERR("Warning: SETMODE not enabled in driver though "
+			  "firmware supports it.\n")
+#endif /* SETMODE */
+	}
 
 	// Enable the character device for this card.
 	if(dsp_ops_probe(card) != 0)

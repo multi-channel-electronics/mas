@@ -31,24 +31,34 @@
 #define HSTR_HTRQ 0x2
 #define HSTR_TRDY 0x1
 
+#define HCTR_HF0  0x08
+#define HCTR_HF1  0x10
+#define HCTR_HF2  0x20
+
 /* DSP PCI vendor/device id */
 
 #define DSP_VENDORID 0x1057
 #define DSP_DEVICEID 0x1801
 
-/* DSP fast interrupt vectors */
+/* DSP interrupt vectors */
 
-#define HCVR_INT_RST     0x8073 /* Clear DSP interrupt */
-#define HCVR_INT_DON     0x8075 /* Clear interrupt flag */
-#define HCVR_SYS_ERR     0x8077 /* Set fatal error flag */
-#define HCVR_SYS_RST     0x808B /* Immediate system reset */
-#define HCVR_INT_RPC     0x808D /* Clear RP buffer flag */
-#define HCVR_SYS_IRQ0    0x808F /* Disable PCI interrupts */
-#define HCVR_SYS_IRQ1    0x8091 /* Enable PCI interrupts */
+#define HCVR_HC          0x0001               /* Do-this-now bit */
+#define HCVR_HNMI        0x8000               /* Non-maskable HI-32 interrupt */
 
-#define PCI_MAX_FLUSH       256
+#define HCVR_INT_RST     (HCVR_HNMI | 0x0073) /* Clear DSP interrupt */
+#define HCVR_INT_DON     (HCVR_HNMI | 0x0075) /* Clear interrupt flag */
+#define HCVR_SYS_ERR     (HCVR_HNMI | 0x0077) /* Set fatal error flag */
+#define HCVR_SYS_RST     (HCVR_HNMI | 0x008B) /* Immediate system reset */
+#define HCVR_INT_RPC     (HCVR_HNMI | 0x008D) /* Clear RP buffer flag */
+#define HCVR_SYS_MODE    (HCVR_HNMI | 0x008F) /* Set DSP mode */
+
+
+/* HCTR default */
 
 #define DSP_PCI_MODE      0x900 /* for 32->24 bit conversion */
+
+
+#define PCI_MAX_FLUSH       256
 
 /* Soft interrupt generation timer frequency */
 
