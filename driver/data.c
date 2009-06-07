@@ -99,10 +99,8 @@ int data_frame_increment(int card)
 			     % dframes->max_index);
 #endif
         
-	wake_up_interruptible(&dframes->queue);
-
 	d = (dframes->head_index + 1) % dframes->max_index;
-	barrier();
+	wake_up_interruptible(&dframes->queue);
 
 	if ( d == dframes->tail_index) {
 		dframes->dropped++;

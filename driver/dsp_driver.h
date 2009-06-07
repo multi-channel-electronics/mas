@@ -96,6 +96,8 @@ typedef int (*dsp_handler)(dsp_message *, unsigned long data);
 
 /* Prototypes */
 
+int dsp_ready(int card);
+
 int   dsp_send_command(dsp_command *cmd, dsp_callback callback, int card);
 
 int   dsp_send_command_wait(dsp_command *cmd, dsp_message *msg, int card);

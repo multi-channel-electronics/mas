@@ -136,8 +136,9 @@ struct dsp_local {
 
 struct dsp_dev_t {
 
-	struct pci_dev *pci;
+	int enabled;
 
+	struct pci_dev *pci;
 	dsp_reg_t *dsp;
 	int hcvr_bits;
 
@@ -1100,6 +1101,17 @@ void dsp_driver_remove(struct pci_dev *pci)
 	PRINT_INFO(SUBNAME "ok\n");
 }
 #undef SUBNAME
+
+
+#define SUBNAME "dsp_ready: "
+
+int dsp_ready(int card) {
+	struct dsp_dev_t *dev = dsp_dev + card;
+	return dev->enabled;
+}
+
+#undef SUBNAME
+
 
 /*
   dsp_driver_probe

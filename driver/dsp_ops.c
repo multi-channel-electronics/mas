@@ -45,11 +45,6 @@ struct dsp_ops_t {
 
 	dsp_ops_state_t state;
 
-/* 	int flags; */
-/* #define   OPS_COMMANDED 0x1 */
-/* #define   OPS_REPLIED   0x2 */
-/* #define   OPS_ERROR     0x4 */
-
 	dsp_message msg;
 	dsp_command cmd;
 
@@ -248,8 +243,6 @@ int dsp_write_callback(int error, dsp_message* msg, int card)
 {
         struct dsp_ops_t *dops = dsp_ops + card;
 
-	wake_up_interruptible(&dops->queue);
-
 	if (dops->state != OPS_CMD) {
 		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
 			  dops->state, OPS_CMD);
@@ -275,6 +268,7 @@ int dsp_write_callback(int error, dsp_message* msg, int card)
 	PRINT_INFO(SUBNAME "type=%#x\n", msg->type);
 	memcpy(&dops->msg, msg, sizeof(dops->msg));
 	dops->state = OPS_REP;
+	wake_up_interruptible(&dops->queue);
 
 	return 0;
 }
@@ -322,11 +316,9 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 #define SUBNAME "dsp_open: "
 int dsp_open(struct inode *inode, struct file *filp)
 {
-	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
-        fpdata->minor = iminor(inode);
-	filp->private_data = fpdata;
-
-	PRINT_INFO(SUBNAME "entry! iminor(inode)=%d\n", iminor(inode));
+	struct filp_pdata *fpdata;
+	int minor = iminor(inode);
+	PRINT_INFO(SUBNAME "entry! iminor(inode)=%d\n", minor);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	MOD_INC_USE_COUNT;
@@ -334,6 +326,15 @@ int dsp_open(struct inode *inode, struct file *filp)
 	if(!try_module_get(THIS_MODULE))
 		return -1;
 #endif   
+	if (!dsp_ready(minor)) {
+		PRINT_ERR(SUBNAME "card %i not enabled.\n", minor);
+		return -ENODEV;
+	}
+
+	fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
+        fpdata->minor = iminor(inode);
+	filp->private_data = fpdata;
+
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
@@ -346,9 +347,10 @@ int dsp_release(struct inode *inode, struct file *filp)
 
 	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d\n", fpdata->minor);
 
-	if(fpdata != NULL) {
+	if (fpdata != NULL) {
 		kfree(fpdata);
-	} else PRINT_ERR(SUBNAME "called with NULL private_data!\n");
+	} else
+		PRINT_ERR(SUBNAME "called with NULL private_data!\n");
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	MOD_DEC_USE_COUNT;
