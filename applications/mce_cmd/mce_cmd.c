@@ -46,6 +46,8 @@ enum {
 	SPECIAL_QT_ENABLE,
 	SPECIAL_MRESET,
 	SPECIAL_DRESET,
+	SPECIAL_REPLY_LOCK,
+	SPECIAL_REPLY_UNLOCK,
 	SPECIAL_CLEAR,
 	SPECIAL_FAKESTOP,
 	SPECIAL_EMPTY,
@@ -119,6 +121,8 @@ cmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
 	{ SEL_NO, "MCE_RESET", 0,0, SPECIAL_MRESET, NULL},
 	{ SEL_NO, "DSP_RESET", 0,0, SPECIAL_DRESET, NULL},
+	{ SEL_NO, "LOCK_REPLIES",   0,0, SPECIAL_REPLY_LOCK, NULL},
+	{ SEL_NO, "UNLOCK_REPLIES", 0,0, SPECIAL_REPLY_UNLOCK, NULL},
 	{ SEL_NO, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
 	{ SEL_NO, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
 	{ SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
@@ -827,6 +831,14 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case SPECIAL_DRESET:
 			ret_val = mcecmd_interface_reset(mce);
+			break;
+
+		case SPECIAL_REPLY_LOCK:
+			ret_val = mcecmd_lock_replies(mce, 1);
+			break;
+
+		case SPECIAL_REPLY_UNLOCK:
+			ret_val = mcecmd_lock_replies(mce, 0);
 			break;
 
 /* 		case SPECIAL_CLEAR: */

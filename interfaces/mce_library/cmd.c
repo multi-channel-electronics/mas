@@ -79,6 +79,8 @@ int mcecmd_open (mce_context_t *context, char *dev_name)
 	ioctl(C_cmd.fd, MCEDEV_IOCT_SET,
 	      ioctl(C_cmd.fd, MCEDEV_IOCT_GET) | MCEDEV_CLOSE_CLEANLY);
 
+	// Most applications using this library will want to read their own replies...
+	mcecmd_lock_replies(context, 1);
 
 	C_cmd.connected = 1;
 	strcpy(C_cmd.dev_name, dev_name);
@@ -97,6 +99,21 @@ int mcecmd_close(mce_context_t *context)
 	C_cmd.connected = 0;
 
 	return 0;
+}
+
+
+int mcecmd_lock_replies(mce_context_t *context, int lock)
+{
+	int flags = ioctl(C_cmd.fd, MCEDEV_IOCT_GET);
+	int err;
+	if (lock) {
+		// Set up connection to prevent outstanding replies after release
+		err = ioctl(C_cmd.fd, MCEDEV_IOCT_SET, flags | MCEDEV_CLOSED_CHANNEL);
+	} else {
+		// Don't do that.
+		err = ioctl(C_cmd.fd, MCEDEV_IOCT_SET, flags & ~MCEDEV_CLOSED_CHANNEL);
+	}		
+	return err;
 }
 
 
