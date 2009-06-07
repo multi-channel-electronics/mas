@@ -185,9 +185,9 @@ struct dsp_local {
 #define DSP_MODE_MCE          0x0002
 #define DSP_MODE_QUIETDA      0x0004
 #define DSP_MODE_QUIETRP      0x0008
-#define DSP_MODE_NOIRQ        0x0010
-#define DSP_MODE_HANDSHAKE    0x0020
 
+#define DSP_PCI_MODE_HANDSHAKE    HCTR_HF1
+#define DSP_PCI_MODE_NOIRQ        HCTR_HF2
 
 struct dsp_dev_t {
 
@@ -232,7 +232,7 @@ void dsp_ack_int_or_schedule(unsigned long data)
 		PRINT_ERR("Rescheduling int ack.");
 		tasklet_schedule(&dev->handshake_tasklet);
 	} else {
-		dsp_write_hctr(dev->dsp, DSP_PCI_MODE);
+		dsp_write_hctr(dev->dsp, dev->comm_mode);
 	}
 }
 
@@ -268,10 +268,10 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	}
 
 	// Interrupt hand-shaking changed in U0105.
-	if (dev->comm_mode & DSP_MODE_HANDSHAKE) {
+	if (dev->comm_mode & DSP_PCI_MODE_HANDSHAKE) {
 		// Raise HF0 to acknowledge that IRQ is being handled.
 		// DSP will lower INTA and then HF3, and wait for HF0 to fall.
-		dsp_write_hctr(dev->dsp, DSP_PCI_MODE | HCTR_HF0);
+		dsp_write_hctr(dev->dsp, dev->comm_mode | HCTR_HF0);
 	} else {
 		// Host command to clear INTA
 		dsp_write_hcvr(dsp, HCVR_INT_RST | HCVR_HC);
@@ -285,7 +285,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
    	        PRINT_ERR(SUBNAME "incomplete message %i/%i.\n", i, n);
 
 	// We are done with the DSP, so release it.
-	if (dev->comm_mode & DSP_MODE_HANDSHAKE) {
+	if (dev->comm_mode & DSP_PCI_MODE_HANDSHAKE) {
 		dsp_ack_int_or_schedule((unsigned long)dev);
 	} else {
 		// Host command to clear HF3
@@ -403,17 +403,6 @@ int dsp_quick_command(u32 vector, int card)
 	struct dsp_dev_t *dev = dsp_dev + card;
 	PRINT_INFO(SUBNAME "sending vector %#x\n", vector);
 	dsp_write_hcvr(dev->dsp, vector | HCVR_HC);
-	return 0;
-}
-#undef SUBNAME
-
-
-#define SUBNAME "dsp_set_mode: "
-int dsp_set_mode(struct dsp_dev_t* dev, int mode) 
-{
-	PRINT_ERR(SUBNAME "setting DSP mode %#x\n", mode);
-	dsp_write_htxr(dev->dsp, mode);
-	dsp_write_hcvr(dev->dsp, HCVR_SYS_MODE | HCVR_HC);
 	return 0;
 }
 #undef SUBNAME
@@ -943,7 +932,7 @@ int dsp_proc(char *buf, int count, int card)
 	if (len < count) {
 		len += sprintf(buf+len, "    %-15s %25s\n",
 			       "interrupt:",
-			       (dev->comm_mode & DSP_MODE_NOIRQ) ? "polling" : "enabled");
+			       (dev->comm_mode & DSP_PCI_MODE_NOIRQ) ? "polling" : "enabled");
 	}
 	if (len < count) {
 		len += sprintf(buf+len, "    %-32s %#08x\n    %-32s %#08x\n"
@@ -995,7 +984,7 @@ int dsp_configure(struct pci_dev *pci)
 	} 	
 	if (dev->pci != NULL) {
 		PRINT_ERR(SUBNAME "too many cards, dsp_dev[] is full.\n");
-	return -EPERM;
+		return -EPERM;
 	}
 
         // Initialize device structure
@@ -1040,23 +1029,15 @@ int dsp_configure(struct pci_dev *pci)
 	dsp_clear_interrupt(dev->dsp);
 
 	// Set the mode of the data path for reads (24->32 conversion)
-	dsp_write_hctr(dev->dsp, DSP_PCI_MODE);
+	dev->comm_mode = DSP_PCI_MODE;
+#ifdef NO_INTERRUPTS
+	dev->comm_mode |= DSP_PCI_MODE_NOIRQ;
+#endif /* NO_INTERRUPTS */
+	dsp_write_hctr(dev->dsp, dev->comm_mode);
 
-#ifdef SETMODE
-#ifdef NO_INTERRUPTS
-	dev->comm_mode |= DSP_NOIRQ;
-#endif /* NO_INTERRUPTS */
-	// Write the communication mode (NOIRQ?)
-	dsp_set_mode(dev, dev->comm_mode);
-#else /* SETMODE */
-#ifdef NO_INTERRUPTS
-#error "Can't support NO_INTERRUPTS without SETMODE firmware."
-#endif /* NO_INTERRUPTS */
-#endif /* SETMODE */
-	
 	// Install interrupt handler or polling timer
 	dev->int_handler = NULL;
-	if (dev->comm_mode & DSP_MODE_NOIRQ) {
+	if (dev->comm_mode & DSP_PCI_MODE_NOIRQ) {
 		// Create timer for soft poll interrupt generation
 		init_timer(&dev->tim_poll);
 		dev->tim_poll.function = dsp_timer_function;
@@ -1090,7 +1071,7 @@ int dsp_unconfigure(int card)
 	struct dsp_dev_t *dev = dsp_dev + card;
 
 	// Remove int handler or poll timer
-	if (dev->comm_mode & DSP_MODE_NOIRQ) {
+	if (dev->comm_mode & DSP_PCI_MODE_NOIRQ) {
 		del_timer_sync(&dev->tim_poll);
 	} else {
 		dsp_pci_remove_handler(dev);
@@ -1098,7 +1079,7 @@ int dsp_unconfigure(int card)
 		
 	if (dev->dsp!=NULL) {
 		// Clear any outstanding interrupts from the card
-		dsp_clear_interrupt(dev->dsp);
+/* 		dsp_clear_interrupt(dev->dsp); */
 
 		// PCI un-paperwork
 		iounmap(dev->dsp);
@@ -1145,10 +1126,8 @@ void dsp_driver_remove(struct pci_dev *pci)
 	// Hopefully this isn't still running...
 	tasklet_kill(&dev->handshake_tasklet);
 
-#ifdef SETMODE
 	// Revert card to default mode
-	dsp_set_mode(dev, 0);
-#endif
+	dsp_write_hctr(dev->dsp, DSP_PCI_MODE);
 
 	// Do DSP cleanup, free PCI resources
 	dsp_unconfigure(card);
@@ -1184,13 +1163,8 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 
 	// Enable interrupt hand-shaking for newer firmware
 	if (dev->version >= DSP_U0105) {
-#ifdef SETMODE
-		dev->comm_mode |= DSP_MODE_HANDSHAKE;
-		dsp_set_mode(dev, dev->comm_mode);
-#else
-		PRINT_ERR("Warning: SETMODE not enabled in driver though "
-			  "firmware supports it.\n")
-#endif /* SETMODE */
+		dev->comm_mode |= DSP_PCI_MODE_HANDSHAKE;
+		dsp_write_hctr(dev->dsp, dev->comm_mode);
 	}
 
 	// Enable the character device for this card.

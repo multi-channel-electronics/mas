@@ -28,10 +28,6 @@ AC_ARG_WITH([fakemce],
             [AS_HELP_STRING([--with-fakemce], [enable fakemce])],
             [DRIVER_FAKEMCE=$withval], [DRIVER_FAKEMCE=no])
 AC_SUBST(DRIVER_FAKEMCE)
-AC_ARG_WITH([set-mode],
-            [AS_HELP_STRING([--with-fakemce], [enable fakemce])],
-            [DRIVER_SETMODE=$withval], [DRIVER_SETMODE=no])
-AC_SUBST(DRIVER_SETMODE)
 
 
 # Configure the kernel source directory.

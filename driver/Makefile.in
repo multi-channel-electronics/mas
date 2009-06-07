@@ -21,7 +21,6 @@ BRANCH_ID = $(shell cat ../branch_id.txt)
 FAKEMCE    ?= @DRIVER_FAKEMCE@
 REALTIME   ?= no
 BIGPHYS    ?= @DRIVER_BIGPHYS@
-SETMODE    ?= @DRIVER_SETMODE@
 
 KERNEL_SOURCE = @KERNEL_DIR@
 
@@ -45,10 +44,6 @@ endif #REALTIME=yes
 ifeq ($(BIGPHYS),yes)
   DEFS += -DBIGPHYS
 endif #BIGPHYS=yes
-
-ifeq ($(SETMODE),yes)
-  DEFS += -DSETMODE
-endif #SETMODE=yes
 
 
 

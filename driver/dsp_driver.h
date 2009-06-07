@@ -31,9 +31,9 @@
 #define HSTR_HTRQ 0x2
 #define HSTR_TRDY 0x1
 
-#define HCTR_HF0  0x08
-#define HCTR_HF1  0x10
-#define HCTR_HF2  0x20
+#define HCTR_HF0  0x08        /* Hand-shake bit */
+#define HCTR_HF1  0x10        /* Enable hand-shaking */
+#define HCTR_HF2  0x20        /* Disable DSP interrupts (polling mode) */
 
 /* DSP PCI vendor/device id */
 

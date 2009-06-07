@@ -661,7 +661,6 @@ LN_S
 DO_MAS_DRIVER
 DRIVER_BIGPHYS
 DRIVER_FAKEMCE
-DRIVER_SETMODE
 KERNEL_DIR
 PYTHON_DIR
 DO_MAS_SWIG
@@ -2663,15 +2662,6 @@ if test "${with_fakemce+set}" = set; then
   withval=$with_fakemce; DRIVER_FAKEMCE=$withval
 else
   DRIVER_FAKEMCE=no
-fi
-
-
-
-# Check whether --with-set-mode was given.
-if test "${with_set_mode+set}" = set; then
-  withval=$with_set_mode; DRIVER_SETMODE=$withval
-else
-  DRIVER_SETMODE=no
 fi
 
 
@@ -4705,7 +4695,6 @@ LN_S!$LN_S$ac_delim
 DO_MAS_DRIVER!$DO_MAS_DRIVER$ac_delim
 DRIVER_BIGPHYS!$DRIVER_BIGPHYS$ac_delim
 DRIVER_FAKEMCE!$DRIVER_FAKEMCE$ac_delim
-DRIVER_SETMODE!$DRIVER_SETMODE$ac_delim
 KERNEL_DIR!$KERNEL_DIR$ac_delim
 PYTHON_DIR!$PYTHON_DIR$ac_delim
 DO_MAS_SWIG!$DO_MAS_SWIG$ac_delim
@@ -4721,7 +4710,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 62; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 61; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
@@ -5727,7 +5716,6 @@ LN_S!$LN_S$ac_delim
 DO_MAS_DRIVER!$DO_MAS_DRIVER$ac_delim
 DRIVER_BIGPHYS!$DRIVER_BIGPHYS$ac_delim
 DRIVER_FAKEMCE!$DRIVER_FAKEMCE$ac_delim
-DRIVER_SETMODE!$DRIVER_SETMODE$ac_delim
 KERNEL_DIR!$KERNEL_DIR$ac_delim
 PYTHON_DIR!$PYTHON_DIR$ac_delim
 DO_MAS_SWIG!$DO_MAS_SWIG$ac_delim
@@ -5743,7 +5731,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 62; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 61; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
@@ -6751,7 +6739,6 @@ LN_S!$LN_S$ac_delim
 DO_MAS_DRIVER!$DO_MAS_DRIVER$ac_delim
 DRIVER_BIGPHYS!$DRIVER_BIGPHYS$ac_delim
 DRIVER_FAKEMCE!$DRIVER_FAKEMCE$ac_delim
-DRIVER_SETMODE!$DRIVER_SETMODE$ac_delim
 KERNEL_DIR!$KERNEL_DIR$ac_delim
 PYTHON_DIR!$PYTHON_DIR$ac_delim
 DO_MAS_SWIG!$DO_MAS_SWIG$ac_delim
@@ -6767,7 +6754,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 62; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 61; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
@@ -7785,7 +7772,6 @@ LN_S!$LN_S$ac_delim
 DO_MAS_DRIVER!$DO_MAS_DRIVER$ac_delim
 DRIVER_BIGPHYS!$DRIVER_BIGPHYS$ac_delim
 DRIVER_FAKEMCE!$DRIVER_FAKEMCE$ac_delim
-DRIVER_SETMODE!$DRIVER_SETMODE$ac_delim
 KERNEL_DIR!$KERNEL_DIR$ac_delim
 PYTHON_DIR!$PYTHON_DIR$ac_delim
 DO_MAS_SWIG!$DO_MAS_SWIG$ac_delim
@@ -7801,7 +7787,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 62; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 61; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
