@@ -139,13 +139,17 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 		/* In many cases we will return 0 to communicate that
 		   reader should not expect to ever receive a reply. */
 		ret_val = 0;
-		if (mops->state == OPS_IDLE)
+		if (mops->state == OPS_IDLE) {
+			fpdata->error = -MCE_ERR_NOT_ACTIVE;
 			goto out;
+		}
 		/* For closed channels, a busy channel looks idle to
 		   all openers except the original commander. */
 		if ((mops->commander->properties & MCEDEV_CLOSED_CHANNEL) &&
-		    (fpdata!=mops->commander))
+		    (fpdata!=mops->commander)) {
+			fpdata->error = -MCE_ERR_NOT_ACTIVE;
 			goto out;
+		}
 		
 		/* If REP/ERR is here, go process. */
 		if (mops->state != OPS_CMD)
