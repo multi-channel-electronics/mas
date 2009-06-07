@@ -57,27 +57,6 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Matthew Hasselfield"); 
 
 
-/* Internal prototypes */
-
-void  dsp_driver_remove(struct pci_dev *pci);
-
-int   dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id);
-
-
-/* Data for PCI enumeration */
-
-static const struct pci_device_id pci_ids[] = {
-	{ PCI_DEVICE(DSP_VENDORID, DSP_DEVICEID) },
-	{ 0 },
-};
-
-static struct pci_driver pci_driver = {
-	.name = "mce_dsp",
-	.id_table = pci_ids,
-	.probe = dsp_driver_probe,
-	.remove = dsp_driver_remove,
-};
-
 /*
   Each command is mapped to a particular DSP host control vector
   address.  Those can be firmware specific, but aren't so far.
@@ -96,19 +75,17 @@ struct dsp_vector {
 
 #define NUM_DSP_CMD 17
 
-#define MY_HMNI 0 /* HCVR_HNMI */
-
 static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
-	{DSP_WRM, MY_HMNI | 0x0079, VECTOR_STANDARD},
-	{DSP_RDM, MY_HMNI | 0x007B, VECTOR_STANDARD},
-	{DSP_VER, MY_HMNI | 0x007B, VECTOR_STANDARD},
-	{DSP_GOA, MY_HMNI | 0x007D, VECTOR_STANDARD},
-	{DSP_STP, MY_HMNI | 0x007F, VECTOR_STANDARD},
-	{DSP_RST, MY_HMNI | 0x0081, VECTOR_STANDARD},
-	{DSP_CON, MY_HMNI | 0x0083, VECTOR_STANDARD},
-	{DSP_HST, MY_HMNI | 0x0085, VECTOR_STANDARD},
-	{DSP_RCO, MY_HMNI | 0x0087, VECTOR_STANDARD},
-	{DSP_QTS, MY_HMNI | 0x0089, VECTOR_STANDARD},
+	{DSP_WRM, 0x0078, VECTOR_STANDARD},
+	{DSP_RDM, 0x007A, VECTOR_STANDARD},
+	{DSP_VER, 0x007A, VECTOR_STANDARD},
+	{DSP_GOA, 0x007C, VECTOR_STANDARD},
+	{DSP_STP, 0x007E, VECTOR_STANDARD},
+	{DSP_RST, 0x0080, VECTOR_STANDARD},
+	{DSP_CON, 0x0082, VECTOR_STANDARD},
+	{DSP_HST, 0x0084, VECTOR_STANDARD},
+	{DSP_RCO, 0x0086, VECTOR_STANDARD},
+	{DSP_QTS, 0x0088, VECTOR_STANDARD},
 	{DSP_INT_RST, HCVR_INT_RST, VECTOR_QUICK},
 	{DSP_INT_DON, HCVR_INT_DON, VECTOR_QUICK},
 	{DSP_INT_RPC, HCVR_INT_RPC, VECTOR_QUICK},
@@ -116,35 +93,6 @@ static struct dsp_vector dsp_vector_set[NUM_DSP_CMD] = {
 	{DSP_SYS_RST, HCVR_SYS_RST, VECTOR_QUICK},
 };
 
-/* DSP register wrappers */
-
-static inline int dsp_read_hrxs(dsp_reg_t *dsp) {
-	return ioread32((void*)&(dsp->htxr_hrxs));
-}
-
-static inline int dsp_read_hstr(dsp_reg_t *dsp) {
-	return ioread32((void*)&(dsp->hstr));
-}
-
-static inline int dsp_read_hcvr(dsp_reg_t *dsp) {
-	return ioread32((void*)&(dsp->hcvr));
-}
-
-static inline int dsp_read_hctr(dsp_reg_t *dsp) {
-	return ioread32((void*)&(dsp->hctr));
-}
-
-static inline void dsp_write_htxr(dsp_reg_t *dsp, u32 value) {
-	iowrite32(value, (void*)&(dsp->htxr_hrxs));
-}
-
-static inline void dsp_write_hcvr(dsp_reg_t *dsp, u32 value) {
-	iowrite32(value, (void*)&(dsp->hcvr));
-}
-
-static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
-	iowrite32(value, (void*)&(dsp->hctr));
-}
 
 typedef struct {
 
@@ -186,14 +134,12 @@ struct dsp_local {
 #define DSP_MODE_QUIETDA      0x0004
 #define DSP_MODE_QUIETRP      0x0008
 
-#define DSP_PCI_MODE_HANDSHAKE    HCTR_HF1
-#define DSP_PCI_MODE_NOIRQ        HCTR_HF2
-
 struct dsp_dev_t {
 
 	struct pci_dev *pci;
 
 	dsp_reg_t *dsp;
+	int hcvr_bits;
 
 	int comm_mode;
 	irq_handler_t int_handler;
@@ -219,6 +165,61 @@ struct dsp_dev_t {
 	dsp_callback callback;
 
 } dsp_dev[MAX_CARDS];
+
+
+/* Internal prototypes */
+
+void  dsp_driver_remove(struct pci_dev *pci);
+
+int   dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id);
+
+static int dsp_quick_command(struct dsp_dev_t *dev, u32 vector);
+
+
+/* Data for PCI enumeration */
+
+static const struct pci_device_id pci_ids[] = {
+	{ PCI_DEVICE(DSP_VENDORID, DSP_DEVICEID) },
+	{ 0 },
+};
+
+static struct pci_driver pci_driver = {
+	.name = "mce_dsp",
+	.id_table = pci_ids,
+	.probe = dsp_driver_probe,
+	.remove = dsp_driver_remove,
+};
+
+
+/* DSP register wrappers */
+
+static inline int dsp_read_hrxs(dsp_reg_t *dsp) {
+	return ioread32((void*)&(dsp->htxr_hrxs));
+}
+
+static inline int dsp_read_hstr(dsp_reg_t *dsp) {
+	return ioread32((void*)&(dsp->hstr));
+}
+
+static inline int dsp_read_hcvr(dsp_reg_t *dsp) {
+	return ioread32((void*)&(dsp->hcvr));
+}
+
+static inline int dsp_read_hctr(dsp_reg_t *dsp) {
+	return ioread32((void*)&(dsp->hctr));
+}
+
+static inline void dsp_write_htxr(dsp_reg_t *dsp, u32 value) {
+	iowrite32(value, (void*)&(dsp->htxr_hrxs));
+}
+
+static inline void dsp_write_hcvr(dsp_reg_t *dsp, u32 value) {
+	iowrite32(value, (void*)&(dsp->hcvr));
+}
+
+static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
+	iowrite32(value, (void*)&(dsp->hctr));
+}
 
 
 #define DDAT_LOCK    spin_lock_irqsave(&dev->lock, irqflags)
@@ -274,7 +275,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 		dsp_write_hctr(dev->dsp, dev->comm_mode | HCTR_HF0);
 	} else {
 		// Host command to clear INTA
-		dsp_write_hcvr(dsp, HCVR_INT_RST | HCVR_HC);
+		dsp_quick_command(dev, HCVR_INT_RST);
 	}
 
 	// Read data into dsp_message structure
@@ -289,7 +290,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 		dsp_ack_int_or_schedule((unsigned long)dev);
 	} else {
 		// Host command to clear HF3
-		dsp_write_hcvr(dsp, HCVR_INT_DON | HCVR_HC);
+		dsp_quick_command(dev, HCVR_INT_DON);
 	}
 
 	// Discover message handler 	
@@ -330,7 +331,7 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 			  "unexpected REP received [state=%i, %i %i].\n",
 			  dev->state, dev->cmd_count, dev->rep_count);
 	}
-	PRINT_ERR(SUBNAME "%i %x %x %x %x\n", dev->rep_count, msg->type,
+	PRINT_INFO(SUBNAME "%i %x %x %x %x\n", dev->rep_count, msg->type,
 		  msg->command, msg->reply, msg->data);
 	DDAT_UNLOCK;
 		
@@ -398,11 +399,10 @@ void dsp_timeout(unsigned long data)
 
 
 #define SUBNAME "dsp_quick_command: "
-int dsp_quick_command(u32 vector, int card) 
+static int dsp_quick_command(struct dsp_dev_t *dev, u32 vector)
 {
-	struct dsp_dev_t *dev = dsp_dev + card;
 	PRINT_INFO(SUBNAME "sending vector %#x\n", vector);
-	dsp_write_hcvr(dev->dsp, vector | HCVR_HC);
+	dsp_write_hcvr(dev->dsp, vector | dev->hcvr_bits | HCVR_HC);
 	return 0;
 }
 #undef SUBNAME
@@ -424,9 +424,8 @@ struct dsp_vector *dsp_lookup_vector(dsp_command *cmd)
 
 
 #define SUBNAME "dsp_send_command_now_vector: "
-int dsp_send_command_now_vector(dsp_command *cmd, u32 vector, int card) 
+int dsp_send_command_now_vector(struct dsp_dev_t *dev, u32 vector, dsp_command *cmd)
 {
-	struct dsp_dev_t *dev = dsp_dev + card;
 	int i = 0;
 	int n = sizeof(dsp_command) / sizeof(u32);
 
@@ -458,7 +457,7 @@ int dsp_send_command_now_vector(dsp_command *cmd, u32 vector, int card)
 
 
 #define SUBNAME "dsp_send_command_now: "
-int dsp_send_command_now(dsp_command *cmd, int card) 
+int dsp_send_command_now(struct dsp_dev_t *dev, dsp_command *cmd) 
 {
 	struct dsp_vector *vect = dsp_lookup_vector(cmd);
 
@@ -467,14 +466,11 @@ int dsp_send_command_now(dsp_command *cmd, int card)
 	if (vect==NULL) return -ERESTARTSYS;
 
 	switch (vect->type) {
-
 	case VECTOR_STANDARD:
-		return dsp_send_command_now_vector(cmd, vect->vector, card);
-
+		return dsp_send_command_now_vector(dev, vect->vector, cmd);
 	case VECTOR_QUICK:
 		// FIXME: these don't reply so they'll always time out.
-		return dsp_quick_command(vect->vector, card);
-
+		return dsp_quick_command(dev, vect->vector);
 	}
 
 	PRINT_ERR(SUBNAME
@@ -513,8 +509,8 @@ int dsp_send_command_now(dsp_command *cmd, int card)
 #define SUBNAME "dsp_send_command: "
 int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 {
+	struct dsp_dev_t *dev = dsp_dev + card;
 	unsigned int irqflags;
-  	struct dsp_dev_t *dev = dsp_dev + card;
 	int err = 0;
 
 	DDAT_LOCK;
@@ -524,11 +520,9 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 		return -EAGAIN;
 	}
 	
-	
-	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO(SUBNAME "send %i\n", dev->cmd_count+1);
 
-	PRINT_ERR(SUBNAME "send %i\n", dev->cmd_count+1);
-	if ((err = dsp_send_command_now(cmd, card)) == 0) {
+	if ((err = dsp_send_command_now(dev, cmd)) == 0) {
 		dev->cmd_count++;
 		dev->callback = callback;
 		mod_timer(&dev->tim_dsp, jiffies + DSP_DEFAULT_TIMEOUT);
@@ -640,10 +634,11 @@ int dsp_query_version(int card)
 
 void dsp_clear_RP(int card)
 {
+	struct dsp_dev_t *dev = dsp_dev + card;
 	dsp_command cmd = { DSP_INT_RPC, {0, 0, 0} };
 	
 	// This is interrupt safe because it is a vector command
-	dsp_send_command_now(&cmd, card);
+	dsp_send_command_now(dev, &cmd);
 }
 
 #define SUBNAME "dsp_timer_function: "
@@ -655,14 +650,6 @@ void dsp_timer_function(unsigned long data)
 	mod_timer(&dev->tim_poll, jiffies + DSP_POLL_JIFFIES);
 }
 #undef SUBNAME
-
-
-void dsp_clear_interrupt(dsp_reg_t *dsp)
-{
-	// Clear interrupt flags
-	dsp_write_hcvr(dsp, HCVR_INT_RST | HCVR_HC);
-	dsp_write_hcvr(dsp, HCVR_INT_DON | HCVR_HC);
-}
 
 
 /*
@@ -877,33 +864,13 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card)
 		break;
 
 	case DSPDEV_IOCT_CORE:
-		
-		if (dev->pci == NULL) {
-			PRINT_IOCT(SUBNAME "pci structure is null\n");
-			return 0;
-		}
-		if (dev->dsp == NULL) {
-			PRINT_IOCT(SUBNAME
-				   "pci-dsp memory structure is null\n");
+		if (dev->pci == NULL || dev->dsp == NULL) {
+			PRINT_IOCT(SUBNAME "dev->pci=%p dev->dsp=%p\n",
+				   dev->pci, dev->dsp);
 			return 0;
 		}
 		PRINT_IOCT(SUBNAME "hstr=%#06x hctr=%#06x\n",
 			   dsp_read_hstr(dev->dsp), dsp_read_hctr(dev->dsp));		
-		break;
-
-	case DSPDEV_IOCT_CORE_IRQ:
-		if (arg) {
-			PRINT_IOCT(SUBNAME "Enabling interrupt\n");
-			/* Cast on handler is necessary for backward compat. */
-			if (dsp_pci_set_handler(card, (irq_handler_t)pci_int_handler,
-						"mce_hacker") < 0) {
-				PRINT_ERR(SUBNAME "Could not install interrupt handler!\n");
-				return -1;
-			}
-		} else {
-			PRINT_IOCT(SUBNAME "Disabling interrupt\n");
-			dsp_pci_remove_handler(dev);
-		}
 		break;
 
 	default:
@@ -1026,7 +993,8 @@ int dsp_configure(struct pci_dev *pci)
 	 * talk to the card */
 
 	// Clear any outstanding interrupts
-	dsp_clear_interrupt(dev->dsp);
+	dsp_quick_command(dev, HCVR_INT_RST);
+	dsp_quick_command(dev, HCVR_INT_DON);
 
 	// Set the mode of the data path for reads (24->32 conversion)
 	dev->comm_mode = DSP_PCI_MODE;
@@ -1078,9 +1046,6 @@ int dsp_unconfigure(int card)
 	}
 		
 	if (dev->dsp!=NULL) {
-		// Clear any outstanding interrupts from the card
-/* 		dsp_clear_interrupt(dev->dsp); */
-
 		// PCI un-paperwork
 		iounmap(dev->dsp);
 		dev->dsp = NULL;
@@ -1161,10 +1126,13 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	if (dsp_query_version(card) != 0)
 		goto fail;
 
-	// Enable interrupt hand-shaking for newer firmware
 	if (dev->version >= DSP_U0105) {
+		// Enable interrupt hand-shaking
 		dev->comm_mode |= DSP_PCI_MODE_HANDSHAKE;
 		dsp_write_hctr(dev->dsp, dev->comm_mode);
+	} else {
+		// All vector commands must be non-maskable on older firmware
+		dev->hcvr_bits = HCVR_HNMI;
 	}
 
 	// Enable the character device for this card.

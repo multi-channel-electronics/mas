@@ -55,7 +55,15 @@
 
 /* HCTR default */
 
-#define DSP_PCI_MODE      0x900 /* for 32->24 bit conversion */
+#define DSP_PCI_MODE_BASE        0x000900    /* for 32->24 bit conversion */
+#define DSP_PCI_MODE_HANDSHAKE   HCTR_HF1
+#define DSP_PCI_MODE_NOIRQ       HCTR_HF2
+
+#ifdef NO_INTERRUPTS
+#define DSP_PCI_MODE             (DSP_PCI_MODE_BASE | DSP_PCI_MODE_NOIRQ)
+#else
+#define DSP_PCI_MODE             DSP_PCI_MODE_BASE
+#endif /* NO_INTERRUPTS */
 
 
 #define PCI_MAX_FLUSH       256
@@ -88,11 +96,9 @@ typedef int (*dsp_handler)(dsp_message *, unsigned long data);
 
 /* Prototypes */
 
-int   dsp_send_command(dsp_command *cmd, dsp_callback callback,
-		       int card);
+int   dsp_send_command(dsp_command *cmd, dsp_callback callback, int card);
 
-int   dsp_send_command_wait(dsp_command *cmd, dsp_message *msg,
-			    int card);
+int   dsp_send_command_wait(dsp_command *cmd, dsp_message *msg, int card);
 
 void  dsp_clear_RP(int card);
 
