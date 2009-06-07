@@ -22,6 +22,7 @@
 #define MCEDEV_IOCT_SET               _IO(MCEDEV_IOC_MAGIC,  6)
 
 /* Flags for MCEDEV_IOCT_SET */
-#define MCEDEV_CLOSE_CLEANLY      (1 <<  0)
+#define MCEDEV_CLOSE_CLEANLY      (1 <<  0) /* Go to idle if user closes  */
+#define MCEDEV_CLOSED_CHANNEL     (1 <<  1) /* Only writer can read reply */
 
 #endif
