@@ -29,8 +29,14 @@ typedef enum {
 	OPS_ERR
 } mce_ops_state_t;
 
+
+/* Each agent that opens the device file is allocated a filp_pdata.
+   This is where reader-writer specific information is stored. */
+
 struct filp_pdata {
-	int minor;
+	int minor;      /* Minor (card) number. */
+	int error;      /* Error code of last operation. */
+	int properties; /* accessed through MCEDEV_IOCT_GET / SET */
 };
 
 struct mce_ops_t {
@@ -41,12 +47,11 @@ struct mce_ops_t {
 	wait_queue_head_t queue;
 
 	mce_ops_state_t state;
-	int error;
+	struct filp_pdata *commander;
+	int cmd_error;
 
 	mce_reply   rep;
 	mce_command cmd;
-
-	int properties; /* accessed through MCEDEV_IOCT_GET / SET */
 
 } mce_ops[MAX_CARDS];
 
@@ -56,7 +61,7 @@ struct mce_ops_t {
 OPS_IDLE indicates the device is available for a new write operation.
   In this state, writing data to the device will initiate a command,
   and reading from the device will return 0.  Successors to this state
-  are CMD and ERR.
+  are CMD and ERR
 
 OPS_CMD indicates that a command has been initiated.  If a write to
   the device succeeds (i.e. does not return 0 or an error code) then
@@ -122,68 +127,62 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 
 	PRINT_INFO(SUBNAME "state=%#x\n", mops->state);
 
-	// Lock semaphore
-
-	if (filp->f_flags & O_NONBLOCK) {
-		PRINT_INFO(SUBNAME "non-blocking call\n");
-		if (down_trylock(&mops->sem))
-			return -EAGAIN;
-	} else {
-		PRINT_INFO(SUBNAME "blocking call\n");
-		if (down_interruptible(&mops->sem))
+	// Loop until we get the semaphore and there is a reply available.
+	while (1) {
+		if (filp->f_flags & O_NONBLOCK) {
+			if (down_trylock(&mops->sem))
+				return -EAGAIN;
+		} else {
+			if (down_interruptible(&mops->sem))
+				return -ERESTARTSYS;
+		}
+		/* In many cases we will return 0 to communicate that
+		   reader should not expect to ever receive a reply. */
+		ret_val = 0;
+		if (mops->state == OPS_IDLE)
+			goto out;
+		/* For closed channels, a busy channel looks idle to
+		   all openers except the original commander. */
+		if ((mops->commander->properties & MCEDEV_CLOSED_CHANNEL) &&
+		    (fpdata!=mops->commander))
+			goto out;
+		
+		/* If REP/ERR is here, go process. */
+		if (mops->state != OPS_CMD)
+			break;
+		/* If we're awaiting REP/ERR then perhaps we may block */
+		up(&mops->sem);
+		if (filp->f_flags & O_NONBLOCK)
+			ret_val = -EAGAIN;
+		PRINT_INFO("read is waiting for state change.\n");
+		if (wait_event_interruptible(mops->queue,
+					     mops->state != OPS_CMD))
 			return -ERESTARTSYS;
 	}
-
-
-	// If command in progress, block if we're allowed.
-
-	while ( !(filp->f_flags & O_NONBLOCK) && (mops->state == OPS_CMD) ) {
-		if (wait_event_interruptible(mops->queue,
-					     mops->state != OPS_CMD)) {
-			ret_val = -ERESTARTSYS;
-			goto out;
-		}
-	}
-
-	switch (mops->state) {
-
-	case OPS_IDLE:
-		ret_val = 0;
-		mops->error = -MCE_ERR_ACTIVE;
-		goto out;
-		
-	case OPS_CMD:
-		// Not possible in blocking calls
-		ret_val = -EAGAIN;
-		mops->error = 0;
-		goto out;
-			
-	case OPS_REP:
+	/* Now sem is held and state is either REP or ERR. */
+	PRINT_INFO("clear, getting reply.\n");
+	if (mops->state == OPS_REP) {
 		// Fix me: partial packet reads not supported
 		ret_val = sizeof(mops->rep);
 		if (ret_val > count) ret_val = count;
-	
 		err = copy_to_user(buf, (void*)&mops->rep, ret_val);
 		ret_val -= err;
 		if (err) {
 			PRINT_ERR(SUBNAME
 				  "could not copy %#x bytes to user\n", err );
-			mops->error = -MCE_ERR_KERNEL;
+			fpdata->error = -MCE_ERR_KERNEL;
+		} else {
+			fpdata->error = 0;
 		}
-		mops->state = OPS_IDLE;
-		mops->error = 0;
-		break;
-		
-	case OPS_ERR:
-	default:
+	} else {
+		/* Return 0 bytes and make sure reader can access error code. */
 		ret_val = 0;
-		// mops->error is set when state <= OPS_ERR
-		mops->state = OPS_IDLE;
+		fpdata->error = mops->cmd_error;
 	}
+	mops->state = OPS_IDLE;
 		
 out:
 	PRINT_INFO(SUBNAME "exiting (%i)\n", ret_val);
-	
 	up(&mops->sem);
 	return ret_val;
 }
@@ -208,11 +207,12 @@ int mce_write_callback( int error, mce_reply* rep, int card)
 			  -error, (unsigned long)rep);
 		memset(&mops->rep, 0, sizeof(mops->rep));
 		mops->state = OPS_ERR;
-		mops->error = error ? error : -MCE_ERR_INT_UNKNOWN;
+		mops->cmd_error = error ? error : -MCE_ERR_INT_UNKNOWN;
 	} else {
 		PRINT_INFO(SUBNAME "type=%#x\n", rep->ok_er);
 		memcpy(&mops->rep, rep, sizeof(mops->rep));
 		mops->state = OPS_REP;
+		mops->cmd_error = 0;
 	}
 
 	wake_up_interruptible(&mops->queue);
@@ -231,34 +231,32 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 
 	PRINT_INFO(SUBNAME "state=%#x\n", mops->state);
 
-	// Non-blocking version may not wait on semaphore.
+	/* Don't sleep with the semaphore because this will prevent a
+	   reader from clearing the state. */
 
-	if (filp->f_flags & O_NONBLOCK) {
-		PRINT_INFO(SUBNAME "non-blocking call\n");
-		if (down_trylock(&mops->sem))
+	while (1) {
+		// Get semaphore
+		if (filp->f_flags & O_NONBLOCK) {
+			if (down_trylock(&mops->sem))
+				return -EAGAIN;
+		} else {
+			if (down_interruptible(&mops->sem))
+				return -ERESTARTSYS;
+		}
+		// Check for idle state
+		if (mops->state == OPS_IDLE) {
+			break;
+		} 
+		// Release semaphore and maybe sleep.
+		up(&mops->sem);
+		if (filp->f_flags & O_NONBLOCK)
 			return -EAGAIN;
-	} else {
-		PRINT_INFO(SUBNAME "blocking call\n");
-		if (down_interruptible(&mops->sem))
+		if (wait_event_interruptible(mops->queue,
+					     mops->state == OPS_IDLE))
 			return -ERESTARTSYS;
 	}
 
-	// Reset error flag
-	mops->error = 0;
-
-	switch (mops->state) {
-
-	case OPS_IDLE:
-		break;
-
-	case OPS_CMD:
-	case OPS_REP:
-	case OPS_ERR:
-	default:
-		ret_val = 0;
-		mops->error = -MCE_ERR_ACTIVE;
-		goto out;
-	}
+	// At this point we know the state is IDLE and we hold the sem.
 
 	// Command size check
 	if (count != sizeof(mops->cmd)) {
@@ -280,10 +278,11 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	//  - the alternative risks losing expected interrupts
 
 	mops->state = OPS_CMD;
+	mops->commander = fpdata;
 	if ((err=mce_send_command(&mops->cmd, mce_write_callback, 1, fpdata->minor))!=0) {
 		PRINT_ERR(SUBNAME "mce_send_command failed\n");
 		mops->state = OPS_IDLE;
-		mops->error = err;
+		fpdata->error = err;
 		ret_val = 0;
 		goto out;
 	}
@@ -304,7 +303,6 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 {
 	struct filp_pdata *fpdata = filp->private_data;
 	int card = fpdata->minor;
-	struct mce_ops_t *mops = mce_ops + card;
 	int x;
 
 	switch(iocmd) {
@@ -321,15 +319,15 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 		return mce_interface_reset(card);
 
 	case MCEDEV_IOCT_LAST_ERROR:
-		x = mops->error;
-		mops->error = 0;
+		x = fpdata->error;
+		fpdata->error = 0;
 		return x;
 
 	case MCEDEV_IOCT_GET:
-		return mops->properties;
+		return fpdata->properties;
 		
 	case MCEDEV_IOCT_SET:
-		mops->properties = (int)arg;
+		fpdata->properties = (int)arg;
 		return 0;
 		
 	default:
@@ -340,16 +338,27 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 }
 #undef SUBNAME
 
+#define SUBNAME "mce_open: "
 
 int mce_open(struct inode *inode, struct file *filp)
 {
-	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
+	struct filp_pdata *fpdata;
+	int minor = iminor(inode);
+
+	if (!mce_ready(minor)) {
+		PRINT_ERR(SUBNAME "card %i not enabled.\n", minor);
+		return -ENODEV;
+	}
+
+	fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
 	fpdata->minor = iminor(inode);
 	filp->private_data = fpdata;
 
 	PRINT_INFO("mce_open\n");
 	return 0;
 }
+#undef SUBNAME
+
 
 #define SUBNAME "mce_release: "
 int mce_release(struct inode *inode, struct file *filp)
@@ -363,8 +372,10 @@ int mce_release(struct inode *inode, struct file *filp)
 		kfree(fpdata);
 	} else PRINT_ERR(SUBNAME "called with NULL private_data\n");
 
-	// Re-idle the state so subsequent commands don't (necessarily) fail
-	if ((mops->properties & MCEDEV_CLOSE_CLEANLY) && mops->state == OPS_CMD) {
+	/* If a command is outstanding on this connection, re-idle the
+	   state so subsequent commands don't (necessarily) fail. */
+	if ((fpdata->properties & MCEDEV_CLOSE_CLEANLY) && mops->state != OPS_IDLE &&
+	    mops->commander==fpdata) {
 		PRINT_ERR("mce_release: closure forced, setting state to idle.\n");
 		mops->state = OPS_IDLE;
 	}

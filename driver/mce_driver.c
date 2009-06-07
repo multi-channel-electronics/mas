@@ -756,6 +756,18 @@ int mce_init()
 }
 #undef SUBNAME
 
+
+#define SUBNAME "mce_ready: "
+
+int mce_ready(int card) {
+	struct mce_control *mdat = mce_dat + card;
+	return mdat->initialized;
+}
+
+#undef SUBNAME
+
+
+
 #define SUBNAME "mce_probe: "
 int mce_probe(int card, int dsp_version)
 {
