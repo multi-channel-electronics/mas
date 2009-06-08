@@ -30,6 +30,8 @@ typedef enum {
 } mce_ops_state_t;
 
 
+#define MAX_CMD_RETRY 100
+
 /* Each agent that opens the device file is allocated a filp_pdata.
    This is where reader-writer specific information is stored. */
 
@@ -184,6 +186,7 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 		fpdata->error = mops->cmd_error;
 	}
 	mops->state = OPS_IDLE;
+	wake_up_interruptible(&mops->queue);
 		
 out:
 	PRINT_INFO(SUBNAME "exiting (%i)\n", ret_val);
@@ -232,6 +235,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	struct mce_ops_t *mops = mce_ops + fpdata->minor;
 	int err = 0;
 	int ret_val = 0;
+	int i;
 
 	PRINT_INFO(SUBNAME "state=%#x\n", mops->state);
 
@@ -283,15 +287,25 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 
 	mops->state = OPS_CMD;
 	mops->commander = fpdata;
-	if ((err=mce_send_command(&mops->cmd, mce_write_callback, 1, fpdata->minor))!=0) {
-		PRINT_ERR(SUBNAME "mce_send_command failed\n");
-		mops->state = OPS_IDLE;
-		fpdata->error = err;
-		ret_val = 0;
-		goto out;
+	for (i=0; i<MAX_CMD_RETRY; i++) {
+		err = mce_send_command(&mops->cmd, mce_write_callback,
+				       1, fpdata->minor);
+		// If there's an -EAGAIN and we're blocking, we can loop again.
+		if ((filp->f_flags & O_NONBLOCK) || !(err == -MCE_ERR_INT_BUSY))
+			break;
 	}
- 
-	ret_val = count;
+	if (err == 0) {
+		ret_val = count;
+	} else {
+		mops->state = OPS_IDLE;
+		if (err==-MCE_ERR_INT_BUSY && i<MAX_CMD_RETRY) {
+			ret_val = -EAGAIN;
+		} else {
+			PRINT_ERR(SUBNAME "mce_send_command failed\n");
+			fpdata->error = err;
+			ret_val = 0;
+		}
+	}
  out:
 	up(&mops->sem);
 
@@ -358,7 +372,7 @@ int mce_open(struct inode *inode, struct file *filp)
 	fpdata->minor = iminor(inode);
 	filp->private_data = fpdata;
 
-	PRINT_INFO("mce_open\n");
+	PRINT_INFO("mce_open %p\n", fpdata);
 	return 0;
 }
 #undef SUBNAME
@@ -370,7 +384,7 @@ int mce_release(struct inode *inode, struct file *filp)
 	struct filp_pdata *fpdata = filp->private_data;
 	struct mce_ops_t *mops = mce_ops + fpdata->minor;
 
-	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO(SUBNAME "entry %p\n", fpdata);
 
 	if(fpdata != NULL) {
 		kfree(fpdata);
@@ -382,6 +396,7 @@ int mce_release(struct inode *inode, struct file *filp)
 	    mops->commander==fpdata) {
 		PRINT_ERR("mce_release: closure forced, setting state to idle.\n");
 		mops->state = OPS_IDLE;
+		wake_up_interruptible(&mops->queue);
 	}
 
 	return 0;

@@ -112,16 +112,23 @@ typedef enum {
 
 } dsp_state_t;
 
+/* This structure helps provide a blocking commander that can service
+   other driver levels. */
+
+#define LOCAL_MAX_RESCHED 100
+
 struct dsp_local {
 
 	struct semaphore sem;
 	wait_queue_head_t queue;
+	dsp_command *cmd;
 	dsp_message *msg;
 	int flags;
 #define   LOCAL_CMD 0x01
 #define   LOCAL_REP 0x02
 #define   LOCAL_ERR 0x08
-
+	int reschedule_count;
+ 	struct tasklet_struct send_tasklet;
 };
 
 
@@ -542,8 +549,6 @@ int dsp_send_command_wait_callback(int error, dsp_message *msg, int card)
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
 
-	wake_up_interruptible(&dev->local.queue);
-
 	if (dev->local.flags != LOCAL_CMD) {
 		PRINT_ERR(SUBNAME "unexpected flags, cmd=%x rep=%x err=%x\n",
 			  dev->local.flags & LOCAL_CMD,
@@ -553,8 +558,35 @@ int dsp_send_command_wait_callback(int error, dsp_message *msg, int card)
 	}
 	memcpy(dev->local.msg, msg, sizeof(*dev->local.msg));
 	dev->local.flags |= LOCAL_REP;
+	wake_up_interruptible(&dev->local.queue);
 
 	return 0;
+}
+#undef SUBNAME
+
+
+#define SUBNAME "dsp_send_command_or_schedule: "
+void dsp_send_command_or_schedule(unsigned long data)
+{
+	struct dsp_dev_t *dev = (struct dsp_dev_t *)data;
+	int card = dev - dsp_dev;
+	int err = dsp_send_command(dev->local.cmd,
+				   dsp_send_command_wait_callback, card);
+	// Mission accomplished?  Wait for callback.
+	if (err == 0)
+		return;
+	if (err == -EAGAIN) {
+		if (dev->local.reschedule_count++ > LOCAL_MAX_RESCHED) {
+			PRINT_ERR(SUBNAME "Rescheduled > %i times.\n",
+				  LOCAL_MAX_RESCHED);
+		} else {
+			tasklet_schedule(&dev->local.send_tasklet);
+			return;
+		}
+	} 
+	// If we don't reschedule, set error and awaken sleepers.
+	dev->local.flags |= LOCAL_ERR;
+	wake_up_interruptible(&dev->local.queue);
 }
 #undef SUBNAME
 
@@ -568,16 +600,19 @@ int dsp_send_command_wait(dsp_command *cmd,
 
 	PRINT_INFO(SUBNAME "entry\n");
 
-	// Try to get the default sem (spinlock!)
+	// Try to get our sem
 	if (down_trylock(&dev->local.sem))
 		return -ERESTARTSYS;
 
-	//Register message for our callback to fill
+	//Register command and message pointers for tasklet/callback
+	dev->local.cmd = cmd;
 	dev->local.msg = msg;
 	dev->local.flags = LOCAL_CMD;
-	
-	if ((err=dsp_send_command(cmd, dsp_send_command_wait_callback, card)) != 0)
-		goto up_and_out;
+
+	// Hold the semaphore while the commanding happens...
+	//  it may get rescheduled a few times.
+	dev->local.reschedule_count = 0;
+	dsp_send_command_or_schedule((unsigned long)dev);
 
 	PRINT_INFO(SUBNAME "commanded, waiting\n");
 	if (wait_event_interruptible(dev->local.queue,
@@ -962,9 +997,11 @@ int dsp_configure(struct pci_dev *pci)
 	tasklet_init(&dev->handshake_tasklet,
 		     dsp_ack_int_or_schedule, (unsigned long)dev);
 	spin_lock_init(&dev->lock);
-/* 	init_MUTEX(&dev->sem); */
+
 	init_MUTEX(&dev->local.sem);
 	init_waitqueue_head(&dev->local.queue);
+	tasklet_init(&dev->local.send_tasklet,
+		     dsp_send_command_or_schedule, (unsigned long)dev);
 
 	init_timer(&dev->tim_dsp);
 	dev->tim_dsp.function = dsp_timeout;
@@ -1003,6 +1040,9 @@ int dsp_configure(struct pci_dev *pci)
 	dev->comm_mode |= DSP_PCI_MODE_NOIRQ;
 #endif /* NO_INTERRUPTS */
 	dsp_write_hctr(dev->dsp, dev->comm_mode);
+
+	// Reset the card
+	dsp_quick_command(dev, HCVR_SYS_RST);
 
 	// Install interrupt handler or polling timer
 	dev->int_handler = NULL;
@@ -1146,6 +1186,8 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 		// All vector commands must be non-maskable on older firmware
 		dev->hcvr_bits = HCVR_HNMI;
 	}
+
+	dev->enabled = 1;
 
 	// Enable the character device for this card.
 	if(dsp_ops_probe(card) != 0)

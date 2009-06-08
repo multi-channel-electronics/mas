@@ -320,17 +320,17 @@ int dsp_open(struct inode *inode, struct file *filp)
 	int minor = iminor(inode);
 	PRINT_INFO(SUBNAME "entry! iminor(inode)=%d\n", minor);
 
+	if (!dsp_ready(minor)) {
+		PRINT_ERR(SUBNAME "card %i not enabled.\n", minor);
+		return -ENODEV;
+	}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	MOD_INC_USE_COUNT;
 #else
 	if(!try_module_get(THIS_MODULE))
 		return -1;
 #endif   
-	if (!dsp_ready(minor)) {
-		PRINT_ERR(SUBNAME "card %i not enabled.\n", minor);
-		return -ENODEV;
-	}
-
 	fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
         fpdata->minor = iminor(inode);
 	filp->private_data = fpdata;
