@@ -82,8 +82,12 @@ endif #FAKEMCE=1
 
 
 # Version header file generation
+ifneq ($(shell svnversion $(src)),$(shell cat $(src)/version_last))
+version_last: FORCE
+else
 version_last:
-	@[ "`svnversion`" != "`cat version_last`" ] && svnversion > version_last
+endif
+	svnversion $(src) > $(src)/version_last
 
 version.h: version.h.template version_last
 	grep -v '^\/\*-' version.h.template | \
