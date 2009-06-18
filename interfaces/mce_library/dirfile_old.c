@@ -10,27 +10,18 @@
 
 /* Method: data buffers for all channels. */
 
-#define TES_BASE_FORMAT "r%02ic%02i"
-#define TES_RAW_FORMAT  "tesdata%s"
-#define EXT_FORMAT      "INTER_%s_%s"
-#define OUTPUT_FORMAT   "%s_%s"
+#define TESDATA_NAME   "tesdatar00c00"
+#define TESDATA_FORMAT "tesdatar%02ic%02i"
 
 #define DIRFILE_CHANNELS      (MCEDATA_CARDS*MCEDATA_COLUMNS*MCEDATA_ROWS)
 
 typedef struct {
-	u32 *data;                 // buffer for this channel's data
-	int count;                 // number of data in buffer
-	int decimation;            // If non-zero, indicates how often to record a data point
-	int decimation_count;      // Decimation counter
-
-	FILE *fout;                // File handle for this channel's data
-	char *basename;            // Base of field name (e.g. r00c00 or num_rows)
-	char *filename;            // Raw field name (e.g. tesdatar00c00 or num_rows)
-	int free_on_destroy;       // Should destructor free data, basename, filename?
-	int frame_offset;          // Offset within frame data
-	int data_mode;             /* If non-negative, format definition will
-				      include field extraction lines. */
-	int has_sign;              // Indicates raw field should be treated as signed.
+	u32 *data;
+	int count;
+	int turn_bias;
+	int frame_offset;
+	char *name;
+	int free_on_destroy;
 } channel_t;
 
 typedef struct dirfile_struct {
@@ -39,11 +30,9 @@ typedef struct dirfile_struct {
 
 	int data_size;
 
-	int frame_count;
-	int write_period;
-
 	int channel_count;
 
+	int writes_per_frame;
 	int flush;
 
 	char basename[MCE_LONG];
@@ -91,7 +80,6 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 	int i;
 	u32* base_data;
 	char* base_names;
-	char* base_files;
 	int err = 0;
 
 	// Surely all of these will succeed.
@@ -104,7 +92,6 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 
 	// Large buffers
 	ALLOC_N(base_data, n*bufsize, err);
-	ALLOC_N(base_files, n*fieldsize, err);
 	ALLOC_N(base_names, n*fieldsize, err);
 	
 	if (err) {
@@ -115,8 +102,7 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 	// Point
 	for (i=0; i<n; i++) {
 		d->channels[i].data = base_data + bufsize*i;
-		d->channels[i].basename = base_names + fieldsize*i;
-		d->channels[i].filename = base_files + fieldsize*i;
+		d->channels[i].name = base_names + fieldsize*i;
 		d->channels[i].free_on_destroy = (i==0);
 	}
 	
@@ -132,8 +118,7 @@ static int dirfile_free(dirfile_t *d)
 	for (i=0; i<d->channel_count; i++) {
 		if (d->channels[i].free_on_destroy) {
 			FREE_NOT_NULL(d->channels[i].data);
-			FREE_NOT_NULL(d->channels[i].filename);
-			FREE_NOT_NULL(d->channels[i].basename);
+			FREE_NOT_NULL(d->channels[i].name);
 		}
 	}
 
@@ -149,6 +134,7 @@ static int dirfile_free(dirfile_t *d)
 static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
 {
 	int i;
+	FILE *fout;
 	int thresh = f->data_size / 2;
 	char filename[MCE_LONG];
 	int name_offset;
@@ -159,12 +145,20 @@ static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
 	int writes = 0;
 	for (i=0; i<f->channel_count; i++) {
 		channel_t *c = f->channels + i;
-		if (!f->flush && c->count < thresh)
+		if (!f->flush && c->count + c->turn_bias < thresh)
 			continue;
-		if (c->fout == NULL)
-			continue;
-		fwrite(c->data, c->count, sizeof(u32), c->fout);
+		strcpy(filename+name_offset, c->name);
+		fout = fopen64(filename, "a");
+		if (fout == NULL) continue;
+		
+		fwrite(c->data, c->count, sizeof(u32), fout);
+		
+		// If we are out-of-turn, use turn_bias to restore
+		//  turn_bias = (count+turn_bias) - thresh
+		c->turn_bias += c->count - thresh;
 		c->count = 0;
+		
+		fclose(fout);
 		writes++;
 	}
 
@@ -185,58 +179,7 @@ int write_format_file(dirfile_t* f)
 	if (format == NULL) return -1;
 
 	for (i=0; i<f->channel_count; i++) {
-		if (f->channels[i].has_sign) {
-			fprintf(format, "%-20s RAW S 400\n", f->channels[i].filename);
-		} else {
-			fprintf(format, "%-20s RAW U 400\n", f->channels[i].filename);
-		}
-	}
-
-	/* Write data mode decoder fields! */
-	fprintf(format, "\n\n# Data mode field extraction\n");
-	for (i=0; i<f->channel_count; i++) {
-		char inter_field[1024];
-		char final_field[1024];
-		struct mce_data_field** m;
-		channel_t *c = f->channels + i;
-		if (c->data_mode < 0) continue;
-		
-		for (m = mce_data_fields; *m != NULL; m++) {
-			double scalar = 1.;
-			if ((*m)->data_mode != c->data_mode) continue;
-			/* Final field name can now be determined */
-			sprintf(final_field, OUTPUT_FORMAT,
-				(*m)->name, c->basename);
-			
-			switch((*m)->type) {
-			case DATA_MODE_SCALE:
-				scalar = (*m)->scalar;
-				// fall-through
-			case DATA_MODE_RAW:
-				fprintf(format, "%-20s LINCOM 1 %-20s %lf 0\n",
-					final_field, c->filename, scalar);
-				break;
-
-			case DATA_MODE_EXTRACT:
-				fprintf(format, "%-20s BIT %-20s %i %i\n",
-					final_field, c->filename,
-					(*m)->bit_start, (*m)->bit_count);
-				break;
-				
-			case DATA_MODE_EXTRACT_SCALE:
-				sprintf(inter_field, EXT_FORMAT,
-					(*m)->name, c->basename);
-				/* First extract, then scale. */
-				fprintf(format, "%-20s BIT %-20s %i %i\n",
-					inter_field, c->filename,
-					(*m)->bit_start, (*m)->bit_count);
-				fprintf(format, "%-20s LINCOM 1 %-20s %lf 0\n",
-					final_field, inter_field, (*m)->scalar);
-				break;
-			}
-				
-		}
-
+		fprintf(format, "%-20s RAW U 400\n", f->channels[i].name);
 	}
 
 	fclose(format);
@@ -257,18 +200,14 @@ int write_format_file(dirfile_t* f)
 
 static int add_column_info(dirfile_t *dirfile, int data_start,
 			   int n_rows, int n_cols, int row_id,
-			   int col_id, int col_count, int col_ofs,
-			   int data_mode)
+			   int col_id, int col_count, int col_ofs)
 {
 	int c, r;
 	for (c=0; c<col_count; c++) 
 		for (r=0; r<n_rows; r++) {
 			channel_t *ch = dirfile->channels + dirfile->channel_count;
-			sprintf(ch->basename, TES_BASE_FORMAT, r + row_id, c + col_id);
-			sprintf(ch->filename, TES_RAW_FORMAT, ch->basename);
+			sprintf(ch->name, TESDATA_FORMAT, r + row_id, c + col_id);
 			ch->frame_offset = r*n_cols + (c + col_ofs) + data_start;
-			ch->data_mode = data_mode;
-			ch->has_sign = 1;
 			dirfile->channel_count++;
 		}
 	return 0;
@@ -279,10 +218,8 @@ static int add_column_info(dirfile_t *dirfile, int data_start,
 static void add_item(dirfile_t *dirfile, frame_item* item)
 {
 	channel_t *c = dirfile->channels + dirfile->channel_count;
-	strcpy(c->filename, item->name);
-	strcpy(c->basename, item->name);
+	strcpy(c->name, item->name);
 	c->frame_offset = item->offset;
-	c->data_mode = -1; // Items added like this probably aren't TES data.
 	dirfile->channel_count++;
 }
 
@@ -350,9 +287,6 @@ static int dirfile_init(mce_acq_t *acq)
 	f->data_size = n_fields * 2;
 	dirfile_alloc(f, n_fields, MCE_SHORT, f->data_size);
 	
-	// How often should we call the write routines?
-	f->write_period = f->data_size / 2;
-
 	// Header data
 	add_items(f, header_items);
 		
@@ -360,11 +294,11 @@ static int dirfile_init(mce_acq_t *acq)
         // the cards in the data stream
 	ofs = 0;
 	for (i=0; i<MCEDATA_CARDS; i++) {
-		if (!cards[i]) continue;
-		add_column_info(f, MCEDATA_HEADER, acq->rows, n_cols, acq->row0[i],
-				MCEDATA_COLUMNS*i+acq->col0[i], acq->cols, ofs,
-				acq->data_mode[i]);
-		ofs += acq->cols;
+		if (cards[i]) {
+			add_column_info(f, MCEDATA_HEADER, acq->rows, n_cols, acq->row0[i],
+					MCEDATA_COLUMNS*i+acq->col0[i], acq->cols, ofs);
+			ofs += acq->cols;
+		}
 	}
 
 	// Checksum!
@@ -378,39 +312,28 @@ static int dirfile_init(mce_acq_t *acq)
 		return -1;
 	}
 
-	// Open the data files.
-	for (i=0; i<f->channel_count; i++) {
-		char filename[2048];
-		channel_t *c = f->channels + i;
-		sprintf(filename, "%s%s", f->basename, c->filename);
-		c->fout = fopen64(filename, "a");
-		if (c->fout == NULL) {
-			fprintf(stderr, "Could not open %ith channel file.\n", i);
-			return -1;
-		}
-	}
+	// Set up turn bias so files are cycled.
+	// Model 1: smooth spread.
+	for (i=0; i<n_fields; i++)
+		f->channels[i].turn_bias = i * (f->data_size / 2) / n_fields;
+
+/* 	// Model 2: 4 gangs */
+/* 	for (i=0; i<n; i++) */
+/* 		f->turn_bias[i] = (i % 4) * (f->data_size / 2) / 4; */
+
+	f->writes_per_frame = 10;
 
 	return 0;
 }
 
 static int dirfile_cleanup(mce_acq_t *acq)
 {
-	int i;
 	dirfile_t *f = (dirfile_t*)acq->storage->action_data;
 	
 	// Force all channels to write out.
 	f->flush = 1;
 	dirfile_write(acq, f);
 	f->flush = 0;
-
-	// Close all files
-	for (i=0; i<f->channel_count; i++) {
-		channel_t *c = f->channels + i;
-		if (c->fout == NULL) continue;
-		fflush(c->fout);
-		fclose(c->fout);
-		c->fout = NULL;
-	}
 
 	return 0;
 }
@@ -424,20 +347,12 @@ static int dirfile_post(mce_acq_t *acq, int frame_index, u32 *data)
 	// FIXME - bounds checking on f->data
 	for (i=0; i<f->channel_count; i++) {
 		channel_t* c = f->channels + i;
-		if (c->decimation) {
-			int store = (c->decimation==0);
-			c->decimation = (c->decimation+1) % c->decimation_count;
-			if (!store) continue;
-		}
+//		printf("%i(%u) ", i, c->count); fflush(stdout);
 		c->data[c->count++] = data[c->frame_offset];
 	}
+//	printf("out\n");fflush(stdout);
 
-	if (f->frame_count++ >= f->write_period) {
-		f->frame_count = 0;
-		return dirfile_write(acq, f);
-	} else {
-		return 0;
-	}
+	return dirfile_write(acq, f);
 }
 
 static int dirfile_flush(mce_acq_t *acq)

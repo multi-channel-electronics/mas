@@ -76,6 +76,7 @@ struct mce_acq_struct {
 	int cols;                       // Number of columns reported
 	int row0[MCEDATA_CARDS];        // Index, by RC, of first row reported
 	int col0[MCEDATA_CARDS];        // Index, by RC, of first column reported
+	int data_mode[MCEDATA_CARDS];   // Data modes, by card.
 
 	mcedata_storage_t* storage;
 

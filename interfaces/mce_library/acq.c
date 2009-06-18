@@ -34,6 +34,9 @@ static int card_count(int cards);
 static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 			     int cards);
 
+static int load_data_params(mce_context_t *context, mce_acq_t *acq,
+			    int cards);
+
 static int load_ret_dat(mce_acq_t *acq, int cards);
 
 static int cards_to_rcsflags(int c);
@@ -53,6 +56,10 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	ret_val = load_frame_params(context, acq, cards);
 	if (ret_val != 0) return ret_val;
 	
+	// Load data description stuff
+	ret_val = load_data_params(context, acq, cards);
+	if (ret_val != 0) return ret_val;
+
 	// Save frame size and other options
 	acq->frame_size = acq->rows * acq->cols * card_count(acq->cards) + 
 		MCEDATA_HEADER + MCEDATA_FOOTER;
@@ -196,6 +203,7 @@ static int get_n_frames(mce_acq_t *acq)
 	return args[1] - args[0] + 1;
 }
 
+
 static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 			     int cards)
 {
@@ -222,15 +230,13 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 	int i;
 	
 	/* Load MCE parameters to determine fw_* supported by this firmware */
-	if (mcecmd_load_param(context, &para_ncol, "sys",
+	if (mcecmd_load_param(context, &para_nrow, "cc",
+			      "num_rows_reported") != 0) {
+		return -MCE_ERR_FRAME_ROWS;
+	}
+	if (mcecmd_load_param(context, &para_ncol, "cc",
 			      "num_cols_reported") == 0) {
 		fw_rectangle = 1;
-		if ((ret_val=mcecmd_load_param(context, &para_nrow, "sys",
-					       "num_rows_reported")) != 0)
-			return ret_val;
-	} else if ((ret_val=mcecmd_load_param(context, &para_nrow, "cc",
-					      "num_rows_reported")) != 0) {
-		return ret_val;
 	}
 	if ((ret_val=mcecmd_load_param(context, &para_rcs, "cc",
 				       "rcs_to_report_data")) == 0)
@@ -261,10 +267,10 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 	
 	// Load the row and column starting indices (for, e.g. dirfile field naming)
 	for (i=0; i<MCEDATA_CARDS; i++) {
-		char* rc = "rc0";
+		char rc[4];
 		if (!(acq->cards & (1<<i))) 
 			continue;
-		rc[2] = '1'+i;
+		sprintf(rc, "rc%i", i+1);
 		acq->row0[i] = 0;
 		acq->col0[i] = 0;
 		if ((mcecmd_load_param(context, &para_0, rc,
@@ -277,6 +283,44 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 				       "readout_col_index")==0) &&
 		    (mcecmd_read_block(context, &para_0, 1, data)==0))
 			acq->col0[i] = data[0];
+	}
+	return 0;
+}
+
+
+static int load_data_params(mce_context_t *context, mce_acq_t *acq,
+			    int cards)
+{
+	/* Determine data content parameters
+	      acq->data_mode  per-card data_mode settings
+	      (eventually, full rectangle mode support will go here)
+
+	   If cards < 0 then acq->cards is used instead.  i.e. call 
+	   load_frame_params first if you want guessing to happen.
+	*/
+	mce_param_t para;
+	u32 data[64];
+	int i;
+	
+	/* Determine cards that will be returning data */
+	if (cards <= 0) {
+		cards = acq->cards;
+	}
+	
+	// Load data_modes from each card.
+	for (i=0; i<MCEDATA_CARDS; i++) {
+		char rc[4];
+		if (!(acq->cards & (1<<i))) 
+			continue;
+		sprintf(rc, "rc%i", 1+i);
+		acq->data_mode[i] = 0;
+		if ((mcecmd_load_param(context, &para, rc,
+				  "data_mode")==0) &&
+		    (mcecmd_read_block(context, &para, 1, data)==0))
+			acq->data_mode[i] = data[0];
+		else {
+			fprintf(stderr, "Failed to determine data_mode.\n");
+		}
 	}
 	return 0;
 }

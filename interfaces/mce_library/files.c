@@ -4,9 +4,28 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <mce_library.h>
 
+// #define FILEOPS_BASIC
+
+#ifdef FILEOPS_BASIC
+#define FILE_OPEN(X, filename) X->fd = open(filename, O_WRONLY | O_CREAT)
+#define FILE_CLOSE(X) close(X->fd)
+#define FILE_CLEAR(X) X->fd=-1
+#define FILE_WRITE(X, data, size) write(X->fd, data, size)
+#define FILE_OK(X) (X->fd >= 0)
+#define FILE_FLUSH(X) X = X;
+#else
+#define FILE_OPEN(X, filename) X->fout = fopen(filename, "a");
+#define FILE_CLOSE(X) fclose(X->fout)
+#define FILE_CLEAR(X) X->fout=NULL
+#define FILE_WRITE(X, data, size) fwrite(data, size, 1, X->fout)
+#define FILE_OK(X) (X->fout != NULL)
+#define FILE_FLUSH(X) fflush(X->fout)
+#endif
 
 /* Generic destructor (not to be confused with cleanup member function) */
 
@@ -109,7 +128,11 @@ typedef struct flatfile_struct {
 
 	char filename[MCE_LONG];
 	int frame_size;
-	FILE *fout;
+#ifdef FILEOPS_BASIC
+	int fd;
+#else
+ 	FILE *fout;
+#endif
 
 } flatfile_t;
 
@@ -117,9 +140,9 @@ typedef struct flatfile_struct {
 static int flatfile_init(mce_acq_t *acq)
 {
 	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
-	if (f->fout == NULL) {
-		f->fout = fopen64(f->filename, "a");
-		if (f->fout == NULL) {
+	if (!FILE_OK(f)) {
+		FILE_OPEN(f, f->filename);
+		if (!FILE_OK(f)) {
 			sprintf(acq->errstr, "Failed to open file '%s'", f->filename);
 			return -1;
 		}
@@ -130,9 +153,9 @@ static int flatfile_init(mce_acq_t *acq)
 static int flatfile_cleanup(mce_acq_t *acq)
 {
 	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
-	if (f->fout != NULL) {
-		fclose(f->fout);
-		f->fout = NULL;
+	if (FILE_OK(f)) {
+		FILE_CLOSE(f);
+		FILE_CLEAR(f);
 	}
 	f->filename[0] = 0;
 
@@ -142,19 +165,17 @@ static int flatfile_cleanup(mce_acq_t *acq)
 static int flatfile_post(mce_acq_t *acq, int frame_index, u32 *data)
 {
 	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
-
-	if (f->fout==NULL) return -1;
-
-	fwrite(data, acq->frame_size*sizeof(*data), 1, f->fout);
-
+	if (!FILE_OK(f)) return -1;
+        FILE_WRITE(f, data, acq->frame_size*sizeof(*data));
 	return 0;
 }
 
 static int flatfile_flush(mce_acq_t *acq)
 {
 	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
-	if (f->fout != NULL)
-		fflush(f->fout);
+	FILE_FLUSH(f);
+/* 	if (f->fd  != NULL) */
+/* 		fflush(f->fout); */
 	return 0;
 }
 
@@ -244,6 +265,7 @@ mcedata_storage_t* mcedata_flatfile_create(const char *filename)
 	storage->action_data = f;
 
 	memset(f, 0, sizeof(*f));
+	FILE_CLEAR(f);
 
 	strcpy(f->filename, filename);
 	return storage;
