@@ -17,9 +17,10 @@ typedef struct {
 
 #define STR_FLAT \
 "function str_flat,a\n"\
-"    s = ''\n"\
-"    for i=0,n_elements(a)-1 do begin\n"\
-"        s=s+' '+strcompress(string(a(i)))\n"\
+"    if n_elements(a) eq 0 then return,''\n"\
+"    s = strcompress(string(a[0]))\n"\
+"    for i=1,n_elements(a)-1 do begin\n"\
+"        s=s+' '+strcompress(string(a[i]))\n"\
 "    endfor\n"\
 "    return,s\n"\
 "end\n\n"
