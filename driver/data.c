@@ -231,7 +231,7 @@ int data_frame_fake_stop(int card)
 			dframes->head_index*dframes->frame_size);
 
 	//Flag as stop
-	frame[0] = 1;
+	frame[0] = 2 /* FRAME_STATUS_V6_STOP */;
 
 	//Special id for our recognition
 	frame[1] = 0x33333333;
