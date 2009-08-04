@@ -42,4 +42,11 @@
 
 #define DATADEV_IOCT_FRAME_CONSUME _IO(DATADEV_IOC_MAGIC, 10)
 
+#define DATADEV_IOCT_LOCK       _IO(DATADEV_IOC_MAGIC, 11)
+#define      LOCK_QUERY      0
+#define      LOCK_DOWN       1
+#define      LOCK_UP         2
+#define      LOCK_RESET      3
+
+
 #endif

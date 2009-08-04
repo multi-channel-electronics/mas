@@ -71,11 +71,16 @@ typedef struct {
 	unsigned long base_busaddr;
 	
 	// Semaphore should be held when modifying structure, but
-	// interrupt routines may modify head_index if DATA_GO flag is
-	// set.  DATA_GO will only be set while sem is held, but may
-	// be cleared outside of lock.
+	// interrupt routines may modify head_index at any time.
 
 	struct semaphore sem;
+
+	// Device lock - controls read access on data device and
+	// provides a system for checking whether the system is
+	// mid-acquisition.  Should be NULL (for idle) or pointer to
+        // reader's filp (for locking).
+
+	void *data_lock;	
 
         // Tasklet for updating grants on card.
  	struct tasklet_struct grant_tasklet;
@@ -125,6 +130,11 @@ int data_frame_empty_buffers(int card);
 int data_frame_poll(int card);
 
 int data_tail_increment(int card);
+
+int data_lock_query(int card);
+int data_lock_reset(int card);
+int data_lock_down(int card, void *filp);
+int data_lock_up(int card, void *filp);
 
 int data_proc(char *buf, int count, int card);
 

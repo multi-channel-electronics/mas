@@ -507,6 +507,58 @@ int data_reset(int card)
 }
 #undef SUBNAME
 
+/* Data device locking support -- note these routines all block for the sem! */
+
+int data_lock_query(int card)
+{
+	frame_buffer_t *dframes = data_frames + card;
+	return dframes->data_lock != NULL;
+}
+
+
+/* Clear the data lock, no matter what. */
+
+int data_lock_reset(int card)
+{
+	frame_buffer_t *dframes = data_frames + card;
+	dframes->data_lock = NULL;
+	return 0;
+}
+
+/* 'Up' and 'down' functions for data lock -- note that these will
+   block for the dframes semaphore!
+*/
+
+int data_lock_down(int card, void *filp)
+{
+	int ret_val = 0;
+	frame_buffer_t *dframes = data_frames + card;
+	if (down_interruptible(&dframes->sem))
+		return -ERESTARTSYS;
+	if (dframes->data_lock != NULL) {
+		ret_val = -EBUSY;
+	} else {
+		dframes->data_lock = filp;
+	}
+	up(&dframes->sem);
+	return ret_val;
+}
+
+int data_lock_up(int card, void *filp)
+{
+	int ret_val = 0;
+	frame_buffer_t *dframes = data_frames + card;
+	if (down_interruptible(&dframes->sem))
+		return -ERESTARTSYS;
+	if (dframes->data_lock == filp) {
+		dframes->data_lock = NULL;
+	}
+	up(&dframes->sem);
+	return ret_val;
+}
+
+
+/* Proc! */
 
 int data_proc(char *buf, int count, int card)
 {

@@ -212,6 +212,18 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	case DATADEV_IOCT_FRAME_CONSUME:
 		return data_tail_increment(card);
 
+	case DATADEV_IOCT_LOCK:
+		switch (iocmd) {
+		case LOCK_QUERY:
+			return data_lock_query(card);
+		case LOCK_UP:
+			return data_lock_up(card, filp);
+		case LOCK_DOWN:
+			return data_lock_down(card, filp);
+		case LOCK_RESET:
+			return data_lock_reset(card);
+		}
+		return -1;
 	default:
 		PRINT_ERR(SUBNAME "unknown command (%#x)\n", iocmd );
 	}
