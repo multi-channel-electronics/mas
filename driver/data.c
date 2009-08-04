@@ -507,27 +507,48 @@ int data_reset(int card)
 }
 #undef SUBNAME
 
-/* Data device locking support -- note these routines all block for the sem! */
 
-int data_lock_query(int card)
+/* Data device locking support */
+
+#define SUBNAME "data_lock_operation: "
+
+int data_lock_operation(int card, int operation, void *filp)
 {
 	frame_buffer_t *dframes = data_frames + card;
-	return dframes->data_lock != NULL;
+	int ret_val = 0;
+
+	switch (operation) {
+	case LOCK_QUERY:
+		return dframes->data_lock != NULL;
+
+	case LOCK_RESET:
+		dframes->data_lock = NULL;
+		return 0;
+
+	case LOCK_DOWN:
+	case LOCK_UP:
+		/* 'Up' and 'down' block for dframes semaphore! */
+		if (down_interruptible(&dframes->sem))
+			return -ERESTARTSYS;
+		if (operation == LOCK_DOWN) {
+			if (dframes->data_lock != NULL) {
+				ret_val = -EBUSY;
+			} else {
+				dframes->data_lock = filp;
+			}
+		} else /* LOCK_UP */ {
+			if (dframes->data_lock == filp) {
+				dframes->data_lock = NULL;
+			}
+		}
+		up(&dframes->sem);
+		return ret_val;
+	}
+	PRINT_ERR(SUBNAME "unknown operation (%i).\n", operation);
+	return -1;
 }
 
-
-/* Clear the data lock, no matter what. */
-
-int data_lock_reset(int card)
-{
-	frame_buffer_t *dframes = data_frames + card;
-	dframes->data_lock = NULL;
-	return 0;
-}
-
-/* 'Up' and 'down' functions for data lock -- note that these will
-   block for the dframes semaphore!
-*/
+#undef SUBNAME
 
 int data_lock_down(int card, void *filp)
 {

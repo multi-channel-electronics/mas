@@ -131,10 +131,7 @@ int data_frame_poll(int card);
 
 int data_tail_increment(int card);
 
-int data_lock_query(int card);
-int data_lock_reset(int card);
-int data_lock_down(int card, void *filp);
-int data_lock_up(int card, void *filp);
+int data_lock_operation(int card, int operation, void *filp);
 
 int data_proc(char *buf, int count, int card);
 

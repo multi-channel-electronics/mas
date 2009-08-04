@@ -213,17 +213,8 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		return data_tail_increment(card);
 
 	case DATADEV_IOCT_LOCK:
-		switch (iocmd) {
-		case LOCK_QUERY:
-			return data_lock_query(card);
-		case LOCK_UP:
-			return data_lock_up(card, filp);
-		case LOCK_DOWN:
-			return data_lock_down(card, filp);
-		case LOCK_RESET:
-			return data_lock_reset(card);
-		}
-		return -1;
+		return data_lock_operation(card, arg, filp);
+
 	default:
 		PRINT_ERR(SUBNAME "unknown command (%#x)\n", iocmd );
 	}
@@ -249,8 +240,10 @@ int data_open(struct inode *inode, struct file *filp)
 int data_release(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata = filp->private_data;
-
-	if (fpdata != NULL) kfree(fpdata);
+	if (fpdata != NULL) {
+		data_lock_operation(fpdata->minor, LOCK_UP, filp);
+		kfree(fpdata);
+	}
 	return 0;
 }
 

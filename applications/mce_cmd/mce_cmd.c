@@ -18,6 +18,7 @@
 #include <readline/history.h>
 
 #include <mce/cmdtree.h>
+#include <mce/data_ioctl.h>
 
 #include "cmd.h"
 #include "options.h"
@@ -42,6 +43,10 @@ enum {
 	SPECIAL_ACQ_CONFIG_FS,
 	SPECIAL_ACQ_CONFIG_DIRFILE,
 	SPECIAL_ACQ_FLUSH,
+	SPECIAL_LOCK_QUERY,
+	SPECIAL_LOCK_RESET,
+	SPECIAL_LOCK_DOWN,
+	SPECIAL_LOCK_UP,
 	SPECIAL_QT_CONFIG,
 	SPECIAL_QT_ENABLE,
 	SPECIAL_MRESET,
@@ -132,6 +137,10 @@ cmdtree_opt_t root_opts[] = {
  	{ SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
 	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
 	{ SEL_NO, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
+	{ SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
+	{ SEL_NO, "LOCK_RESET", 0, 0, SPECIAL_LOCK_RESET, NULL},
+	{ SEL_NO, "LOCK_DOWN" , 0, 0, SPECIAL_LOCK_DOWN, NULL},
+	{ SEL_NO, "LOCK_UP"   , 0, 0, SPECIAL_LOCK_UP, NULL},
 	{ SEL_NO, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
 	{ SEL_NO, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
 	{ SEL_NO, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
@@ -815,6 +824,25 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			    options.acq_path[strlen(options.acq_path)-1] != '/') {
 				strcat(options.acq_path, "/");
 			}
+			break;
+
+		case SPECIAL_LOCK_QUERY:
+			errmsg += sprintf(errmsg, "%i", mcedata_lock_query(mce));
+			break;
+			
+		case SPECIAL_LOCK_RESET:
+			ret_val = mcedata_lock_reset(mce);
+			break;
+
+		case SPECIAL_LOCK_DOWN:
+			ret_val = mcedata_lock_down(mce);
+			if (ret_val != 0) {
+				errmsg += sprintf(errmsg, "could not get data lock.\n");
+			}
+			break;
+
+		case SPECIAL_LOCK_UP:
+			ret_val = mcedata_lock_up(mce);
 			break;
 
 		case SPECIAL_QT_ENABLE:

@@ -125,3 +125,24 @@ int mcedata_consume_frame(mce_context_t* context)
 {
 	return ioctl(C_data.fd, DATADEV_IOCT_FRAME_CONSUME);
 }
+
+int mcedata_lock_query(mce_context_t* context)
+{
+	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_QUERY);
+}
+
+int mcedata_lock_reset(mce_context_t* context)
+{
+	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_RESET);
+}
+
+int mcedata_lock_down(mce_context_t* context)
+{
+	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_DOWN);
+}
+
+int mcedata_lock_up(mce_context_t* context)
+{
+	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_UP);
+}
+

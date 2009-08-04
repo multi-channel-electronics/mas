@@ -61,6 +61,10 @@ void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
 			  int *count);
 int mcedata_poll_offset(mce_context_t* context, int *offset);
 int mcedata_consume_frame(mce_context_t* context);
+int mcedata_lock_query(mce_context_t* context);
+int mcedata_lock_reset(mce_context_t* context);
+int mcedata_lock_down(mce_context_t* context);
+int mcedata_lock_up(mce_context_t* context);
 
 
 /* Frame data handlers */
