@@ -457,7 +457,7 @@ int dsp_send_command_now_vector(struct dsp_dev_t *dev, u32 vector, dsp_command *
 		return -EIO;
 	}
 	
-	dsp_write_hcvr(dev->dsp, vector | HCVR_HC);
+	dsp_write_hcvr(dev->dsp, vector | dev->hcvr_bits | HCVR_HC);
 
 	return 0;
 }
@@ -1030,6 +1030,9 @@ int dsp_configure(struct pci_dev *pci)
 	/* Card configuration - now we're done with the kernel and
 	 * talk to the card */
 
+	// Until we check the card version, make all commands unmaskable
+	dev->hcvr_bits = HCVR_HNMI;
+
 	// Clear any outstanding interrupts
 	dsp_quick_command(dev, HCVR_INT_RST);
 	dsp_quick_command(dev, HCVR_INT_DON);
@@ -1182,9 +1185,10 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 		// Enable interrupt hand-shaking
 		dev->comm_mode |= DSP_PCI_MODE_HANDSHAKE;
 		dsp_write_hctr(dev->dsp, dev->comm_mode);
+		dev->hcvr_bits &= ~HCVR_HNMI;
 	} else {
 		// All vector commands must be non-maskable on older firmware
-		dev->hcvr_bits = HCVR_HNMI;
+		dev->hcvr_bits |= HCVR_HNMI;
 	}
 
 	dev->enabled = 1;
