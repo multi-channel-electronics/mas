@@ -19,6 +19,15 @@
  *   * MA+MFH: repair multi-bias bug
  *
  ***********************************************************/
+
+int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
+		mce_param_t *m_sq2fb_col, int biasing_ac,
+		u32 *data, int offset, int count);
+
+int servo_step(u32* dest, int* src, int count, double gain, double target);
+
+void extract_rows(u32* dest, int* src, u32 *row_order, int* servo_rows, int count);
+
 /***********************************************************
  * frame_callback: to store the frame to a file and fill row_data
  * 
@@ -55,7 +64,7 @@ int main ( int argc, char **argv )
    
    u32 temparr[MAXTEMP];
   
-   int i, j, r, snum;       /* loop counters */
+   int i=0, j, r, snum;       /* loop counters */
  
    FILE *fd;                /* pointer to output file*/
    FILE *tempf;             /* pointer to sq2fb.init file*/
@@ -102,10 +111,10 @@ int main ( int argc, char **argv )
    arg_offset = process_options(&options, argc, argv) - 1;
    if (arg_offset < 0)
      exit(ERR_NUM_ARGS);
-   if (options.preservo > 0) {
-     fprintf(stderr, "This application does not yet support preservo steps!\n");
-     exit(ERR_UNIMPL);
-   }
+/*    if (options.preservo > 0) { */
+/*      fprintf(stderr, "This application does not yet support preservo steps!\n"); */
+/*      exit(ERR_UNIMPL); */
+/*    } */
 
    
    // Correct argc and argv for the remaining options (hack!)
@@ -318,6 +327,24 @@ int main ( int argc, char **argv )
           error_action("mcecmd_write_block sq1bias", error);
       }
 
+      // Set starting sq1 fb
+      duplicate_fill(sq1feed + i*sq1fstep, temparr, MAXCHANNELS);
+      write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");
+
+      // Pre-servo
+      for (i=0; i<options.preservo; i++) {
+	   // Write SQ2 FB
+	   write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, biasing_ac, sq2fb, soffset, MAXCHANNELS);
+	   
+	   // Acquire error
+	   if ((error=mcedata_acq_go(&acq, 1)) != 0) 
+		error_action("data acquisition failed", error);
+
+	   // Dereference data by row_order and update output.
+	   extract_rows(temparr, sq1servo.row_data, row_order, sq1servo.row_num, MAXVOLTS);
+	   servo_step(sq2fb+soffset, (int*)temparr+soffset, MAXCHANNELS, gain, z);
+      }
+
       for (i=0; i<nfeed; i++) {
 
 	if (biasing_ac) {
@@ -375,4 +402,45 @@ int main ( int argc, char **argv )
    printf("sq1servo: elapsed time is %fs \n", difftime(finish, start));
       
    return SUCCESS;
+}
+
+
+/* Writes values to sq2 feedback columns offset through offset+count.
+ * Even with biasing_ac, the same value is applied for the whole
+ * column.  In that case, m_sq2fb_col should point to the desired
+ * columns only (i.e. m_sq2fb_col[0] through mm_sq2fb_col[count-1] are
+ * used, *not* m_sq2fb_col[offset] through [offset+count-1]. */
+
+int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
+		 mce_param_t *m_sq2fb_col, int biasing_ac,
+		 u32 *data, int offset, int count)
+{
+	if (biasing_ac) {
+		int i;
+		u32 temparr[MAXROWS];
+		for (i=0; i<count; i++) {
+			duplicate_fill(data[i], temparr, MAXROWS);
+			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");
+		}
+	} else {
+		write_range_or_exit(mce, m_sq2fb, offset, data, MAXCHANNELS, "sq2fb");
+	}
+	return 0;
+}
+
+int servo_step(u32* dest, int* src, int count, double gain, double target)
+{
+	int i;
+	for (i=0; i<count; i++) {
+		dest[i] += gain * (src[i] - target);
+	}
+	return 0;
+}
+
+void extract_rows(u32* dest, int* src, u32 *row_order, int* servo_rows, int count)
+{
+     int i;
+     for (i=0; i<count; i++) {
+	  dest[i] = src[row_order[servo_rows[i]]];
+     }
 }
