@@ -1,39 +1,10 @@
-DEFS_ALL = 
 
-TEMPLATES=templates/
+TARGETS=$(shell ./makefile.py --targets)
+DEPS=$(shell ./makefile.py --dependencies)
 
-OPTIONS = -P -nostdinc -I ./ $(DEFS_ALL)
-
-DEPS = $(TEMPLATES)master-4.template
-
-TARGETS = mce_v1.cfg mce_v2.cfg mce_v1_bac.cfg mce_v2_bac.cfg mce_v2_16tes.cfg
-
-all: $(TARGETS)
+$(TARGETS) : $(DEPS)
+	./makefile.py
 
 clean:
-	-rm $(TARGETS)
+	rm $(TARGETS)
 
-# Rule for general template -> cfg construction
-%.cfg: %.template
-	cpp $(OPTIONS) $< $@ || rm $@
-
-
-# Targets based on the master template
-mce_v1.cfg: $(DEPS)
-	cpp $(OPTIONS) $< $@ || rm $@
-
-mce_v2.cfg: $(DEPS)
-	cpp $(OPTIONS) -DSUBRACK_SMALL $< $@ || rm $@
-
-mce_v1_bac.cfg: $(DEPS)
-	cpp $(OPTIONS) -DBIASING_AC $< $@ || rm $@
-
-mce_v2_bac.cfg: $(DEPS)
-	cpp $(OPTIONS) -DSUBRACK_SMALL -DBIASING_AC $< $@ || rm $@
-
-mce_v2_16tes.cfg: $(DEPS)
-	cpp $(OPTIONS) -DSUBRACK_SMALL -DTES_16 $< $@ || rm $@
-
-# Trunk stuff
-dev/mce_v1_raw.cfg: $(DEPS)
-	cpp $(OPTIONS) -DRC_40E $< $@ || rm $@

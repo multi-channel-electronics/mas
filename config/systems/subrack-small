@@ -113,12 +113,21 @@
                 status = 0;
             },
 
+#ifdef BIASING_AC
+            {
+                name = "sq2";
+                nature = "virtual";
+                mapping = "fast_sq2_mapping";
+            },
+
+#else
             {
                 name = "sq2";
                 nature = "virtual";
                 mapping = "sq2_mapping";
             },
 
+#endif /* BIASING_AC */
             {
                 name = "sq1";
                 nature = "virtual";
@@ -138,3 +147,5 @@
             }
 
         ); //components list
+
+    }; // system

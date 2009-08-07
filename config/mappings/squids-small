@@ -58,8 +58,8 @@
                 {  name = "fb_col31"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col31";offset=0; }); },
                 {
                     name = "bias";
-                    count = 32;
-                    maps = ( { start= 0; count=32; card="bc3"; param="flux_fb"; offset=0; } );
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc1"; param="flux_fb"; offset=16; } );
                 }
             );
         },
