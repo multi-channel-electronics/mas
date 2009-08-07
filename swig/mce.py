@@ -221,7 +221,15 @@ class mce:
             return None
         else:
             channel_set = ChannelSet()
-            cards = 0xf
+            try:
+                rc = self.read('cc', 'rcs_to_report_data', array=False)
+                cards = 0
+                for i, bits in enumerate([5,4,3,2]):
+                    if rc & (1 << bits):
+                        cards |= (1 << i)
+            except:
+                print 'Could not query rcs_to_report_data register.'
+                cards = 0xf
             n_cols = 8*self.card_count(cards)
             num_rows_rep = self.read('cc', 'num_rows_reported', array=False)
             channel_set.rows = range(num_rows_rep)
@@ -232,7 +240,7 @@ class mce:
         n_extra = 44
         frame_size = n_cols*num_rows_rep + n_extra
         d = u32array(frame_size*count)
-        read_frames(self.context, d.cast(), cards, count);
+        read_frames(self.context, d.cast(), -1, count);
 
         # Extract headers, and data.
         hh = [ [d[frame_size*f + i] for i in range(43)] for f in range(count) ]
