@@ -688,6 +688,50 @@ void dsp_timer_function(unsigned long data)
 #undef SUBNAME
 
 
+#define SUBNAME "dsp_set_latency: "
+
+int dsp_set_latency(int card, int value)
+{
+	struct dsp_dev_t *dev = dsp_dev + card;
+	dsp_command cmd = { DSP_WRM, { DSP_MEMX, 0, 0 }};
+	dsp_message rep;
+	char c;
+
+	// Get latency value or use value passed in
+	if (((int)value) <= 0) {
+		// User wants us to use the bus value -- most likely.
+		c = 0;
+		pci_read_config_byte(dev->pci, PCI_LATENCY_TIMER, &c);
+		PRINT_INFO(SUBNAME "PCI latency is %#x\n", (int)c);
+	} else {
+		c = (char)value;
+		PRINT_INFO(SUBNAME "obtained user latency %#x\n", (int)c);
+	}
+	if (c <= 0) {
+		PRINT_ERR(SUBNAME "bad latency value %#x\n", (int)c);
+		return -1;
+	}
+			
+	cmd.args[2] = (int)c;
+	switch (dev->version) {
+	case DSP_U0104:
+		cmd.args[1] = 0x5b;
+		break;
+	case DSP_U0105:
+		cmd.args[1] = 0x29;
+		break;
+	default:
+		PRINT_ERR(SUBNAME "can't set latency for DSP version %#06x\n",
+			  dev->version);
+		return -1;
+	}
+	dsp_send_command_wait(&cmd, &rep, card);
+	return (rep.reply == DSP_ACK) ? 0 : -1;
+}
+
+#undef SUBNAME
+
+
 /*
   Memory allocation
 
@@ -908,6 +952,9 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card)
 		PRINT_IOCT(SUBNAME "hstr=%#06x hctr=%#06x\n",
 			   dsp_read_hstr(dev->dsp), dsp_read_hctr(dev->dsp));		
 		break;
+
+	case DSPDEV_IOCT_LATENCY:
+		return dsp_set_latency(card, (int)arg);
 
 	default:
 		PRINT_ERR(SUBNAME "I don't handle iocmd=%ui\n", iocmd);
@@ -1193,8 +1240,12 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 
 	dev->enabled = 1;
 
+	// Set the PCI latency timer
+	if (dsp_set_latency(card, 0))
+		goto fail;
+
 	// Enable the character device for this card.
-	if(dsp_ops_probe(card) != 0)
+	if (dsp_ops_probe(card) != 0)
 		goto fail;
 
 	// DSP is ready, setup a structure for MCE driver
