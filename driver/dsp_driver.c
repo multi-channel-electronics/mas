@@ -692,8 +692,14 @@ void dsp_timer_function(unsigned long data)
 
 int dsp_set_latency(int card, int value)
 {
+	/* If argument 'value' is positive, that value is loaded into
+	   the DSP as the size of PCI bursts.  If 'value' is 0 or
+	   negative, the burst size is obtained from the PCI
+	   configuration registers (that's the right way). */
+	   
 	struct dsp_dev_t *dev = dsp_dev + card;
-	dsp_command cmd = { DSP_WRM, { DSP_MEMX, 0, 0 }};
+	dsp_command cmd1 = { DSP_WRM, { DSP_MEMX, 0, 0 }};
+	dsp_command cmd2 = { DSP_WRM, { DSP_MEMP, 0, 0 }};
 	dsp_message rep;
 	char c;
 
@@ -712,20 +718,25 @@ int dsp_set_latency(int card, int value)
 		return -1;
 	}
 			
-	cmd.args[2] = (int)c;
+	cmd1.args[2] = (int)c;
+	cmd2.args[2] = (int)c;
 	switch (dev->version) {
 	case DSP_U0104:
-		cmd.args[1] = 0x5b;
+		cmd1.args[1] = 0x5b;
+		cmd2.args[1] = 0x6ad;
 		break;
 	case DSP_U0105:
-		cmd.args[1] = 0x29;
+		cmd1.args[1] = 0x29;
+		cmd2.args[1] = 0x6c7;
 		break;
 	default:
 		PRINT_ERR(SUBNAME "can't set latency for DSP version %#06x\n",
 			  dev->version);
 		return -1;
 	}
-	dsp_send_command_wait(&cmd, &rep, card);
+	dsp_send_command_wait(&cmd1, &rep, card);
+	if (rep.reply == DSP_ACK)
+		dsp_send_command_wait(&cmd2, &rep, card);
 	return (rep.reply == DSP_ACK) ? 0 : -1;
 }
 
