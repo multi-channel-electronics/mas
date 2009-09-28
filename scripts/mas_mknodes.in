@@ -12,6 +12,9 @@ else
     ndev=$1
 fi
 
+dev0=0
+[ "$2" == "" ] || dev0="$2"
+
 DSP_FILE=/dev/mce_dsp
 MCEC_FILE=/dev/mce_cmd
 MCED_FILE=/dev/mce_data
@@ -31,7 +34,7 @@ MCEC_MAJOR=`awk "$awkp" /proc/devices`
 awkp="\$2==\"$MCED_DEV\" {print \$1;}"
 MCED_MAJOR=`awk "$awkp" /proc/devices`
 
-for i in $(seq 0 $(( $ndev - 1 )) ); do
+for i in $(seq $dev0 $(( $ndev + $dev0 - 1 )) ); do
 
     mknod $DSP_FILE$i c $DSP_MAJOR $i
     chgrp $GRP $DSP_FILE$i
