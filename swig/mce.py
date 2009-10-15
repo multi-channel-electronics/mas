@@ -27,9 +27,10 @@ class ChannelSet:
     Defines a set of channels and offers information to Mce class on
     how to acquire them.
     """
-    def __init__(self, rc=''):
+    def __init__(self, rc='', rcs_cards=0xf):
 
         self.use_readout_index = False
+        self.rcs_cards = rcs_cards
 
         self.has_list = False
         self.channel_list = [[],[]]
@@ -77,7 +78,7 @@ class ChannelSet:
         cards = 0
         for cc in card_list:
             c = cc.lower()
-            if c == "rcs": cards |= 0xf
+            if c == "rcs": cards |= self.rcs_cards
             elif c == "rc1": cards |= 0x1
             elif c == "rc2": cards |= 0x2
             elif c == "rc3": cards |= 0x4
@@ -220,7 +221,6 @@ class mce:
             print 'Sorry, channel_set=False only!'
             return None
         else:
-            channel_set = ChannelSet()
             try:
                 rc = self.read('cc', 'rcs_to_report_data', array=False)
                 cards = 0
@@ -230,13 +230,13 @@ class mce:
             except:
                 print 'Could not query rcs_to_report_data register.'
                 cards = 0xf
+            channel_set = ChannelSet(rcs_cards=cards)
             n_cols = 8*self.card_count(cards)
             num_rows_rep = self.read('cc', 'num_rows_reported', array=False)
             channel_set.rows = range(num_rows_rep)
             channel_set.columns = range(n_cols)
 
         indices = channel_set.frame_indices()
-
         n_extra = 44
         frame_size = n_cols*num_rows_rep + n_extra
         d = u32array(frame_size*count)
