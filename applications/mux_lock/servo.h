@@ -11,6 +11,8 @@
 #define MAXROWS 41
 #define MAXTEMP 1024
 
+#define SA_DAC 65536
+
 #define RO_CARD  "ac"
 #define SA_CARD  "sa"
 #define SQ2_CARD "sq2"
@@ -52,6 +54,8 @@ void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
 			 const char *opmsg);
 void duplicate_fill(u32 value, u32 *data, int count);
 
+void rerange(u32 *dest, u32 *src, int n_data,
+	     u32 *quanta, int n_quanta);
 
 int genrunfile (
 char *full_datafilename, /* datafilename including the path*/
@@ -62,3 +66,7 @@ int  bias, int bstep, int nbias, int feed, int fstep, int nfeed,
 char *initline1, char *initline2 /*init lines to be included in <servo_init> section*/
 );
 
+
+/* experiment.cfg assist */
+config_setting_t* load_config(char *filename);
+int* load_int_array(config_setting_t *cfg, char *name, int n);

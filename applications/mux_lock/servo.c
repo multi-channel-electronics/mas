@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libconfig.h>
 #include "servo_err.h"
 #include "servo.h"
 #include "options.h"
@@ -151,3 +152,40 @@ void duplicate_fill(u32 value, u32 *data, int count)
   for (i=0; i<count; i++) data[i] = value;
 }
 
+void rerange(u32 *dest, u32 *src, int n_data,
+	     u32 *quanta, int n_quanta)
+{
+  int i;
+  u32 q;
+  for (i=0; i<n_data; i++) {
+    q = quanta[i % n_quanta];
+    dest[i] = (q==0) ? src[i] : (src[i] % q);
+  }
+}
+
+
+config_setting_t* load_config(char *filename)
+{
+  config_t* cfg = malloc(sizeof(config_t));
+  config_init(cfg);
+  if (config_read_file(cfg, filename) != CONFIG_TRUE) {
+    free(cfg);
+    return NULL;
+  }
+
+  return config_root_setting(cfg);
+}
+
+int* load_int_array(config_setting_t *cfg, char *name, int n) {
+  int* data;
+  int i;
+  config_setting_t *el = config_setting_get_member(cfg, name);
+  if (el == NULL) return NULL;
+  
+  data = malloc(n * sizeof(int));
+  memset(data, 0, n*sizeof(int));
+  for (i=0; i<n; i++) {
+    data[i] = config_setting_get_int_elem(el, i);
+  }
+  return data;
+}

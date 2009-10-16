@@ -11,6 +11,9 @@ typedef struct {
   char hardware_file[OPTSTR];
   int preservo;
 
+  char experiment_file[OPTSTR];
+  int unwrap_sa_quanta;
+
 } option_t;
 
 

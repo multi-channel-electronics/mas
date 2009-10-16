@@ -5,6 +5,7 @@
 #include "servo_err.h"
 #include "servo.h"
 
+
 /***********************************************************
  *    sq2servo       : locks sq2 by calculating new sa_fb value and sweeping sq2_fb
  *    Author         : Mandana@ubc/Dennis@atc     4May2005
@@ -80,6 +81,7 @@ int main (int argc, char **argv)
    u32 nrows_rep;
    u32 ssafb_init[MAXVOLTS]; /* starting values for feedback */
    u32 ssafb[MAXVOLTS];     /* series array feedback voltages */
+   u32 ssafb_r[MAXVOLTS];   /* re-range SA fb */
    int sq2bias;             /* SQ2 bias voltage */
    int sq2bstep;            /* SQ2 bias voltage step */
    int sq2feed;             /* SQ2 feedback voltage */
@@ -89,6 +91,9 @@ int main (int argc, char **argv)
    int  soffset;
    int  skip_sq2bias = 0;
    int  biasing_ac = 0;     /* does MCE have a biasing address card? */
+
+   config_setting_t *cfg;   /* experiment.cfg data */
+   u32 *sa_quanta;          /* Series array phi0 in feedback units */
 
    int  error = 0;
    char errmsg_temp[MAXLINE];
@@ -157,6 +162,22 @@ int main (int argc, char **argv)
    
    // All of our per-column parameters must be written at the right index
    soffset = (which_rc-1)*MAXCHANNELS;
+
+   // Try to load SA quanta
+   cfg = load_config("/data/cryo/current_data/experiment.cfg");
+   sa_quanta = (u32*)load_int_array(cfg, "sa_flux_quanta", soffset+MAXCHANNELS);
+   if (sa_quanta==NULL) {
+     ERRPRINT("Could not load 'sa_flux_quanta' from config file.");
+     exit(ERR_MCE_ECFG);
+   } else {
+     //printf("SA QUANTA:\n");
+     for (i=0; i<MAXCHANNELS; i++) {
+       u32 q = sa_quanta[i+soffset];
+       sa_quanta[i+soffset] = q * (SA_DAC / q);
+       //printf(" %i", q);
+     }
+     //printf("\n");
+   }
 
    // Create MCE context
    mce_context_t *mce = connect_mce_or_exit(&options);
@@ -298,7 +319,8 @@ int main (int argc, char **argv)
 
       for (i=0; i<nfeed; i++) {
 
-	 write_range_or_exit(mce, &m_safb, soffset, ssafb + soffset, MAXCHANNELS, "safb");
+	 rerange(ssafb_r + soffset, ssafb + soffset, MAXCHANNELS, sa_quanta, MAXCHANNELS);
+	 write_range_or_exit(mce, &m_safb, soffset, ssafb_r + soffset, MAXCHANNELS, "safb");
 
 	 if (biasing_ac) {
 	   // Must write all rows here, since row_order may bring any

@@ -26,6 +26,7 @@
 #define ERR_MCE_RB   104
 #define ERR_MCE_WB   105
 #define ERR_MCE_GO   106
+#define ERR_MCE_ECFG 107
 
 //
 #define ERR_NUM_ARGS 1
