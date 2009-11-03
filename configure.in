@@ -41,7 +41,8 @@ AC_SUBST(KERNEL_DIR)
 
 # Allow the user to suppress/relocate swig/python compile/install
 
-PYTHON_DIR=/usr/include/python2.5/
+PYTHON_VERSION=`echo 'import sys; print sys.version[[:3]]' | python`
+PYTHON_DIR=/usr/include/python${PYTHON_VERSION}/
 AC_ARG_WITH([python],
             [AS_HELP_STRING([--with-python=(PATH|yes|no)],
                             [enable/disable swig/python compilation and installation, PATH default is $PYTHON_DIR])],
