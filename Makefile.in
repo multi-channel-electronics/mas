@@ -6,9 +6,9 @@ MAKE_DRIVER=@DO_MAS_DRIVER@
 MAKE_SWIG=@DO_MAS_SWIG@
 
 # Set up the sets of folders to recurse into for each target
-all_dirs = interfaces applications
+all_dirs = interfaces applications config
 clean_dirs = interfaces applications swig
-install_dirs = include interfaces applications scripts
+install_dirs = include interfaces applications scripts config
 
 # Set up dependencies for each target
 all_deps = 
