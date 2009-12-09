@@ -21,6 +21,7 @@ if __name__ == '__main__':
     o = OptionParser()
     o.add_option('-M','--dependencies',action='store_true')
     o.add_option('-T','--targets',action='store_true')
+    o.add_option('-d','--define',action='append',default=[])
     opts, args = o.parse_args()
     if len(args) != 0:
         print 'What, arguments?'
@@ -36,9 +37,11 @@ if __name__ == '__main__':
                 deps.extend(getout(cmd).split(':')[-1].split())
         print ' '.join(list(set(deps) -set('\\')))
     else:
+        other_defs = ' '.join(['-D%s' % x for x in opts.define])
         for output, template in master_templates:
             for k, v in zip(output_files.keys(), output_files.values()):
-                cmd = '%s %s %s %s %s/%s' % (cpp, cpp_opts, v, template, output, k)
+                cmd = '%s %s %s %s %s %s/%s' % \
+                      (cpp, cpp_opts, other_defs, v, template, output, k)
                 co = getout(cmd)
                 print cmd
                 print co,

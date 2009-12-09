@@ -6,10 +6,12 @@ include $(BASE)Makefile.children
 TARGETS=$(shell ./makefile.py --targets)
 DEPS=$(shell ./makefile.py --dependencies)
 
+OTHER_ARGS=--define RC_40E
+
 all: $(TARGETS)
 
 $(TARGETS) : $(DEPS)
-	./makefile.py
+	./makefile.py $(OTHER_ARGS)
 
 install:
 	install --group=$(MAS_GROUP) --mode=775 -d /etc/mce
