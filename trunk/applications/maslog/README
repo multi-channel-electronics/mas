@@ -1,0 +1,43 @@
+logger - MAS logging application
+
+The MAS logger consists of two main parts, the server and the client
+library.  This folder contains the server and a simple client that
+uses the client library.  The client library is called libmaslog and
+should be around here somewhere.
+
+The server must be linked to "socks.o", which contains helpful
+ports-related functions.  The server must also be linked with
+libconfig, which lets us load nice configuration files (more about
+that later).
+
+The logging server consists of the files (with + indicating linking
+that must be done to external files):
+
+	logger.c
+	logger.h
+	init.c
+	init.h
+	main.c
+	+socks.o
+	+libconfig
+
+The client consists of
+
+	client.c
+	+libmaslog
+	+libconfig
+
+The configuration information is loaded by default from /etc/mas.cfg,
+and should look something like this:
+
+log_client:
+{
+	log_address = "localhost:7894";
+};
+
+log_server:
+{
+	log_address = "localhost:7894";
+	log_file = "log";
+	daemon = 1;
+};

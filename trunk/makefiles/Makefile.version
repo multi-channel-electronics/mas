@@ -1,0 +1,5 @@
+# Put svn repo version of $(VER_TARGET) into $(REPO_VER)
+
+SUB_VER := $(shell svnversion $(VER_TARGET))
+REPO_NAME := $(shell cat $(BASE)/branch_id.txt)
+REPO_VER := \"$(REPO_NAME)/$(SUB_VER)\"

@@ -1,0 +1,36 @@
+default: all
+
+BASE := ../
+include $(BASE)Makefile.children
+
+VER_TARGET := .
+include $(MAKERULES)Makefile.version
+DEFS += -DVERSION_STRING="$(REPO_VER)"
+
+LIBRARY=$(MAS_LIB) $(MASMISC_F)cmdtree.o
+CFLAGS += $(DEFS)
+
+# targets
+
+OBJECTS = raw_acq.o
+HEADERS = 
+
+all: raw_acq
+
+raw_acq: raw_acq.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+
+$(OBJECTS): $(HEADERS)
+
+tidy:
+	-rm *~ *.o
+
+clean:	tidy
+	-rm raw_acq
+
+# Make the install__raw_acq rule
+INSTALL_TARGET=raw_acq
+include $(MAKERULES)Makefile.install_rule
+
+install: install__raw_acq
+

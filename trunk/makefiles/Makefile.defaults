@@ -1,0 +1,16 @@
+#define default configuration files.
+
+DEFAULT_CMDFILE ?= /dev/mce_cmd0
+DEFAULT_DATAFILE ?= /dev/mce_data0
+DEFAULT_DSPFILE ?= /dev/mce_dsp0
+DEFAULT_MASFILE ?= /etc/mce/mas.cfg
+DEFAULT_HARDWAREFILE ?= /etc/mce/mce.cfg
+DEFAULT_EXPERIMENTFILE ?= /data/cryo/current_data/experiment.cfg
+
+CONFIGFILE_DEFS = \
+	     -DDEFAULT_CMDFILE=\"$(DEFAULT_CMDFILE)\" \
+	     -DDEFAULT_DATAFILE=\"$(DEFAULT_DATAFILE)\" \
+	     -DDEFAULT_MASFILE=\"$(DEFAULT_MASFILE)\" \
+	     -DDEFAULT_HARDWAREFILE=\"$(DEFAULT_HARDWAREFILE)\" \
+	     -DDEFAULT_EXPERIMENTFILE=\"$(DEFAULT_EXPERIMENTFILE)\"
+

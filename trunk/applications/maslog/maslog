@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# This script sends a control command to maslog.
+
+MASLOG=maslog_now
+SERVER=maslog_server
+
+case "_$1" in 
+
+    _exit|_reopen|_flush|_level)
+	echo -e "\033LOG:$@" | $MASLOG
+	;;
+
+    _now)
+	$MASLOG
+	;;
+
+    _start)
+	$SERVER
+	;;
+
+    _stop)
+	echo -e "\033LOG:exit" | $MASLOG
+	;;
+
+    _restart)
+	echo -e "\033LOG:exit" | $MASLOG
+	$SERVER
+	;;
+
+    *)
+	echo -e "Usage:\n   maslog <cmd> <args> \nwhere cmd is one of\n" \
+	    "   exit\n" \
+	    "   reopen\n" \
+	    "   flush\n" \
+	    "   level n        (with n = 0,1,2,3)\n\n" \
+	    "If you want to log text now, use the program $MASLOG\n"
+
+	;;
+
+esac

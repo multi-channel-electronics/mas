@@ -1,0 +1,85 @@
+/* Command description file - libconfig syntax */
+
+        {
+            name = "open commands";
+
+            parameters = (
+                {
+                    name = "row_len";
+                    id = 0x30;
+                },
+
+                {
+                    name = "num_rows";
+                    id = 0x31;
+                },
+/*
+                {
+                    name = "eeprom";
+                    id = 0x41;
+                    count = 48;
+                },
+
+                {
+                    name = "vfy_eeprom";
+                    id = 0x42;
+                },
+
+                {
+                    name = "clr_error";
+                    id = 0x43;
+                },
+
+                {
+                    name = "eeprom_srt";
+                    id = 0x44;
+                },
+
+                {
+                    name = "dip";
+                    id = 0x97;
+                },
+*/
+                {
+                    name = "fpga_temp";
+                    id = 0x91;
+                },
+
+                {
+                    name = "card_temp";
+                    id = 0x92;
+                },
+
+                {
+                    name = "card_id";
+                    id = 0x93;
+                },
+
+                {
+                    name = "card_type";
+                    id = 0x94;
+                },
+
+                {
+                    name = "slot_id";
+                    id = 0x95;
+                },
+
+                {
+                    name = "fw_rev";
+                    id = 0x96;
+                    hex = 1;
+                },
+
+                {
+                    name = "led";
+                    id = 0x99;
+                },
+
+                {
+                    name = "scratch";
+                    id = 0x9a;
+                    count = 8;
+                }
+            );
+        }, // open commands

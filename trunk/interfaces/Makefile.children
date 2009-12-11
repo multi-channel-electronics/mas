@@ -1,0 +1,2 @@
+BASE := ../$(BASE)
+include $(BASE)/Makefile.children

@@ -1,0 +1,9 @@
+# Top-level makefile for child folders
+
+MAKERULES = $(BASE)makefiles/
+
+BRANCH_ID = $(shell cat $(BASE)/branch_id.txt)
+
+include $(MAKERULES)Makefile.paths
+include $(MAKERULES)Makefile.install
+include $(MAKERULES)Makefile.args

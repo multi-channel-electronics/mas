@@ -1,0 +1,65 @@
+/*
+   Master template for MCE hardware config files.
+
+   For now this system supports:
+	- full and small sub-racks
+	- biasing address card
+	- 16 TES bias line configuration for small sub-racks
+ */
+
+hardware:
+{
+    parameter_defaults = {
+        count = 1;
+        type = "mem";
+    };
+
+    parameter_sets = (
+
+#       include "cards/open-4"
+#       include "cards/ac-2.0.7"
+#       include "cards/cc-4.0.9"
+#ifdef RC_40E
+#	include "cards/rc-4.0.e"
+#else
+#       include "cards/rc-4.0.d"
+#endif /* RC_40E */
+#       include "cards/bc-1.4.2"
+#       include "cards/psc"
+#       include "cards/sys-4"
+#ifdef BIASING_AC
+#       include "cards/bac-2.0.7"
+#endif /* BIASING_AC */
+
+        {
+            name = "dummy";
+            parameters = ();
+        }
+    );
+
+    mappings = (
+
+#ifdef SUBRACK_SMALL
+#       include "mappings/squids-small"
+#else
+#       include "mappings/squids-full"
+#endif /* SUBRACK_SMALL */
+
+#       include "mappings/tes"
+
+        {
+            name = "dummy";
+            parameters = ();
+        }
+    );
+
+
+#   include "mappings/card-types"
+
+#ifdef SUBRACK_SMALL
+#   include "systems/subrack-small"
+#else
+#   include "systems/subrack-full"
+#endif /* SUBRACK_SMALL */
+
+};

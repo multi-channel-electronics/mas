@@ -1,0 +1,35 @@
+# Important locations in the source tree
+MAS_INTERFACES=$(BASE)interfaces/
+MAS_APPLICATIONS=$(BASE)applications/
+MAS_INCLUDE_F=$(BASE)include/
+
+# Library locations
+MCELIB_F=$(MAS_INTERFACES)mce_library/
+DSPLIB_F=$(MAS_INTERFACES)dsp_library/
+LOGLIB_F=$(MAS_INTERFACES)log_library/
+MASMISC_F=$(MAS_INTERFACES)misc/
+
+MCELIB=mcecmd
+DSPLIB=mcedsp
+LOGLIB=maslog
+
+# Special includes
+PYTHON_INC = @PYTHON_DIR@
+
+# Linking arguments, including libconfig
+MAS_LIB = -L$(MCELIB_F) -l$(MCELIB) -L$(DSPLIB_F) -l$(DSPLIB) \
+          -L$(LOGLIB_F) -l$(LOGLIB) @LIBCONFIG_ARGS@
+
+MAS_INSTALL=@MAS_PREFIX@
+
+MAS_INSTALL_BIN=$(MAS_INSTALL)bin/
+MAS_INSTALL_LIB=$(MAS_INSTALL)lib/
+MAS_INSTALL_INC=$(MAS_INSTALL)include/
+MAS_INSTALL_SWIG=$(MAS_INSTALL)python/
+MAS_INSTALL_PYTHON=$(MAS_INSTALL)python/
+
+MAS_INSTALL_INIT=/etc/init.d/
+MAS_INSTALL_INIT_RC=/etc/
+
+MAS_SYS_INC=/usr/local/include/
+MAS_SYS_LIB=/usr/local/lib/

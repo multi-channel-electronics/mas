@@ -1,0 +1,22 @@
+/* This file is included twice; once to define the fields
+   and then a second time to get a list of the defined fields.
+
+   The DECLARE_* macros are defined different on each call to
+   accomplish this.
+*/ 
+
+DECLARE_RAW(0, ERROR)
+DECLARE_SCALE(1, FB, 1./4096)
+DECLARE_RAW(2, FILT)
+DECLARE_RAW(3, RAW)
+DECLARE_EXTRACT(4, ERROR, 0, 14)
+DECLARE_EXTRACT(4, FB, 14, 18)
+DECLARE_EXTRACT(5, FJ, 0, 8)
+DECLARE_EXTRACT_SCALE(5, FB, 8, 24, 1./1024)
+DECLARE_EXTRACT(9, FJ, 0, 8)
+DECLARE_EXTRACT_SCALE(9, FILT, 8, 24, 2.)
+DECLARE_EXTRACT(10, FJ, 0, 7)
+DECLARE_EXTRACT_SCALE(10, FILT, 7, 25, 8.)
+DECLARE_EXTRACT(11, COL, 0, 3)
+DECLARE_EXTRACT(11, ROW, 3, 7)
+DECLARE_RAW(12, RAW)
