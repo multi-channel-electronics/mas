@@ -368,6 +368,10 @@ int data_tail_increment(int card)
 #undef SUBNAME
 
 
+/***  ARCHIVE ***/
+#ifdef SKIP_ME_NOW
+
+
 #define SUBNAME "data_alloc: "
 int data_alloc(int mem_size, int data_size, int card)
 {
@@ -383,18 +387,17 @@ int data_alloc(int mem_size, int data_size, int card)
 	mem_size = npg * PAGE_SIZE;
 
 #ifdef BIGPHYS	
-	
-        // Virtual address?
-	virt = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
 	PRINT_ERR(SUBNAME "BIGPHYS selected\n");
+	dframes->mem = bigphys_alloc(mem_size);
 
-	if (virt==NULL) {
+	if (dframes->mem==NULL) {
 		PRINT_ERR(SUBNAME "bigphysarea_alloc_pages failed!\n");
 		return -ENOMEM;
 	}
 
-	// Save the buffer address
-	dframes->base = virt;
+	// Copy base address and size
+	dframes->base = mem->base;
+	dframes->size = mem->size;
 	
 	// Save physical address for hardware
 
@@ -456,6 +459,7 @@ int data_alloc(int mem_size, int data_size, int card)
 }
 #undef SUBNAME
 
+
 #define SUBNAME "dma_free: "
 int data_free(int card)
 {
@@ -483,6 +487,9 @@ int data_free(int card)
 }
 #undef SUBNAME
 
+
+#endif /* SKIP_ME_NOW */
+
 #define SUBNAME "data_alloc: "
 int data_reset(int card)
 {
@@ -495,8 +502,8 @@ int data_reset(int card)
 	dframes->dropped = 0;
 	
 	if (dframes->data_mode == DATAMODE_QUIET) {
-		if (mce_qt_command(DSP_QT_TAIL  , dframes->tail_index, 0, card) ||
-		    mce_qt_command(DSP_QT_HEAD  , dframes->head_index, 0, card) ) {
+		if (dframes->mce->qt_command(DSP_QT_TAIL  , dframes->tail_index, 0, card) ||
+		    dframes->mce->qt_command(DSP_QT_HEAD  , dframes->head_index, 0, card) ) {
 			PRINT_ERR(SUBNAME
 				  "Could not reset DSP QT indexes; disabling.");
 			data_qt_enable(0, card);
@@ -638,47 +645,27 @@ int data_proc(char *buf, int count, int card)
 
 
 #define SUBNAME "data_probe: "
-int data_probe(int dsp_version, int card, int mem_size, int data_size)
+int data_probe(int card, mce_interface_t* mce, frame_buffer_mem_t* mem, int data_size)
 {
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
+	/* general... */
 	init_waitqueue_head(&dframes->queue);
-
+	/* DSP spec */
 	tasklet_init(&dframes->grant_tasklet,
 		     data_grant_task, (unsigned long)dframes);       
-
-	err = data_alloc(mem_size, data_size, card);
-	if (err != 0) return err;
 
 	err = data_ops_probe(card);
 	if (err != 0) return err;
 
+	dframes->mem = mem;
+	dframes->base = mem->base;
+	dframes->size = mem->size;
 	data_reset(card);
 
-	switch (dsp_version) {
-	case 0:
-		PRINT_ERR(SUBNAME
-			  "DSP code is old, you'll get checksum errors.\n");
-		break;
-
-	case DSP_U0103:
-		PRINT_ERR(SUBNAME "DSP code wants to be upgraded to U0104!\n");
-		break;
-		
-	case DSP_U0104:
-	case DSP_U0105:
-		if (data_qt_configure(1, card))
-			return -EIO;
-		break;
-		
-	default:
-		PRINT_ERR(SUBNAME
-			  "DSP code not recognized, attempting quiet transfer mode...\n");
-		if (data_qt_configure(1, card))
-			return -EIO;
-		break;
-		}
+	// Divisions
+	data_frame_divide(data_size, card);
 
 	return 0;
 }
@@ -692,6 +679,12 @@ int data_remove(int card)
 		data_qt_enable(0, card);
 
 	tasklet_kill(&dframes->grant_tasklet);
-	return data_free(card);
+	if (dframes->mem != NULL) {
+		if (dframes->mem->free != NULL)
+			dframes->mem->free(dframes->mem);
+		kfree(dframes->mem); // whatever.
+		dframes->mem = NULL;
+	}
+	return 0;
 }
 

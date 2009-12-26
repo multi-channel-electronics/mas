@@ -13,12 +13,15 @@
 #  include "dsp_driver.h"
 #endif
 
+#include "proc.h"
+
 int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 	      void *data)
 {
-	int i = 0;
+	int i = 0, j;
 	int len = 0;
 	int limit = count - 80;
+	char system[32];
 
 	if (len < limit) {
 		len += sprintf(buf+len,"\nmce_dsp driver version %s\n",
@@ -50,22 +53,29 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 		
 		PRINT_INFO("proc: i=%d\n", i);
 		if (len < limit) {
-			len += sprintf(buf+len,"\nCARD: %d\n\n", i);
+			len += sprintf(buf+len,"\nCARD: %d\n", i);
 		}
-		if (len < limit) {
-			len += sprintf(buf+len,"  data buffer:\n");
-			len += data_proc(buf+len, limit-len, i);
-		}
-		if (len < limit) {
-			len += sprintf(buf+len,"  mce commander:\n");
-			len += mce_proc(buf+len, limit-len, i);
-		}
-		if (len < limit) {
-			len += sprintf(buf+len,"  dsp commander:\n");
-			len += dsp_proc(buf+len, limit-len, i);
+		for (j=0; j<3; j++) {
+			proc_f p;
+			switch (j) {
+			case 0:
+				p = mceds_proc[i].data;
+				strcpy(system, "  data buffer:\n");
+				break;
+			case 1:
+				p = mceds_proc[i].mce;
+				strcpy(system, "  mce commander:\n");
+				break;
+			case 2:
+				p = mceds_proc[i].dsp;
+				strcpy(system, "  dsp commander:\n");
+				break;
+			}
+			if (len >= limit || p == NULL) continue;
+			len += sprintf(buf+len,system);
+			len += p(buf+len, limit-len, i);
 		}
 		*eof = 1;
-		
 	}
 	
 	if (len < limit) {
@@ -74,3 +84,7 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 
 	return len;
 }
+
+mceds_proc_t mceds_proc[MAX_CARDS];
+
+

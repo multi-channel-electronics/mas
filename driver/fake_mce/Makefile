@@ -1,5 +1,5 @@
 default:
-	@echo "fake_mce should be compiled from the MAS driver folder"
+	make -C ..
 
 clean:
 	-rm *~ *.o .*.cmd

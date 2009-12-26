@@ -55,6 +55,7 @@ struct mce_ops_t {
 	mce_reply   rep;
 	mce_command cmd;
 
+	mce_interface_t* mce;
 } mce_ops[MAX_CARDS];
 
 
@@ -288,7 +289,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	mops->state = OPS_CMD;
 	mops->commander = fpdata;
 	for (i=0; i<MAX_CMD_RETRY; i++) {
-		err = mce_send_command(&mops->cmd, mce_write_callback,
+		err = mops->mce->send_command(&mops->cmd, mce_write_callback,
 				       1, fpdata->minor);
 		// If there's an -EAGAIN and we're blocking, we can loop again.
 		if ((filp->f_flags & O_NONBLOCK) || !(err == -MCE_ERR_INT_BUSY))
@@ -320,6 +321,7 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
 	struct filp_pdata *fpdata = filp->private_data;
+	struct mce_ops_t *mops = mce_ops + fpdata->minor;
 	int card = fpdata->minor;
 	int x;
 
@@ -331,10 +333,10 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 		return -1;
 
 	case MCEDEV_IOCT_HARDWARE_RESET:
-		return mce_hardware_reset(card);
+		return mops->mce->hardware_reset(card);
 	       
 	case MCEDEV_IOCT_INTERFACE_RESET:
-		return mce_interface_reset(card);
+		return mops->mce->interface_reset(card);
 
 	case MCEDEV_IOCT_LAST_ERROR:
 		x = fpdata->error;
@@ -362,9 +364,12 @@ int mce_open(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata;
 	int minor = iminor(inode);
-
-	if (!mce_ready(minor)) {
-		PRINT_ERR(SUBNAME "card %i not enabled.\n", minor);
+	if (minor < 0 || minor >= MAX_CARDS || mce_ops[minor].mce == NULL) {
+		PRINT_ERR(SUBNAME "card %i not present.\n", minor);
+		return -ENODEV;
+	}
+	if (!mce_ops[minor].mce->ready(minor)) {
+		PRINT_ERR(SUBNAME "card %i not configured.\n", minor);
 		return -ENODEV;
 	}
 
@@ -428,7 +433,7 @@ int mce_ops_init(void)
 #undef SUBNAME
 
 #define SUBNAME "mce_ops_probe: "
-int mce_ops_probe(int card)
+int mce_ops_probe(mce_interface_t* mce, int card)
 {
 	struct mce_ops_t *mops = mce_ops + card;
 
@@ -437,6 +442,7 @@ int mce_ops_probe(int card)
 	init_waitqueue_head(&mops->queue);
 	init_MUTEX(&mops->sem);
 
+	mops->mce = mce;
 	mops->state = OPS_IDLE;
  
 	PRINT_INFO(SUBNAME "ok\n");
@@ -449,8 +455,8 @@ int mce_ops_cleanup(void)
 {
 	PRINT_INFO(SUBNAME "entry\n");
 
-	if (mce_ops->major != 0) 
-		unregister_chrdev(mce_ops->major, MCEDEV_NAME);
+	if (mce_ops[0].major != 0) 
+		unregister_chrdev(mce_ops[0].major, MCEDEV_NAME);
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;

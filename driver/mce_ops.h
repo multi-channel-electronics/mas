@@ -1,6 +1,7 @@
 #ifndef _MCE_OPS_H_
 #define _MCE_OPS_H_
 
+#include <mce_driver.h>
 
 extern struct file_operations mce_fops;
 
@@ -21,7 +22,7 @@ int mce_release(struct inode *inode, struct file *filp);
 
 int mce_ops_init(void);
 
-int mce_ops_probe(int card);
+int mce_ops_probe(mce_interface_t* mce, int card);
 
 int mce_ops_cleanup(void);
 

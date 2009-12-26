@@ -13,36 +13,45 @@
 
 typedef int (*mce_callback)(int err, mce_reply* rep, int card);
 
-int mce_ready(int card);
+/* Init and cleanup */
 
 int mce_init(void);
-
-int mce_probe(int card, int dsp_version);
-
 int mce_cleanup(void);
 
-int mce_remove(int card);
 
-int mce_proc(char *buf, int count, int card);
+/* Do we need these? */
 
 int mce_error_register(int card);
-
 void mce_error_reset(int card);
 
-int mce_send_command( mce_command *cmd,
-		      mce_callback callback,
-		      int nonblock, int card );
 
-int mce_qt_command( dsp_qt_code code, int arg1, 
-		    int arg2, int card);
+/* Function typedefs for MCE abstraction */
 
-int mce_get_reply( __user void* reply_user,
-		   void* reply_kern, int count );
+typedef struct {
+	int (*remove)(int card);
+	int (*proc)(char *buf, int count, int card);
+	int (*send_command)(mce_command*, mce_callback, int, int);
+	int (*hardware_reset)(int card);
+	int (*interface_reset)(int card);
+	int (*ready)(int card);
+	int (*qt_command)(dsp_qt_code code, int arg1,
+			  int arg2, int card);
+} mce_interface_t;
 
-int mce_clear_commflags(void);
 
-int mce_interface_reset(int card);
+/* Master list of MCE devices */
 
-int mce_hardware_reset(int card);
+extern mce_interface_t *mce_interfaces[];
+
+
+/* Creation of a MCE associated with an astrocam PCI card */
+
+mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version);
+
+
+/* Creation of a simple MCE emulator */
+
+mce_interface_t *fake_mce_create(int card);
+int mce_faker_init(int start, int count);
 
 #endif

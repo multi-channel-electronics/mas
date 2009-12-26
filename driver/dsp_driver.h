@@ -5,9 +5,7 @@
 #include "mce/dsp.h"
 #include "mce/dsp_errors.h"
 
-#ifdef FAKEMCE
-#  include "fake_mce/dsp_fake.h"
-#endif
+#include "mce_driver.h"
 
 #define DSPDEV_NAME "mce_dsp"
 #define DSP_DEFAULT_TIMEOUT (HZ*500/1000)
@@ -17,6 +15,19 @@
 #define DSP_U0103          0x550103
 #define DSP_U0104          0x550104
 #define DSP_U0105          0x550105
+
+
+/* DSP code features */
+
+struct dsp_feature_t {
+	int version;     /* version code, DSP_U.... */
+	int obsolete;    /* warn about ancientness? */
+	int has_qt;      /* supports quiet transfer mode for data */
+	int has_qrp;     /* supports quiet reply mode */
+	int handshake;   /* supports interrupt handshaking */
+};
+
+extern struct dsp_feature_t dsp_features[];
 
 
 /* PCI DMA alignment */
@@ -117,8 +128,12 @@ int   dsp_pci_flush(void);
 
 int   dsp_pci_hstr(void);
 
-void* dsp_allocate_dma(ssize_t size, unsigned long* bus_addr_p);
 
-void  dsp_free_dma(void* buffer, int size, unsigned long bus_addr);
+void dsp_driver_cleanup(void);
+
+int dsp_driver_init(void);
+
+mce_interface_t *dsp_get_mce(int card);
+
 
 #endif

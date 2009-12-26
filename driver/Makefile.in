@@ -52,7 +52,7 @@ endif #BIGPHYS=yes
 SOURCE_OBJ := mce_driver.o mce_ops.o \
 	dsp_driver.o dsp_ops.o \
 	data.o data_qt.o data_ops.o data_watcher.o \
-	proc.o
+	proc.o main.o memory.o mce_faker.o fake_mce/mce_fake.o
 
 ifeq ($(FAKEMCE),yes)
 

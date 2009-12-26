@@ -1,12 +1,33 @@
 #ifndef _MAS_MEMORY_H_
 #define _MAS_MEMORY_H_
 
+#include "dsp_driver.h"
 
-#ifdef FAKEMCE
-# include <dsp_fake.h>
-#else
-# include "dsp_driver.h"
-#endif
+/* Buffer types */
+
+#define DATAMEM_KMALLOC    0
+#define DATAMEM_BIGPHYS    1
+#define DATAMEM_PCI        2
+
+
+typedef struct frame_buffer_mem_struct frame_buffer_mem_t;
+
+struct frame_buffer_mem_struct {
+	int type;
+	void *base;
+	unsigned long bus_addr;
+	int size;
+	void (*free)(frame_buffer_mem_t* data);
+	unsigned long private_data;
+};
+
+
+/* Special allocators */
+
+frame_buffer_mem_t* basicmem_alloc(long int mem_size);
+frame_buffer_mem_t* bigphys_alloc(int mem_size);
+frame_buffer_mem_t *pcimem_alloc(int size, struct device *dev);
+
 
 // Ensure that address alignment is configured
 

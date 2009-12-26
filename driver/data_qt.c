@@ -82,21 +82,13 @@ void data_grant_task(unsigned long data)
 }
 #undef SUBNAME
 
-//FIX ME: mce_driver.c needs this function instead
-/* int data_qt_cmd( dsp_qt_code code, int arg1, int arg2, int card) */
-/* { */
-/* 	dsp_command cmd = { DSP_QTS, {code,arg1,arg2} }; */
-/* 	dsp_message reply; */
-/* 	return dsp_send_command_wait( &cmd, &reply, card); */
-/* }	 */
-
 
 #define SUBNAME "data_qt_enable: "
 int data_qt_enable(int on, int card) 
 {
 	frame_buffer_t *dframes = data_frames + card;
 	//FIX ME: should call mce_qt_command
-	int err = mce_qt_command(DSP_QT_ENABLE, on, 0, card);
+	int err = dframes->mce->qt_command(DSP_QT_ENABLE, on, 0, card);
 	if (!err)
 		dframes->data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
 	return err;
@@ -115,34 +107,34 @@ int data_qt_configure(int qt_interval, int card)
 		err = -1;
 
 	if (!err)
-		err = mce_qt_command(DSP_QT_DELTA , dframes->frame_size, 0, card);
+		err = dframes->mce->qt_command(DSP_QT_DELTA , dframes->frame_size, 0, card);
 	
 	if (!err)
-		err = mce_qt_command(DSP_QT_NUMBER, dframes->max_index, 0, card);
+		err = dframes->mce->qt_command(DSP_QT_NUMBER, dframes->max_index, 0, card);
 
 	if (!err)
-		err = mce_qt_command(DSP_QT_INFORM, qt_interval, 0, card);
+		err = dframes->mce->qt_command(DSP_QT_INFORM, qt_interval, 0, card);
 
 	if (!err)
-		err = mce_qt_command(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0, card);
+		err = dframes->mce->qt_command(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0, card);
 
 	if (!err)
-		err = mce_qt_command(DSP_QT_SIZE  , dframes->data_size, 0, card);
+		err = dframes->mce->qt_command(DSP_QT_SIZE  , dframes->data_size, 0, card);
 
 	if (!err)
-		err = mce_qt_command(DSP_QT_TAIL  , dframes->tail_index, 0, card);
+		err = dframes->mce->qt_command(DSP_QT_TAIL  , dframes->tail_index, 0, card);
 
 	if (!err)
-		err = mce_qt_command(DSP_QT_HEAD  , dframes->head_index, 0, card);
+		err = dframes->mce->qt_command(DSP_QT_HEAD  , dframes->head_index, 0, card);
 
 	if (!err)
-		err = mce_qt_command(DSP_QT_DROPS , 0, 0, card);
+		err = dframes->mce->qt_command(DSP_QT_DROPS , 0, 0, card);
 
 	if (!err)
-		err = mce_qt_command(DSP_QT_BASE,
-				  ((long)dframes->base_busaddr      ) & 0xffff,
-				  ((long)dframes->base_busaddr >> 16) & 0xffff,
-				  card);
+		err = dframes->mce->qt_command(DSP_QT_BASE,
+		      ((long)dframes->base_busaddr      ) & 0xffff,
+		      ((long)dframes->base_busaddr >> 16) & 0xffff,
+		      card);
 	
 	if (!err)
 		err = data_qt_enable(1, card);

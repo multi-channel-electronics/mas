@@ -19,6 +19,7 @@
 
 #define MAX_FERR 100
 
+mce_interface_t *mce_interfaces[MAX_CARDS];
 
 typedef struct {
 
@@ -30,7 +31,7 @@ typedef struct {
 	u32 command_busaddr;
 	u32 reply_busaddr;
 
-	int dma_size;
+	frame_buffer_mem_t *mem;
 
 } mce_comm_buffer;
 
@@ -81,6 +82,9 @@ struct mce_control {
 	mce_comm_buffer buff;
 
 } mce_dat[MAX_CARDS];
+
+
+static mce_interface_t real_live_mce;
 
 
 int mce_error_register(int card)
@@ -633,50 +637,40 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 
 //mce_send_command_wait (_callback) lived here once upon a time...
 
-int mce_buffer_allocate(mce_comm_buffer *buffer)
+int mce_buffer_allocate(mce_comm_buffer *buffer, struct device *dev)
 {
-	unsigned long bus;
+	frame_buffer_mem_t *mem;
 
-	// Create DMA-able area.  Use only one call since the two
-	// buffers are so small.
-
+	// Allocate single block large enough for cmd and reply.
 	int offset = ( sizeof(mce_command) + (DMA_ADDR_ALIGN-1) ) &
 		DMA_ADDR_MASK;
-
 	int size = offset + sizeof(mce_reply);
+	mem = pcimem_alloc(size, dev);
 
-	buffer->command = (mce_command*) dsp_allocate_dma(size, &bus);
-	if (buffer->command==NULL)
+	if (mem==NULL)
 		return -ENOMEM;
-	if ((bus >> 16) >> 16 != 0) {
-		PRINT_ERR("dsp_allocate returned out of bounds address %lx\n", bus);
-		return -ENOMEM;
-	}
-	buffer->command_busaddr = (u32)bus;
 
-	buffer->reply = (mce_reply*) ((char*)buffer->command + offset);
+	buffer->mem = mem;
+	buffer->command = (mce_command*)mem->base;
+	buffer->command_busaddr = (u32)mem->bus_addr;
+	buffer->reply = (mce_reply*)((char*)buffer->command + offset);
 	buffer->reply_busaddr = buffer->command_busaddr + offset;
-	buffer->dma_size = size;
 	
-	PRINT_INFO("cmd/rep[virt->bus]: [%lx->%lx]/[%lx->%lx]\n",
-		   (long unsigned int)buffer->command,
-		   virt_to_bus(buffer->command),
-		   (long unsigned int)buffer->reply,
-		   virt_to_bus(buffer->reply));
-	
+	PRINT_INFO("cmd/rep[virt->bus]: [%lx->%x]/[%lx->%x]\n",
+		   (long unsigned)buffer->command, (unsigned)buffer->command_busaddr,
+		   (long unsigned)buffer->reply, (unsigned)buffer->reply_busaddr);
+
 	return 0;
 }
 
 int mce_buffer_free(mce_comm_buffer *buffer)
 {
-	if (buffer->command!=NULL) {
-		dsp_free_dma(buffer->command, buffer->dma_size,
-			     (unsigned long)buffer->command_busaddr);
-	}
+	if (buffer->mem != NULL)
+		buffer->mem->free(buffer->mem);
 
+	buffer->mem = NULL;
 	buffer->command = NULL;
 	buffer->reply   = NULL;
-	
 	return 0;
 }
 
@@ -739,20 +733,14 @@ int mce_interface_reset(int card)
 #define SUBNAME "mce_init: "
 int mce_init()
 {
-	int err = 0;
+	int i;
 	PRINT_INFO(SUBNAME "entry\n");
-	
-	err = mce_ops_init();
-	if(err != 0) goto out;
 
-	//FIX ME:: add error checking for data_ops
-	data_ops_init();
-	
+	for (i=0; i<MAX_CARDS; i++)
+		mce_interfaces[i] = NULL;
+
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
- out:
-	PRINT_ERR(SUBNAME "exiting with error\n");
-	return err;
 }
 #undef SUBNAME
 
@@ -766,14 +754,15 @@ int mce_ready(int card) {
 
 #undef SUBNAME
 
-
+int mce_remove(int card);
 
 #define SUBNAME "mce_probe: "
-int mce_probe(int card, int dsp_version)
+mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version)
 {
  	struct mce_control *mdat = mce_dat + card;
 	frame_buffer_t *dframes = data_frames + card;
-	int err = 0;
+	frame_buffer_mem_t *mem = NULL;
+	int i;
 
 	PRINT_ERR(SUBNAME "entry\n");
 	memset(mdat, 0, sizeof(*mdat));
@@ -796,42 +785,65 @@ int mce_probe(int card, int dsp_version)
 	mdat->quiet_rp = 0;
 	mdat->initialized = 1;
 
-	err = data_probe(dsp_version, card, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
-	if (err !=0 ) goto out;
+	if (mce_buffer_allocate(&mdat->buff, dev))
+		goto out;
 
-	err = mce_buffer_allocate(&mdat->buff);
-	if (err != 0) goto out;
+#ifdef BIGPHYS
+	mem = bigphys_alloc(FRAME_BUFFER_SIZE);
+#else
+	mem = pcimem_alloc(FRAME_BUFFER_SIZE, dev);
+#endif
 
-	err = mce_ops_probe(card);
-	if (err != 0) goto out;
+	if (data_probe(card, &real_live_mce, mem, DEFAULT_DATA_SIZE))
+		goto out;
 
 	// Set up command and quiet transfer handlers
 	dsp_set_msg_handler(DSP_QTI, mce_qti_handler, (unsigned long)dframes, card);
 	dsp_set_msg_handler(DSP_NFY, mce_int_handler, (unsigned long)mdat, card);
 	
-	if (dsp_version >= DSP_U0105) {
-		mce_quiet_RP_config(1, card);
+	// Set up quiet transfer depending on firmware revision.
+	for (i=0; dsp_features[i].version != -1; i++)
+		if (dsp_features[i].version == dsp_version) break;
+
+	// Set up quiet transfer depending on firmware revision.
+	if (dsp_features[i].obsolete)
+		PRINT_ERR("DSP firmware revision is obsolete, please upgrade.\n");
+
+	if (dsp_features[i].has_qt) {
+		PRINT_INFO("configuring Quiet Transfer mode\n");
+		if (data_qt_configure(1, card)) goto out;
 	}
 
+	if (dsp_features[i].has_qrp) {
+		PRINT_INFO("configuring Quiet Reply mode\n");
+		if (mce_quiet_RP_config(1, card)) goto out;
+	}
+
+	if (mce_ops_probe(&real_live_mce, card))
+		goto out;
+
 	PRINT_INFO(SUBNAME "ok.\n");
-	return 0;
+	return &real_live_mce;
 
  out:
 	PRINT_ERR(SUBNAME "error!\n");
-
 	mce_remove(card);
-	return err;
+	return NULL;
 }
 #undef SUBNAME
 
 #define SUBNAME "mce_cleanup: "
 int mce_cleanup()
 {
+	int i;
+	mce_interface_t *mce;
 	PRINT_INFO(SUBNAME "entry\n");
-	
-	mce_ops_cleanup();
-	data_ops_cleanup();
-	
+	for (i=0; i<MAX_CARDS; i++) {
+		mce = mce_interfaces[i];
+		if (mce != NULL && mce->remove != NULL) {
+			mce->remove(i);
+		}
+	}
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }
@@ -861,3 +873,14 @@ int mce_remove(int card)
 	return 0;
 }
 #undef SUBNAME
+
+
+static mce_interface_t real_live_mce = {
+	.remove = mce_remove,
+	.proc = mce_proc,
+	.send_command = mce_send_command,
+	.hardware_reset = mce_hardware_reset,
+	.interface_reset = mce_interface_reset,
+	.ready = mce_ready,
+	.qt_command = mce_qt_command,
+};

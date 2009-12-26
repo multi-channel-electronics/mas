@@ -33,10 +33,9 @@ struct filp_pdata {
 	int minor;
 };
 
+static int dsp_major = -1;
 
 struct dsp_ops_t {
-
-	int major;
 
 	struct semaphore sem;
 	wait_queue_head_t queue;
@@ -387,29 +386,17 @@ int dsp_ops_probe(int card)
 
 void dsp_ops_cleanup(void)
 {
-	if (dsp_ops->major != 0) 
-		unregister_chrdev(dsp_ops->major, DSPDEV_NAME);
-
-	return;
+	if (dsp_major > 0) 
+		unregister_chrdev(dsp_major, DSPDEV_NAME);
 }
 
 int dsp_ops_init(void)
 {
-	int i = 0;
-	int err = 0;
-	
-	err = register_chrdev(0, DSPDEV_NAME, &dsp_fops);
-
-	if (err<0) {
+	dsp_major = register_chrdev(0, DSPDEV_NAME, &dsp_fops);
+	if (dsp_major<0) {
 		PRINT_ERR("dsp_ops_init: could not register_chrdev, "
-			  "err=%#x\n", -err);
-	} else {
-		for(i=0; i<MAX_CARDS; i++) {
-			struct dsp_ops_t *dops = dsp_ops + i;
-			dops->major = err;
-		}
-		err = 0;
+			  "err=%#x\n", -dsp_major);
+		return dsp_major;
 	}
-
-	return err;
+	return 0;
 }

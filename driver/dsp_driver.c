@@ -1,23 +1,22 @@
 /*
-  dsp_pci.c
+  dsp_driver.c
 
-  Contains all PCI related code, including register definitions and
-  lowest level i/o routines.
-
-  Spoofing can be accomplished at this level by setting up alternate
-  handlers for reads and writes to the PCI card.
+  Driver for the ARC-64 PCI card running UBC's firmware for MCE control.
 */
 
 #include <linux/kernel.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
+#include <linux/errno.h>
+#include <linux/types.h>
+#include <asm/uaccess.h>
 
 #include "mce_options.h"
 #include "kversion.h"
-
-#ifdef REALTIME
-#include <rtai.h>
-#endif
+#include "proc.h"
+#include "dsp_driver.h"
+#include "dsp_ops.h"
+#include "mce/dsp_ioctl.h"
 
 #ifndef OLD_KERNEL
 #  include <linux/dma-mapping.h>
@@ -30,31 +29,6 @@
 #else
 #  define IRQ_FLAGS 0
 #endif
-
-#include "dsp_driver.h"
-#include "mce/dsp_ioctl.h"
-
-/*
- *  dsp_driver.c includes
- */
-
-#include <linux/module.h>
-#include <linux/init.h>
-
-#include <linux/slab.h>
-#include <linux/fs.h>
-#include <linux/errno.h>
-#include <linux/types.h>
-#include <linux/proc_fs.h>
-#include <linux/fcntl.h>
-#include <asm/uaccess.h>
-
-#include "mce_driver.h"
-#include "dsp_ops.h"
-#include "proc.h"
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR ("Matthew Hasselfield"); 
 
 
 /*
@@ -132,6 +106,13 @@ struct dsp_local {
 };
 
 
+struct dsp_feature_t dsp_features[] = {
+	{DSP_U0103, 1, 0, 0, 0},
+	{DSP_U0104, 0, 1, 0, 0},
+	{DSP_U0105, 0, 1, 1, 1},
+	{-1       , 0, 1, 1, 1}  /* default behaviour, like U0105 */
+};
+
 /* Mode bits in DSP firmware (U0105+) - in particular, we want to set
  * up NOIRQ and HANDSHAKE before issuing any DSP commands that will
  * interrupt and reply.  */
@@ -165,12 +146,15 @@ struct dsp_dev_t {
 
 	dsp_state_t state;
 	int version;
+	struct dsp_feature_t *features;
 	char version_string[32];
 
 	int n_handlers;
 	dsp_handler_entry handlers[MAX_HANDLERS];
 
 	dsp_callback callback;
+
+	mce_interface_t* mce;
 
 } dsp_dev[MAX_CARDS];
 
@@ -518,7 +502,7 @@ int dsp_send_command_now(struct dsp_dev_t *dev, dsp_command *cmd)
 int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
-	unsigned int irqflags;
+	unsigned long irqflags;
 	int err = 0;
 
 	DDAT_LOCK;
@@ -651,18 +635,25 @@ int dsp_query_version(int card)
 	if ( (err=dsp_send_command_wait(&cmd, &msg, card)) != 0 )
 		return err;
 
+	// U0103 does not support the DSP_VER command, so DSP will return error.
 	dev->version = DSP_U0103;
-
 	if (msg.reply == DSP_ACK) {
-	
 		dev->version_string[0] = msg.data >> 16;
 		sprintf(dev->version_string+1, "%02i%02i",
 			(msg.data >> 8) & 0xff, msg.data & 0xff);
-
 		dev->version = msg.data;
 	}
-		
-	PRINT_ERR(SUBNAME " discovered PCI card DSP code version %s\n",
+
+	// Match DSP code revision to table
+	for (dev->features=dsp_features; dev->features->version != -1; dev->features++) {
+		if (dev->features->version == dev->version) {
+			PRINT_ERR(SUBNAME " discovered PCI card DSP code version %s\n",
+				  dev->version_string);
+			return 0;
+		}
+	}
+	
+	PRINT_ERR("coping with unknown PCI card DSP code version %s\n",
 		  dev->version_string);
 	return 0;
 }
@@ -730,8 +721,8 @@ int dsp_set_latency(int card, int value)
 		cmd2.args[1] = 0x6c7;
 		break;
 	default:
-		PRINT_ERR(SUBNAME "can't set latency for DSP version %#06x\n",
-			  dev->version);
+		PRINT_ERR(SUBNAME "can't set latency for DSP version %s\n",
+			  dev->version_string);
 		return -1;
 	}
 	dsp_send_command_wait(&cmd1, &rep, card);
@@ -742,34 +733,6 @@ int dsp_set_latency(int card, int value)
 
 #undef SUBNAME
 
-
-/*
-  Memory allocation
-
-  This is lame, but DMA-able memory likes a pci device in old kernels.
-*/
-
-
-void* dsp_allocate_dma(ssize_t size, unsigned long* bus_addr_p)
-{
-#ifdef OLD_KERNEL
-//FIX_ME: mce will call this with out card info currently
-	return pci_alloc_consistent(dev->pci, size, bus_addr_p);
-#else
-	return dma_alloc_coherent(NULL, size, (dma_addr_t*)bus_addr_p,
-				  GFP_KERNEL);
-#endif
-}
-
-void  dsp_free_dma(void* buffer, int size, unsigned long bus_addr)
-{
-#ifdef OLD_KERNEL
-//FIX_ME: mce will call this with out card info currently
- 	  pci_free_consistent (dev->pci, size, buffer, bus_addr);
-#else
-	  dma_free_coherent(NULL, size, buffer, bus_addr);
-#endif
-}
 
 #define SUBNAME "dsp_pci_flush: "
 int dsp_pci_flush()
@@ -1186,8 +1149,7 @@ void dsp_driver_remove(struct pci_dev *pci)
 		return;
 	}
 			
-	// Disable higher-level features first
-	mce_remove(card);
+	// Time's up.
 	del_timer_sync(&dev->tim_dsp);
 
 	// Hopefully this isn't still running...
@@ -1239,7 +1201,7 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	if (dsp_query_version(card) != 0)
 		goto fail;
 
-	if (dev->version >= DSP_U0105) {
+	if (dev->features->handshake) {
 		// Enable interrupt hand-shaking
 		dev->comm_mode |= DSP_PCI_MODE_HANDSHAKE;
 		dsp_write_hctr(dev->dsp, dev->comm_mode);
@@ -1259,10 +1221,6 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	if (dsp_ops_probe(card) != 0)
 		goto fail;
 
-	// DSP is ready, setup a structure for MCE driver
-	if (mce_probe(card, dsp_dev[card].version))
-		goto fail;
-
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 
@@ -1273,40 +1231,37 @@ fail:
 }
 #undef SUBNAME
 
+mce_interface_t *dsp_get_mce(int card)
+{
+	struct dsp_dev_t *dev = dsp_dev + card;
+	if (dev->pci == NULL)
+		return NULL;
+	if (dev->mce == NULL)
+		dev->mce = real_mce_create(card, &dev->pci->dev, dev->version);
+	if (dev->mce == NULL) {
+		PRINT_ERR("could not associate MCE with pci device %i\n", card);
+		return NULL;
+	}
+	return dev->mce;
+}
+
 
 #define SUBNAME "cleanup_module: "
 void dsp_driver_cleanup(void)
 {
 	int i = 0;
-
-	PRINT_INFO(SUBNAME "entry\n");
-
-#ifdef FAKEMCE
-	dsp_driver_remove();
-	dsp_fake_cleanup();
-#else
 	pci_unregister_driver(&pci_driver);
-
 	for(i=0; i < MAX_CARDS; i++) {
 		struct dsp_dev_t *dev = dsp_dev + i;
 		if ( dev->pci != NULL ) {
 			PRINT_ERR(SUBNAME "failed to zero dev->pci for card; %i!\n", i);
 		}
 	}
-#endif
-	dsp_ops_cleanup();
-
-	mce_cleanup();
-
-	remove_proc_entry("mce_dsp", NULL);
-
-	PRINT_INFO(SUBNAME "driver removed\n");
 }    
 #undef SUBNAME
 
-
 #define SUBNAME "init_module: "
-inline int dsp_driver_init(void)
+int dsp_driver_init(void)
 {
 	int i = 0;
 	int err = 0;
@@ -1317,25 +1272,12 @@ inline int dsp_driver_init(void)
 		memset(dev, 0, sizeof(*dev));
 	}
   
-	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
-
-	err = dsp_ops_init();
-	if(err != 0) goto out;
-
-	err = mce_init();
-	if(err != 0) goto out;
-
-#ifdef FAKEMCE
-	dsp_fake_init( DSPDEV_NAME );
-#else
 	err = pci_register_driver(&pci_driver);
-
 	if (err) {
 		PRINT_ERR(SUBNAME "pci_register_driver failed with code %i.\n", err);
 		err = -1;
 		goto out;
 	}			  
-#endif //FAKEMCE
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
@@ -1343,8 +1285,4 @@ out:
 	PRINT_ERR(SUBNAME "exiting with error\n");
 	return err;
 }
-
-module_init(dsp_driver_init);
-module_exit(dsp_driver_cleanup);
-
 #undef SUBNAME

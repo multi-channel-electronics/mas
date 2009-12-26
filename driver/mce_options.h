@@ -12,7 +12,6 @@
   certain behaviours. Some defaults are set through the ./configure
   script.
 
-  FAKEMCE - replace PCI card support with the fake_mce emulator
   REALTIME - use RTAI.  This only affects the PCI card interrupt.
   BIGPHYS - use bigphysarea.  This allows a larger frame buffer.
   OPT_VERBOSE - log, a lot
@@ -30,7 +29,7 @@
 #else
 #  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
 #endif
-
+#define OPT_VERBOSE
 #ifdef OPT_VERBOSE
 #  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
 #else
@@ -46,7 +45,7 @@
 
 #ifndef BIGPHYS
 
-#  define FRAME_BUFFER_SIZE (32*1024*1024)
+#  define FRAME_BUFFER_SIZE (128*1024)
 
 #else
 
@@ -54,6 +53,14 @@
 
 #endif
 
+
+/*
+  FAKE_MCE_COUNT, FAKE_MCE_MINOR - number and minor offset of any
+  emulators.
+*/
+
+#define FAKE_MCE_COUNT 1
+#define FAKE_MCE_MINOR 0
 
 /* DEFAULT_DATA_SIZE - doesn't affect very much, just the initial
  * frame size.  5424, as the current MCE maximum, is fine. */

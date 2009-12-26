@@ -18,10 +18,12 @@
 # include "data_watcher.h"
 #endif
 
+static int data_major = -1;
 
 struct filp_pdata {
 	int minor;
 };
+
 
 /**************************************************************************
  *                                                                        *
@@ -226,10 +228,16 @@ int data_ioctl(struct inode *inode, struct file *filp,
 #define SUBNAME "data_open: "
 int data_open(struct inode *inode, struct file *filp)
 {
-	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
+	struct filp_pdata *fpdata;
+	int minor = iminor(inode);
 	PRINT_INFO(SUBNAME "entry\n");
 
-	fpdata->minor = iminor(inode);
+	if (minor < 0 || minor >= MAX_CARDS || !data_frames[minor].ready) {
+		PRINT_ERR(SUBNAME "card %i not present.\n", minor);
+		return -ENODEV;
+	}
+	fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
+	fpdata->minor = minor;
 	filp->private_data = fpdata;
 
 	PRINT_INFO(SUBNAME "ok\n");
@@ -268,24 +276,14 @@ struct file_operations data_fops =
 #define SUBNAME "data_ops_init: "
 int data_ops_init(void)
 {
-	int err = 0;
-	int i = 0;
-	PRINT_INFO(SUBNAME "entry\n");
-	
-	err = register_chrdev(0, MCEDATA_NAME, &data_fops);
-	if (err<0) {
+	int err = register_chrdev(0, MCEDATA_NAME, &data_fops);
+	if (err<=0) {
 		PRINT_ERR(SUBNAME "could not register_chrdev, "
 			  "err=%#x\n", err);
-	} else {
-		for(i=0; i<MAX_CARDS; i++) {
-			frame_buffer_t *dframes = data_frames + i;
-			dframes->major = err;
-		}
-		err = 0;
+		return err;
 	}
-
-	PRINT_INFO(SUBNAME "ok\n");
-	return err;
+	data_major = err;
+	return 0;
 }
 #undef SUBNAME
 
@@ -296,6 +294,7 @@ int data_ops_probe(int card)
 	PRINT_INFO(SUBNAME "entry\n");
 
 	init_MUTEX(&dframes->sem); 
+	dframes->ready = 1;
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
@@ -305,12 +304,9 @@ int data_ops_probe(int card)
 #define SUBNAME "data_ops_cleanup: "
 int data_ops_cleanup(void)
 {
-	PRINT_INFO(SUBNAME "entry\n");
-
-	if (data_frames->major != 0) 
-		unregister_chrdev(data_frames->major, MCEDATA_NAME);
-
-	PRINT_INFO(SUBNAME "ok\n");
+	if (data_major >= 0) 
+		unregister_chrdev(data_major, MCEDATA_NAME);
+	data_major = -1;
 	return 0;
 }
 #undef SUBNAME

@@ -36,6 +36,8 @@
 #include "kversion.h"
 #include "mce/data_ioctl.h"
 #include "data_qt.h"
+#include "mce_driver.h"
+#include "memory.h"
 
 
 #define DATAMODE_CLASSIC 0
@@ -47,6 +49,7 @@ typedef struct {
         //  addr[i] = base + frame_size*i
 	// But each buffer contains only data_size bytes of real data.
 
+	frame_buffer_mem_t *mem;
 	void*     base;
 	u32       size;
 
@@ -91,22 +94,17 @@ typedef struct {
 #define     FRAME_ERR 0x1
 	wait_queue_head_t queue;
 
-	int major;
+	mce_interface_t *mce;
+	int ready;
 
 } frame_buffer_t;
 
 extern frame_buffer_t data_frames[MAX_CARDS];
 
-/* Alternative model: keep track of total index, not circular index.
- * Then a linked list of readers can be installed, each doing whatever
- * it wants with the data whenever it feels like it.  One reader can
- * be identified as priveleged and warned if it begins to fall behind.
- */
-
 
 /* Prototypes */
 
-int data_probe(int dsp_version, int card, int mem_size, int data_size);
+int data_probe(int card, mce_interface_t* mce, frame_buffer_mem_t* mem, int data_size);
 int data_init(int mem_size, int data_size);
 int data_remove(int card);
 
