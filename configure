@@ -577,6 +577,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 
 ac_unique_file="branch_id.txt"
+ac_default_prefix=/usr/mce
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -1261,7 +1262,6 @@ Optional Packages:
                           installation, PATH default is $PYTHON_DIR
   --with-user=LOGIN       set default MAS user
   --with-group=GROUP      set default MAS group
-  --with-prefix=PATH      set default MAS install location, e.g. /usr/mce
   --with-libconfig=PATH   specify location of libconfig, e.g. /usr/local/
 
 Some influential environment variables:
@@ -1694,6 +1694,7 @@ ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
 
 
 
@@ -2716,16 +2717,9 @@ fi
 
 
 
-# MAS install path is configurable
+# MAS install path is configurable via --prefix
 
-
-# Check whether --with-prefix was given.
-if test "${with_prefix+set}" = set; then
-  withval=$with_prefix; MAS_PREFIX=$withval/
-else
-  MAS_PREFIX=/usr/mce/
-fi
-
+MAS_PREFIX=${prefix}/
 
 
 
