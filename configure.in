@@ -126,8 +126,9 @@ fi
 
 dnl Write.
 
-AC_OUTPUT(Makefile)
-AC_OUTPUT([driver/Makefile])
-AC_OUTPUT([makefiles/Makefile.install makefiles/Makefile.paths])
-AC_OUTPUT([scripts/mas scripts/mas_mknodes],
-          [chmod a+x scripts/mas scripts/mas_mknodes])
+AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([driver/Makefile])
+AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
+AC_CONFIG_FILES([scripts/mas scripts/mas_mknodes],
+                [chmod a+x scripts/mas scripts/mas_mknodes])
+AC_OUTPUT
