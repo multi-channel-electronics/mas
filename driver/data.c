@@ -58,7 +58,7 @@ int data_frame_address(u32 *dest, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
 
-        *dest = (u32)(unsigned long)(dframes->base_busaddr)
+        *dest = (u32)(unsigned long)(dframes->mem->bus_addr)
                 + dframes->frame_size*(dframes->head_index);
 	
         return 0;
@@ -225,7 +225,7 @@ int data_frame_fake_stop(int card)
 	dframes->head_index++;
 	
 	//Pointer to next frame
-	frame = (u32*) (dframes->base +
+	frame = (u32*) (dframes->mem->base +
 			dframes->head_index*dframes->frame_size);
 
 	//Flag as stop
@@ -271,8 +271,8 @@ int data_frame_divide( int new_data_size, int card)
 	// Round the frame size to a size convenient for DMA
 	dframes->frame_size =
 		(dframes->data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
-	PRINT_ERR(SUBNAME "size: %d frame_size: %d\n", dframes->size, dframes->frame_size);
-	dframes->max_index = dframes->size / dframes->frame_size;
+	PRINT_ERR(SUBNAME "size: %d frame_size: %d\n", dframes->mem->size, dframes->frame_size);
+	dframes->max_index = dframes->mem->size / dframes->frame_size;
 
 	if (dframes->max_index <= 1) {
 		PRINT_ERR("data_frame_divide: buffer can only hold %i data packet!\n",
@@ -316,7 +316,7 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 	// Exit once supply runs out or demand is satisfied.
 	while ((dframes->tail_index != dframes->head_index) && count > 0) {
 
-		source = dframes->base + dframes->tail_index*dframes->frame_size + dframes->partial;
+		source = dframes->mem->base + dframes->tail_index*dframes->frame_size + dframes->partial;
 
 		// Don't read past end of frame.
 		this_read = (dframes->data_size - dframes->partial < count) ?
@@ -591,22 +591,14 @@ int data_lock_up(int card, void *filp)
 int data_proc(char *buf, int count, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
-
 	int len = 0;
-	if (dframes->size <= 0)
+	if (dframes->mem == NULL)
 		return 0;
 	if (len < count) {
-		if (sizeof(long) > 4) {
-			len += sprintf(buf+len, "    %-22s %#018lx\n",
-				       "virtual:", (unsigned long)dframes->base);
-			len += sprintf(buf+len, "    %-22s %#018lx\n",
-				       "bus:", (unsigned long)dframes->base_busaddr);
-		} else {
-			len += sprintf(buf+len, "    %-30s %#010lx\n",
-				       "virtual:", (unsigned long)dframes->base);
-			len += sprintf(buf+len, "    %-30s %#010lx\n",
-				       "bus:", (unsigned long)dframes->base_busaddr);
-		}
+		len += sprintf(buf+len, "    %-22s 0x%p\n",
+			       "virtual:", dframes->mem->base);
+		len += sprintf(buf+len, "    %-22s %#lx\n",
+			       "bus:", dframes->mem->bus_addr);
 	}
 	if (len < count)
 		len += sprintf(buf+len, "    %-15s %25i\n", "count:", dframes->max_index);
@@ -659,9 +651,9 @@ int data_probe(int card, mce_interface_t* mce, frame_buffer_mem_t* mem, int data
 	err = data_ops_probe(card);
 	if (err != 0) return err;
 
+	dframes->mce = mce;
+
 	dframes->mem = mem;
-	dframes->base = mem->base;
-	dframes->size = mem->size;
 	data_reset(card);
 
 	// Divisions

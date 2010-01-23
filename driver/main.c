@@ -50,7 +50,7 @@ static int mceds_init(void)
 		mce_interfaces[i] = dsp_get_mce(i);
 
 	// MCE emulators?
-	mce_faker_init(0, 1);
+//	mce_faker_init(1, 1);
 
 	// File operations
 	err = dsp_ops_init();

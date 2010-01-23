@@ -132,8 +132,8 @@ int data_qt_configure(int qt_interval, int card)
 
 	if (!err)
 		err = dframes->mce->qt_command(DSP_QT_BASE,
-		      ((long)dframes->base_busaddr      ) & 0xffff,
-		      ((long)dframes->base_busaddr >> 16) & 0xffff,
+		      ((long)dframes->mem->bus_addr      ) & 0xffff,
+		      ((long)dframes->mem->bus_addr >> 16) & 0xffff,
 		      card);
 	
 	if (!err)

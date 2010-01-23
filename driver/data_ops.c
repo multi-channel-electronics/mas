@@ -131,7 +131,7 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
 	remap_pfn_range(vma, vma->vm_start,
-			(unsigned long)dframes->base_busaddr >> PAGE_SHIFT,
+			(unsigned long)dframes->mem->bus_addr >> PAGE_SHIFT,
 			vma->vm_end - vma->vm_start, vma->vm_page_prot);
 	return 0;
 }
@@ -168,7 +168,7 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		case QUERY_FRAMESIZE:
 			return dframes->frame_size;
 		case QUERY_BUFSIZE:
-			return dframes->size;
+			return dframes->mem->size;
 		default:
 			return -1;
 		}

@@ -29,7 +29,7 @@
 #else
 #  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
 #endif
-#define OPT_VERBOSE
+
 #ifdef OPT_VERBOSE
 #  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
 #else
@@ -45,7 +45,7 @@
 
 #ifndef BIGPHYS
 
-#  define FRAME_BUFFER_SIZE (128*1024)
+#  define FRAME_BUFFER_SIZE (1024*1024*4)
 
 #else
 

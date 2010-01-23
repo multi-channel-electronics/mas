@@ -650,22 +650,22 @@ int mce_buffer_allocate(mce_comm_buffer *buffer, struct device *dev)
 	if (mem==NULL)
 		return -ENOMEM;
 
-	buffer->mem = mem;
 	buffer->command = (mce_command*)mem->base;
 	buffer->command_busaddr = (u32)mem->bus_addr;
 	buffer->reply = (mce_reply*)((char*)buffer->command + offset);
 	buffer->reply_busaddr = buffer->command_busaddr + offset;
-	
-	PRINT_INFO("cmd/rep[virt->bus]: [%lx->%x]/[%lx->%x]\n",
-		   (long unsigned)buffer->command, (unsigned)buffer->command_busaddr,
-		   (long unsigned)buffer->reply, (unsigned)buffer->reply_busaddr);
+	buffer->mem = mem;
+
+	PRINT_INFO("cmd/rep[virt->bus]: [%p->%li]/[%p->%lx]\n",
+		   buffer->command, buffer->command_busaddr,
+		   buffer->reply, buffer->reply_busaddr);
 
 	return 0;
 }
 
 int mce_buffer_free(mce_comm_buffer *buffer)
 {
-	if (buffer->mem != NULL)
+	if (buffer->mem != NULL && buffer->mem->free != NULL)
 		buffer->mem->free(buffer->mem);
 
 	buffer->mem = NULL;
@@ -764,7 +764,7 @@ mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version)
 	frame_buffer_mem_t *mem = NULL;
 	int i;
 
-	PRINT_ERR(SUBNAME "entry\n");
+	PRINT_INFO(SUBNAME "entry\n");
 	memset(mdat, 0, sizeof(*mdat));
 
 	init_MUTEX(&mdat->sem);
@@ -793,6 +793,11 @@ mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version)
 #else
 	mem = pcimem_alloc(FRAME_BUFFER_SIZE, dev);
 #endif
+	if (mem == NULL) {
+		PRINT_ERR(SUBNAME "could not allocate %i on card %i\n",
+			  FRAME_BUFFER_SIZE, card);
+		goto out;
+	}
 
 	if (data_probe(card, &real_live_mce, mem, DEFAULT_DATA_SIZE))
 		goto out;
@@ -865,10 +870,10 @@ int mce_remove(int card)
 	del_timer_sync(&mdat->timer);
 	tasklet_kill(&mdat->hst_tasklet);
 
-  	mce_buffer_free(&mdat->buff);
-	
 	data_remove(card);
 
+  	mce_buffer_free(&mdat->buff);
+	
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;
 }

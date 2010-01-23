@@ -99,8 +99,11 @@ void pcimem_free(frame_buffer_mem_t *mem)
 {
 	if (mem == NULL || mem->base == NULL)
 		return;
+	PRINT_INFO("freeing %i from device %p (%p, %lx)\n",
+		   mem->size, (void*)mem->private_data, (void*)mem->bus_addr,
+		   (unsigned long)mem->base);
 	dma_free_coherent((struct device*)mem->private_data, mem->size,
-			  (void*)mem->bus_addr, (dma_addr_t)mem->base);
+			  mem->base, (dma_addr_t)mem->bus_addr);
 	mem->base = NULL;
 }
 
@@ -110,6 +113,9 @@ frame_buffer_mem_t *pcimem_alloc(int size, struct device *dev)
 	unsigned long bus_addr;
 	void *base = dma_alloc_coherent(dev, size, (dma_addr_t*)&bus_addr,
 					GFP_KERNEL);
+	PRINT_INFO("allocating %i from device %p (%p, %lx)\n",
+		   size, dev, (void*)bus_addr,
+		   (unsigned long)base);
 	if (base == NULL)
 		return NULL;
 	mem = kmalloc(sizeof(*mem), GFP_KERNEL);

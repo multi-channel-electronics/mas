@@ -50,8 +50,6 @@ typedef struct {
 	// But each buffer contains only data_size bytes of real data.
 
 	frame_buffer_mem_t *mem;
-	void*     base;
-	u32       size;
 
 	int       frame_size;
 	int       data_size;
@@ -63,16 +61,12 @@ typedef struct {
 	volatile
 	int       tail_index;
 
+	// For partial reads, index into frame at tail_index.
+	int       partial;
+
 	// Data mode of the DSP - DATAMODE_*
 	unsigned  data_mode;
 
-	// If frame at tail_index has been only partially consumed, 
-	//  partial will indicate the current index into the buffer.
-	int       partial;
-
-	// Low level equivalent information
-	unsigned long base_busaddr;
-	
 	// Semaphore should be held when modifying structure, but
 	// interrupt routines may modify head_index at any time.
 
