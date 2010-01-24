@@ -9,10 +9,6 @@
 #include "kversion.h"
 #include "mce_options.h"
 
-#ifdef BIGPHYS
-# include <linux/bigphysarea.h>
-#endif
-
 #include "dsp_driver.h"
 #include "data.h"
 #include "data_ops.h"
@@ -298,20 +294,12 @@ int data_frame_divide( int new_data_size, int card)
  */
 
 #define SUBNAME "data_copy_frame: "
-int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count, int nonblock, int card)
+int data_copy_frame(void* __user buf, int count, int nonblock, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
 	void *source;
 	int count_out = 0;
 	int this_read;
-
-	// Are buffers well defined?  Warn...
-	if (  !( (user_buf!=NULL) ^ (kern_buf!=NULL) ) ) {
-		PRINT_ERR(SUBNAME "number of dest'n buffers != 1 (%lx | %lx)\n",
-			  (unsigned long)user_buf, (unsigned long)kern_buf);
-		return -1;
-	}
 
 	// Exit once supply runs out or demand is satisfied.
 	while ((dframes->tail_index != dframes->head_index) && count > 0) {
@@ -322,16 +310,9 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 		this_read = (dframes->data_size - dframes->partial < count) ?
 			dframes->data_size - dframes->partial : count;
 		
-		if (user_buf!=NULL) {
-			PRINT_INFO(SUBNAME "copy_to_user %x->[%lx] now\n",
-				   count, (unsigned long)user_buf);
-			this_read -= copy_to_user(user_buf, source, this_read);
-		}
-		if (kern_buf!=NULL) {
-			PRINT_INFO(SUBNAME "memcpy to kernel %lx now\n",
-				   (unsigned long)kern_buf);
-			memcpy(kern_buf, source, this_read);
-		}
+		PRINT_INFO(SUBNAME "copy_to_user %x->[%lx] now\n",
+			   count, (unsigned long)buf);
+		this_read -= copy_to_user(buf, source, this_read);
 
 		// Update demand
 		count -= this_read;
@@ -368,129 +349,7 @@ int data_tail_increment(int card)
 #undef SUBNAME
 
 
-/***  ARCHIVE ***/
-#ifdef SKIP_ME_NOW
-
-
-#define SUBNAME "data_alloc: "
-int data_alloc(int mem_size, int data_size, int card)
-{
-	frame_buffer_t *dframes = data_frames + card;
-	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
-	caddr_t virt;
-#ifndef BIGPHYS
-	unsigned long phys;               // Not needed / used with bigphys
-#endif
-
-	PRINT_INFO(SUBNAME "entry\n");
-
-	mem_size = npg * PAGE_SIZE;
-
-#ifdef BIGPHYS	
-	PRINT_ERR(SUBNAME "BIGPHYS selected\n");
-	dframes->mem = bigphys_alloc(mem_size);
-
-	if (dframes->mem==NULL) {
-		PRINT_ERR(SUBNAME "bigphysarea_alloc_pages failed!\n");
-		return -ENOMEM;
-	}
-
-	// Copy base address and size
-	dframes->base = mem->base;
-	dframes->size = mem->size;
-	
-	// Save physical address for hardware
-
-	// Note virt_to_bus is on the deprecation list... we will want
-	// to switch to the DMA-API, dma_map_single does what we want.
-	dframes->base_busaddr = virt_to_bus(virt);
-
-#else
-
-#ifdef MEMMAP 
-
-#ifdef CONFIG_HIGHMEM
-
-	phys = (caddr_t) (num_physpages * PAGE_SIZE);
-	PRINT_ERR(SUBNAME "highmem; phys=%lx\n", (unsigned long)phys);
-#else
-	phys = (caddr_t)__pa( high_memory );
-	PRINT_ERR(SUBNAME "!highmem; phys=%lx\n", (unsigned long)phys);
-#endif
-	// Save the buffer address
-	dframes->base = NULL;
-
-	// Save physical address for hardware
-	dframes->base_busaddr = phys;
-
-#else /*!MEMMAP*/
-
-	PRINT_ERR(SUBNAME "kernel DMA selected\n");
-
-	virt  = dsp_allocate_dma(mem_size, &phys);
-
-	if (virt==NULL) {
-		PRINT_ERR(SUBNAME "dsp_allocate_dma failed to allocate %i bytes\n",
-			  mem_size);
-		return -ENOMEM;
-	}
-
-	// Save physical address for hardware
-	dframes->base_busaddr = phys;
-	dframes->base = &virt;
-
-#endif /* MEMMAP */
-
-#endif /* BIG PHYS */
-
-	// Save the maximum size
-	dframes->size = mem_size;
- 
-	// Partition buffer into blocks of some default size
-	data_frame_divide(data_size, card);
-
-	//Debug
-	PRINT_INFO(SUBNAME "buffer: base=%lx + %x of size %x\n",
-		   (unsigned long)dframes->base, 
-		   dframes->max_index,
-		   dframes->frame_size);
-	
-	return 0;
-}
-#undef SUBNAME
-
-
-#define SUBNAME "dma_free: "
-int data_free(int card)
-{
-	frame_buffer_t *dframes = data_frames + card;
-
-	if (dframes->base != NULL) {
-#ifdef BIGPHYS
-		PRINT_ERR(SUBNAME "freeing BIGPHYS\n");
-		bigphysarea_free_pages(dframes->base);
-		return 0;
-#else
-#ifndef MEMMAP
-		PRINT_ERR(SUBNAME "freeing kernel DMA\n");
-		dsp_free_dma(dframes->base, dframes->size, 
-			     dframes->base_busaddr);
-		dframes->size = 0;
-		return 0;
-#endif /* CONFIG_HIGH MEM */
-
-#endif /* BIGPHYS */
-	}
-	
-	PRINT_ERR(SUBNAME "freeing MEMMAP\n");
-	return 0;
-}
-#undef SUBNAME
-
-
-#endif /* SKIP_ME_NOW */
-
-#define SUBNAME "data_alloc: "
+#define SUBNAME "data_reset: "
 int data_reset(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;

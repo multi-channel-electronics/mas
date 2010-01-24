@@ -1,6 +1,10 @@
 #ifndef _MAS_MEMORY_H_
 #define _MAS_MEMORY_H_
 
+#ifdef BIGPHYS
+# include <linux/bigphysarea.h>
+#endif
+
 #include "dsp_driver.h"
 
 /* Buffer types */
@@ -18,14 +22,14 @@ struct frame_buffer_mem_struct {
 	unsigned long bus_addr;
 	int size;
 	void (*free)(frame_buffer_mem_t* data);
-	unsigned long private_data;
+	struct device *dev;
 };
 
 
 /* Special allocators */
 
-frame_buffer_mem_t* basicmem_alloc(long int mem_size);
-frame_buffer_mem_t* bigphys_alloc(int mem_size);
+frame_buffer_mem_t* basicmem_alloc(int mem_size, struct device *dev);
+frame_buffer_mem_t* bigphys_alloc(int mem_size, struct device *dev);
 frame_buffer_mem_t *pcimem_alloc(int size, struct device *dev);
 
 

@@ -3,6 +3,22 @@
 #include "mce_options.h"
 #include "memory.h"
 
+/* Convenient wrappers for DMA mapping */
+
+static int map(struct device *dev, void *base, int size, dma_addr_t *bus_addr)
+{
+	if (dev==NULL) return 0;
+	*bus_addr = dma_map_single(dev, base, size, DMA_FROM_DEVICE);
+	return dma_mapping_error(*bus_addr);
+}
+
+static void unmap(struct device *dev, dma_addr_t bus_addr, int size)
+{
+	if (dev==NULL) return;
+	dma_unmap_single(dev, bus_addr, size, DMA_FROM_DEVICE);
+}	
+
+
 #ifdef BIGPHYS
 
 #define SUBNAME "bigphys_free: "
@@ -11,37 +27,46 @@ static void bigphys_free(frame_buffer_mem_t* mem)
 	if (mem == NULL || mem->base == NULL)
 		return;
 	PRINT_ERR(SUBNAME "freeing\n");
+	unmap(mem->dev, mem->bus_addr, mem->size);
 	bigphysarea_free_pages(mem->base);
-	mem->base = NULL;
+	kfree(mem);
 }
 #undef SUBNAME
 
-#define SUBNAME "bigphys_alloc: "
-frame_buffer_mem_t* bigphys_alloc(int mem_size)
-{
-	caddr_t virt;
-	frame_buffer_mem_t* mem = NULL;
-	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
-	PRINT_INFO(SUBNAME "entry\n");
 
-	mem_size = npg * PAGE_SIZE;
+#define SUBNAME "bigphys_alloc: "
+frame_buffer_mem_t* bigphys_alloc(int size, struct device *dev)
+{
+	caddr_t base;
+	dma_addr_t bus_addr = 0;
+	frame_buffer_mem_t* mem = NULL;
+
+	int npg = (size + PAGE_SIZE-1) / PAGE_SIZE;
+	PRINT_INFO(SUBNAME "entry\n");
+	size = npg * PAGE_SIZE;
 
         // Virtual address?
-	virt = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
+	base = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
 	PRINT_ERR(SUBNAME "BIGPHYS selected\n");
 
-	if (virt==NULL) {
+	if (base==NULL) {
 		PRINT_ERR(SUBNAME "bigphysarea_alloc_pages failed!\n");
-		return -ENOMEM;
+		return NULL;
+	}
+
+	// Attempt to map to PCI device
+	if (map(dev, base, size, &bus_addr)) {
+		bigphysarea_free_pages(base);
+		PRINT_ERR("could not map bigphys pages for DMA.\n");
+		return NULL;
 	}
 
 	mem = kmalloc(sizeof(*mem), GFP_KERNEL);
 	mem->type = DATAMEM_BIGPHYS;
-	mem->base = virt;
-	mem->size = mem_size;
-	// Note virt_to_bus is on the deprecation list... we will want
-	// to switch to the DMA-API, dma_map_single does what we want.
-	mem->private_data = virt_to_bus(virt);
+	mem->base = base;
+	mem->size = size;
+	mem->bus_addr = bus_addr;
+	mem->dev = dev;
 	mem->free = bigphys_free;
 
 	//Debug
@@ -61,28 +86,36 @@ static void basicmem_free(frame_buffer_mem_t* mem)
 	if (mem == NULL || mem->base == NULL)
 		return;
 	PRINT_ERR(SUBNAME "freeing\n");
+	unmap(mem->dev, mem->bus_addr, mem->size);
 	kfree(mem->base);
-	mem->base = NULL;
+	kfree(mem);
 }
 #undef SUBNAME
 
 #define SUBNAME "basicmem_alloc: "
-frame_buffer_mem_t* basicmem_alloc(long int mem_size)
+frame_buffer_mem_t* basicmem_alloc(int size, struct device *dev)
 {
 	frame_buffer_mem_t* mem = NULL;
-	void *data = NULL;
+	dma_addr_t bus_addr;
+	void *base = NULL;
 	PRINT_INFO(SUBNAME "entry\n");
 
-	data = kmalloc(mem_size, GFP_KERNEL);
-	if (data == NULL) {
-		PRINT_ERR(SUBNAME "kmalloc(%li) failed!\n", mem_size);
+	base = kmalloc(size, GFP_KERNEL);
+	if (base == NULL) {
+		PRINT_ERR(SUBNAME "kmalloc(%i) failed!\n", size);
 		return NULL;
 	}
+	if (map(dev, base, size, &bus_addr)) {
+		kfree(base);
+		PRINT_ERR("could not map bigphys pages for DMA.\n");
+		return NULL;
+	}
+
 	mem = kmalloc(sizeof(*mem), GFP_KERNEL);
 	mem->type = DATAMEM_KMALLOC;
-	mem->base = data;
-	mem->size = mem_size;
-	mem->private_data = 0;
+	mem->base = base;
+	mem->size = size;
+	mem->dev = NULL;
 	mem->free = &basicmem_free;
 
 	//Debug
@@ -95,16 +128,16 @@ frame_buffer_mem_t* basicmem_alloc(long int mem_size)
 #undef SUBNAME
 
 
-void pcimem_free(frame_buffer_mem_t *mem)
+static void pcimem_free(frame_buffer_mem_t *mem)
 {
 	if (mem == NULL || mem->base == NULL)
 		return;
 	PRINT_INFO("freeing %i from device %p (%p, %lx)\n",
-		   mem->size, (void*)mem->private_data, (void*)mem->bus_addr,
+		   mem->size, mem->dev, (void*)mem->bus_addr,
 		   (unsigned long)mem->base);
-	dma_free_coherent((struct device*)mem->private_data, mem->size,
+	dma_free_coherent(mem->dev, mem->size,
 			  mem->base, (dma_addr_t)mem->bus_addr);
-	mem->base = NULL;
+	kfree(mem);
 }
 
 frame_buffer_mem_t *pcimem_alloc(int size, struct device *dev)
@@ -123,7 +156,7 @@ frame_buffer_mem_t *pcimem_alloc(int size, struct device *dev)
 	mem->base = base;
 	mem->size = size;
 	mem->bus_addr = bus_addr;
-	mem->private_data = (unsigned long)dev;
-	mem->free = &pcimem_free;
+	mem->dev = dev;
+	mem->free = pcimem_free;
 	return mem;
 }

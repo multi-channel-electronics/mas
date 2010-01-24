@@ -789,13 +789,13 @@ mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version)
 		goto out;
 
 #ifdef BIGPHYS
-	mem = bigphys_alloc(FRAME_BUFFER_SIZE);
+	mem = bigphys_alloc(FRAME_BUFFER_SIZE, dev);
 #else
 	mem = pcimem_alloc(FRAME_BUFFER_SIZE, dev);
 #endif
 	if (mem == NULL) {
 		PRINT_ERR(SUBNAME "could not allocate %i on card %i\n",
-			  FRAME_BUFFER_SIZE, card);
+			  (int)FRAME_BUFFER_SIZE, card);
 		goto out;
 	}
 

@@ -241,7 +241,7 @@ mce_interface_t *fake_mce_create(int card)
 	mdat->data_flags = 0;
 
 	if (FRAME_BUFFER_SIZE <= 128*1024)
-		mem = basicmem_alloc(FRAME_BUFFER_SIZE);
+		mem = basicmem_alloc(FRAME_BUFFER_SIZE, NULL);
 	else
 		mem = pcimem_alloc(FRAME_BUFFER_SIZE, NULL);
 	if (mem == NULL) {

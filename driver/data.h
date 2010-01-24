@@ -111,8 +111,7 @@ int  data_frame_increment(int card);
 int  data_frame_contribute(int count, int card);
 int  data_frame_divide(int new_data_size, int card);
 
-int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count, int nonblock, int card);
+int data_copy_frame(void* __user buf, int count, int nonblock, int card);
 int data_frame_fake_stop(int card);
 
 int data_frame_resize(int size, int card);

@@ -70,7 +70,7 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		
 		// Pop count bytes from frame buffer; data_copy frame
 		// will return at most 1 frame of data.
-		this_read = data_copy_frame(buf, NULL, count, 0, card);
+		this_read = data_copy_frame(buf, count, 0, card);
 
 		if (this_read < 0) {
 			// On error, exit with the current count.
