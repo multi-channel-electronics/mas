@@ -2719,7 +2719,7 @@ fi
 
 # MAS install path is configurable via --prefix
 
-MAS_PREFIX=${prefix}/
+MAS_PREFIX="\${prefix}/"
 
 
 

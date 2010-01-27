@@ -67,7 +67,7 @@ AC_SUBST(MAS_GROUP)
 
 # MAS install path is configurable via --prefix
 
-MAS_PREFIX=${prefix}/
+MAS_PREFIX="\${prefix}/"
 AC_SUBST(MAS_PREFIX)
 
 
