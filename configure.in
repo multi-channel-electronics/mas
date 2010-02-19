@@ -1,6 +1,7 @@
 # Use branch_id.txt to verify the tree identity?
 
 AC_INIT(branch_id.txt)
+AC_PREFIX_DEFAULT([/usr/mce])
 
 
 # We need C, and some stuff for installing.
@@ -64,11 +65,9 @@ AC_SUBST(MAS_USER)
 AC_SUBST(MAS_GROUP)
 
 
-# MAS install path is configurable
+# MAS install path is configurable via --prefix
 
-AC_ARG_WITH([prefix],
-            [AS_HELP_STRING([--with-prefix=PATH],[set default MAS install location, e.g. /usr/mce])],
-	    [MAS_PREFIX=$withval/], [MAS_PREFIX=/usr/mce/])
+MAS_PREFIX="\${prefix}/"
 AC_SUBST(MAS_PREFIX)
 
 
@@ -126,8 +125,9 @@ fi
 
 dnl Write.
 
-AC_OUTPUT(Makefile)
-AC_OUTPUT([driver/Makefile])
-AC_OUTPUT([makefiles/Makefile.install makefiles/Makefile.paths])
-AC_OUTPUT([scripts/mas scripts/mas_mknodes],
-          [chmod a+x scripts/mas scripts/mas_mknodes])
+AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([driver/Makefile])
+AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
+AC_CONFIG_FILES([scripts/mas scripts/mas_mknodes],
+                [chmod a+x scripts/mas scripts/mas_mknodes])
+AC_OUTPUT

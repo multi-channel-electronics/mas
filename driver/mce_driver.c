@@ -63,6 +63,10 @@ struct mce_control {
 	struct timer_list timer;
  	struct tasklet_struct hst_tasklet;
 
+	struct timer_list dtimer;
+	wait_queue_head_t dqueue;
+	int dexpired;
+
 	int initialized;
 	int quiet_rp;
 
@@ -713,6 +717,25 @@ int mce_proc(char *buf, int count, int card)
 }
 
 
+/* Block */
+
+static void delay_func(unsigned long data)
+{
+	struct mce_control *mdat = (void*)data;
+	mdat->dexpired = 1;
+	wake_up_interruptible(&mdat->dqueue);
+}
+
+static int delay(struct mce_control *mdat, int ms)
+{
+	int j = (ms * HZ) / 1000;
+	if (j<1) j=1;
+	mdat->dexpired = 0;
+	barrier();
+	mod_timer(&mdat->dtimer, jiffies+j);
+	return wait_event_interruptible(mdat->dqueue, mdat->dexpired);
+}
+
 /* Special DSP functionality */
 
 int mce_hardware_reset(int card)
@@ -724,9 +747,14 @@ int mce_hardware_reset(int card)
 
 int mce_interface_reset(int card)
 {
+	struct mce_control *mdat = mce_dat + card;
 	dsp_command cmd = { DSP_RST, {0,0,0} };
 	dsp_message msg;
-	return dsp_send_command_wait(&cmd, &msg, card);
+	int err;
+	err = dsp_send_command_wait(&cmd, &msg, card);
+	if (err) return err;
+	if (delay(mdat, 500)) return -1;
+	return mce_quiet_RP_config(mdat->quiet_rp, card);
 }
 
 
@@ -779,6 +807,11 @@ mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version)
 	init_timer(&mdat->timer);
 	mdat->timer.function = mce_send_command_timer;
 	mdat->timer.data = (unsigned long)mdat;
+
+	init_waitqueue_head(&mdat->dqueue);
+	init_timer(&mdat->dtimer);
+	mdat->dtimer.function = delay_func;
+	mdat->dtimer.data = (unsigned long)mdat;
 
 	mdat->state = MDAT_IDLE;
 	mdat->data_flags = 0;
@@ -867,6 +900,7 @@ int mce_remove(int card)
 		mce_quiet_RP_config(0, card);
 	}
 
+	del_timer_sync(&mdat->dtimer);
 	del_timer_sync(&mdat->timer);
 	tasklet_kill(&mdat->hst_tasklet);
 

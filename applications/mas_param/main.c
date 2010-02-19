@@ -17,6 +17,7 @@ options_t options = {
 int main(int argc, char **argv)
 {
 	config_t cfg;
+  int status;
 
 	if (process_options(&options, argc, argv))
 		return 1;
@@ -28,20 +29,21 @@ int main(int argc, char **argv)
 
 	switch(options.mode) {
 	case MODE_CRAWL:
-		crawl_now(&options);
+		status = crawl_now(&options);
 		break;
 
 	case MODE_GET:
-		param_report(&options);
+		status = param_report(&options);
 		break;
 
 	case MODE_INFO:
-		param_report_info(&options);
+		status = param_report_info(&options);
 		break;
 
 	case MODE_SET:
-		param_save(&options);
-		config_write_file(&cfg, options.source_file);
+		status = param_save(&options);
+    if (status == 0)
+      config_write_file(&cfg, options.source_file);
 		break;
 
 	case MODE_IDLE:
@@ -54,5 +56,5 @@ int main(int argc, char **argv)
 
 	config_destroy(&cfg);
 
-	return 0;
+	return status ? 1 : 0;
 }
