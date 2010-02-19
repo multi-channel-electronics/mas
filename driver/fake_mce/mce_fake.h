@@ -147,18 +147,18 @@ typedef struct mce_state_struct {
 	int data_frame[FAKE_MAX_DATA];
 	int data_size;
 
-} mce_state_t;
+} mce_emu_t;
 
 
-mce_state_t *mce_fake_probe(void);
+mce_emu_t *mce_fake_probe(void);
 
-void mce_fake_remove (mce_state_t *m);
+void mce_fake_remove (mce_emu_t *m);
 
-int mce_fake_command(mce_state_t *mce_state, mce_command *cmd, mce_reply *rep);
+int mce_fake_command(mce_emu_t *mce_emu, mce_command *cmd, mce_reply *rep);
 
-int mce_fake_reset(mce_state_t *mce_state);
+int mce_fake_reset(mce_emu_t *mce_emu);
 
-int fake_data_fill(mce_state_t *mce_state, u32 *data);
+int fake_data_fill(mce_emu_t *mce_emu, u32 *data);
 
 
 #endif

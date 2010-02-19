@@ -7,16 +7,7 @@
 #include <asm/uaccess.h>
 #include <linux/mm.h>
 
-#include "kversion.h"
-#include "mce_options.h"
-
-#include "dsp_driver.h"
-#include "data.h"
-#include "mce_driver.h"
-
-#ifdef OPT_WATCHER
-# include "data_watcher.h"
-#endif
+#include "driver.h"
 
 static int data_major = -1;
 

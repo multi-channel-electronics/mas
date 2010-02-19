@@ -11,12 +11,7 @@
 #include <linux/types.h>
 #include <asm/uaccess.h>
 
-#include "mce_options.h"
-#include "kversion.h"
-#include "proc.h"
-#include "dsp_driver.h"
-#include "dsp_ops.h"
-#include "mce/dsp_ioctl.h"
+#include "driver.h"
 
 #ifndef OLD_KERNEL
 #  include <linux/dma-mapping.h>
@@ -1220,6 +1215,8 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	// Enable the character device for this card.
 	if (dsp_ops_probe(card) != 0)
 		goto fail;
+
+	mceds_proc[card].dsp = dsp_proc;
 
 	PRINT_INFO(SUBNAME "ok\n");
 	return 0;

@@ -6,19 +6,7 @@
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
-#include "kversion.h"
-#include "mce_options.h"
-
-#include "dsp_driver.h"
-#include "data.h"
-#include "data_ops.h"
-#include "data_qt.h"
-#include "mce_driver.h"
-#include "memory.h"
-
-#ifdef OPT_WATCHER
-# include "data_watcher.h"
-#endif
+#include "driver.h"
 
 frame_buffer_t data_frames[MAX_CARDS];
 
@@ -518,6 +506,9 @@ int data_probe(int card, mce_interface_t* mce, frame_buffer_mem_t* mem, int data
 	// Divisions
 	data_frame_divide(data_size, card);
 
+	// Proc
+	mceds_proc[card].data = data_proc;
+
 	return 0;
 }
 #undef SUBNAME
@@ -530,10 +521,8 @@ int data_remove(int card)
 		data_qt_enable(0, card);
 
 	tasklet_kill(&dframes->grant_tasklet);
-	if (dframes->mem != NULL) {
-		if (dframes->mem->free != NULL)
-			dframes->mem->free(dframes->mem);
-		kfree(dframes->mem); // whatever.
+	if (dframes->mem != NULL && dframes->mem->free != NULL) {
+		dframes->mem->free(dframes->mem);
 		dframes->mem = NULL;
 	}
 	return 0;

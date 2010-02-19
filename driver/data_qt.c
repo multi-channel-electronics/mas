@@ -22,13 +22,7 @@
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
-#include "kversion.h"
-#include "mce_options.h"
-
-#include "data.h"
-#include "data_qt.h"
-#include "dsp_driver.h"
-#include "mce_driver.h"
+#include "driver.h"
 
 #define SUBNAME "mce_qti_handler: "
 int mce_qti_handler (dsp_message *msg, unsigned long data)

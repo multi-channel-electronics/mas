@@ -4,18 +4,7 @@
 #include <asm/io.h>
 #include <linux/interrupt.h>
 
-#include "kversion.h"
-#include "mce_options.h"
-#include "memory.h"
-
-#include "mce/dsp.h"
-#include "mce/mce_errors.h"
-
-#include "mce_driver.h"
-#include "mce_ops.h"
-#include "data.h"
-#include "data_ops.h"
-#include "dsp_driver.h"
+#include "driver.h"
 
 #define MAX_FERR 100
 
@@ -660,7 +649,7 @@ int mce_buffer_allocate(mce_comm_buffer *buffer, struct device *dev)
 	buffer->reply_busaddr = buffer->command_busaddr + offset;
 	buffer->mem = mem;
 
-	PRINT_INFO("cmd/rep[virt->bus]: [%p->%li]/[%p->%lx]\n",
+	PRINT_INFO("cmd/rep[virt->bus]: [%p->%x]/[%p->%x]\n",
 		   buffer->command, buffer->command_busaddr,
 		   buffer->reply, buffer->reply_busaddr);
 
@@ -859,6 +848,8 @@ mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version)
 
 	if (mce_ops_probe(&real_live_mce, card))
 		goto out;
+
+	mceds_proc[card].mce = real_live_mce.proc;
 
 	PRINT_INFO(SUBNAME "ok.\n");
 	return &real_live_mce;

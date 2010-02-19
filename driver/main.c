@@ -1,14 +1,7 @@
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 
-#include "mce_options.h"
-#include "dsp_driver.h"
-#include "mce_driver.h"
-#include "data.h"
-#include "dsp_ops.h"
-#include "mce_ops.h"
-#include "data_ops.h"
-#include "proc.h"
+#include "driver.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Matthew Hasselfield"); 

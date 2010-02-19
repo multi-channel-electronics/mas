@@ -1,7 +1,6 @@
 #include <linux/pci.h>
-#include "kversion.h"
-#include "mce_options.h"
-#include "memory.h"
+
+#include "driver.h"
 
 /* Convenient wrappers for DMA mapping */
 
@@ -17,6 +16,15 @@ static void unmap(struct device *dev, dma_addr_t bus_addr, int size)
 	if (dev==NULL) return;
 	dma_unmap_single(dev, bus_addr, size, DMA_FROM_DEVICE);
 }	
+
+
+/*
+ * Memory allocation routines -- common interface to bigphysarea, PCI
+ * DMA-able RAM, or kmalloc if you're desperate.
+ *
+ * PCI DMA seems to permit allocation of several MB in a single block.
+ * This makes bigphysarea mostly obsolete.
+ */
 
 
 #ifdef BIGPHYS
@@ -130,7 +138,7 @@ frame_buffer_mem_t* basicmem_alloc(int size, struct device *dev)
 
 static void pcimem_free(frame_buffer_mem_t *mem)
 {
-	if (mem == NULL || mem->base == NULL)
+	if (mem->base == NULL)
 		return;
 	PRINT_INFO("freeing %i from device %p (%p, %lx)\n",
 		   mem->size, mem->dev, (void*)mem->bus_addr,

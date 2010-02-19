@@ -2,20 +2,7 @@
 #include <linux/fs.h>
 #include <linux/interrupt.h>
 
-#include "kversion.h"
-#include "mce_options.h"
-#include "memory.h"
-
-#include "mce/dsp.h"
-#include "mce/mce_errors.h"
-
-#include "mce_driver.h"
-#include "mce_ops.h"
-#include "data.h"
-#include "data_ops.h"
-#include "proc.h"
-
-#include "fake_mce/mce_fake.h"
+#include "driver.h"
 
 #define MAX_FERR 100
 
@@ -43,7 +30,7 @@ static struct mce_control {
 	int ferror_count;
 	int data_flags;
 
-	mce_state_t *mce_state;
+	mce_emu_t *mce_emu;
 } mce_dat[MAX_CARDS];
 
 
@@ -159,7 +146,7 @@ int fake_send_command(mce_command *cmd, mce_callback callback, int non_block, in
 	mdat->callback = callback;
 	mdat->state = MDAT_CON;
 	// Fake a reply
-	mce_fake_command(mdat->mce_state, &mdat->cmd, &mdat->rep);
+	mce_fake_command(mdat->mce_emu, &mdat->cmd, &mdat->rep);
 	// Fake a delay
 	mod_timer(&mdat->timer, jiffies + FAKE_CMD_DELAY);
 
@@ -249,8 +236,8 @@ mce_interface_t *fake_mce_create(int card)
 		goto out;
 	}
 
-	mdat->mce_state = mce_fake_probe();
-	if (mdat->mce_state == NULL) goto out;
+	mdat->mce_emu = mce_fake_probe();
+	if (mdat->mce_emu == NULL) goto out;
 
 	err = data_probe(card, &fake_mce, mem, DEFAULT_DATA_SIZE);
 	if (err !=0 ) goto out;
@@ -285,7 +272,7 @@ int fake_remove(int card)
 
 	mdat->initialized = 0;
 	del_timer_sync(&mdat->timer);
-	mce_fake_remove(mdat->mce_state);
+	mce_fake_remove(mdat->mce_emu);
 	data_remove(card);
 
 	PRINT_INFO(SUBNAME "ok\n");

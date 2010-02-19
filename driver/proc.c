@@ -1,19 +1,6 @@
-
 #include <linux/proc_fs.h>
 
-#include "mce_options.h"
-#include "data.h"
-#include "mce_driver.h"
-#include "dsp_driver.h"
-#include "version.h"
-
-#ifdef FAKEMCE
-#  include <dsp_fake.h>
-#else
-#  include "dsp_driver.h"
-#endif
-
-#include "proc.h"
+#include "driver.h"
 
 int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 	      void *data)
@@ -56,7 +43,7 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 			len += sprintf(buf+len,"\nCARD: %d\n", i);
 		}
 		for (j=0; j<3; j++) {
-			proc_f p;
+			proc_f p = NULL;
 			switch (j) {
 			case 0:
 				p = mceds_proc[i].data;
