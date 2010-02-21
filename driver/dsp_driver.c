@@ -163,6 +163,7 @@ struct dsp_dev_t {
 	int cmd_count;
 	int rep_count;
 
+	volatile
 	dsp_state_t state;
 	int version;
 	char version_string[32];
@@ -170,6 +171,7 @@ struct dsp_dev_t {
 	int n_handlers;
 	dsp_handler_entry handlers[MAX_HANDLERS];
 
+	dsp_command last_command;
 	dsp_callback callback;
 
 } dsp_dev[MAX_CARDS];
@@ -325,6 +327,7 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 	unsigned long irqflags;
   	struct dsp_dev_t *dev = (struct dsp_dev_t *)data;
 	dsp_callback callback = NULL;
+	int complain = 0;
 
 	DDAT_LOCK;
 	if (dev->state == DDAT_CMD) {
@@ -339,9 +342,24 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 			  "unexpected REP received [state=%i, %i %i].\n",
 			  dev->state, dev->cmd_count, dev->rep_count);
 	}
-	PRINT_INFO(SUBNAME "%i %x %x %x %x\n", dev->rep_count, msg->type,
-		  msg->command, msg->reply, msg->data);
 	DDAT_UNLOCK;
+
+	/* This is probably the best place to check packet consistency. */
+	if (msg->command != dev->last_command.command) {
+		PRINT_ERR(SUBNAME "reply does not match command.\n");
+		complain = 1;
+	}
+	if (msg->reply != DSP_ACK) {
+		PRINT_ERR(SUBNAME "reply was not ACK.\n");
+		complain = 1;
+	}
+	if (complain) {
+		dsp_command *cmd = &dev->last_command;
+		PRINT_ERR(SUBNAME "command %#06x %#06x %#06x %#06x\n",
+			   cmd->command, cmd->args[0], cmd->args[1], cmd->args[2]);
+		PRINT_ERR(SUBNAME "reply   %#06x %#06x %#06x %#06x\n",
+			   msg->type, msg->command, msg->reply, msg->data);
+	}
 		
 	// Command state is IDLE, so callback routines may issue DSP cmds.
 	if (callback != NULL) {
@@ -456,7 +474,12 @@ int dsp_send_command_now_vector(struct dsp_dev_t *dev, u32 vector, dsp_command *
 			  dsp_read_hstr(dev->dsp));
 		return -EIO;
 	}
-	
+
+	/* Set the address first, then flip the HC trigger.  There
+	   seems to be a significant propagation delay on this line;
+	   without the preset then rapid commands get sent to the
+	   vector of the previous command. */
+	dsp_write_hcvr(dev->dsp, vector | dev->hcvr_bits);
 	dsp_write_hcvr(dev->dsp, vector | dev->hcvr_bits | HCVR_HC);
 
 	return 0;
@@ -475,6 +498,7 @@ int dsp_send_command_now(struct dsp_dev_t *dev, dsp_command *cmd)
 
 	switch (vect->type) {
 	case VECTOR_STANDARD:
+		memcpy(&dev->last_command, cmd, sizeof(*cmd));
 		return dsp_send_command_now_vector(dev, vect->vector, cmd);
 	case VECTOR_QUICK:
 		// FIXME: these don't reply so they'll always time out.
@@ -523,7 +547,6 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 
 	DDAT_LOCK;
 	if (dev->state != DDAT_IDLE) {
-		PRINT_ERR(SUBNAME "ddat not idle at %i, EAGAIN.\n", dev->cmd_count);
 		DDAT_UNLOCK;
 		return -EAGAIN;
 	}
@@ -670,11 +693,13 @@ int dsp_query_version(int card)
 
 void dsp_clear_RP(int card)
 {
+	unsigned int irqflags;
 	struct dsp_dev_t *dev = dsp_dev + card;
 	dsp_command cmd = { DSP_INT_RPC, {0, 0, 0} };
 	
-	// This is interrupt safe because it is a vector command
+	DDAT_LOCK;
 	dsp_send_command_now(dev, &cmd);
+	DDAT_UNLOCK;
 }
 
 #define SUBNAME "dsp_timer_function: "

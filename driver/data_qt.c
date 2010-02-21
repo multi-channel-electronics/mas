@@ -72,13 +72,20 @@ void data_grant_task(unsigned long data)
 	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, dframes->tail_index, 0 } };
 
 	PRINT_INFO(SUBNAME "trying update to tail=%i\n", dframes->tail_index);
-
-	if ( (err=dsp_send_command( &cmd, data_grant_callback, card)) ) {
-		// FIX ME: discriminate between would-block errors and fatals!
-		PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
+	err = dsp_send_command( &cmd, data_grant_callback, card);
+	if (err == -EAGAIN) {
+		if (dframes->grant_sched_count == 0)
+			PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
+		dframes->grant_sched_count++;
 		tasklet_schedule(&dframes->grant_tasklet);
 		return;
+	} else if (err != 0) {
+		PRINT_ERR(SUBNAME "dsp_send_command returned error %#x\n", err);
+	} else if (dframes->grant_sched_count != 0) {
+		PRINT_ERR(SUBNAME "succeeded after %i tries.\n",
+			  dframes->grant_sched_count);
 	}
+	dframes->grant_sched_count = 0;
 }
 #undef SUBNAME
 

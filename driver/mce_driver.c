@@ -73,6 +73,7 @@ struct mce_control {
 	mce_state_t state;
 
 	int ferror_count;
+	int hst_sched_count;
 
 	int data_flags;
 #define   MDAT_DGO   0x001
@@ -222,6 +223,7 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 	}
 
 	mdat->state = MDAT_NFY;
+	mdat->hst_sched_count = 0;
 	MDAT_UNLOCK;
 	
 	/* do_HST needs the lock not held. */
@@ -256,13 +258,19 @@ void mce_do_HST_or_schedule(unsigned long data)
 
 	if ( (err=dsp_send_command(&cmd, mce_HST_dsp_callback, card)) ) {
 		if(err == -EAGAIN) {
-			PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
+			if (mdat->hst_sched_count == 0)
+				PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
+			mdat->hst_sched_count++;
 			tasklet_schedule(&mdat->hst_tasklet);
 		} else {
-			PRINT_ERR(SUBNAME "dsp_send_cmd failed, calling back with err.\n");
+			PRINT_ERR(SUBNAME "dsp_send_command failed after %i "
+				  "tries.\n", mdat->hst_sched_count);
 			mce_command_do_callback(-MCE_ERR_INT_FAILURE, NULL, card);
 		}
 	} else {
+		if (mdat->hst_sched_count > 0)
+			PRINT_ERR(SUBNAME "succeeded after %i tries.\n",
+				  mdat->hst_sched_count);
 		mdat->state = MDAT_HST;;
 	}
 up_and_out:
@@ -495,8 +503,6 @@ up_and_out:
 	return ret_val;
 }
 #undef SUBNAME
-
-//mce_send_command_user lived here once upon a time
 
 
 /******************************************************************/
