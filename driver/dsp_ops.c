@@ -66,7 +66,6 @@ struct dsp_ops_t {
   call.
 */
 
-#define SUBNAME "dsp_read: "
 ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
@@ -76,7 +75,7 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 	int ret_val = 0;
 	int err = 0;
 
-	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d state=%#x\n", 
+	PRINT_INFO("entry! fpdata->minor=%d state=%#x\n", 
 		   fpdata->minor, dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
@@ -119,8 +118,7 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 		err = copy_to_user(buf, (void*)&dops->msg, sizeof(dops->msg));
 		read_count -= err;
 		if (err) {
-			PRINT_ERR(SUBNAME "could not copy %#x bytes to user\n",
-				  err );
+			PRINT_ERR("could not copy %#x bytes to user\n", err);
 		}
 	} else {
 		read_count = 0;
@@ -130,12 +128,11 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 	ret_val = read_count;
 
  out:
-	PRINT_INFO(SUBNAME "exiting (ret_val=%i)\n", ret_val);
+	PRINT_INFO("exiting (ret_val=%i)\n", ret_val);
 
 	up(&dops->sem);
 	return ret_val;
 }
-#undef SUBNAME
 
 
 /*
@@ -152,7 +149,6 @@ ssize_t dsp_read(struct file *filp, char __user *buf, size_t count,
 
 int dsp_write_callback(int error, dsp_message* msg, int card);
 
-#define SUBNAME "dsp_write: "
 ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
@@ -161,8 +157,8 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	int ret_val = 0;
 	int err = 0;
 
-	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d state=%#x\n", 
-		   fpdata->minor, dops->state);
+	PRINT_INFO("entry! fpdata->minor=%d state=%#x\n", fpdata->minor,
+		   dops->state);
 
 	if (filp->f_flags & O_NONBLOCK) {
 		if (down_trylock(&dops->sem))
@@ -193,13 +189,13 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	//Flags ok, so try to get the command data
   
 	if (count != sizeof(dops->cmd)) {
-		PRINT_ERR(SUBNAME "count != sizeof(dsp_command)\n");
+		PRINT_ERR("count != sizeof(dsp_command)\n");
 		ret_val = -EPROTO;
 		goto out;
 	}
 
 	if (copy_from_user(&dops->cmd, buf, sizeof(dops->cmd))) {
-		PRINT_ERR(SUBNAME "copy_from_user incomplete\n");
+		PRINT_ERR("copy_from_user incomplete\n");
 		ret_val = 0;
 		dops->error = -DSP_ERR_KERNEL;
 		goto out;
@@ -208,7 +204,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	dops->state = OPS_CMD;
 	if ((err=dsp_send_command(&dops->cmd, dsp_write_callback, fpdata->minor))!=0) {
 		dops->state = OPS_IDLE;
-		PRINT_ERR(SUBNAME "dsp_send_command failed [%#0x]\n", err);
+		PRINT_ERR("dsp_send_command failed [%#0x]\n", err);
 		ret_val = 0;
 		dops->error = err;
 		goto out;
@@ -219,10 +215,10 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
  out:
 	up(&dops->sem);
 
-	PRINT_INFO(SUBNAME "exiting with code %i.\n", ret_val);
+	PRINT_INFO("exiting with code %i.\n", ret_val);
 	return ret_val;
 }
-#undef SUBNAME
+
 
 /* 
    dsp_write_callback
@@ -232,19 +228,18 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
    context!  No semaphores!
 */
 
-#define SUBNAME "dsp_write_callback: "
 int dsp_write_callback(int error, dsp_message* msg, int card)
 {
         struct dsp_ops_t *dops = dsp_ops + card;
 
 	if (dops->state != OPS_CMD) {
-		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
+		PRINT_ERR("state is %#x, expected %#x\n",
 			  dops->state, OPS_CMD);
 		return -1;
 	}			  
 
 	if (error) {
-		PRINT_ERR(SUBNAME "called with error\n");
+		PRINT_ERR("called with error\n");
 		memset(&dops->msg, 0, sizeof(dops->msg));
 		dops->state = OPS_ERR;
 		dops->error = error;
@@ -252,23 +247,22 @@ int dsp_write_callback(int error, dsp_message* msg, int card)
 	}
 
 	if (msg==NULL) {
-		PRINT_ERR(SUBNAME "called with null message\n");
+		PRINT_ERR("called with null message\n");
 		memset(&dops->msg, 0, sizeof(dops->msg));
 		dops->state = OPS_ERR;
 		dops->error = -DSP_ERR_UNKNOWN;
 		return 0;
 	}
 
-	PRINT_INFO(SUBNAME "type=%#x\n", msg->type);
+	PRINT_INFO("type=%#x\n", msg->type);
 	memcpy(&dops->msg, msg, sizeof(dops->msg));
 	dops->state = OPS_REP;
 	wake_up_interruptible(&dops->queue);
 
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "dsp_ioctl: "
+
 int dsp_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
@@ -276,7 +270,7 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 	struct dsp_ops_t *dops = dsp_ops + fpdata->minor;
 	int x;
 
-	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d\n", fpdata->minor);
+	PRINT_INFO("entry! fpdata->minor=%d\n", fpdata->minor);
 
 	switch(iocmd) {
 
@@ -297,25 +291,23 @@ int dsp_ioctl(struct inode *inode, struct file *filp,
 		return x;
 
 	default:
-		PRINT_INFO(SUBNAME "ok\n");
+		PRINT_INFO("ok\n");
 		return dsp_driver_ioctl(iocmd, arg, fpdata->minor);
 	}
 
-	PRINT_INFO(SUBNAME "ok\n");
+	PRINT_INFO("ok\n");
 	return 0;
-
 }
-#undef SUBNAME
 
-#define SUBNAME "dsp_open: "
+
 int dsp_open(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata;
 	int minor = iminor(inode);
-	PRINT_INFO(SUBNAME "entry! iminor(inode)=%d\n", minor);
+	PRINT_INFO("entry! iminor(inode)=%d\n", minor);
 
 	if (!dsp_ready(minor)) {
-		PRINT_ERR(SUBNAME "card %i not enabled.\n", minor);
+		PRINT_ERR("card %i not enabled.\n", minor);
 		return -ENODEV;
 	}
 
@@ -329,32 +321,31 @@ int dsp_open(struct inode *inode, struct file *filp)
         fpdata->minor = iminor(inode);
 	filp->private_data = fpdata;
 
-	PRINT_INFO(SUBNAME "ok\n");
+	PRINT_INFO("ok\n");
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "dsp_release: "
+
 int dsp_release(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 
-	PRINT_INFO(SUBNAME "entry! fpdata->minor=%d\n", fpdata->minor);
+	PRINT_INFO("entry! fpdata->minor=%d\n", fpdata->minor);
 
 	if (fpdata != NULL) {
 		kfree(fpdata);
 	} else
-		PRINT_ERR(SUBNAME "called with NULL private_data!\n");
+		PRINT_ERR("called with NULL private_data!\n");
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	MOD_DEC_USE_COUNT;
 #else
 	module_put(THIS_MODULE);
 #endif
-	PRINT_INFO(SUBNAME "ok\n");
+	PRINT_INFO("ok\n");
 	return 0;
 }
-#undef SUBNAME
+
 
 struct file_operations dsp_fops = 
 {

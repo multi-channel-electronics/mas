@@ -27,16 +27,16 @@
 #ifdef OPT_QUIET
 #  define PRINT_ERR(A...) //shh(A)
 #else
-#  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
+#  define PRINT_ERR(A,B...) printk(KERN_WARNING DEVICE_NAME ": %s: " A, __func__, ## B)
 #endif
 
 #ifdef OPT_VERBOSE
-#  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
+#  define PRINT_INFO(A,B...) printk(KERN_WARNING DEVICE_NAME ": %s: " A, __func__, ## B)
 #else
 #  define PRINT_INFO(A...) // shh(A)
 #endif
 
-#define PRINT_IOCT(A...) printk(KERN_INFO A)
+#define PRINT_IOCT(A,B...) printk(KERN_INFO DEVICE_NAME ": %s: " A, __func__, ## B)
 
 
 /*

@@ -37,11 +37,8 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 	}
 
 	for(i=0; i<MAX_CARDS; i++) {
-		
-		PRINT_INFO("proc: i=%d\n", i);
-		if (len < limit) {
+		if (len < limit)
 			len += sprintf(buf+len,"\nCARD: %d\n", i);
-		}
 		for (j=0; j<3; j++) {
 			proc_f p = NULL;
 			switch (j) {

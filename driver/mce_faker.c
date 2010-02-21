@@ -68,7 +68,7 @@ void fake_error_reset( int card )
    Call while holding state_lock.
  */
 
-#define SUBNAME "mce_command_do_callback: "
+
 int fake_command_do_callback( int error, mce_reply *rep, int card)
 {
 	/* spinlock is assumed held! */
@@ -79,7 +79,7 @@ int fake_command_do_callback( int error, mce_reply *rep, int card)
 	if ( mdat->callback != NULL ) {
 		mdat->callback(error, rep, card);
 	} else {
-		PRINT_INFO(SUBNAME "no callback specified\n");
+		PRINT_INFO("no callback specified\n");
 	} 
 	
 	// Clear the buffer for the next reply
@@ -88,7 +88,7 @@ int fake_command_do_callback( int error, mce_reply *rep, int card)
 
 	return 0;
 }
-#undef SUBNAME
+
 
 int fake_qt_command( dsp_qt_code code, int arg1, int arg2, int card)
 {
@@ -97,7 +97,7 @@ int fake_qt_command( dsp_qt_code code, int arg1, int arg2, int card)
 	return -1;
 }	
 
-#define SUBNAME "mce_send_command_timer: "
+
 void fake_command_timer(unsigned long data)
 {
 	unsigned long irqflags;
@@ -114,10 +114,8 @@ void fake_command_timer(unsigned long data)
 	if (callback != NULL)
 		callback(0, &rep, card);
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_send_command: "
 int fake_send_command(mce_command *cmd, mce_callback callback, int non_block, int card)
 {
 	unsigned long irqflags;
@@ -135,8 +133,7 @@ int fake_send_command(mce_command *cmd, mce_callback callback, int non_block, in
 	// Protect mdat->state ; exit with up_and_out from now on.
 	MDAT_LOCK;
 	if (mdat->state != MDAT_IDLE) {
-		PRINT_INFO(SUBNAME "transaction in progress (state=%i)\n",
-			   mdat->state);
+		PRINT_INFO("transaction in progress (state=%i)\n", mdat->state);
 		ret_val = -MCE_ERR_ACTIVE;
 		goto up_and_out;
 	}
@@ -155,8 +152,6 @@ up_and_out:
 	up(&mdat->sem);
 	return ret_val;
 }
-#undef SUBNAME
-
 
 
 int fake_proc(char *buf, int count, int card)
@@ -197,25 +192,21 @@ int fake_interface_reset(int card)
 }
 
 
-#define SUBNAME "mce_ready: "
-
 int fake_ready(int card) {
 	struct mce_control *mdat = mce_dat + card;
 	return mdat->initialized;
 }
 
-#undef SUBNAME
-
 int fake_remove(int card);
 
-#define SUBNAME "fake_probe: "
+
 mce_interface_t *fake_mce_create(int card)
 {
  	struct mce_control *mdat = mce_dat + card;
 	frame_buffer_mem_t *mem = NULL;
 	int err = 0;
 
-	PRINT_ERR(SUBNAME "entry\n");
+	PRINT_ERR("entry\n");
 	memset(mdat, 0, sizeof(*mdat));
 
 	init_MUTEX(&mdat->sem);
@@ -232,7 +223,7 @@ mce_interface_t *fake_mce_create(int card)
 	else
 		mem = pcimem_alloc(FRAME_BUFFER_SIZE, NULL);
 	if (mem == NULL) {
-		PRINT_ERR(SUBNAME "failed to allocate frame buffer.\n");
+		PRINT_ERR("failed to allocate frame buffer.\n");
 		goto out;
 	}
 
@@ -250,23 +241,22 @@ mce_interface_t *fake_mce_create(int card)
 
 	mdat->initialized = 1;
 
-	PRINT_INFO(SUBNAME "ok.\n");
+	PRINT_INFO("ok.\n");
 	return &fake_mce;
 
  out:
-	PRINT_ERR(SUBNAME "error!\n");
+	PRINT_ERR("error!\n");
 
 	fake_remove(card);
 	return NULL;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_remove: "
+
 int fake_remove(int card)
 {
  	struct mce_control *mdat = mce_dat + card;
 
-	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO("entry\n");
 
 	if (!mdat->initialized) return 0;
 
@@ -275,10 +265,9 @@ int fake_remove(int card)
 	mce_fake_remove(mdat->mce_emu);
 	data_remove(card);
 
-	PRINT_INFO(SUBNAME "ok\n");
+	PRINT_INFO("ok\n");
 	return 0;
 }
-#undef SUBNAME
 
 
 int mce_faker_init(int start, int count)

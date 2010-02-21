@@ -29,20 +29,17 @@ static void unmap(struct device *dev, dma_addr_t bus_addr, int size)
 
 #ifdef BIGPHYS
 
-#define SUBNAME "bigphys_free: "
 static void bigphys_free(frame_buffer_mem_t* mem)
 {
 	if (mem == NULL || mem->base == NULL)
 		return;
-	PRINT_ERR(SUBNAME "freeing\n");
+	PRINT_ERR("freeing\n");
 	unmap(mem->dev, mem->bus_addr, mem->size);
 	bigphysarea_free_pages(mem->base);
 	kfree(mem);
 }
-#undef SUBNAME
 
 
-#define SUBNAME "bigphys_alloc: "
 frame_buffer_mem_t* bigphys_alloc(int size, struct device *dev)
 {
 	caddr_t base;
@@ -50,15 +47,15 @@ frame_buffer_mem_t* bigphys_alloc(int size, struct device *dev)
 	frame_buffer_mem_t* mem = NULL;
 
 	int npg = (size + PAGE_SIZE-1) / PAGE_SIZE;
-	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO("entry\n");
 	size = npg * PAGE_SIZE;
 
         // Virtual address?
 	base = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
-	PRINT_ERR(SUBNAME "BIGPHYS selected\n");
+	PRINT_ERR("BIGPHYS selected\n");
 
 	if (base==NULL) {
-		PRINT_ERR(SUBNAME "bigphysarea_alloc_pages failed!\n");
+		PRINT_ERR("bigphysarea_alloc_pages failed!\n");
 		return NULL;
 	}
 
@@ -78,39 +75,39 @@ frame_buffer_mem_t* bigphys_alloc(int size, struct device *dev)
 	mem->free = bigphys_free;
 
 	//Debug
-	PRINT_INFO(SUBNAME "buffer: base=%lx + %x\n",
-		   (unsigned long)mem->base,
+	PRINT_INFO("buffer: base=%lx + %x\n", (unsigned long)mem->base,
 		   mem->size);
 	
 	return mem;
 }
-#undef SUBNAME
 
 #endif /* BIGPHYS */
 
-#define SUBNAME "basicmem_free: "
+
+/* kmalloc will only let you allocate 128 kB or so of contiguous
+ * memory -- not enough for MCE operations. */
+
 static void basicmem_free(frame_buffer_mem_t* mem)
 {
 	if (mem == NULL || mem->base == NULL)
 		return;
-	PRINT_ERR(SUBNAME "freeing\n");
+	PRINT_ERR("freeing\n");
 	unmap(mem->dev, mem->bus_addr, mem->size);
 	kfree(mem->base);
 	kfree(mem);
 }
-#undef SUBNAME
 
-#define SUBNAME "basicmem_alloc: "
+
 frame_buffer_mem_t* basicmem_alloc(int size, struct device *dev)
 {
 	frame_buffer_mem_t* mem = NULL;
 	dma_addr_t bus_addr;
 	void *base = NULL;
-	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO("entry\n");
 
 	base = kmalloc(size, GFP_KERNEL);
 	if (base == NULL) {
-		PRINT_ERR(SUBNAME "kmalloc(%i) failed!\n", size);
+		PRINT_ERR("kmalloc(%i) failed!\n", size);
 		return NULL;
 	}
 	if (map(dev, base, size, &bus_addr)) {
@@ -127,14 +124,15 @@ frame_buffer_mem_t* basicmem_alloc(int size, struct device *dev)
 	mem->free = &basicmem_free;
 
 	//Debug
-	PRINT_INFO(SUBNAME "buffer: base=%lx + %x\n",
-		   (unsigned long)mem->base,
+	PRINT_INFO("buffer: base=%lx + %x\n", (unsigned long)mem->base,
 		   mem->size);
 	
 	return mem;
 }
-#undef SUBNAME
 
+
+/* With a PCI device, contiguous regions of a few megabytes are
+ * available. */
 
 static void pcimem_free(frame_buffer_mem_t *mem)
 {

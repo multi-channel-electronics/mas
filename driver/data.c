@@ -37,7 +37,6 @@ frame_buffer_t data_frames[MAX_CARDS];
   transfer mode.
 */
 
-#define SUBNAME "data_frame_address: "
 int data_frame_address(u32 *dest, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -47,7 +46,6 @@ int data_frame_address(u32 *dest, int card)
 	
         return 0;
 }
-#undef SUBNAME
 
 
 /*
@@ -69,7 +67,6 @@ int data_frame_address(u32 *dest, int card)
 */
   
 
-#define SUBNAME "data_frame_increment: "
 int data_frame_increment(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -94,7 +91,6 @@ int data_frame_increment(int card)
 	dframes->head_index = d;
         return 0;
 }
-#undef SUBNAME
 
 
 /* Quiet transfer mode buffer update 
@@ -108,7 +104,6 @@ int data_frame_increment(int card)
  */
 
 
-#define SUBNAME "data_frame_contribute: "
 int data_frame_contribute(int new_head, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -132,7 +127,7 @@ int data_frame_contribute(int new_head, int card)
 		(dframes->tail_index > new_head);
 	
 	if (d != 2) {
-		PRINT_ERR(SUBNAME "buffer trashed!\n");
+		PRINT_ERR("buffer trashed!\n");
 		dframes->head_index = new_head;
 		dframes->tail_index = (new_head+1) % dframes->max_index;
 	} else {
@@ -145,7 +140,7 @@ int data_frame_contribute(int new_head, int card)
 
         return 0;
 }
-#undef SUBNAME
+
 
 /* data_frame_poll
  *
@@ -162,44 +157,39 @@ int data_frame_poll(int card)
 }
 
 
-#define SUBNAME "data_frame_resize: "
 int data_frame_resize(int size, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
-	PRINT_INFO(SUBNAME "entry\n");
-	PRINT_INFO(SUBNAME "size: %d card: %d \n", size, card);
+	PRINT_INFO("entry\n");
+	PRINT_INFO("size: %d card: %d \n", size, card);
 
 	if (size == dframes->data_size)
 		return 0;
 	
 	if (dframes->tail_index != dframes->head_index) {
-		PRINT_ERR(SUBNAME "can't change frame size "
-			  "while buffer not empty\n");
+		PRINT_ERR("can't change frame size while buffer not empty\n");
 		return -1;
 	}
 	if (size<=0) {
-		PRINT_ERR(SUBNAME "can't change frame size "
-			  "to non-positive number\n");
+		PRINT_ERR("can't change frame size to non-positive number\n");
 		return -2;
 	}
 
 	if (data_frame_divide(size, card)) {
-		PRINT_ERR(SUBNAME "failed to divide the buffer by %#x\n", size);
+		PRINT_ERR("failed to divide the buffer by %#x\n", size);
 		return -3;
 	}
 	
 	if (dframes->data_mode == DATAMODE_QUIET &&
 	    data_qt_configure(1, card)!=0) {
-		PRINT_ERR(SUBNAME "can't set DSP quiet mode frame size\n");
+		PRINT_ERR("can't set DSP quiet mode frame size\n");
 		return -4;
 	}
 
 	return 0;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "data_frame_fake_stop: "
 int data_frame_fake_stop(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -227,10 +217,8 @@ int data_frame_fake_stop(int card)
 	return 0;
 
 }
-#undef SUBNAME
 
 
-#define SUBNAME "data_frame_empty_buffers: "
 int data_frame_empty_buffers(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -240,14 +228,13 @@ int data_frame_empty_buffers(int card)
 	dframes->partial = 0;
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "data_frame_divide: "
+
 int data_frame_divide( int new_data_size, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
-	PRINT_INFO(SUBNAME "entry\n");
-	PRINT_INFO(SUBNAME "new_data_size: %d\n", new_data_size);
+	PRINT_INFO("entry\n");
+	PRINT_INFO("new_data_size: %d\n", new_data_size);
 
 	// Recompute the division of the buffer into frames
 	if (new_data_size >= 0) dframes->data_size = new_data_size;
@@ -255,7 +242,8 @@ int data_frame_divide( int new_data_size, int card)
 	// Round the frame size to a size convenient for DMA
 	dframes->frame_size =
 		(dframes->data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
-	PRINT_ERR(SUBNAME "size: %d frame_size: %d\n", dframes->mem->size, dframes->frame_size);
+	PRINT_ERR("size: %d frame_size: %d\n", dframes->mem->size,
+		  dframes->frame_size);
 	dframes->max_index = dframes->mem->size / dframes->frame_size;
 
 	if (dframes->max_index <= 1) {
@@ -264,10 +252,10 @@ int data_frame_divide( int new_data_size, int card)
 		return -1;
 	}
 
-	PRINT_INFO(SUBNAME "ok\n");
+	PRINT_INFO("ok\n");
 	return 0;
 }
-#undef SUBNAME
+
 
 /****************************************************************************/
 
@@ -281,7 +269,6 @@ int data_frame_divide( int new_data_size, int card)
  * when calling this routine.  This routine is not re-entrant.
  */
 
-#define SUBNAME "data_copy_frame: "
 int data_copy_frame(void* __user buf, int count, int nonblock, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -292,14 +279,14 @@ int data_copy_frame(void* __user buf, int count, int nonblock, int card)
 	// Exit once supply runs out or demand is satisfied.
 	while ((dframes->tail_index != dframes->head_index) && count > 0) {
 
-		source = dframes->mem->base + dframes->tail_index*dframes->frame_size + dframes->partial;
+		source = dframes->mem->base + dframes->partial + 
+			dframes->tail_index*dframes->frame_size;
 
 		// Don't read past end of frame.
 		this_read = (dframes->data_size - dframes->partial < count) ?
 			dframes->data_size - dframes->partial : count;
 		
-		PRINT_INFO(SUBNAME "copy_to_user %x->[%lx] now\n",
-			   count, (unsigned long)buf);
+		PRINT_INFO("copy_to_user %x->[%lx] now\n", count, (unsigned long)buf);
 		this_read -= copy_to_user(buf, source, this_read);
 
 		// Update demand
@@ -318,11 +305,10 @@ int data_copy_frame(void* __user buf, int count, int nonblock, int card)
 
 	return count_out;
 }
-#undef SUBNAME
 
 
 /* Call tail_increment to mark a frame as consumed. */
-#define SUBNAME "data_head_increment: "
+
 int data_tail_increment(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -334,10 +320,8 @@ int data_tail_increment(int card)
 	dframes->partial = 0;
 	return 0;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "data_reset: "
 int data_reset(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -351,20 +335,16 @@ int data_reset(int card)
 	if (dframes->data_mode == DATAMODE_QUIET) {
 		if (dframes->mce->qt_command(DSP_QT_TAIL  , dframes->tail_index, 0, card) ||
 		    dframes->mce->qt_command(DSP_QT_HEAD  , dframes->head_index, 0, card) ) {
-			PRINT_ERR(SUBNAME
-				  "Could not reset DSP QT indexes; disabling.");
+			PRINT_ERR("Could not reset DSP QT indexes; disabling.");
 			data_qt_enable(0, card);
 		}
 	}
 
 	return 0;
 }
-#undef SUBNAME
 
 
 /* Data device locking support */
-
-#define SUBNAME "data_lock_operation: "
 
 int data_lock_operation(int card, int operation, void *filp)
 {
@@ -398,11 +378,10 @@ int data_lock_operation(int card, int operation, void *filp)
 		up(&dframes->sem);
 		return ret_val;
 	}
-	PRINT_ERR(SUBNAME "unknown operation (%i).\n", operation);
+	PRINT_ERR("unknown operation (%i).\n", operation);
 	return -1;
 }
 
-#undef SUBNAME
 
 int data_lock_down(int card, void *filp)
 {
@@ -483,7 +462,6 @@ int data_proc(char *buf, int count, int card)
  **************************************************************************/
 
 
-#define SUBNAME "data_probe: "
 int data_probe(int card, mce_interface_t* mce, frame_buffer_mem_t* mem, int data_size)
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -511,7 +489,7 @@ int data_probe(int card, mce_interface_t* mce, frame_buffer_mem_t* mem, int data
 
 	return 0;
 }
-#undef SUBNAME
+
 
 int data_remove(int card)
 {
