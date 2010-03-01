@@ -17,6 +17,8 @@
 #include "data_ops.h"
 #include "dsp_driver.h"
 
+#include "repeater.h"
+
 #define MAX_FERR 100
 
 
@@ -41,6 +43,8 @@ typedef enum {
 	MDAT_NFY,
 	MDAT_HST,
 	MDAT_ERR,
+	MDAT_RPC,
+	MDAT_UNRES,
 } mce_state_t;
 
 struct mce_local {
@@ -62,6 +66,8 @@ struct mce_control {
 	struct timer_list timer;
  	struct tasklet_struct hst_tasklet;
 
+	repeater_t rpc_repeater;
+
 	struct timer_list dtimer;
 	wait_queue_head_t dqueue;
 	int dexpired;
@@ -70,6 +76,7 @@ struct mce_control {
 	int quiet_rp;
 
   	spinlock_t state_lock;
+	volatile
 	mce_state_t state;
 
 	int ferror_count;
@@ -212,6 +219,7 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 		PRINT_ERR(SUBNAME "called error=%i, msg=%lx\n",
 			  error, (unsigned long)msg);
 		mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL, card);
+		dsp_unreserve(card);
 		MDAT_UNLOCK;
 		return 0;
 	}
@@ -224,6 +232,7 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 
 	mdat->state = MDAT_NFY;
 	mdat->hst_sched_count = 0;
+	dsp_unreserve(card);
 	MDAT_UNLOCK;
 	
 	/* do_HST needs the lock not held. */
@@ -256,7 +265,7 @@ void mce_do_HST_or_schedule(unsigned long data)
 		goto up_and_out;
 	}
 
-	if ( (err=dsp_send_command(&cmd, mce_HST_dsp_callback, card)) ) {
+	if ( (err=dsp_send_command(&cmd, mce_HST_dsp_callback, card, 0)) ) {
 		if(err == -EAGAIN) {
 			if (mdat->hst_sched_count == 0)
 				PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
@@ -331,6 +340,32 @@ up_and_out:
  * mce_NFY_RPQ_handler: immediately calls back with the mce reply.
  */
 
+#define SUBNAME "mce_clear_RP"
+int mce_clear_RP(unsigned long data, int last_chance)
+{
+	int card = (int)data;
+	unsigned long irqflags;
+	struct mce_control *mdat = mce_dat + card;
+	int err = 0;
+	MDAT_LOCK;
+	if (mdat->state == MDAT_RPC) {
+		err = dsp_clear_RP(card);
+		if (err == 0)
+			mdat->state = MDAT_UNRES;
+	}
+	if (mdat->state == MDAT_UNRES) {
+		err = dsp_unreserve(card);
+		if (err == 0)
+			mdat->state = MDAT_IDLE;
+	}
+        if (err == -EAGAIN && last_chance) {
+		PRINT_ERR(SUBNAME "Too many RPC tries, aborting.\n");
+	}
+	MDAT_UNLOCK;
+	return err;
+}
+#undef SUBNAME
+
 
 #define SUBNAME "mce_NFY_RPQ_handler: "
 int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
@@ -345,6 +380,7 @@ int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
 		PRINT_ERR(SUBNAME "called error=%i, msg=%lx\n",
 			  error, (unsigned long)msg);
 		mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL, card);
+		dsp_unreserve(card);
 		MDAT_UNLOCK;
 		return 0;
 	}
@@ -358,9 +394,11 @@ int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
 	// Callback, which must copy away the reply
 	mce_command_do_callback(0, mdat->buff.reply, card);
 
-	// Signal DSP that reply buffer can be re-used
-	dsp_clear_RP(card);
+	// We can't go idle until DSP knows the buffer is free.
+	mdat->state = MDAT_RPC;
 	MDAT_UNLOCK;
+	
+	repeater_execute(&mdat->rpc_repeater, 100);
 	return 0;
 }
 #undef SUBNAME
@@ -427,7 +465,7 @@ int mce_send_command_now (int card)
 		   (int)mdat->buff.command->para_id,
 		   (int)mdat->buff.command->card_id);
 	
-	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback, card))) {
+	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback, card, 1))) {
 		PRINT_INFO(SUBNAME "dsp_send_command failed (%#x)\n",
 			  err);
 		switch(-err) {
@@ -497,6 +535,7 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block, int
 		mdat->callback = callback;
 		mdat->state = MDAT_CON;
 	}
+
 up_and_out:
 	MDAT_UNLOCK;
 	up(&mdat->sem);
@@ -575,7 +614,7 @@ int mce_da_hst_now(int card)
 	data_frame_address(&baddr, card);
 	HST_FILL(cmd, baddr);
 
-	if ((err = dsp_send_command(&cmd, mce_da_hst_callback, card))) {
+	if ((err = dsp_send_command(&cmd, mce_da_hst_callback, card, 0))) {
 		PRINT_INFO(SUBNAME "dsp_send_command failed!\n");
 		if (mce_error_register(card)) {
 			PRINT_ERR(SUBNAME "dsp_send_command error %i; "
@@ -718,6 +757,12 @@ int mce_proc(char *buf, int count, int card)
 		case MDAT_ERR:
 			strcpy(sstr, "error");
 			break;
+		case MDAT_RPC:
+			strcpy(sstr, "awaiting RPC");
+			break;
+		case MDAT_UNRES:
+			strcpy(sstr, "unreserving DSP");
+			break;
 		}
 		len += sprintf(buf+len, "    %-15s %25s\n", "state:", sstr);
 	}
@@ -775,7 +820,7 @@ int mce_init()
 {
 	int err = 0;
 	PRINT_INFO(SUBNAME "entry\n");
-	
+
 	err = mce_ops_init();
 	if(err != 0) goto out;
 
@@ -820,6 +865,8 @@ int mce_probe(int card, int dsp_version)
 
    	tasklet_init(&mdat->hst_tasklet,
 		     mce_do_HST_or_schedule, (unsigned long)mdat);
+
+	repeater_init(&mdat->rpc_repeater, &mce_clear_RP, (unsigned long)card);
 
 	init_timer(&mdat->timer);
 	mdat->timer.function = mce_send_command_timer;
@@ -867,7 +914,6 @@ int mce_probe(int card, int dsp_version)
 int mce_cleanup()
 {
 	PRINT_INFO(SUBNAME "entry\n");
-	
 	mce_ops_cleanup();
 	data_ops_cleanup();
 	
@@ -892,6 +938,7 @@ int mce_remove(int card)
 	del_timer_sync(&mdat->dtimer);
 	del_timer_sync(&mdat->timer);
 	tasklet_kill(&mdat->hst_tasklet);
+	repeater_kill(&mdat->rpc_repeater);
 
   	mce_buffer_free(&mdat->buff);
 	

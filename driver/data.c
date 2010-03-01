@@ -155,7 +155,10 @@ int data_frame_contribute(int new_head, int card)
 		dframes->head_index = new_head;
 	}
 
-	tasklet_schedule(&dframes->grant_tasklet);
+	if (!dframes->task_pending) {
+		dframes->task_pending = 1;
+		tasklet_schedule(&dframes->grant_tasklet);
+	}
 
 	wake_up_interruptible(&dframes->queue);
 
@@ -646,7 +649,8 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 	init_waitqueue_head(&dframes->queue);
 
 	tasklet_init(&dframes->grant_tasklet,
-		     data_grant_task, (unsigned long)dframes);       
+		     data_grant_task, (unsigned long)dframes);
+	dframes->task_pending = 0;
 
 	err = data_alloc(mem_size, data_size, card);
 	if (err != 0) return err;

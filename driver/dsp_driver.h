@@ -98,11 +98,13 @@ typedef int (*dsp_handler)(dsp_message *, unsigned long data);
 
 int dsp_ready(int card);
 
-int   dsp_send_command(dsp_command *cmd, dsp_callback callback, int card);
+int dsp_unreserve(int card);
+
+int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card, int reserve);
 
 int   dsp_send_command_wait(dsp_command *cmd, dsp_message *msg, int card);
 
-void  dsp_clear_RP(int card);
+int   dsp_clear_RP(int card);
 
 int   dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
 

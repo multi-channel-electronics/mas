@@ -109,6 +109,7 @@ typedef enum {
 
 	DDAT_IDLE = 0,
 	DDAT_CMD,
+	DDAT_RES = 0x80,
 
 } dsp_state_t;
 
@@ -330,12 +331,12 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 	int complain = 0;
 
 	DDAT_LOCK;
-	if (dev->state == DDAT_CMD) {
+	if (dev->state & DDAT_CMD) {
 		PRINT_INFO(SUBNAME
 			   "REP received, calling back.\n");
 		// Store a copy of the callback address before going to IDLE
 		callback = dev->callback;
-		dev->state = DDAT_IDLE;
+		dev->state &= ~DDAT_CMD;
 		dev->rep_count++;
 	} else {
 		PRINT_ERR(SUBNAME
@@ -392,9 +393,9 @@ void dsp_timeout(unsigned long data)
 	dsp_callback callback = dev->callback;
 
 	DDAT_LOCK;
-	if (dev->state == DDAT_CMD) {
+	if (dev->state & DDAT_CMD) {
 		callback = dev->callback;
-		dev->state = DDAT_IDLE;
+		dev->state &= ~DDAT_CMD;
 		DDAT_UNLOCK;
 
 		PRINT_ERR(SUBNAME "dsp reply timed out!\n");
@@ -428,6 +429,10 @@ void dsp_timeout(unsigned long data)
 static int dsp_quick_command(struct dsp_dev_t *dev, u32 vector)
 {
 	PRINT_INFO(SUBNAME "sending vector %#x\n", vector);
+	if (dsp_read_hcvr(dev->dsp) & HCVR_HC) {
+		PRINT_ERR(SUBNAME "HCVR blocking\n");
+		return -EAGAIN;
+	}
 	dsp_write_hcvr(dev->dsp, vector | dev->hcvr_bits | HCVR_HC);
 	return 0;
 }
@@ -456,8 +461,10 @@ int dsp_send_command_now_vector(struct dsp_dev_t *dev, u32 vector, dsp_command *
 	int n = sizeof(dsp_command) / sizeof(u32);
 
 	// DSP may block while HCVR interrupts in some cases.
-	if (dsp_read_hcvr(dev->dsp) & HCVR_HC)
+	if (dsp_read_hcvr(dev->dsp) & HCVR_HC) {
+		PRINT_ERR(SUBNAME "HCVR blocking\n");
 		return -EAGAIN;
+	}
 
 	// HSTR must be ready to receive
 	if ( !(dsp_read_hstr(dev->dsp) & HSTR_TRDY) ) {
@@ -475,17 +482,10 @@ int dsp_send_command_now_vector(struct dsp_dev_t *dev, u32 vector, dsp_command *
 		return -EIO;
 	}
 
-	/* Set the address first, then flip the HC trigger.  There
-	   seems to be a significant propagation delay on this line;
-	   without the preset then rapid commands get sent to the
-	   vector of the previous command. */
-	dsp_write_hcvr(dev->dsp, vector | dev->hcvr_bits);
 	dsp_write_hcvr(dev->dsp, vector | dev->hcvr_bits | HCVR_HC);
-
 	return 0;
 }
 #undef SUBNAME
-
 
 #define SUBNAME "dsp_send_command_now: "
 int dsp_send_command_now(struct dsp_dev_t *dev, dsp_command *cmd) 
@@ -539,7 +539,7 @@ int dsp_send_command_now(struct dsp_dev_t *dev, dsp_command *cmd)
    The callback error codes are 0 (success, msg will be non-null) or
    DSP_ERR_TIMEOUT (failure, msg will be null).                    */
 #define SUBNAME "dsp_send_command: "
-int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
+int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card, int reserve)
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
 	unsigned int irqflags;
@@ -552,12 +552,13 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 	}
 	
 	PRINT_INFO(SUBNAME "send %i\n", dev->cmd_count+1);
-
 	if ((err = dsp_send_command_now(dev, cmd)) == 0) {
+		dev->state = DDAT_CMD;
+		if (reserve)
+			dev->state |= DDAT_RES;
 		dev->cmd_count++;
 		dev->callback = callback;
 		mod_timer(&dev->tim_dsp, jiffies + DSP_DEFAULT_TIMEOUT);
-		dev->state = DDAT_CMD;
 	}
 
 	PRINT_INFO(SUBNAME "returning [%i]\n", err);
@@ -565,6 +566,17 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card)
 	return err;
 }
 #undef SUBNAME
+
+
+int dsp_unreserve(int card)
+{
+	unsigned int irqflags;
+	struct dsp_dev_t *dev = dsp_dev + card;
+	DDAT_LOCK;
+	dev->state &= ~DDAT_RES;
+	DDAT_UNLOCK;
+	return 0;
+}
 
 
 #define SUBNAME "dsp_send_command_wait_callback"
@@ -594,7 +606,7 @@ void dsp_send_command_or_schedule(unsigned long data)
 	struct dsp_dev_t *dev = (struct dsp_dev_t *)data;
 	int card = dev - dsp_dev;
 	int err = dsp_send_command(dev->local.cmd,
-				   dsp_send_command_wait_callback, card);
+				   dsp_send_command_wait_callback, card, 0);
 	// Mission accomplished?  Wait for callback.
 	if (err == 0)
 		return;
@@ -691,15 +703,24 @@ int dsp_query_version(int card)
 }
 #undef SUBNAME
 
-void dsp_clear_RP(int card)
+/* dsp_clear_RP will attempt to clear the RP buffer on the DSP.  The
+ * DSP may be busy, however, in which case -EAGAIN is returned.
+ */
+
+int dsp_clear_RP(int card)
 {
 	unsigned int irqflags;
 	struct dsp_dev_t *dev = dsp_dev + card;
 	dsp_command cmd = { DSP_INT_RPC, {0, 0, 0} };
-	
+	int err;
+
 	DDAT_LOCK;
-	dsp_send_command_now(dev, &cmd);
+	if  (dev->state & DDAT_CMD)
+		err = -EAGAIN;
+	else
+		err = dsp_send_command_now(dev, &cmd);
 	DDAT_UNLOCK;
+	return err;
 }
 
 #define SUBNAME "dsp_timer_function: "
@@ -1033,17 +1054,14 @@ int dsp_proc(char *buf, int count, int card)
 	}
 	if (len < count) {
 		len += sprintf(buf+len, "    %-30s ", "state:");
-		switch (dev->state) {
-		case DDAT_IDLE:
-			len += sprintf(buf+len, "      idle\n");
-			break;
-		case DDAT_CMD:
-			len += sprintf(buf+len, " commanded\n");
-			break;
-		default:
-			len += sprintf(buf+len, "   unknown! [%i]\n", dev->state);
-			break;
-		}
+		if (dev->state & DDAT_CMD)
+			len += sprintf(buf+len, "commanded");
+		else
+			len += sprintf(buf+len, "     idle");
+		if (dev->state & DDAT_RES)
+			len += sprintf(buf+len, " (reserved)\n");
+		else
+			len += sprintf(buf+len, "\n");
 	}
 
 	return len;

@@ -212,7 +212,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	}
 
 	dops->state = OPS_CMD;
-	if ((err=dsp_send_command(&dops->cmd, dsp_write_callback, fpdata->minor))!=0) {
+	if ((err=dsp_send_command(&dops->cmd, dsp_write_callback, fpdata->minor, 0))!=0) {
 		dops->state = OPS_IDLE;
 		PRINT_ERR(SUBNAME "dsp_send_command failed [%#0x]\n", err);
 		ret_val = 0;

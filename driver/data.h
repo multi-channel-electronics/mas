@@ -83,6 +83,7 @@ typedef struct {
 	void *data_lock;	
 
         // Tasklet for updating grants on card.
+	int task_pending;
  	struct tasklet_struct grant_tasklet;
 	int grant_sched_count;
 
