@@ -181,7 +181,7 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 
 		if (!err) err = mcecmd_cmd_match_rep(cmd, rep);
 
-	} while (attempts++ < MAX_SEND_ATTEMPTS && err != 0 && err != -MCE_ERR_REPLY);
+	} while (attempts++ < MAX_SEND_ATTEMPTS && err == -MCE_ERR_REPLY);
 
 	switch (-err) {
 
