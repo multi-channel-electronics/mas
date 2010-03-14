@@ -17,10 +17,6 @@ functionality. */
 
 /* Types we want to manipulate directly should be described */
 
-%inline %{
-	typedef int i32;
-%}
-
 %typedef unsigned u32;
 %typedef int      i32;
 %array_class(u32, u32array)
