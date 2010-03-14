@@ -11,7 +11,9 @@
 #define MAXROWS 41
 #define MAXTEMP 1024
 
-#define SA_DAC 65536
+#define SA_DAC      65536
+#define SQ2_DAC     65536
+#define SQ2_BAC_DAC 16386
 
 #define RO_CARD  "ac"
 #define SA_CARD  "sa"
@@ -50,12 +52,12 @@ mce_context_t* connect_mce_or_exit(option_t* options);
 int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
 			const char *card, const char *para, int no_exit);
 void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
-			 int start, u32 *data, int count,
+			 int start, i32 *data, int count,
 			 const char *opmsg);
-void duplicate_fill(u32 value, u32 *data, int count);
+void duplicate_fill(i32 value, i32 *data, int count);
 
-void rerange(u32 *dest, u32 *src, int n_data,
-	     u32 *quanta, int n_quanta);
+void rerange(i32 *dest, i32 *src, int n_data,
+	     int *quanta, int n_quanta);
 
 int genrunfile (
 char *full_datafilename, /* datafilename including the path*/
