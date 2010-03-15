@@ -142,36 +142,46 @@ int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
 }
 
 
+#define MAX_SEND_ATTEMPTS 5
+
 int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep)
 {
 	int err = 0;
+	int attempts = 0;
 	char errstr[MCE_LONG];
 	C_cmd_check;
 
 	log_data(&C_logger, (u32*)cmd + 2, 62, 2, "command",
 		 LOG_LEVEL_CMD);
 
-	err = mcecmd_send_command_now(context, cmd);
-	if (err<0) {
-		sprintf(errstr, "command not sent, error %#x.", -err);
-		logger_print_level(&C_logger, errstr, LOGGER_INFO);
-		memset(rep, 0, sizeof(*rep));
-		return err;
-	}
+	/* Loop the attempts to protect against very rare partial
+	   command packet transfers.  Reply packet will have zeros for
+	   card address and thus fail the consistency check. */
 
-	err = mcecmd_read_reply_now(context, rep);
-	if (err != 0) {
-		sprintf(errstr, "reply [communication error] %s", mcelib_error_string(err));
-		logger_print_level(&C_logger, errstr, LOG_LEVEL_REP_ER);
-		return err;
-	}
+	do {
+		err = mcecmd_send_command_now(context, cmd);
+		if (err<0) {
+			sprintf(errstr, "command not sent, error %#x.", -err);
+			logger_print_level(&C_logger, errstr, LOGGER_INFO);
+			memset(rep, 0, sizeof(*rep));
+			return err;
+		}
 
-	// Analysis of received packet
-	err = mcecmd_checksum((u32*)rep, sizeof(*rep) / sizeof(u32)) ?
-		-MCE_ERR_CHKSUM : 0;
+		err = mcecmd_read_reply_now(context, rep);
+		if (err != 0) {
+			sprintf(errstr, "reply [communication error] %s",
+				mcelib_error_string(err));
+			logger_print_level(&C_logger, errstr, LOG_LEVEL_REP_ER);
+			return err;
+		}
 
-	if (!err) err = mcecmd_cmd_match_rep(cmd, rep);
+		// Analysis of received packet
+		err = mcecmd_checksum((u32*)rep, sizeof(*rep) / sizeof(u32)) ?
+			-MCE_ERR_CHKSUM : 0;
 
+		if (!err) err = mcecmd_cmd_match_rep(cmd, rep);
+
+	} while (attempts++ < MAX_SEND_ATTEMPTS && err == -MCE_ERR_REPLY);
 
 	switch (-err) {
 

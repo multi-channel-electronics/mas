@@ -133,11 +133,11 @@ int load_param_or_exit(mce_context_t* mce, mce_param_t* p,
 
 
 void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
-			 int start, u32 *data, int count,
+			 int start, i32* data, int count,
 			 const char *opmsg)
 {
   char temp[1024];
-  int error = mcecmd_write_range(mce, p, start, data, count);
+  int error = mcecmd_write_range(mce, p, start, (u32*)data, count);
   if (error != 0) {
 
     sprintf (temp, "mcecmd_write_range %s with code %d", opmsg, error);
@@ -146,20 +146,18 @@ void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
   }
 }
 
-void duplicate_fill(u32 value, u32 *data, int count)
+void duplicate_fill(i32 value, i32 *data, int count)
 {
   int i;
   for (i=0; i<count; i++) data[i] = value;
 }
 
-void rerange(u32 *dest, u32 *src, int n_data,
-	     u32 *quanta, int n_quanta)
+void rerange(i32 *dest, i32 *src, int n_data,
+	     int *quanta, int n_quanta)
 {
-  int i;
-  u32 q;
-  for (i=0; i<n_data; i++) {
-    q = quanta[i % n_quanta];
-    dest[i] = (q==0) ? src[i] : (src[i] % q);
+  for (int i=0; i<n_data; i++) {
+    int q = quanta[i % n_quanta];
+    dest[i] = (q==0) ? src[i] : (src[i] % q + q) % q;
   }
 }
 

@@ -6,6 +6,7 @@
 
 #ifndef __KERNEL__
 typedef __u32 u32;
+typedef __s32 i32;
 typedef __u16 u16;
 #endif
 

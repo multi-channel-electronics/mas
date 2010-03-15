@@ -22,11 +22,8 @@
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 		mce_param_t *m_sq2fb_col, int biasing_ac,
-		u32 *data, int offset, int count);
+		i32 *data, int offset, int count);
 
-int servo_step(u32* dest, int* src, int count, double gain, double target);
-
-void extract_rows(u32* dest, int* src, u32 *row_order, int* servo_rows, int count);
 
 /***********************************************************
  * frame_callback: to store the frame to a file and fill row_data
@@ -62,9 +59,9 @@ int main ( int argc, char **argv )
    char sq2fb_initfile[MAXLINE];    /* filename for sq2fb.init*/
    char row_initfile[MAXLINE];
    
-   u32 temparr[MAXTEMP];
+   i32 temparr[MAXTEMP];
   
-   int i=0, j, r, snum;       /* loop counters */
+   int i=0, j, snum;        /* loop counters */
  
    FILE *fd;                /* pointer to output file*/
    FILE *tempf;             /* pointer to sq2fb.init file*/
@@ -79,7 +76,7 @@ int main ( int argc, char **argv )
    int nbias;
    int nfeed;
    u32 row_order[MAXROWS];  /* MCE multiplexing order */
-   u32 sq2fb[MAXVOLTS];     /* sq2 feedback voltages */
+   i32 sq2fb[MAXVOLTS];     /* sq2 feedback voltages */
    int sq1bias;             /* SQ2 bias voltage */
    int sq1bstep;            /* SQ2 bias voltage step */
    int sq1feed;             /* SQ2 feedback voltage */
@@ -91,6 +88,9 @@ int main ( int argc, char **argv )
    int skip_sq1bias = 0;
    int biasing_ac = 0;      /* does MCE have a biasing address card? */
    
+   config_setting_t *cfg;   /* experiment.cfg data */
+   int *sq2_quanta;          /* Series array phi0 in feedback units */
+
    int error=0;
    char errmsg_temp[MAXLINE];
    
@@ -123,7 +123,7 @@ int main ( int argc, char **argv )
 
    /* check command-line arguments */
    if (argc != 12 && argc != 13) {
-      printf ( "Rev. 2.0\n");
+      printf ( "Rev. 2.1\n");
       printf ( "usage:- sq1servo outfile sq1bias sq1bstep nbias " );
       printf ( "sq1fb sq1fstep nfb N target total_row gain skip_sq1bias\n" );
       printf ( "   outfile = filename for output data\n" );
@@ -165,6 +165,19 @@ int main ( int argc, char **argv )
    
    // All of our per-column parameters must be written at the right index
    soffset = (which_rc-1)*MAXCHANNELS;
+
+   // Try to load SQ2 quanta
+   cfg = load_config("/data/cryo/current_data/experiment.cfg");
+   sq2_quanta = load_int_array(cfg, "sq2_flux_quanta", soffset+MAXCHANNELS);
+   if (sq2_quanta==NULL) {
+     ERRPRINT("Could not load 'sa_flux_quanta' from config file.");
+     exit(ERR_MCE_ECFG);
+   } else {
+     for (i=0; i<MAXCHANNELS; i++) {
+       int q = sq2_quanta[i+soffset];
+       sq2_quanta[i+soffset] = q * (SQ2_BAC_DAC / q);
+     }
+   }
 
    // Create MCE context
    mce_context_t *mce = connect_mce_or_exit(&options);
@@ -323,59 +336,43 @@ int main ( int argc, char **argv )
 
       if (!skip_sq1bias) {
 	duplicate_fill(sq1bias + j*sq1bstep, temparr, MAXROWS);
-        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, temparr)) != 0) 
+        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (u32*)temparr)) != 0) 
           error_action("mcecmd_write_block sq1bias", error);
       }
 
-      // Set starting sq1 fb
-      duplicate_fill(sq1feed + i*sq1fstep, temparr, MAXCHANNELS);
+      // Initialize SQ1 FB
+      duplicate_fill(sq1feed, temparr, MAXCHANNELS);
       write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");
 
-      // Pre-servo
-      for (i=0; i<options.preservo; i++) {
-	   // Write SQ2 FB
-	   write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, biasing_ac, sq2fb, soffset, MAXCHANNELS);
-	   
-	   // Acquire error
-	   if ((error=mcedata_acq_go(&acq, 1)) != 0) 
-		error_action("data acquisition failed", error);
+      // Preservo and run the FB ramp.
+      for (i=-options.preservo; i<nfeed; i++) {
 
-	   // Dereference data by row_order and update output.
-	   extract_rows(temparr, sq1servo.row_data, row_order, sq1servo.row_num, MAXVOLTS);
-	   servo_step(sq2fb+soffset, (int*)temparr+soffset, MAXCHANNELS, gain, z);
-      }
+	// Write SQ2 FB
+	rerange(temparr, sq2fb+soffset, MAXCHANNELS, sq2_quanta+soffset, MAXCHANNELS);
+	write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, biasing_ac, temparr, soffset, MAXCHANNELS);
 
-      for (i=0; i<nfeed; i++) {
-
-	if (biasing_ac) {
-	  duplicate_fill( 0, temparr, MAXROWS );
-	  for (snum=0; snum<MAXCHANNELS; snum++) {
-	    // Dereference based on multiplexing order
-	    r = row_order[sq1servo.row_num[snum+soffset]];
-	    temparr[r] = sq2fb[snum+soffset];
-	    write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");
-	    temparr[r] = 0;
-	  }
-	} else {
-	  write_range_or_exit(mce, &m_sq2fb, soffset, sq2fb + soffset, MAXCHANNELS, "sq2fb");
+	if (i > 0) {
+	  // Advance SQ1 FB
+	  duplicate_fill(sq1feed + i*sq1fstep, temparr, MAXCHANNELS);
+	  write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");
 	}
-
-	duplicate_fill(sq1feed + i*sq1fstep, temparr, MAXCHANNELS);
-	write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");	
 	
+	// Acquire error
 	if ((error=mcedata_acq_go(&acq, 1)) != 0)
 	  error_action("data acquisition failed", error);
 
-	for (snum=0; snum<MAXCHANNELS; snum++)	 
-	  fprintf(fd, "%11d ", sq1servo.row_data[snum+soffset]);
+	// Update output
+	for (snum=0; snum<MAXCHANNELS; snum++)
+	  sq2fb[soffset+snum] += gain * (sq1servo.row_data[soffset+snum] - z);
 
-	/* get the right columns, change voltages and trigger more data acquisition*/
-	for (snum=0; snum<MAXCHANNELS; snum++) {
-	  sq2fb[snum + soffset] += gain * ( sq1servo.row_data [snum + soffset] - z );
-	  fprintf ( fd, "%11d ", sq2fb[snum + soffset]);
+	if (i >= 0) {
+	  // Record
+	  for (snum=0; snum<MAXCHANNELS; snum++)	 
+	    fprintf(fd, "%11d ", sq1servo.row_data[snum+soffset]);
+	  for (snum=0; snum<MAXCHANNELS; snum++)
+	    fprintf ( fd, "%11d ", sq2fb[snum + soffset]);
+	  fprintf ( fd, "\n" );
 	}
-	fprintf ( fd, "\n" );
-
       }
    }
 
@@ -383,12 +380,12 @@ int main ( int argc, char **argv )
    duplicate_fill(0, temparr, MAXCHANNELS);
    write_range_or_exit(mce, &m_sq2fb, soffset, temparr, MAXCHANNELS, "sq2fb");
  
-   duplicate_fill((u32)(-8192), temparr, MAXCHANNELS);
+   duplicate_fill(-8192, temparr, MAXCHANNELS);
    write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");	
    
    if (!skip_sq1bias) {
-     duplicate_fill((u32)(-8192), temparr, MAXROWS);
-     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, temparr)) != 0) 
+     duplicate_fill(-8192, temparr, MAXROWS);
+     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (u32*)temparr)) != 0) 
        error_action("mcecmd_write_block sq1bias", error);
    }
    else
@@ -413,13 +410,13 @@ int main ( int argc, char **argv )
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 		 mce_param_t *m_sq2fb_col, int biasing_ac,
-		 u32 *data, int offset, int count)
+		 i32 *data, int offset, int count)
 {
 	if (biasing_ac) {
 		int i;
-		u32 temparr[MAXROWS];
+		i32 temparr[MAXROWS];
 		for (i=0; i<count; i++) {
-			duplicate_fill(data[i], temparr, MAXROWS);
+		        duplicate_fill(data[i], temparr, MAXROWS);
 			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");
 		}
 	} else {
@@ -428,19 +425,3 @@ int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 	return 0;
 }
 
-int servo_step(u32* dest, int* src, int count, double gain, double target)
-{
-	int i;
-	for (i=0; i<count; i++) {
-		dest[i] += gain * (src[i] - target);
-	}
-	return 0;
-}
-
-void extract_rows(u32* dest, int* src, u32 *row_order, int* servo_rows, int count)
-{
-     int i;
-     for (i=0; i<count; i++) {
-	  dest[i] = src[row_order[servo_rows[i]]];
-     }
-}
