@@ -9,9 +9,11 @@ typedef struct {
   char cmd_device[OPTSTR];
   char data_device[OPTSTR];
   char hardware_file[OPTSTR];
+  char experiment_file[OPTSTR];
+
+  int argument_opts;
   int preservo;
 
-  char experiment_file[OPTSTR];
   int unwrap_sa_quanta;
 
 } option_t;
@@ -19,5 +21,6 @@ typedef struct {
 
 int process_options(option_t *options, int argc, char **argv);
 
+void usage();
 
 #endif

@@ -17,20 +17,27 @@
 "        -d <data device>        override default data device\n"\
 "        -w <hardware file>      override default hardware configuration file\n"\
 "        -m <MAS config file>    override default MAS configuration file\n"\
+"        -s <experiment file>    override default experiment configuration file\n"\
 "        -p <steps>              enable preservoing for some number of steps\n"\
+"        -E [0|1]                force old/new semantics\n"\
 ""
+
+void usage()
+{
+      printf(USAGE_MESSAGE);
+}
 
 int process_options(option_t *options, int argc, char **argv)
 {
   int option;
   // Note the "+" at the beginning of the options string forces the
   // first non-option string to return a -1, which is what we want.
-  while ( (option = getopt(argc, argv, "+?hm:c:d:w:p:0123456789")) >=0) {
+  while ( (option = getopt(argc, argv, "+?hm:c:d:w:p:s:E:0123456789")) >=0) {
 
     switch(option) {
     case '?':
     case 'h':
-      printf(USAGE_MESSAGE);
+      usage();
       return -1;
 
     case 'm':
@@ -51,6 +58,14 @@ int process_options(option_t *options, int argc, char **argv)
 
     case 'p':
       options->preservo = atoi(optarg);
+      break;
+
+    case 's':
+      strcpy(options->experiment_file, optarg);
+      break;
+
+    case 'E':
+      options->argument_opts = !(atoi(optarg));
       break;
 
     case '0' ... '9':
