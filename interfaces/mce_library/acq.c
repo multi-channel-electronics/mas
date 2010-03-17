@@ -61,7 +61,7 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	if (ret_val != 0) return ret_val;
 
 	// Save frame size and other options
-	acq->frame_size = acq->rows * acq->cols * card_count(acq->cards) + 
+	acq->frame_size = acq->rows * acq->cols * acq->n_cards + 
 		MCEDATA_HEADER + MCEDATA_FOOTER;
 	acq->options = options;
 	acq->context = context;
@@ -211,6 +211,7 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 	      acq->rows     number of rows returning data
 	      acq->cols     number of columns returning data
 	      acq->cards    bit-mask (MCEDATA_RC?) of cards returning data
+	      acq->n_cards  number of cards returning data
 	      acq->row0     per-card values of first row reporting data
 	      acq->col0     per-card values of first col reporting data
 
@@ -253,6 +254,7 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 	} else {
 		acq->cards = (cards & MCEDATA_RCS);
 	}
+	acq->n_cards = card_count(acq->cards);
 
 	/* Determine cols and rows reported */
 	acq->cols = MCEDATA_COLUMNS;
