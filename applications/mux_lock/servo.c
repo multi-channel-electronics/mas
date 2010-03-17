@@ -162,6 +162,33 @@ void rerange(i32 *dest, i32 *src, int n_data,
   }
 }
 
+int load_initfile(const char *datadir, const char *filename, int start, int count, int *dest)
+{
+  FILE *fd;
+  char fullname[MAXLINE] = "";
+  char line[MAXLINE];
+  if (datadir != NULL) strcat(fullname, datadir);
+  strcat(fullname, filename);
+  
+  if ( (fd=fopen(fullname, "r")) == NULL) {
+    ERRPRINT("failed to open init values file:\n");
+    ERRPRINT(fullname);
+    exit(ERR_DATA_ROW);
+  }
+
+  for (int j=-start; j<count; j++) {
+    if (fgets(line, MAXLINE, fd) == NULL) {
+      ERRPRINT("not enough numbers in init values file:\n");
+      ERRPRINT(fullname);
+      exit(ERR_INI_READ);
+    }
+    if (j<0)
+      continue;
+    dest[j] = atoi(line);
+  }
+  return 0;
+}
+
 
 config_setting_t* load_config(const char *filename)
 {

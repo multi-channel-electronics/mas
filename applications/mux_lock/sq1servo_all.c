@@ -86,9 +86,9 @@ int load_exp_config(const char *filename)
   load_int(cfg, "sq1_servo_flux_step", &control.dfb);
 
   load_int(cfg, "sq1_servo_bias_ramp", &control.bias_active);
-/*   load_int(cfg, "sq1_servo_bias_start", &control.bias); */
-/*   load_int(cfg, "sq1_servo_bias_count", &control.nbias); */
-/*   load_int(cfg, "sq1_servo_bias_step", &control.dbias); */
+  load_int(cfg, "sq1_servo_bias_start", &control.bias);
+  load_int(cfg, "sq1_servo_bias_count", &control.nbias);
+  load_int(cfg, "sq1_servo_bias_step", &control.dbias);
 
   load_double_array(cfg, "sq1_servo_gain",
 		    control.column_0, control.column_n, control.gain);
@@ -113,9 +113,7 @@ int main(int argc, char **argv)
    int i, j, r, snum;       /* loop counters */
  
    FILE *bias_fd[MAXROWS];  /* Output files for error and bias entries; one per row */
-   FILE *tempf;             /* pointer to sq2fb.init file*/
    char outfile[MAXLINE];   /* output data file */
-   char line[MAXLINE];
    char init_line1[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char init_line2[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char tempbuf[30];
@@ -174,8 +172,8 @@ int main(int argc, char **argv)
       return ERR_NUM_ARGS;
    }
    if (!args_ok && !options.argument_opts) {
-     printf("When ramp paramters are loaded from experiment.cfg, arguments are:\n"
-	    "    sq1fb [options] <rc> <filename>\n\n"
+     printf("When ramp parameters are loaded from experiment.cfg, arguments are:\n"
+	    "    sq1servo_all [options] <rc> <filename>\n\n"
 	    "where\n"
 	    "    rc           readout card number (1-4)\n"
 	    "    filename     output file basename ($$MAS_DATA will be prepended)\n");
@@ -210,33 +208,55 @@ int main(int argc, char **argv)
      if (argc == 13)
        control.bias_active = !(atoi(argv[12]));
    } else {
+     argv[2] = argv[1];
+     argv[1] = argv[8];
      if (argv[1][0] == 's') {
        control.rc = 0;
-       control.column_n = 16;
        control.column_0 = 0;
      } else {
        control.rc = atoi(argv[1]);
-       control.column_n = 8;
        control.column_0 = (control.rc - 1)*8;
      }
+     // Fill in control.column_n later when we create the acq.
      control.filename = argv[2];
-     load_exp_config(options.experiment_file);
    }
 
-   // Make sure we servo once when bias is supressed.
-   if (!control.bias_active)
-     control.nbias = 1;
-
+   // Setup a call back function for frame data
+   servo_t sq1servo;
+   mcedata_storage_t* ramb;
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned long) &sq1servo);
+   
    // Create MCE context
    mce_context_t *mce = connect_mce_or_exit(&options);
 
+   // Configure acquisition (and use it to load important frame params...)
+   int cards = 0; // By default, this will cause RCS
+   if (control.rc != 0)
+     cards = 1<<(control.rc-1);
+   mce_acq_t acq;
+   error = mcedata_acq_create(&acq, mce, 0, cards, control.rows, ramb);
+   if (error != 0) {
+     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
+     ERRPRINT(errmsg_temp);
+     return ERR_MCE_GO;
+   }
+   control.rows = acq.rows;
+   control.column_n = acq.cols * acq.n_cards;
+   if (!options.argument_opts)
+     load_exp_config(options.experiment_file);
+
+   printf("Card bits=%#x, column count=%i num_rows_reported=%d\n",
+	  acq.cards, control.column_n, control.rows);
+
+   // Make sure we servo exactly once when bias is supressed.
+   if (!control.bias_active)
+     control.nbias = 1;
+
    // Lookup MCE parameters, or exit with error message.
-   mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_nrows_rep,
-     m_sq2fb_col[MAXCOLS];
+   mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_sq2fb_col[MAXCOLS];
 
    load_param_or_exit(mce, &m_sq1fb,   SQ1_CARD, SQ1_FB, 0);
    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
-   load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported", 0);
 
    // Check for biasing address card
    error = load_param_or_exit(mce, &m_sq2fb, SQ2_CARD, SQ2_FB_COL "0", 1);
@@ -252,34 +272,6 @@ int main(int argc, char **argv)
        sprintf(tempbuf, "%s%i", SQ2_FB_COL, control.column_0+i);
        load_param_or_exit(mce, m_sq2fb_col+i, SQ2_CARD, tempbuf, 0);
    }
-
-   if ((error=mcecmd_read_element(mce, &m_nrows_rep, 1, (u32*)&control.rows)) != 0){
-     sprintf(errmsg_temp, "rb cc num_rows_reported failed with %d", error);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_RB;
-   }
-
-   // Our callback will update the counter in this structure
-   servo_t sq1servo;
-   sq1servo.fcount = 0;
-   sq1servo.num_rows = control.rows;
-
-   // setup a call back function
-   mcedata_storage_t* ramb;
-   ramb = mcedata_rambuff_create(frame_callback, (unsigned long) &sq1servo);
-   
-   // Pick a card (won't work for rcs!!)
-   int cards=0;
-   if (control.rc != 0)
-     cards = 1<<(control.rc-1);
-   mce_acq_t acq;
-   error = mcedata_acq_create(&acq, mce, 0, cards, control.rows, ramb);
-   if (error != 0) {
-     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_GO;
-   }
-   printf("Card bits=%#x, num_rows_reported=%d\n", acq.cards, control.rows);
 
    if ((datadir=getenv("MAS_DATA")) == NULL){
      ERRPRINT("Enviro var. $MAS_DATA not set, quit");
@@ -304,30 +296,15 @@ int main(int argc, char **argv)
 
    if (options.argument_opts) {
      /* Get starting SQ2 feedback values  from a file called sq2fb.init*/
-     char sq2fb_initfile[256];      /* filename for sq2fb.init*/
-     strcpy (sq2fb_initfile, datadir);
-     strcat (sq2fb_initfile, "sq2fb.init");
-     if ((tempf = fopen (sq2fb_initfile, "r")) == NULL){
-       sprintf (errmsg_temp,"failed to open sq2fb.init (%s) to read initial settings for sq2fb", sq2fb_initfile);
-       ERRPRINT(errmsg_temp);
-       return ERR_S2FB_INI;
-     }
+     load_initfile(datadir, "sq2fb.init", control.column_0, control.column_n, temparr);
      /*prepare a line of init values for runfile*/
      sprintf(init_line1, "<sq2fb.init> ");
-     for (j=-control.column_0; j<control.column_n; j++ ) {
-       if (fgets (line, MAXLINE, tempf) == NULL) {
-	 ERRPRINT ("not enough numbers in sq2fb.init!");
-	 return ERR_INI_READ;
-       }
-       if (j < 0)
-	 continue;
-       sq2fb[j][0] = atoi(line);
-       for (i=1; i<control.rows; i++)
-	 sq2fb[j][i] = sq2fb[j][0];
-       sprintf(tempbuf, "%d ", sq2fb[j][0]);
+     for (j=0; j<control.column_n; j++ ) {
+       for (i=0; i<control.rows; i++)
+	 sq2fb[j][i] = temparr[j];
+       sprintf(tempbuf, "%d ", temparr[j]);
        strcat(init_line1, tempbuf);
      }
-     fclose(tempf);
    } else {
      // Initialize servo output
      for (j=0; j<control.column_n; j++)
@@ -340,7 +317,7 @@ int main(int argc, char **argv)
    error=genrunfile (full_datafilename, control.filename, 1, control.rc,
 		     control.bias, control.dbias, control.nbias,
 		     control.fb, control.dfb, control.nfb, 
-                      init_line1, init_line2);
+		     init_line1, init_line2);
    if (error != 0){
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);
@@ -415,7 +392,7 @@ int main(int argc, char **argv)
    duplicate_fill(0, temparr, control.column_n);
    write_range_or_exit(mce, &m_sq2fb, control.column_0, temparr, control.column_n, "sq2fb");
  
-   duplicate_fill((u32)(-8192), temparr, control.column_n);
+   duplicate_fill(-8192, temparr, control.column_n);
    write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");	
    
    if (control.bias_active) {

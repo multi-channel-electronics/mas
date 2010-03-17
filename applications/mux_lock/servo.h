@@ -30,13 +30,8 @@
 
 typedef struct {
   int fcount;
-  int row_num[MAXCOLS];
-  int row_data[MAXCOLS];
   u32 last_header[HEADER_OFFSET];
   u32 last_frame[MAXCOLS*MAXROWS];
-  int rc;
-  int num_rows;
-    
   FILE *df;
 }servo_t;
 
@@ -47,6 +42,8 @@ int sq1bias_set(int value);
 int gengofile(char *datafile, char *workfile, int which_rc);
 int acq(char *filename);
 int error_action(char *msg, int errcode);
+
+int load_initfile(const char *datadir, const char *filename, int start, int count, int *dest);
 
 mce_context_t* connect_mce_or_exit(option_t* options);
 int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
