@@ -170,7 +170,7 @@ int main ( int argc, char **argv )
    cfg = load_config("/data/cryo/current_data/experiment.cfg");
    sq2_quanta = load_int_array(cfg, "sq2_flux_quanta", soffset+MAXCHANNELS);
    if (sq2_quanta==NULL) {
-     ERRPRINT("Could not load 'sa_flux_quanta' from config file.");
+     ERRPRINT("Could not load 'sq2_flux_quanta' from config file.");
      exit(ERR_MCE_ECFG);
    } else {
      for (i=0; i<MAXCHANNELS; i++) {
