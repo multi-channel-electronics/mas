@@ -73,7 +73,8 @@ FILE *runfile;
   fclose(runfile);
   
   /* frameacq_stamp */
-  sprintf(command, "frameacq_stamp %d %s %d >> %s.run", which_rc, datafile, nbias*nfeed, full_datafilename);
+  char rc_code = (which_rc > 0) ? '0'+which_rc : 's';
+  sprintf(command, "frameacq_stamp %c %s %d >> %s.run", rc_code, datafile, nbias*nfeed, full_datafilename);
   if ( (sysret =system (command)) != 0){
     sprintf(myerrmsg, "generating runfile %s.run failed when inserting frameacq_stamp",datafile);
     ERRPRINT(myerrmsg);
@@ -161,8 +162,35 @@ void rerange(i32 *dest, i32 *src, int n_data,
   }
 }
 
+int load_initfile(const char *datadir, const char *filename, int start, int count, int *dest)
+{
+  FILE *fd;
+  char fullname[MAXLINE] = "";
+  char line[MAXLINE];
+  if (datadir != NULL) strcat(fullname, datadir);
+  strcat(fullname, filename);
+  
+  if ( (fd=fopen(fullname, "r")) == NULL) {
+    ERRPRINT("failed to open init values file:\n");
+    ERRPRINT(fullname);
+    exit(ERR_DATA_ROW);
+  }
 
-config_setting_t* load_config(char *filename)
+  for (int j=-start; j<count; j++) {
+    if (fgets(line, MAXLINE, fd) == NULL) {
+      ERRPRINT("not enough numbers in init values file:\n");
+      ERRPRINT(fullname);
+      exit(ERR_INI_READ);
+    }
+    if (j<0)
+      continue;
+    dest[j] = atoi(line);
+  }
+  return 0;
+}
+
+
+config_setting_t* load_config(const char *filename)
 {
   config_t* cfg = malloc(sizeof(config_t));
   config_init(cfg);
@@ -174,16 +202,59 @@ config_setting_t* load_config(char *filename)
   return config_root_setting(cfg);
 }
 
-int* load_int_array(config_setting_t *cfg, char *name, int n) {
-  int* data;
-  int i;
+int load_int_array(config_setting_t *cfg, char *name, int start, int count, int* data)
+{
   config_setting_t *el = config_setting_get_member(cfg, name);
-  if (el == NULL) return NULL;
-  
-  data = malloc(n * sizeof(int));
-  memset(data, 0, n*sizeof(int));
-  for (i=0; i<n; i++) {
-    data[i] = config_setting_get_int_elem(el, i);
+  if (el == NULL) {
+    ERRPRINT("Failed to load experiment.cfg parameter:");
+    ERRPRINT(name);
+    exit(ERR_MCE_ECFG);
   }
-  return data;
+  memset(data, 0, count*sizeof(*data));
+  for (int i=0; i<count; i++)
+    data[i] = config_setting_get_int_elem(el, start+i);
+  return 0;
+}
+
+int load_double_array(config_setting_t *cfg, char *name, int start, int count, double *data)
+{
+  config_setting_t *el = config_setting_get_member(cfg, name);
+  if (el == NULL) {
+    ERRPRINT("Failed to load experiment.cfg parameter:");
+    ERRPRINT(name);
+    exit(ERR_MCE_ECFG);
+  }
+  memset(data, 0, count*sizeof(*data));
+  for (int i=0; i<count; i++)
+    data[i] = config_setting_get_float_elem(el, start+i);
+  return 0;
+}
+
+
+/* These currently don't have type checking and will just return 0s if
+   the values are formatted incorrectly.  Newer libconfig (1.4)
+   provides a better interface. */
+
+int load_double(config_setting_t *cfg, char *name, double *dest)
+{
+	config_setting_t *n = config_setting_get_member(cfg, name);
+	if (n==NULL) {
+	  ERRPRINT("Failed to load experiment.cfg parameter:");
+	  ERRPRINT(name);
+	  exit(ERR_MCE_ECFG);
+	}
+	*dest = config_setting_get_float(n);
+	return 0;
+}
+
+int load_int(config_setting_t *cfg, char *name, int *dest)
+{
+	config_setting_t *n = config_setting_get_member(cfg, name);
+	if (n==NULL) {
+	  ERRPRINT("Failed to load experiment.cfg parameter:");
+	  ERRPRINT(name);
+	  exit(ERR_MCE_ECFG);
+	}
+	*dest = config_setting_get_int(n);
+	return 0;
 }

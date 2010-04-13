@@ -6,8 +6,8 @@
 #define HEADER_OFFSET 43
 
 #define MAXLINE 1024
-#define MAXVOLTS 32     /* use 32 even on a small subrack! */
 #define MAXCHANNELS 8
+#define MAXCOLS 32
 #define MAXROWS 41
 #define MAXTEMP 1024
 
@@ -30,13 +30,8 @@
 
 typedef struct {
   int fcount;
-  int row_num[MAXVOLTS];
-  int row_data[MAXVOLTS];
   u32 last_header[HEADER_OFFSET];
-  u32 last_frame[MAXVOLTS*MAXROWS];
-  int which_rc;
-  int num_rows;
-    
+  u32 last_frame[MAXCOLS*MAXROWS];
   FILE *df;
 }servo_t;
 
@@ -47,6 +42,8 @@ int sq1bias_set(int value);
 int gengofile(char *datafile, char *workfile, int which_rc);
 int acq(char *filename);
 int error_action(char *msg, int errcode);
+
+int load_initfile(const char *datadir, const char *filename, int start, int count, int *dest);
 
 mce_context_t* connect_mce_or_exit(option_t* options);
 int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
@@ -70,5 +67,9 @@ char *initline1, char *initline2 /*init lines to be included in <servo_init> sec
 
 
 /* experiment.cfg assist */
-config_setting_t* load_config(char *filename);
-int* load_int_array(config_setting_t *cfg, char *name, int n);
+config_setting_t* load_config(const char *filename);
+int load_int_array(config_setting_t *cfg, char *name, int start, int count, int *data);
+int load_double_array(config_setting_t *cfg, char *name, int start, int count, double *data);
+int load_double(config_setting_t *cfg, char *name, double *dest);
+int load_int(config_setting_t *cfg, char *name, int *dest);
+

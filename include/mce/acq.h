@@ -72,6 +72,7 @@ struct mce_acq_struct {
 
 	int status;
 	int cards;                      // Bit mask of RCs reporting
+	int n_cards;                    // Number of RCs reporting
 	int rows;                       // Number of rows reported
 	int cols;                       // Number of columns reported
 	int row0[MCEDATA_CARDS];        // Index, by RC, of first row reported

@@ -20,6 +20,37 @@
  *
  ***********************************************************/
 
+
+struct {
+
+  char *filename; /* Basename for output data */
+
+  int rc;         /* [1,2,3,4] or 0 for RCS */
+  int column_0;   /* First column to servo */
+  int column_n;   /* Number of columns to servo (and number in readout frame) */
+
+  int rows;       /* Row count */
+
+  int bias_active;
+  int bias;
+  int dbias;
+  int nbias;
+  
+  int fb;
+  int dfb;
+  int nfb;
+  
+  int sfb_init[MAXCOLS];
+
+  double target[MAXCOLS];
+  double gain[MAXCOLS];
+  int quanta[MAXCOLS];
+
+  int row_choice[MAXCOLS];
+	
+} control;
+
+
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 		mce_param_t *m_sq2fb_col, int biasing_ac,
 		i32 *data, int offset, int count);
@@ -29,68 +60,79 @@ int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
  * frame_callback: to store the frame to a file and fill row_data
  * 
  **********************************************************/
-int frame_callback(unsigned long user_data, int frame_size, u32 *data) {
-
+int frame_callback(unsigned long user_data, int frame_size, u32 *data)
+{
   //Re-type 
   servo_t *myservo = (servo_t*)user_data;
-  
-  fwrite(data, sizeof(u32), frame_size, myservo->df);
-   
-  myservo->fcount ++;
 
-  int i;
-  u32 *lastrow_base;
-  //printf("\nframe %d: ",myservo->fcount);
-  for (i=(myservo->which_rc - 1)*8; i<(myservo->which_rc)*8; i++) {
-    lastrow_base = data + HEADER_OFFSET + (myservo->row_num[i])*MAXCHANNELS;
-    myservo->row_data[i] = (int) *(lastrow_base + i%8);
-    //printf ("c%dr%d %d\t", i,myservo->row_num[i], myservo->row_data[i]); 
-  }
+  // Write frame to our data file
+  fwrite(data, sizeof(u32), frame_size, myservo->df);
+
+  // Copy header and data into myservo struct
+  memcpy(myservo->last_header, data, HEADER_OFFSET*sizeof(*data));
+  memcpy(myservo->last_frame, data + HEADER_OFFSET,
+	 control.rows * control.column_n * sizeof(*data));
+
+  myservo->fcount ++;
   return 0;
 }
+
+
+/* Parameters for management of the servo.  Filled in from experiment.cfg
+   or command line options. */
+
+int load_exp_config(const char *filename)
+{
+  config_setting_t* cfg = load_config(filename);
+
+  load_int(cfg, "sq1_servo_flux_start", &control.fb);
+  load_int(cfg, "sq1_servo_flux_count", &control.nfb);
+  load_int(cfg, "sq1_servo_flux_step", &control.dfb);
+
+  load_int(cfg, "sq1_servo_bias_ramp", &control.bias_active);
+  load_int(cfg, "sq1_servo_bias_start", &control.bias);
+  load_int(cfg, "sq1_servo_bias_count", &control.nbias);
+  load_int(cfg, "sq1_servo_bias_step", &control.dbias);
+
+  load_double_array(cfg, "sq1_servo_gain",
+		    control.column_0, control.column_n, control.gain);
+  load_int_array(cfg, "sq2_fb",
+		 control.column_0, control.column_n, control.sfb_init);
+  // Clear!
+  for (int i=0; i<control.column_n; i++)
+    control.sfb_init[i] = 0;
+
+  load_int_array(cfg, "sq2_flux_quanta",
+		 control.column_0, control.column_n, control.quanta);
+
+  load_int_array(cfg, "sq2_rows",
+		 control.column_0, control.column_n, control.row_choice);
+
+  return 0;
+}
+
 /************************************************************
  *          M A I N
  ************************************************************/
 int main ( int argc, char **argv )
 {
-   char datafile[MAXLINE];          /* datafile being written by DAS */
    char full_datafilename[MAXLINE]; /*full path for datafile*/
    char *datadir;
-   char sq2fb_initfile[MAXLINE];    /* filename for sq2fb.init*/
-   char row_initfile[MAXLINE];
    
    i32 temparr[MAXTEMP];
   
-   int i=0, j, snum;        /* loop counters */
+   int i, j, snum;          /* loop counters */
  
    FILE *fd;                /* pointer to output file*/
-   FILE *tempf;             /* pointer to sq2fb.init file*/
    char outfile[MAXLINE];   /* output data file */
-   char line[MAXLINE];
    char init_line1[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char init_line2[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char tempbuf[MAXLINE];
 
-   double gain;             /* servo gain (=P=I) */
    char *endptr;
-   int nbias;
-   int nfeed;
-   u32 row_order[MAXROWS];  /* MCE multiplexing order */
-   i32 sq2fb[MAXVOLTS];     /* sq2 feedback voltages */
-   int sq1bias;             /* SQ2 bias voltage */
-   int sq1bstep;            /* SQ2 bias voltage step */
-   int sq1feed;             /* SQ2 feedback voltage */
-   int sq1fstep;            /* SQ2 feedback voltage step */
-   double z;                /* servo feedback offset */
-   int which_rc;
-   int soffset;
-   int total_row;
-   int skip_sq1bias = 0;
+   i32 sq2fb[MAXCOLS];      /* sq2 feedback voltages */
    int biasing_ac = 0;      /* does MCE have a biasing address card? */
    
-   config_setting_t *cfg;   /* experiment.cfg data */
-   int *sq2_quanta;          /* Series array phi0 in feedback units */
-
    int error=0;
    char errmsg_temp[MAXLINE];
    
@@ -102,6 +144,8 @@ int main ( int argc, char **argv )
      cmd_device:    DEFAULT_CMDFILE,
      data_device:   DEFAULT_DATAFILE,
      hardware_file: DEFAULT_HARDWAREFILE,
+     experiment_file: DEFAULT_EXPERIMENTFILE,
+     argument_opts: 0,
    };
    int arg_offset = 0;
    
@@ -111,18 +155,16 @@ int main ( int argc, char **argv )
    arg_offset = process_options(&options, argc, argv) - 1;
    if (arg_offset < 0)
      exit(ERR_NUM_ARGS);
-/*    if (options.preservo > 0) { */
-/*      fprintf(stderr, "This application does not yet support preservo steps!\n"); */
-/*      exit(ERR_UNIMPL); */
-/*    } */
-
    
    // Correct argc and argv for the remaining options (hack!)
    argc -= arg_offset;
    argv += arg_offset;
 
-   /* check command-line arguments */
-   if (argc != 12 && argc != 13) {
+   int args_ok = ((options.argument_opts && (argc == 12 || argc == 13)) ||
+		  (!options.argument_opts && (argc == 3)));
+   if (!args_ok)
+      printf("Rev. 3.0\n");
+   if (!args_ok && options.argument_opts) {
       printf ( "Rev. 2.1\n");
       printf ( "usage:- sq1servo outfile sq1bias sq1bstep nbias " );
       printf ( "sq1fb sq1fstep nfb N target total_row gain skip_sq1bias\n" );
@@ -142,54 +184,92 @@ int main ( int argc, char **argv )
       ERRPRINT("no argument specified");
       return ERR_NUM_ARGS;
    }
-
-   /* Get range of values for second stage SQUIDs */
-   strcpy(datafile, argv[1]);
-   sq1bias = atoi ( argv[2] );
-   sq1bstep = atoi ( argv[3] );
-   nbias = atoi ( argv[4] );
-   sq1feed = atoi ( argv[5] );
-   sq1fstep = atoi ( argv[6] );
-   nfeed = atoi ( argv[7] );
-   which_rc = atoi (argv[8]);
-   z = atoi (argv[9]);
-   total_row = atoi(argv[10]);
-   gain = strtod (argv[11], &endptr);
-   if (argc == 13) {
-     skip_sq1bias = atoi(argv[12]);
-     if (nbias <1 ) nbias = 1;
-     //printf("No SQ1 bias is applied!\n");
+   if (!args_ok && !options.argument_opts) {
+     printf("When ramp parameters are loaded from experiment.cfg, arguments are:\n"
+	    "    sq1servo [options] <rc> <filename>\n\n"
+	    "where\n"
+	    "    rc           readout card number (1-4)\n"
+	    "    filename     output file basename ($$MAS_DATA will be prepended)\n");
+     //    return ERR_NUM_ARGS;
    }
-   else 
-     skip_sq1bias = 0;
-   
-   // All of our per-column parameters must be written at the right index
-   soffset = (which_rc-1)*MAXCHANNELS;
 
-   // Try to load SQ2 quanta
-   cfg = load_config("/data/cryo/current_data/experiment.cfg");
-   sq2_quanta = load_int_array(cfg, "sq2_flux_quanta", soffset+MAXCHANNELS);
-   if (sq2_quanta==NULL) {
-     ERRPRINT("Could not load 'sq2_flux_quanta' from config file.");
-     exit(ERR_MCE_ECFG);
-   } else {
-     for (i=0; i<MAXCHANNELS; i++) {
-       int q = sq2_quanta[i+soffset];
-       sq2_quanta[i+soffset] = q * (SQ2_BAC_DAC / q);
+   memset(&control, 0, sizeof(control));
+
+   if (options.argument_opts) {
+     control.filename = argv[1];
+
+     control.bias = atoi(argv[2]);
+     control.dbias = atoi(argv[3]);
+     control.nbias = atoi(argv[4]);
+     
+     control.fb = atoi(argv[5]);
+     control.dfb = atoi(argv[6]);
+     control.nfb = atoi(argv[7]);
+
+     // This does not support RCS
+     control.rc = atoi(argv[8]);
+     control.column_n = 8;
+     control.column_0 = (control.rc - 1)*8;
+     control.rows = atoi(argv[10]);
+
+     for (i=0; i<control.column_n; i++) {
+       control.target[i] = atoi(argv[9]);
+       control.gain[i] = strtod(argv[11], &endptr);
      }
+
+     control.bias_active = 1;
+     if (argc == 13)
+       control.bias_active = !(atoi(argv[12]));
+   } else {
+     argv[2] = argv[1];
+     argv[1] = argv[8];
+     if (argv[1][0] == 's') {
+       control.rc = 0;
+       control.column_0 = 0;
+     } else {
+       control.rc = atoi(argv[1]);
+       control.column_0 = (control.rc - 1)*8;
+     }
+     // Fill in control.column_n later when we create the acq.
+     control.filename = argv[2];
    }
 
+   // Setup a call back function for frame data
+   servo_t sq1servo;
+   mcedata_storage_t* ramb;
+   ramb = mcedata_rambuff_create(frame_callback, (unsigned long) &sq1servo);
+   
    // Create MCE context
    mce_context_t *mce = connect_mce_or_exit(&options);
 
-   // Lookup MCE parameters, or exit with error message.
-   mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_nrows_rep, m_retdat,
-     m_sq2fb_col[MAXVOLTS], m_row_order;
+   // Configure acquisition (and use it to load important frame params...)
+   int cards = 0; // By default, this will cause RCS
+   if (control.rc != 0)
+     cards = 1<<(control.rc-1);
+   mce_acq_t acq;
+   error = mcedata_acq_create(&acq, mce, 0, cards, control.rows, ramb);
+   if (error != 0) {
+     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
+     ERRPRINT(errmsg_temp);
+     return ERR_MCE_GO;
+   }
+   control.rows = acq.rows;
+   control.column_n = acq.cols * acq.n_cards;
+   if (!options.argument_opts)
+     load_exp_config(options.experiment_file);
 
-   load_param_or_exit(mce, &m_row_order, RO_CARD, ROW_ORDER, 0);
+   printf("Card bits=%#x, column count=%i num_rows_reported=%d\n",
+	  acq.cards, control.column_n, control.rows);
+
+   // Make sure we servo exactly once when bias is supressed.
+   if (!control.bias_active)
+     control.nbias = 1;
+
+   // Lookup MCE parameters, or exit with error message.
+   mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_sq2fb_col[MAXCOLS];
+
    load_param_or_exit(mce, &m_sq1fb,   SQ1_CARD, SQ1_FB, 0);
    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
-   load_param_or_exit(mce, &m_nrows_rep, "cc", "num_rows_reported", 0);
 
    // Check for biasing address card
    error = load_param_or_exit(mce, &m_sq2fb,   SQ2_CARD, SQ2_FB, 1);
@@ -204,54 +284,17 @@ int main ( int argc, char **argv )
      biasing_ac = 1;
      
      // Load params for all columns
-     for (i=0; i<MAXCHANNELS; i++) {
-       sprintf(tempbuf, "%s%i", SQ2_FB_COL, i+soffset);
+     for (i=0; i<control.column_n; i++) {
+       sprintf(tempbuf, "%s%i", SQ2_FB_COL, i+control.column_0);
        load_param_or_exit(mce, m_sq2fb_col+i, SQ2_CARD, tempbuf, 0);
      }
    }     
-
-   // Make sure this card can go!
-   sprintf(tempbuf, "rc%i", which_rc);
-   load_param_or_exit(mce, &m_retdat, tempbuf, "ret_dat", 0);
-
-   u32 nrows_rep;
-   if ((error=mcecmd_read_element(mce, &m_nrows_rep, 0, &nrows_rep)) != 0) {
-     sprintf(errmsg_temp, "rb cc num_rows_reported failed with %d", error);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_RB;
-   }
-
-   if ((error=mcecmd_read_range(mce, &m_row_order, 0, row_order, MAXROWS)) != 0) {
-     sprintf(errmsg_temp, "rb ac row_order failed with %d", error);
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_RB;
-   }
-
-   // Our callback will update the counter in this structure
-   servo_t sq1servo;
-   sq1servo.fcount = 0;
-   sq1servo.which_rc=which_rc;
-
-   // setup a call back function
-   mcedata_storage_t* ramb;
-   ramb = mcedata_rambuff_create(frame_callback, (unsigned long) &sq1servo);
-   
-   // Pick a card (won't work for rcs!!)
-   int cards=(1<<(which_rc-1));
-   printf("Card bits=%#x, num_rows_reported=%d\n", cards, (int)nrows_rep);
-   mce_acq_t acq;
-   error = mcedata_acq_create(&acq, mce, 0, cards, (int) nrows_rep, ramb);
-   if (error != 0) {
-     sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
-     ERRPRINT(errmsg_temp);
-     return ERR_MCE_GO;
-   }
 
    if ((datadir=getenv("MAS_DATA")) == NULL) {
      ERRPRINT("Enviro var. $MAS_DATA not set, quit");
      return ERR_DATA_DIR;
    }
-   sprintf(full_datafilename, "%s%s",datadir, datafile);
+   sprintf(full_datafilename, "%s%s",datadir, control.filename);
    
    // open a datafile 
    if ((sq1servo.df = fopen(full_datafilename, "w")) == NULL) {
@@ -261,130 +304,110 @@ int main ( int argc, char **argv )
    }
                           
    /* Open output file to append modified data set */
-   sprintf(outfile, "%s%s.bias", datadir, datafile);
+   sprintf(outfile, "%s%s.bias", datadir, control.filename);
    fd = fopen ( outfile, "a" );
 
-   /* Get starting SQ2 feedback values  from a file called sq2fb.init*/
-   strcpy (sq2fb_initfile, datadir);
-   strcat (sq2fb_initfile, "sq2fb.init");
-   if ((tempf = fopen (sq2fb_initfile, "r")) == NULL) {
-      sprintf (errmsg_temp,"failed to open sq2fb.init (%s) to read initial settings for sq2fb", sq2fb_initfile);
-      ERRPRINT(errmsg_temp);
-      return ERR_S2FB_INI;
-   }
-   /*prepare a line of init values for runfile*/
-   sprintf(init_line1, "<sq2fb.init> ");
-   for (j=0; j< which_rc*MAXCHANNELS; j++) {
-     if (fgets(line, MAXLINE, tempf) == NULL) {
-       ERRPRINT ("reading sq2fb.init quitting....");
-       return ERR_INI_READ;
+   if (options.argument_opts) {
+     /* Get starting SQ2 feedback values  from a file called sq2fb.init*/
+     load_initfile(datadir, "sq2fb.init", control.column_0, control.column_n, sq2fb);
+     sprintf(init_line1, "<sq2fb.init> ");
+     /* prepare a line of init values for runfile*/
+     for (j=0; j<control.column_n; j++) {
+       sprintf(tempbuf, "%d ", sq2fb[j]);
+       strcat(init_line1, tempbuf);
      }
-     sq2fb[j] = atoi (line );
-     sprintf(tempbuf, "%d ", sq2fb[j]);
-     strcat(init_line1, tempbuf);
-   }
-   fclose(tempf);
 
-   /* Get row number for each column to servo on*/
-   strcpy (row_initfile, datadir);
-   strcat (row_initfile, "row.init");
-   if ((tempf = fopen (row_initfile, "r")) == NULL) {
-      sprintf (errmsg_temp, "failed to open row.init (%s) to read row numbers to servo on", row_initfile);
-      ERRPRINT(errmsg_temp);
-      return ERR_DATA_ROW;
+     load_initfile(datadir, "row.init", control.column_0, control.column_n, control.row_choice);
+   } else {
+     // Initialize servo output
+     for (j=0; j<control.column_n; j++)
+	 sq2fb[j] = control.sfb_init[j];
    }
+
    /*prepare a line of init values for runfile*/
    sprintf(init_line2, "<row.init> ");
-   for (j=0; j< which_rc*MAXCHANNELS; j++) {
-     if (fgets(line, MAXLINE, tempf) == NULL) {
-       ERRPRINT("reading row.init quitting....");
-       return ERR_INI_READ;
-     }
-     sq1servo.row_num[j] = atoi (line );
-     sprintf(tempbuf, "%d ", sq1servo.row_num[j]);
+   for (j=0; j<control.column_n; j++) {
+     sprintf(tempbuf, "%d ", control.row_choice[j]);
      strcat(init_line2, tempbuf);
-     if (sq1servo.row_num[j] < 0 || sq1servo.row_num[j] > nrows_rep) {
-       sprintf (errmsg_temp, "out-of-range entry in row.init: %d\n"
-		" Valid range is: 0<row_num<%d (num_rows_reported)", 
-		sq1servo.row_num[j], nrows_rep); 
-       ERRPRINT(errmsg_temp);
-       return ERR_INI_READ;
-     } 
    }
-   fclose(tempf);
 
    /** generate a runfile **/
-   error=genrunfile (full_datafilename, datafile, 1, which_rc, 
-                      sq1bias, sq1bstep, nbias, sq1feed, sq1fstep, nfeed, 
-                      init_line1, init_line2);
+   error=genrunfile (full_datafilename, control.filename, 1, control.rc,
+		     control.bias, control.dbias, control.nbias,
+		     control.fb, control.dfb, control.nfb, 
+		     init_line1, init_line2);
    if (error != 0) {
-     sprintf(errmsg_temp, "genrunfile %s.run failed with %d", datafile, error);
+     sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);
      return ERR_RUN_FILE;
    }
 
    /* generate the header line for the bias file*/
-   for (snum=0; snum<MAXCHANNELS; snum++)
-     fprintf ( fd, "  <error%02d> ", snum + soffset);
+   for (snum=0; snum<control.column_n; snum++)
+     fprintf ( fd, "  <error%02d> ", snum + control.column_0);
          
-   for (snum=0; snum<MAXCHANNELS; snum++)
-      fprintf ( fd, "  <sq2fb%02d> ", snum + soffset); 
+   for (snum=0; snum<control.column_n; snum++)
+      fprintf ( fd, "  <sq2fb%02d> ", snum + control.column_0); 
    fprintf ( fd, "\n");
 
    /* start the servo*/
-   for (j=0; j<nbias; j++) {
+   for (j=0; j<control.nbias; j++ ){
 
-      if (!skip_sq1bias) {
-	duplicate_fill(sq1bias + j*sq1bstep, temparr, MAXROWS);
+      if (control.bias_active) {
+	// Write *all* sq1bias here, or row-order destroys you.
+	duplicate_fill(control.bias + j*control.dbias, temparr, MAXROWS);
         if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (u32*)temparr)) != 0) 
           error_action("mcecmd_write_block sq1bias", error);
       }
 
       // Initialize SQ1 FB
-      duplicate_fill(sq1feed, temparr, MAXCHANNELS);
-      write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");
+      duplicate_fill(control.fb, temparr, control.column_n);
+      write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
 
       // Preservo and run the FB ramp.
-      for (i=-options.preservo; i<nfeed; i++) {
+      for (i=-options.preservo; i<control.nfb; i++ ){
 
 	// Write SQ2 FB
-	rerange(temparr, sq2fb+soffset, MAXCHANNELS, sq2_quanta+soffset, MAXCHANNELS);
-	write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, biasing_ac, temparr, soffset, MAXCHANNELS);
+	rerange(temparr, sq2fb, control.column_n, control.quanta, control.column_n);
+	write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, biasing_ac, temparr, control.column_0, control.column_n);
 
 	if (i > 0) {
-	  // Advance SQ1 FB
-	  duplicate_fill(sq1feed + i*sq1fstep, temparr, MAXCHANNELS);
-	  write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");
+	  // Next sq1 fb ramp value.
+	  duplicate_fill(control.fb + i*control.dfb, temparr, control.column_n);
+	  write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
 	}
 	
-	// Acquire error
+	// Get a frame
 	if ((error=mcedata_acq_go(&acq, 1)) != 0)
 	  error_action("data acquisition failed", error);
 
 	// Update output
-	for (snum=0; snum<MAXCHANNELS; snum++)
-	  sq2fb[soffset+snum] += gain * (sq1servo.row_data[soffset+snum] - z);
+	for (snum=0; snum<control.column_n; snum++) {
+	  int idx = snum + control.column_n * control.row_choice[snum];
+	  sq1servo.last_frame[snum] = sq1servo.last_frame[idx]; // For printing, below.
+	  sq2fb[snum] += control.gain[snum] * ((int)sq1servo.last_frame[snum] - control.target[snum]);
+	}
 
 	if (i >= 0) {
 	  // Record
-	  for (snum=0; snum<MAXCHANNELS; snum++)	 
-	    fprintf(fd, "%11d ", sq1servo.row_data[snum+soffset]);
-	  for (snum=0; snum<MAXCHANNELS; snum++)
-	    fprintf ( fd, "%11d ", sq2fb[snum + soffset]);
+	  for (snum=0; snum<control.column_n; snum++)	 
+	    fprintf(fd, "%11d ", sq1servo.last_frame[snum]);
+	  for (snum=0; snum<control.column_n; snum++)
+	    fprintf ( fd, "%11d ", sq2fb[snum]);
 	  fprintf ( fd, "\n" );
 	}
       }
    }
 
    /* reset values back to 0 */
-   duplicate_fill(0, temparr, MAXCHANNELS);
-   write_range_or_exit(mce, &m_sq2fb, soffset, temparr, MAXCHANNELS, "sq2fb");
+   duplicate_fill(0, temparr, control.column_n);
+   write_range_or_exit(mce, &m_sq2fb, control.column_0, temparr, control.column_n, "sq2fb");
  
-   duplicate_fill(-8192, temparr, MAXCHANNELS);
-   write_range_or_exit(mce, &m_sq1fb, soffset, temparr, MAXCHANNELS, "sq1fb");	
+   duplicate_fill(-8192, temparr, control.column_n);
+   write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");	
    
-   if (!skip_sq1bias) {
-     duplicate_fill(-8192, temparr, MAXROWS);
+   if (control.bias_active) {
+     duplicate_fill(0, temparr, MAXROWS);
      if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (u32*)temparr)) != 0) 
        error_action("mcecmd_write_block sq1bias", error);
    }
@@ -420,7 +443,7 @@ int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");
 		}
 	} else {
-		write_range_or_exit(mce, m_sq2fb, offset, data, MAXCHANNELS, "sq2fb");
+		write_range_or_exit(mce, m_sq2fb, offset, data, control.column_n, "sq2fb");
 	}
 	return 0;
 }
