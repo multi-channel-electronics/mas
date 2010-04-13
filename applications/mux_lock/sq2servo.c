@@ -209,8 +209,6 @@ int main (int argc, char **argv)
      if (argc == 12)
        control.bias_active = !(atoi(argv[11]));
    } else {
-     argv[2] = argv[1];
-     argv[1] = argv[8];
      if (argv[1][0] == 's') {
        control.rc = 0;
        control.column_0 = 0;

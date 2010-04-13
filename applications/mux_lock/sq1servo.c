@@ -165,7 +165,6 @@ int main ( int argc, char **argv )
    if (!args_ok)
       printf("Rev. 3.0\n");
    if (!args_ok && options.argument_opts) {
-      printf ( "Rev. 2.1\n");
       printf ( "usage:- sq1servo outfile sq1bias sq1bstep nbias " );
       printf ( "sq1fb sq1fstep nfb N target total_row gain skip_sq1bias\n" );
       printf ( "   outfile = filename for output data\n" );
@@ -221,8 +220,6 @@ int main ( int argc, char **argv )
      if (argc == 13)
        control.bias_active = !(atoi(argv[12]));
    } else {
-     argv[2] = argv[1];
-     argv[1] = argv[8];
      if (argv[1][0] == 's') {
        control.rc = 0;
        control.column_0 = 0;
