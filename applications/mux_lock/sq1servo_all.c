@@ -306,6 +306,7 @@ int main(int argc, char **argv)
        strcat(init_line1, tempbuf);
      }
    } else {
+     init_line1[0]='\0';
      // Initialize servo output
      for (j=0; j<control.column_n; j++)
        for (i=0; i<control.rows; i++) 
