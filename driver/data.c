@@ -154,11 +154,7 @@ int data_frame_contribute(int new_head, int card)
 	} else {
 		dframes->head_index = new_head;
 	}
-
-	if (!dframes->task_pending) {
-		dframes->task_pending = 1;
-		tasklet_schedule(&dframes->grant_tasklet);
-	}
+	dsp_request_grant(card, dframes->tail_index);
 
 	wake_up_interruptible(&dframes->queue);
 
@@ -648,10 +644,6 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 
 	init_waitqueue_head(&dframes->queue);
 
-	tasklet_init(&dframes->grant_tasklet,
-		     data_grant_task, (unsigned long)dframes);
-	dframes->task_pending = 0;
-
 	err = data_alloc(mem_size, data_size, card);
 	if (err != 0) return err;
 
@@ -695,7 +687,6 @@ int data_remove(int card)
 	if(dframes->data_mode != DATAMODE_CLASSIC)
 		data_qt_enable(0, card);
 
-	tasklet_kill(&dframes->grant_tasklet);
 	return data_free(card);
 }
 

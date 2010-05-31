@@ -3,9 +3,6 @@
 
   Contains all PCI related code, including register definitions and
   lowest level i/o routines.
-
-  Spoofing can be accomplished at this level by setting up alternate
-  handlers for reads and writes to the PCI card.
 */
 
 #include <linux/kernel.h>
@@ -104,14 +101,32 @@ typedef struct {
 
 #define MAX_HANDLERS 16
 
+/* Here's the deal with the states.  When a DSP command is issued,
+ * IDLE -> CMD.  At this time the commander may request that RESERVE
+ * be set.  The CMD bit is cleared once the DSP reply is received (or
+ * times out).  The RESERVE bit must be cleared by whomever set it (or
+ * someone else).  When either of CMD or RESERVE are set, no DSP
+ * commands can be issued and send_command will return -EAGAIN.
+ *
+ * High priority tasks include the clearing of the quiet-RP buffer
+ * (RPC) and the sending of frame buffer updates to the DSP (INFORM).
+ * When these flags (PRIORITY) are set, the driver sets a tasklet to
+ * accomplish them and in the meantime blocks any other DSP commands.
+ *
+ */
 
 typedef enum {
-
-	DDAT_IDLE = 0,
-	DDAT_CMD,
-	DDAT_RES = 0x80,
-
+	/* These are bit flags.  Except IDLE.  It's nothin'. */
+	DDAT_IDLE     = 0x00,
+	DDAT_CMD      = 0x01, /* Command in progress; awaiting reply */
+	DDAT_RESERVE  = 0x02, /* Commander is reserved by some agent */
+	DDAT_INFORM   = 0x10, /* Next command is priority QTS */
+	DDAT_RPC      = 0x20, /* RP flag needs to be cleared ASAP */
+        /* Masks */
+	DDAT_BUSY     = 0x0F, /* Commander unavailable, for anything. */
+	DDAT_PRIORITY = 0xF0, /* Outstanding priority tasks */
 } dsp_state_t;
+
 
 /* This structure helps provide a blocking commander that can service
    other driver levels. */
@@ -175,6 +190,9 @@ struct dsp_dev_t {
 	dsp_command last_command;
 	dsp_callback callback;
 
+	int inform_tail;
+ 	struct tasklet_struct priority_tasklet;
+
 } dsp_dev[MAX_CARDS];
 
 
@@ -185,7 +203,6 @@ void  dsp_driver_remove(struct pci_dev *pci);
 int   dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id);
 
 static int dsp_quick_command(struct dsp_dev_t *dev, u32 vector);
-
 
 /* Data for PCI enumeration */
 
@@ -337,7 +354,6 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 		// Store a copy of the callback address before going to IDLE
 		callback = dev->callback;
 		dev->state &= ~DDAT_CMD;
-		dev->rep_count++;
 	} else {
 		PRINT_ERR(SUBNAME
 			  "unexpected REP received [state=%i, %i %i].\n",
@@ -368,6 +384,10 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 		callback(0, msg, card);
 	}
 
+	DDAT_LOCK;
+	dev->state &= ~DDAT_CMD;
+	dev->rep_count++;
+	DDAT_UNLOCK;
 	return 0;
 }
 #undef SUBNAME
@@ -537,25 +557,41 @@ int dsp_send_command_now(struct dsp_dev_t *dev, dsp_command *cmd)
 /* For better or worse, this routine returns linux error codes.
    
    The callback error codes are 0 (success, msg will be non-null) or
-   DSP_ERR_TIMEOUT (failure, msg will be null).                    */
+   DSP_ERR_TIMEOUT (failure, msg will be null).
+
+   The "reserve" option can be a combination of:
+      DSP_REQ_RESERVE - execute the command (if possible) and also
+                        reserve the DSP (while awaiting an MCE reply,
+                        for example).
+      DSP_REQ_PRIORITY - execute as high-priority (should only be used
+                         by the priority tasklet).
+*/
+
 #define SUBNAME "dsp_send_command: "
-int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card, int reserve)
+
+int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card,
+		     dsp_request_t reserve)
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
 	unsigned int irqflags;
 	int err = 0;
 
 	DDAT_LOCK;
-	if (dev->state != DDAT_IDLE) {
+	
+	// Locked due to command, reservation, or pending priority command?
+	if ((dev->state & DDAT_BUSY) ||
+	    ((dev->state & DDAT_PRIORITY) && (reserve != DSP_REQ_PRIORITY))
+		) {
 		DDAT_UNLOCK;
 		return -EAGAIN;
 	}
 	
 	PRINT_INFO(SUBNAME "send %i\n", dev->cmd_count+1);
 	if ((err = dsp_send_command_now(dev, cmd)) == 0) {
-		dev->state = DDAT_CMD;
-		if (reserve)
-			dev->state |= DDAT_RES;
+		dev->state |= DDAT_CMD;
+		// Commander reserves DSP?
+		if (reserve == DSP_REQ_RESERVE)
+			dev->state |= DDAT_RESERVE;
 		dev->cmd_count++;
 		dev->callback = callback;
 		mod_timer(&dev->tim_dsp, jiffies + DSP_DEFAULT_TIMEOUT);
@@ -568,14 +604,13 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card, int rese
 #undef SUBNAME
 
 
-int dsp_unreserve(int card)
+void dsp_unreserve(int card)
 {
 	unsigned int irqflags;
 	struct dsp_dev_t *dev = dsp_dev + card;
 	DDAT_LOCK;
-	dev->state &= ~DDAT_RES;
+	dev->state &= ~DDAT_RESERVE;
 	DDAT_UNLOCK;
-	return 0;
 }
 
 
@@ -611,7 +646,7 @@ void dsp_send_command_or_schedule(unsigned long data)
 	if (err == 0)
 		return;
 	if (err == -EAGAIN) {
-		if (dev->local.reschedule_count++ > LOCAL_MAX_RESCHED) {
+		if (0) {//dev->local.reschedule_count++ > LOCAL_MAX_RESCHED) {
 			PRINT_ERR(SUBNAME "Rescheduled > %i times.\n",
 				  LOCAL_MAX_RESCHED);
 		} else {
@@ -668,6 +703,117 @@ int dsp_send_command_wait(dsp_command *cmd,
 }
 #undef SUBNAME
 
+#define SUBNAME "data_grant_callback: "
+int dsp_grant_now_callback( int error, dsp_message *msg, int card)
+{
+	if (error != 0 || msg==NULL) {
+		PRINT_ERR(SUBNAME "error or NULL message.\n");
+	}
+	return 0;		
+}
+#undef SUBNAME
+
+int dsp_grant_now(int new_tail, int card)
+{
+	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, new_tail, 0 } };
+	return dsp_send_command( &cmd, dsp_grant_now_callback, card, DSP_REQ_PRIORITY);
+}
+
+int dsp_clear_RP_now(struct dsp_dev_t *dev)
+{
+	unsigned int irqflags;
+ 	dsp_command cmd = { DSP_INT_RPC, {0, 0, 0} };
+	int err;
+	DDAT_LOCK;
+	if  (dev->state & DDAT_CMD)
+		err = -EAGAIN;
+	else
+		err = dsp_send_command_now(dev, &cmd);
+	DDAT_UNLOCK;
+	return err;
+}
+
+
+#define SUBNAME "dsp_priority_task: "
+
+/* This function runs from a tasklet and is responsible for running
+ * top-priority DSP actions, such as clearing the RPQ buffer and
+ * writing QT inform packets to the DSP.  As long as priority events
+ * are outstanding, no other commands can be processed.  */
+
+void dsp_priority_task(unsigned long data)
+{
+	int card = (int)data;
+	struct dsp_dev_t *dev = dsp_dev+card;
+	unsigned int irqflags;
+	int err = 0;
+	int success_mask = ~0;
+	DDAT_LOCK;
+	if (dev->state & DDAT_RPC) {
+		DDAT_UNLOCK;
+		err = dsp_clear_RP_now(dev);
+		success_mask = ~DDAT_RPC;
+	} else if (dev->state & DDAT_INFORM) {
+		int tail = dev->inform_tail;
+		DDAT_UNLOCK;
+		err = dsp_grant_now(tail, card);
+		success_mask = ~DDAT_INFORM;
+	} else {
+		DDAT_UNLOCK;
+		PRINT_ERR(SUBNAME "extra schedule.\n");
+		return;
+	}
+
+	DDAT_LOCK;
+	// Only retry on -EAGAIN, which is not considered to be an error.
+	if (err == -EAGAIN) {
+		err = 0;
+	} else {
+		dev->state &= success_mask;
+		err = 0;
+	}
+	// Reschedule if there are any priority tasks
+	if (dev->state & DDAT_PRIORITY)
+		tasklet_schedule(&dev->priority_tasklet);
+	DDAT_UNLOCK;
+
+	if (err != 0)
+		PRINT_ERR(SUBNAME "weird error calling dsp_grant_now (task %i)\n", ~success_mask);
+}
+#undef SUBNAME
+
+
+int dsp_request_grant(int card, int new_tail)
+{
+	struct dsp_dev_t *dev = dsp_dev + card;
+	unsigned int irqflags;
+
+	DDAT_LOCK;
+	// Only reanimate the tasklet if it's not active.
+	if (!(dev->state & DDAT_PRIORITY))
+		tasklet_schedule(&dev->priority_tasklet);
+	dev->state |= DDAT_INFORM;
+	dev->inform_tail = new_tail;
+	DDAT_UNLOCK;
+
+	return 0;
+}
+
+/* dsp_clear_RP will set the priority flag so that RP is cleared at
+ * the earliest opportunity.
+ */
+
+void dsp_request_clear_RP(int card)
+{
+	unsigned int irqflags;
+	struct dsp_dev_t *dev = dsp_dev + card;
+	DDAT_LOCK;
+	if (!(dev->state & DDAT_PRIORITY))
+		tasklet_schedule(&dev->priority_tasklet);
+	dev->state |= DDAT_RPC;
+	DDAT_UNLOCK;
+}
+
 /*
  *  Initialization and clean-up
  */
@@ -702,26 +848,6 @@ int dsp_query_version(int card)
 	return 0;
 }
 #undef SUBNAME
-
-/* dsp_clear_RP will attempt to clear the RP buffer on the DSP.  The
- * DSP may be busy, however, in which case -EAGAIN is returned.
- */
-
-int dsp_clear_RP(int card)
-{
-	unsigned int irqflags;
-	struct dsp_dev_t *dev = dsp_dev + card;
-	dsp_command cmd = { DSP_INT_RPC, {0, 0, 0} };
-	int err;
-
-	DDAT_LOCK;
-	if  (dev->state & DDAT_CMD)
-		err = -EAGAIN;
-	else
-		err = dsp_send_command_now(dev, &cmd);
-	DDAT_UNLOCK;
-	return err;
-}
 
 #define SUBNAME "dsp_timer_function: "
 void dsp_timer_function(unsigned long data)
@@ -1058,7 +1184,7 @@ int dsp_proc(char *buf, int count, int card)
 			len += sprintf(buf+len, "commanded");
 		else
 			len += sprintf(buf+len, "     idle");
-		if (dev->state & DDAT_RES)
+		if (dev->state & DDAT_RESERVE)
 			len += sprintf(buf+len, " (reserved)\n");
 		else
 			len += sprintf(buf+len, "\n");
@@ -1108,6 +1234,9 @@ int dsp_configure(struct pci_dev *pci)
 	dev->tim_dsp.function = dsp_timeout;
 	dev->tim_dsp.data = (unsigned long)dev;
 	dev->state = DDAT_IDLE;
+
+	// Data granting task
+	tasklet_init(&dev->priority_tasklet, dsp_priority_task, (unsigned long)card);
 
 	// PCI paperwork
 	err = pci_enable_device(dev->pci);
@@ -1233,7 +1362,8 @@ void dsp_driver_remove(struct pci_dev *pci)
 	mce_remove(card);
 	del_timer_sync(&dev->tim_dsp);
 
-	// Hopefully this isn't still running...
+	// Hopefully these aren't still running...
+	tasklet_kill(&dev->priority_tasklet);
 	tasklet_kill(&dev->handshake_tasklet);
 
 	// Revert card to default mode

@@ -88,6 +88,19 @@ typedef struct {
 
 #pragma pack()
 
+/* The request flags allow special actions to be taken in association
+ * with a DSP command request.  If DSP_REQ_RESERVE is passed, the
+ * driver will begin to block additional commands.  This can be used
+ * to force the DSP to sit mostly IDLE while awaiting an MCE reply,
+ * for example.  */
+
+typedef enum {
+	DSP_REQ_NORMAL = 0,
+	DSP_REQ_RESERVE,
+	DSP_REQ_PRIORITY,
+} dsp_request_t;
+
+
 typedef enum { DSP_PCI, DSP_POLL } dsp_int_mode;
 
 typedef int (*dsp_callback)(int, dsp_message*, int);
@@ -98,13 +111,16 @@ typedef int (*dsp_handler)(dsp_message *, unsigned long data);
 
 int dsp_ready(int card);
 
-int dsp_unreserve(int card);
+void dsp_unreserve(int card);
 
-int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card, int reserve);
+int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card,
+		     dsp_request_t reserve);
 
 int   dsp_send_command_wait(dsp_command *cmd, dsp_message *msg, int card);
 
-int   dsp_clear_RP(int card);
+void  dsp_request_clear_RP(int card);
+
+int   dsp_request_grant(int card, int new_tail);
 
 int   dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
 

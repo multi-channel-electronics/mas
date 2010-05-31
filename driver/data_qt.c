@@ -52,53 +52,6 @@ int mce_qti_handler (dsp_message *msg, unsigned long data)
 }
 #undef SUBNAME
 
-#define SUBNAME "data_grant_callback: "
-int  data_grant_callback( int error, dsp_message *msg, int card)
-{
-	if (error != 0 || msg==NULL) {
-		PRINT_ERR(SUBNAME "error or NULL message.\n");
-	}
-	return 0;		
-}
-#undef SUBNAME
-
-#define SUBNAME "data_grant_task: "
-void data_grant_task(unsigned long data)
-{
-	frame_buffer_t *dframes = (frame_buffer_t *)data;
-	int card = dframes - data_frames;
-	int err;
-
-	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, dframes->tail_index, 0 } };
-
-	PRINT_INFO(SUBNAME "trying update to tail=%i\n", dframes->tail_index);
-	err = dsp_send_command( &cmd, data_grant_callback, card, 0);
-	if (err == -EAGAIN) {
-		if (dframes->grant_sched_count == 0)
-			PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
-		dframes->grant_sched_count++;
-		tasklet_schedule(&dframes->grant_tasklet);
-		return;
-	} else if (err != 0) {
-		PRINT_ERR(SUBNAME "dsp_send_command returned error %#x\n", err);
-	} else if (dframes->grant_sched_count != 0) {
-		PRINT_ERR(SUBNAME "succeeded after %i tries.\n",
-			  dframes->grant_sched_count);
-	}
-	dframes->task_pending = 0;
-	dframes->grant_sched_count = 0;
-}
-#undef SUBNAME
-
-//FIX ME: mce_driver.c needs this function instead
-/* int data_qt_cmd( dsp_qt_code code, int arg1, int arg2, int card) */
-/* { */
-/* 	dsp_command cmd = { DSP_QTS, {code,arg1,arg2} }; */
-/* 	dsp_message reply; */
-/* 	return dsp_send_command_wait( &cmd, &reply, card); */
-/* }	 */
-
-
 #define SUBNAME "data_qt_enable: "
 int data_qt_enable(int on, int card) 
 {

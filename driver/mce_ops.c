@@ -235,7 +235,6 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	struct mce_ops_t *mops = mce_ops + fpdata->minor;
 	int err = 0;
 	int ret_val = 0;
-	int i;
 
 	PRINT_INFO(SUBNAME "state=%#x\n", mops->state);
 
@@ -287,25 +286,24 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 
 	mops->state = OPS_CMD;
 	mops->commander = fpdata;
-	for (i=0; i<MAX_CMD_RETRY; i++) {
+	while (1) {
 		err = mce_send_command(&mops->cmd, mce_write_callback,
-				       1, fpdata->minor);
-		// If there's an -EAGAIN and we're blocking, we can loop again.
-		if ((filp->f_flags & O_NONBLOCK) || !(err == -MCE_ERR_INT_BUSY))
+				       filp->f_flags & O_NONBLOCK, fpdata->minor);
+		if (err != -MCE_ERR_INT_BUSY && !(filp->f_flags & O_NONBLOCK))
 			break;
 	}
-	if (err == 0) {
+	switch(err) {
+	case 0:
 		ret_val = count;
-	} else {
+		break;
+	default:
+		PRINT_ERR(SUBNAME "mce_send_command failed (%i), returning %i\n",
+			  err, ret_val);
 		mops->state = OPS_IDLE;
-		if (err==-MCE_ERR_INT_BUSY && i<MAX_CMD_RETRY) {
-			ret_val = -EAGAIN;
-		} else {
-			PRINT_ERR(SUBNAME "mce_send_command failed\n");
-			fpdata->error = err;
-			ret_val = 0;
-		}
+		fpdata->error = err;
+		break;
 	}
+
  out:
 	up(&mops->sem);
 
