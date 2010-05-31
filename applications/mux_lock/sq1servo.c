@@ -162,10 +162,11 @@ int main ( int argc, char **argv )
 
    int args_ok = ((options.argument_opts && (argc == 12 || argc == 13)) ||
 		  (!options.argument_opts && (argc == 3)));
-   if (!args_ok)
+   if (!args_ok) {
       printf("Rev. 3.0\n");
+      printf("  (pass -E0 to get command line control of ramp parameters)\n");
+   }
    if (!args_ok && options.argument_opts) {
-      printf ( "Rev. 2.1\n");
       printf ( "usage:- sq1servo outfile sq1bias sq1bstep nbias " );
       printf ( "sq1fb sq1fstep nfb N target total_row gain skip_sq1bias\n" );
       printf ( "   outfile = filename for output data\n" );
@@ -190,7 +191,7 @@ int main ( int argc, char **argv )
 	    "where\n"
 	    "    rc           readout card number (1-4)\n"
 	    "    filename     output file basename ($$MAS_DATA will be prepended)\n");
-     //    return ERR_NUM_ARGS;
+     return ERR_NUM_ARGS;
    }
 
    memset(&control, 0, sizeof(control));
@@ -221,8 +222,6 @@ int main ( int argc, char **argv )
      if (argc == 13)
        control.bias_active = !(atoi(argv[12]));
    } else {
-     argv[2] = argv[1];
-     argv[1] = argv[8];
      if (argv[1][0] == 's') {
        control.rc = 0;
        control.column_0 = 0;
