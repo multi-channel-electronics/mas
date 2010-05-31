@@ -1,5 +1,5 @@
 /*
-  dsp_pci.c
+  dsp_driver.c
 
   Contains all PCI related code, including register definitions and
   lowest level i/o routines.
@@ -120,8 +120,9 @@ typedef enum {
 	DDAT_IDLE     = 0x00,
 	DDAT_CMD      = 0x01, /* Command in progress; awaiting reply */
 	DDAT_RESERVE  = 0x02, /* Commander is reserved by some agent */
-	DDAT_INFORM   = 0x10, /* Next command is priority QTS */
+	DDAT_INFORM   = 0x10, /* QT system wants to write grant to DSP */
 	DDAT_RPC      = 0x20, /* RP flag needs to be cleared ASAP */
+	DDAT_DSP_INT  = 0x40, /* Oustanding internal DSP command, e.g. QTS. */
         /* Masks */
 	DDAT_BUSY     = 0x0F, /* Commander unavailable, for anything. */
 	DDAT_PRIORITY = 0xF0, /* Outstanding priority tasks */
@@ -131,11 +132,7 @@ typedef enum {
 /* This structure helps provide a blocking commander that can service
    other driver levels. */
 
-#define LOCAL_MAX_RESCHED 100
-
 struct dsp_local {
-
-	struct semaphore sem;
 	wait_queue_head_t queue;
 	dsp_command *cmd;
 	dsp_message *msg;
@@ -143,8 +140,6 @@ struct dsp_local {
 #define   LOCAL_CMD 0x01
 #define   LOCAL_REP 0x02
 #define   LOCAL_ERR 0x08
-	int reschedule_count;
- 	struct tasklet_struct send_tasklet;
 };
 
 
@@ -190,6 +185,7 @@ struct dsp_dev_t {
 	dsp_command last_command;
 	dsp_callback callback;
 
+	/* Priority stuff */
 	int inform_tail;
  	struct tasklet_struct priority_tasklet;
 
@@ -353,7 +349,6 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 			   "REP received, calling back.\n");
 		// Store a copy of the callback address before going to IDLE
 		callback = dev->callback;
-		dev->state &= ~DDAT_CMD;
 	} else {
 		PRINT_ERR(SUBNAME
 			  "unexpected REP received [state=%i, %i %i].\n",
@@ -378,7 +373,6 @@ int dsp_reply_handler(dsp_message *msg, unsigned long data)
 			   msg->type, msg->command, msg->reply, msg->data);
 	}
 		
-	// Command state is IDLE, so callback routines may issue DSP cmds.
 	if (callback != NULL) {
 		int card = dev - dsp_dev;
 		callback(0, msg, card);
@@ -410,18 +404,16 @@ void dsp_timeout(unsigned long data)
 {
 	unsigned long irqflags;
 	struct dsp_dev_t *dev = (struct dsp_dev_t*)data;
-	dsp_callback callback = dev->callback;
 
 	DDAT_LOCK;
 	if (dev->state & DDAT_CMD) {
-		callback = dev->callback;
 		dev->state &= ~DDAT_CMD;
 		DDAT_UNLOCK;
 
 		PRINT_ERR(SUBNAME "dsp reply timed out!\n");
-		if (callback != NULL) {
+		if (dev->callback != NULL) {
 			int card = dev - dsp_dev;
-			callback(-DSP_ERR_TIMEOUT, NULL, card);
+			dev->callback(-DSP_ERR_TIMEOUT, NULL, card);
 		}
 	} else {
 		DDAT_UNLOCK;
@@ -617,6 +609,7 @@ void dsp_unreserve(int card)
 #define SUBNAME "dsp_send_command_wait_callback"
 int dsp_send_command_wait_callback(int error, dsp_message *msg, int card)
 {
+	unsigned long irqflags;
 	struct dsp_dev_t *dev = dsp_dev + card;
 
 	if (dev->local.flags != LOCAL_CMD) {
@@ -627,36 +620,12 @@ int dsp_send_command_wait_callback(int error, dsp_message *msg, int card)
 		return -1;
 	}
 	memcpy(dev->local.msg, msg, sizeof(*dev->local.msg));
+	DDAT_LOCK;
 	dev->local.flags |= LOCAL_REP;
 	wake_up_interruptible(&dev->local.queue);
+	DDAT_UNLOCK;
 
 	return 0;
-}
-#undef SUBNAME
-
-
-#define SUBNAME "dsp_send_command_or_schedule: "
-void dsp_send_command_or_schedule(unsigned long data)
-{
-	struct dsp_dev_t *dev = (struct dsp_dev_t *)data;
-	int card = dev - dsp_dev;
-	int err = dsp_send_command(dev->local.cmd,
-				   dsp_send_command_wait_callback, card, 0);
-	// Mission accomplished?  Wait for callback.
-	if (err == 0)
-		return;
-	if (err == -EAGAIN) {
-		if (0) {//dev->local.reschedule_count++ > LOCAL_MAX_RESCHED) {
-			PRINT_ERR(SUBNAME "Rescheduled > %i times.\n",
-				  LOCAL_MAX_RESCHED);
-		} else {
-			tasklet_schedule(&dev->local.send_tasklet);
-			return;
-		}
-	} 
-	// If we don't reschedule, set error and awaken sleepers.
-	dev->local.flags |= LOCAL_ERR;
-	wake_up_interruptible(&dev->local.queue);
 }
 #undef SUBNAME
 
@@ -665,40 +634,45 @@ void dsp_send_command_or_schedule(unsigned long data)
 int dsp_send_command_wait(dsp_command *cmd,
 			  dsp_message *msg, int card)
 {
+	unsigned long irqflags;
 	struct dsp_dev_t *dev = dsp_dev + card;
 	int err = 0;
 
 	PRINT_INFO(SUBNAME "entry\n");
 
-	// Try to get our sem
-	if (down_trylock(&dev->local.sem))
-		return -ERESTARTSYS;
-
-	//Register command and message pointers for tasklet/callback
+	DDAT_LOCK;
+	// Loop until we can write in our message
+	while (dev->local.flags != 0) {
+		DDAT_UNLOCK;
+		if (wait_event_interruptible(dev->local.queue,
+					     dev->local.flags == 0)) {
+			return -ERESTARTSYS;
+		}
+		DDAT_LOCK;
+	}
+	if (!(dev->state & DDAT_PRIORITY))
+		tasklet_schedule(&dev->priority_tasklet);
+	dev->state |= DDAT_DSP_INT;
 	dev->local.cmd = cmd;
 	dev->local.msg = msg;
 	dev->local.flags = LOCAL_CMD;
-
-	// Hold the semaphore while the commanding happens...
-	//  it may get rescheduled a few times.
-	dev->local.reschedule_count = 0;
-	dsp_send_command_or_schedule((unsigned long)dev);
+	DDAT_UNLOCK;
 
 	PRINT_INFO(SUBNAME "commanded, waiting\n");
 	if (wait_event_interruptible(dev->local.queue,
-				     dev->local.flags
-				     & (LOCAL_REP | LOCAL_ERR))) {
+				     dev->local.flags != LOCAL_CMD)) {
 		dev->local.flags = 0;
-		err = -ERESTARTSYS;
-		goto up_and_out;
+		return -ERESTARTSYS;
 	}
 	
+	// Get spin lock, clear flags, wake up sleepers again.
+	DDAT_LOCK;
 	err = (dev->local.flags & LOCAL_ERR) ? -EIO : 0;
-	
- up_and_out:
+	dev->local.flags = 0;
+	wake_up_interruptible(&dev->local.queue);
+	DDAT_UNLOCK;
 
 	PRINT_INFO(SUBNAME "returning %x\n", err);
-	up(&dev->local.sem);
 	return err;
 }
 #undef SUBNAME
@@ -712,12 +686,6 @@ int dsp_grant_now_callback( int error, dsp_message *msg, int card)
 	return 0;		
 }
 #undef SUBNAME
-
-int dsp_grant_now(int new_tail, int card)
-{
-	dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, new_tail, 0 } };
-	return dsp_send_command( &cmd, dsp_grant_now_callback, card, DSP_REQ_PRIORITY);
-}
 
 int dsp_clear_RP_now(struct dsp_dev_t *dev)
 {
@@ -748,18 +716,18 @@ void dsp_priority_task(unsigned long data)
 	unsigned int irqflags;
 	int err = 0;
 	int success_mask = ~0;
-	DDAT_LOCK;
 	if (dev->state & DDAT_RPC) {
-		DDAT_UNLOCK;
 		err = dsp_clear_RP_now(dev);
 		success_mask = ~DDAT_RPC;
+	} else if (dev->state & DDAT_DSP_INT) {
+		err = dsp_send_command(dev->local.cmd, &dsp_send_command_wait_callback,
+				       card, DSP_REQ_PRIORITY);
+		success_mask = ~DDAT_DSP_INT;
 	} else if (dev->state & DDAT_INFORM) {
-		int tail = dev->inform_tail;
-		DDAT_UNLOCK;
-		err = dsp_grant_now(tail, card);
+		dsp_command cmd = { DSP_QTS, { DSP_QT_TAIL, dev->inform_tail, 0 } };
+		err = dsp_send_command(&cmd, dsp_grant_now_callback, card, DSP_REQ_PRIORITY);
 		success_mask = ~DDAT_INFORM;
 	} else {
-		DDAT_UNLOCK;
 		PRINT_ERR(SUBNAME "extra schedule.\n");
 		return;
 	}
@@ -1225,10 +1193,7 @@ int dsp_configure(struct pci_dev *pci)
 		     dsp_ack_int_or_schedule, (unsigned long)dev);
 	spin_lock_init(&dev->lock);
 
-	init_MUTEX(&dev->local.sem);
 	init_waitqueue_head(&dev->local.queue);
-	tasklet_init(&dev->local.send_tasklet,
-		     dsp_send_command_or_schedule, (unsigned long)dev);
 
 	init_timer(&dev->tim_dsp);
 	dev->tim_dsp.function = dsp_timeout;
