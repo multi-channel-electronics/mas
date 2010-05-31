@@ -204,6 +204,7 @@ mce_interface_t *fake_mce_create(int card)
 {
  	struct mce_control *mdat = mce_dat + card;
 	frame_buffer_mem_t *mem = NULL;
+	int mem_size = FRAME_BUFFER_MAX_SIZE;
 	int err = 0;
 
 	PRINT_ERR("entry\n");
@@ -218,10 +219,11 @@ mce_interface_t *fake_mce_create(int card)
 	mdat->state = MDAT_IDLE;
 	mdat->data_flags = 0;
 
-	if (FRAME_BUFFER_SIZE <= 128*1024)
-		mem = basicmem_alloc(FRAME_BUFFER_SIZE, NULL);
-	else
-		mem = pcimem_alloc(FRAME_BUFFER_SIZE, NULL);
+	for (; mem_size >= FRAME_BUFFER_MIN_SIZE; mem_size /= 2) {
+		mem = pcimem_alloc(mem_size, NULL);
+		if (mem != NULL)
+			break;
+	}
 	if (mem == NULL) {
 		PRINT_ERR("failed to allocate frame buffer.\n");
 		goto out;

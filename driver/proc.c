@@ -14,6 +14,7 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 		len += sprintf(buf+len,"\nmce_dsp driver version %s\n",
 			       VERSION_STRING);
 		len += sprintf(buf+len,"    fakemce:  "
+
 #ifdef FAKEMCE
 			       "yes\n"
 #else

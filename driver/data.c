@@ -423,8 +423,10 @@ int data_proc(char *buf, int count, int card)
 	if (len < count) {
 		len += sprintf(buf+len, "    %-22s 0x%p\n",
 			       "virtual:", dframes->mem->base);
-		len += sprintf(buf+len, "    %-22s %#lx\n",
+		len += sprintf(buf+len, "    %-22s %#18lx\n",
 			       "bus:", dframes->mem->bus_addr);
+		len += sprintf(buf+len, "    %-22s %18i\n",
+			       "size:", dframes->mem->size);
 	}
 	if (len < count)
 		len += sprintf(buf+len, "    %-15s %25i\n", "count:", dframes->max_index);
@@ -435,9 +437,9 @@ int data_proc(char *buf, int count, int card)
 	if (len < count)
 		len += sprintf(buf+len, "    %-15s %25i\n", "drops:", dframes->dropped);
 	if (len < count)
-		len += sprintf(buf+len, "    %-15s %#25x\n", "size:", dframes->frame_size);
+		len += sprintf(buf+len, "    %-15s %#25x\n", "frame_size:", dframes->frame_size);
 	if (len < count)
-		len += sprintf(buf+len, "    %-15s %#25x\n", "data:", dframes->data_size);
+		len += sprintf(buf+len, "    %-15s %#25x\n", "data_size:", dframes->data_size);
 	if (len < count) {
 		char sstr[64];
 		switch (dframes->data_mode) {

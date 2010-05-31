@@ -40,19 +40,11 @@
 
 
 /*
-  FRAME_BUFFER_SIZE - must be reduced if BIGPHYS is not used
+  FRAME_BUFFER_{MAX,MIN}_SIZE - in bytes; should be powers of 2.
 */
 
-#ifndef BIGPHYS
-
-#  define FRAME_BUFFER_SIZE (1024*1024*4)
-
-#else
-
-#  define FRAME_BUFFER_SIZE 10e6
-
-#endif
-
+#define FRAME_BUFFER_MAX_SIZE (8 * 0x100000)
+#define FRAME_BUFFER_MIN_SIZE (1 * 0x100000)
 
 /*
   FAKE_MCE_COUNT, FAKE_MCE_MINOR - number and minor offset of any

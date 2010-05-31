@@ -745,6 +745,7 @@ mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version)
  	struct mce_control *mdat = mce_dat + card;
 	frame_buffer_t *dframes = data_frames + card;
 	frame_buffer_mem_t *mem = NULL;
+	int mem_size = FRAME_BUFFER_MAX_SIZE;
 	int i;
 
 	PRINT_INFO("entry\n");
@@ -776,14 +777,19 @@ mce_interface_t *real_mce_create(int card, struct device *dev, int dsp_version)
 	if (mce_buffer_allocate(&mdat->buff, dev))
 		goto out;
 
+	// Allocate a large frame buffer
+	for (; mem_size >= FRAME_BUFFER_MIN_SIZE; mem_size /= 2) {
 #ifdef BIGPHYS
-	mem = bigphys_alloc(FRAME_BUFFER_SIZE, dev);
+		mem = bigphys_alloc(mem_size, dev);
 #else
-	mem = pcimem_alloc(FRAME_BUFFER_SIZE, dev);
+		mem = pcimem_alloc(mem_size, dev);
 #endif
+		if (mem != NULL)
+			break;
+	}
 	if (mem == NULL) {
-		PRINT_ERR("could not allocate %i on card %i\n",
-			  (int)FRAME_BUFFER_SIZE, card);
+		PRINT_ERR("could not allocate frame buffer on card %i\n",
+			  card);
 		goto out;
 	}
 
