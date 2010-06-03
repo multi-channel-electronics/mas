@@ -11,6 +11,7 @@
 
 #include "mce_options.h"
 #include "kversion.h"
+#include "version.h"
 
 #ifdef REALTIME
 #include <rtai.h>
@@ -1449,7 +1450,7 @@ inline int dsp_driver_init(void)
 	int i = 0;
 	int err = 0;
 
-	PRINT_INFO(SUBNAME "driver init...\n");
+	PRINT_ERR("MAS driver version %s\n", VERSION_STRING);
 	for(i=0; i<MAX_CARDS; i++) {
 		struct dsp_dev_t *dev = dsp_dev + i;
 		memset(dev, 0, sizeof(*dev));
