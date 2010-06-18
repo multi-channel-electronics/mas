@@ -113,7 +113,7 @@
                 status = 0;
             },
 
-#ifdef BIASING_AC
+#if defined (BIASING_AC) || defined (BC_REVF)
             {
                 name = "sq2";
                 nature = "virtual";

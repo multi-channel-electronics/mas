@@ -21,7 +21,11 @@ hardware:
 #       include "cards/ac-5"
 #       include "cards/cc-5"
 #	include "cards/rc-5"
+#ifdef BC_REVF
+#       include "cards/bc-5-revF"
+#else
 #       include "cards/bc-5"
+#endif /* BC_REVF */
 #       include "cards/psc"
 #       include "cards/sys-5"
 #ifdef BIASING_AC
