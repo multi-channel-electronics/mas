@@ -38,9 +38,9 @@ class xmce(mce.mce):
     def _rcs_cards(self, index=False):
         rc = self.read('cc', 'rcs_to_report_data', array=False)
         if index:
-            return [ i for i,b in enumerate([5,4,3,2]) if (rc ^ (1 << b)) ]
+            return [ i for i,b in enumerate([5,4,3,2]) if (rc & (1 << b)) ]
         else:
-            return [ bool(rc ^ (1 << b)) for b in [5,4,3,2] ]
+            return [ bool(rc & (1 << b)) for b in [5,4,3,2] ]
 
     def _rcs_columns(self):
         cards = self._rcs_cards()
