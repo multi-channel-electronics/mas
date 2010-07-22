@@ -1,0 +1,61 @@
+/*
+   Master template for MCE hardware config files.
+
+   For now this system supports:
+	- full and small sub-racks
+	- biasing address card
+	- 16 TES bias line configuration for small sub-racks
+ */
+
+
+hardware:
+{
+    parameter_defaults = {
+        count = 1;
+        type = "mem";
+    };
+
+    parameter_sets = (
+
+<?php
+    /**/
+include "cards/open-5";
+include "cards/ac-5";
+include "cards/cc-5";
+include "cards/rc-5";
+if ($hw_rev["bc"] == "revF")
+	include "cards/bc-5-revF";
+else
+	include "cards/bc-5";
+include "cards/psc";
+include "cards/sys-5";
+if ($hw_bac)
+	include "cards/bac-5"
+?>
+
+        {
+            name = "dummy";
+            parameters = ();
+        }
+    );
+
+    mappings = (
+
+<?
+include "mappings/squids-full";
+include "mappings/tes";
+?>
+
+        {
+            name = "dummy";
+            parameters = ();
+        }
+    );
+
+<?
+include "mappings/card-types";
+
+include "systems/subrack-full";
+?>
+
+};

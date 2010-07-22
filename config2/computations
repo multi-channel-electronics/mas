@@ -1,0 +1,71 @@
+<?php
+/* fool c-mode  */
+
+/* All possible readout cards. */
+
+$RC_LIST = array("rc1", "rc2", "rc3", "rc4");
+
+
+/* Compute flags for readout cards in this system. */
+$rc_present = array();
+$num_rc = 0;
+foreach( $RC_LIST as $rc ) {
+  array_push($rc_present, in_array($rc, $card_list));
+  $num_rc += 1;
+}
+
+
+/* Squid systems (bias card DAC sets) have width based on subrack
+   size. */
+
+if ($hw_subrack == "full")
+  $num_columns = 32;
+else
+  $num_columns = 16;
+
+
+/* Functions for mappings */
+
+
+function rc_map($param) {
+    global $rc_present, $RC_LIST;
+    $out = "";
+    foreach ($rc_present as $i => $ok) {
+        if (! $ok) continue;
+        $count = 8;
+        $start = $i * 8;
+	$rc = $RC_LIST[$i];
+        $out .= "                             " .
+	  "{ start= {$start}; count={$count}; card=\"{$rc}\"; param=\"{$param}\"; offset=0; },\n";
+    }
+    // Remove final comma/linefeed
+    $out = substr($out,0,-2);
+    return $out;
+}
+
+function fw_range($card, $min=NULL, $max=NULL) {
+  global $fw_rev;
+  if (($min != NULL) && ($fw_rev[$card] < $min))
+    return FALSE;
+  if (($max != NULL) && ($fw_rev[$card] > $max))
+    return FALSE;
+  return TRUE;
+}
+
+function map_array($prefix, $count, $card, $length) {
+  $output = "";
+  for ($i=0; $i<$count; $i++) {
+    $output += "                {  name=\"{$prefix}{$i}\"; count={$length}; " .
+        "maps=( { start=0;count={$length};card=\"{$card}\";param=\"{$prefix}{$i}\";" .
+        "offset=0; }); },\n";
+  }
+  $output = substr($output, 0, -2);
+  return $output;
+}
+
+
+/* Identify new bias card firmware that supports fast switching */
+$fw_rev_bc_fast = fw_range("bc", $min=0x5000002);
+
+
+?>

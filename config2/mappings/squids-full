@@ -1,0 +1,103 @@
+        {
+            name = "sa_mapping";
+            parameters = (
+                {
+                    name = "fb";
+                    count = <?=$num_columns?>;
+                    maps = ({ start= 0; count=<?=$num_columns?>; card="bc1"; param="flux_fb"; offset=0; });
+                },
+                {
+                    name = "bias";
+                    count = <?=$num_columns?>;
+                    maps = (
+<? echo rc_map("sa_bias"); ?>
+   			   );
+                },
+                {
+                    name = "offset";
+                    count = <?=$num_columns?>;
+                    maps = (
+<? echo rc_map("offset"); ?>
+                           );
+                }
+            );
+        },
+<?
+/*
+   The fast_sq2_mapping is available on:
+   - biasing address card
+   - ordinary bias card with firmware post-5.something
+*/
+   if ($hw_bac) {
+?>
+        {
+            name = "fast_sq2_mapping";
+            parameters = (
+<?    echo map_array("fb_col", $num_columns, "bac", 41);  ?>,
+                {
+                    name = "bias";
+                    count = <?=$num_columns?>;
+<?    if ($hw_subrack == "full") { ?>
+                    maps = ( { start= 0; count=32; card="bc3"; param="flux_fb"; offset=0; } );
+<?    } else { ?>
+                    maps = ( { start= 0; count=16; card="bc1"; param="flux_fb"; offset=16; } );
+<?    } ?>
+                },
+                {
+                    name = "enbl_mux";
+                    count = 1;
+                    maps = ( { start= 0; count=1; card="bac"; param="enbl_mux"; offset=0; } );
+                }
+            );
+        },
+<? } elseif (fw_range("bc", $min=0x5000000)) { ?>
+        {
+            name = "sq2_mapping";
+            parameters = (
+                {
+                    name = "fb";
+<?    if ($hw_subrack == "full") { ?>
+                    count = 32;
+                    maps = ( { start= 0; count=32; card="bc2"; param="flux_fb"; offset=0; } );
+<?    } else { ?>
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc2"; param="flux_fb"; offset=16; } );
+<?    } ?>
+                },
+                {
+                    name = "bias";
+<?    if ($hw_subrack == "full") { ?>
+                    count = 32;
+                    maps = ( { start= 0; count=32; card="bc3"; param="flux_fb"; offset=0; } );
+<?    } else { ?>
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc1"; param="flux_fb"; offset=16; } );
+<?    } ?>
+                }
+            );
+        },
+<? } /* if bac */?>
+        {
+            name = "sq1_mapping";
+            parameters = (
+                {
+                    name = "bias";
+                    count = 41;
+                    maps = ( { start= 0; count=41; card="ac"; param="on_bias"; offset=0; });
+                },
+                {
+                    name = "fb_const";
+                    count = <?=$num_columns?>;
+                    maps = (
+<? echo rc_map("fb_const"); ?>
+                           );
+                },
+                {
+                    name = "servo_mode";
+                    count = <?=$num_columns?>;
+                    maps = (
+<? echo rc_map("servo_mode"); ?>
+                           );
+                }
+            );
+        },

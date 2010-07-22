@@ -1,0 +1,163 @@
+        {
+            name = "sa_mapping";
+            parameters = (
+                {
+                    name = "fb";
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc1"; param="flux_fb"; offset=0; });
+                },
+                {
+                    name = "bias";
+                    count = 16;
+                    maps = ( { start= 0; count=8; card="rc1"; param="sa_bias"; offset=0; },
+                         { start= 8; count=8; card="rc2"; param="sa_bias"; offset=0; } );
+                },
+                {
+                    name = "offset";
+                    count = 16;
+                    maps = ( { start= 0; count=8; card="rc1"; param="offset"; offset=0; },
+                         { start= 8; count=8; card="rc2"; param="offset"; offset=0; } );
+                }
+            );
+        },
+#ifdef BIASING_AC
+        {
+            name = "fast_sq2_mapping";
+            parameters = (
+                {  name = "fb_col0"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col0";offset=0; }); },
+                {  name = "fb_col1"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col1";offset=0; }); },
+                {  name = "fb_col2"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col2";offset=0; }); },
+                {  name = "fb_col3"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col3";offset=0; }); },
+                {  name = "fb_col4"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col4";offset=0; }); },
+                {  name = "fb_col5"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col5";offset=0; }); },
+                {  name = "fb_col6"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col6";offset=0; }); },
+                {  name = "fb_col7"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col7";offset=0; }); },
+                {  name = "fb_col8"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col8";offset=0; }); },
+                {  name = "fb_col9"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col9";offset=0; }); },
+                {  name = "fb_col10"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col10";offset=0; }); },
+                {  name = "fb_col11"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col11";offset=0; }); },
+                {  name = "fb_col12"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col12";offset=0; }); },
+                {  name = "fb_col13"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col13";offset=0; }); },
+                {  name = "fb_col14"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col14";offset=0; }); },
+                {  name = "fb_col15"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col15";offset=0; }); },
+                {  name = "fb_col16"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col16";offset=0; }); },
+                {  name = "fb_col17"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col17";offset=0; }); },
+                {  name = "fb_col18"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col18";offset=0; }); },
+                {  name = "fb_col19"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col19";offset=0; }); },
+                {  name = "fb_col20"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col20";offset=0; }); },
+                {  name = "fb_col21"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col21";offset=0; }); },
+                {  name = "fb_col22"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col22";offset=0; }); },
+                {  name = "fb_col23"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col23";offset=0; }); },
+                {  name = "fb_col24"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col24";offset=0; }); },
+                {  name = "fb_col25"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col25";offset=0; }); },
+                {  name = "fb_col26"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col26";offset=0; }); },
+                {  name = "fb_col27"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col27";offset=0; }); },
+                {  name = "fb_col28"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col28";offset=0; }); },
+                {  name = "fb_col29"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col29";offset=0; }); },
+                {  name = "fb_col30"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col30";offset=0; }); },
+                {  name = "fb_col31"; count=41; maps=( { start=0;count=41;card="bac";param="fb_col31";offset=0; }); },
+                {
+                    name = "bias";
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc1"; param="flux_fb"; offset=16; } );
+                },
+                {
+                    name = "enbl_mux";
+                    count = 1;
+                    maps = ( { start= 0; count=1; card="bac"; param="enbl_mux"; offset=0; } );
+                }
+            );
+        },
+#elif BC_REVF
+        {
+            name = "fast_sq2_mapping";
+            parameters = (
+                {  name = "fb_col0"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col0";offset=0; }); },
+                {  name = "fb_col1"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col1";offset=0; }); },
+                {  name = "fb_col2"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col2";offset=0; }); },
+                {  name = "fb_col3"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col3";offset=0; }); },
+                {  name = "fb_col4"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col4";offset=0; }); },
+                {  name = "fb_col5"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col5";offset=0; }); },
+                {  name = "fb_col6"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col6";offset=0; }); },
+                {  name = "fb_col7"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col7";offset=0; }); },
+                {  name = "fb_col8"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col8";offset=0; }); },
+                {  name = "fb_col9"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col9";offset=0; }); },
+                {  name = "fb_col10"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col10";offset=0; }); },
+                {  name = "fb_col11"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col11";offset=0; }); },
+                {  name = "fb_col12"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col12";offset=0; }); },
+                {  name = "fb_col13"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col13";offset=0; }); },
+                {  name = "fb_col14"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col14";offset=0; }); },
+                {  name = "fb_col15"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col15";offset=0; }); },
+                {  name = "fb_col16"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col16";offset=0; }); },
+                {  name = "fb_col17"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col17";offset=0; }); },
+                {  name = "fb_col18"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col18";offset=0; }); },
+                {  name = "fb_col19"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col19";offset=0; }); },
+                {  name = "fb_col20"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col20";offset=0; }); },
+                {  name = "fb_col21"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col21";offset=0; }); },
+                {  name = "fb_col22"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col22";offset=0; }); },
+                {  name = "fb_col23"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col23";offset=0; }); },
+                {  name = "fb_col24"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col24";offset=0; }); },
+                {  name = "fb_col25"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col25";offset=0; }); },
+                {  name = "fb_col26"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col26";offset=0; }); },
+                {  name = "fb_col27"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col27";offset=0; }); },
+                {  name = "fb_col28"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col28";offset=0; }); },
+                {  name = "fb_col29"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col29";offset=0; }); },
+                {  name = "fb_col30"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col30";offset=0; }); },
+                {  name = "fb_col31"; count=41; maps=( { start=0;count=41;card="bc2";param="fb_col31";offset=0; }); },
+                {
+                    name = "fb";
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc2"; param="flux_fb"; offset=0; });
+                },
+                {
+                    name = "bias";
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc1"; param="flux_fb"; offset=16; } );
+                },
+                {
+                    name = "enbl_mux";
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc2"; param="enbl_mux"; offset=0; } );
+                }
+            );
+        },
+#else
+        {
+            name = "sq2_mapping";
+            parameters = (
+                {
+                    name = "fb";
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc2"; param="flux_fb"; offset=0; });
+                },
+                {
+                    name = "bias";
+                    count = 16;
+                    maps = ( { start= 0; count=16; card="bc1"; param="flux_fb"; offset=16; } );
+                }
+            );
+        },
+
+#endif /* BIASING_AC */
+        {
+            name = "sq1_mapping";
+            parameters = (
+                {
+                    name = "bias";
+                    count = 41;
+                    maps = ( { start= 0; count=41; card="ac"; param="on_bias"; offset=0; });
+                },
+                {
+                    name = "fb_const";
+                    count = 16;
+                    maps = ( { start= 0; count=8; card="rc1"; param="fb_const"; offset=0; },
+                         { start= 8; count=8; card="rc2"; param="fb_const"; offset=0; });
+                },
+                {
+                    name = "servo_mode";
+                    count = 16;
+                    maps = ( { start= 0; count=8; card="rc1"; param="servo_mode"; offset=0; },
+                         { start= 8; count=8; card="rc2"; param="servo_mode"; offset=0; } );
+                }
+            );
+        },

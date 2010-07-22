@@ -1,0 +1,55 @@
+/* Command description file - libconfig syntax */
+
+        {
+            name = "bias commands";
+
+            parameters = (
+<? if (fw_range("bc", $min=0x5000003)) { ?>
+                {
+                    name = "enbl_mux";
+                    id = 0x05;
+		    count = 32;
+                },
+
+<? } ?>
+                {
+                    name = "flux_fb";
+                    id = 0x20;
+                    count = 32;
+                },
+
+                {
+                    name = "bias";
+                    id = 0x21;
+                }
+<? if ($hw_subrack == "small") { ?>
+                ,
+                {
+                    name = "flux_fb_upper";
+                    id = 0x24;
+                    count = 16;
+                }
+<? } ?>
+/*,
+                {
+                    name = "sa_htr0";
+                    id = 0x22;
+                },
+
+                {
+                    name = "sa_htr01";
+                    id = 0x23;
+                }
+*/
+<? if (fw_range("bc", $min=0x5000003)) {
+      $output = "";
+      for ($i=0; $i<$num_columns; $i++) {
+         $id = sprintf("0x%02X", 0xc0 + $i);
+         $output .= "                " .
+	   "{ name = \"fb_col{$i}\"; id = {$id}; count = 41; },\n";
+      }
+      echo substr($output, 0, -2);
+   } ?>
+	      );
+
+        }, // bias commands

@@ -1,0 +1,49 @@
+<?php
+
+/* Describe cards present in MCE
+ *
+ */
+
+
+$card_list = array("ac", "bc1", "bc2", "bc3", "rc1", "rc2", "rc3", "rc4", "cc", "psc");
+
+$virt_list = array("rcs", "rca", "sys", "sa", "sq2", "sq1", "tes");
+
+
+/* Describe firmware configuration */
+
+$fw_para = "v5";
+$fw_rev = array(
+	"cc" => 0x5000002,
+	"rc" => 0x5000000,
+	"bc" => 0x5000002,
+	"ac" => 0x5000000,
+);
+
+
+/* Describe hardware revisions and other stuff*/
+
+$hw_bac = in_array("bac", $card_list);
+
+$hw_rev = array(
+	"bc" => "revD",
+);	
+
+
+/* $hw_subrack should be either "full" or "small" */
+
+$hw_subrack = "full";
+
+
+/* Describe TES line configuration 
+ */
+
+$tes_para = "classic";
+
+
+/* And execute. */
+
+include 'computations';
+include 'templates/master-5.template';
+
+?>

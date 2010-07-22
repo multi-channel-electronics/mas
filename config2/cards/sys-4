@@ -1,0 +1,18 @@
+/* Command description file - libconfig syntax */
+
+        {
+            name = "system commands";
+
+            parameters = (
+                {
+                    name = "num_rows";
+                    id = 0x31;
+                },
+
+                {
+                    name = "row_len";
+                    id = 0x30;
+                }
+            );
+
+        }, // system commands

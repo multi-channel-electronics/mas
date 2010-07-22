@@ -1,0 +1,169 @@
+/* Card listing and parameter mappings - libconfig format
+
+ This file describes a full sub-rack (AC, BC x 3, RC x 4, CC, PSC)
+
+ Set BIASING_AC to substitute a BAC for BC2.
+
+*/
+
+    system = {
+        name = "mce";
+
+        error_bits = 0x00000000;
+        warning_bits = 0x00000000;
+
+        components = (
+
+<? if (in_array("psc", $card_list)) { ?>
+            {
+                name = "psc";
+                nature = "physical";
+                card_type = "power supply card";
+                id = ( 0x01 );
+                error_bits = 0x00000007;
+            },
+<? } ?>
+            {
+                name = "cc";
+                nature = "physical";
+                card_type = "clock card";
+                id = ( 0x02 );
+                error_bits = 0x00000038;
+            },
+<? /* Readout cards */
+   foreach ($rc_present as $i => $ok) {
+     if (!$ok) continue;
+     $rc = $RC_LIST[$i];
+     $id = sprintf("0x%02x", 3+$i);
+     $ebits = sprintf("0x%08X", 0x00038000 >> (3*$i));
+?>
+            {
+                name = "<?=$rc?>";
+                nature = "physical";
+                card_type = "readout card";
+                id = ( <?=$id?> );
+                error_bits = <?=$ebits?>;
+            },
+<? } ?>
+<? if (in_array("bc1", $card_list)) { ?>
+            {
+                name = "bc1";
+                nature = "physical";
+                card_type = "bias card";
+                id = ( 0x07 );
+                error_bits = 0x07000000;
+            },
+<? } ?>
+<? if (in_array("bac", $card_list)) { ?>
+            {
+                name = "bac";
+                nature = "physical";
+                card_type = "biasing-address card";
+                id = ( 0x08 );
+                error_bits = 0x00E00000;
+            },
+<? } ?>
+<? if (in_array("bc2", $card_list)) { ?>
+            {
+                name = "bc2";
+                nature = "physical";
+                card_type = "bias card";
+                id = ( 0x08 );
+                error_bits = 0x00E00000;
+            },
+<? } ?>
+<? if (in_array("bc3", $card_list)) { ?>
+            {
+                name = "bc3";
+                nature = "physical";
+                card_type = "bias card";
+                id = ( 0x09 );
+                error_bits = 0x001C0000;
+            },
+<? } ?>
+<? if (in_array("ac", $card_list)) { ?>
+            {
+                name = "ac";
+                nature = "physical";
+                card_type = "address card";
+                id = ( 0x0A );
+                error_bits = 0x38000000;
+            },
+<? } ?>
+<? if (in_array("rcs", $virt_list)) { ?>
+            {
+                name = "rcs";
+                nature = "physical";
+                card_type = "readout-all go alias";
+                id = ( 0x0B );
+                status = 0;
+            },
+<? } ?>
+<? if (in_array("sys", $virt_list)) { ?>
+            {
+                name = "sys";
+                nature = "physical";
+                card_type = "system alias";
+                id = ( 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A );
+                card_count = 9;
+            },
+<? } ?>
+<? if (in_array("rca", $virt_list)) { ?>
+            {
+                name = "rca";
+                nature = "physical";
+                card_type = "readout-all alias";
+                id = ( 0x03, 0x04, 0x05, 0x06 );
+                status = 0;
+            },
+<? } ?>
+<? if (in_array("sq2", $virt_list)) {
+      if ($hw_bac) {  ?>
+            {
+                name = "sq2";
+                nature = "virtual";
+                mapping = "fast_sq2_mapping_bac";
+            },
+<?    } elseif ($fw_rev_bc_fast) { ?>
+            {
+                name = "sq2";
+                nature = "virtual";
+                mapping = "fast_sq2_mapping";
+            },
+<?    } else { ?>
+            {
+                name = "sq2";
+                nature = "virtual";
+                mapping = "sq2_mapping";
+            },
+<?    } ?>
+<? } ?>
+<? if (in_array("sq1", $virt_list)) { ?>
+            {
+                name = "sq1";
+                nature = "virtual";
+                mapping = "sq1_mapping";
+            },
+<? } ?>
+<? if (in_array("sa", $virt_list)) { ?>
+            {
+                name = "sa";
+                nature = "virtual";
+                mapping = "sa_mapping";
+            },
+<? } ?>
+<? if (in_array("tes", $virt_list)) { ?>
+            {
+                name = "tes";
+                nature = "virtual";
+                mapping = "tes_mapping";
+            },
+<? } ?>
+	    {
+	        name = "_dummy";
+		nature = "virtual";
+		mapping = "none";
+	    }
+        ); //components list
+
+    }; // system
