@@ -14,9 +14,9 @@ $virt_list = array("rcs", "rca", "sys", "sa", "sq2", "sq1", "tes");
 
 $fw_para = "v5";
 $fw_rev = array(
-	"cc" => 0x5000002,
+	"cc" => 0x5000000,
 	"rc" => 0x5000000,
-	"bc" => 0x5000002,
+	"bc" => 0x5000000,
 	"ac" => 0x5000000,
 );
 

@@ -50,7 +50,7 @@
                 }
             );
         },
-<? } elseif (fw_range("bc", $min=0x5000000)) { ?>
+<? } elseif ($fw_rev_bc_fast) { ?>
         {
             name = "sq2_mapping";
             parameters = (

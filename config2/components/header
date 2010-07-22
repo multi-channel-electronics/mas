@@ -66,6 +66,8 @@ function map_array($prefix, $count, $card, $length) {
 
 /* Identify new bias card firmware that supports fast switching */
 $fw_rev_bc_fast = fw_range("bc", $min=0x5000002);
+$fw_rev_cc_awg = fw_range("bc", $min=0x5000003);
+$fw_rev_cc_jtag = fw_range("bc", $min=0x5000005);
 
 
 ?>

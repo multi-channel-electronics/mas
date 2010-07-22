@@ -184,5 +184,67 @@
                     name = "stop_dly";
                     id = 0xB8;
                 }
+<? if ($fw_rev_cc_awg) { ?>
+                ,
+                {
+                    name = "awg_sequence_length";
+                    id = 0xB9;
+                },
+
+                {
+                    name = "awg_data";
+                    id = 0xBA;
+		    count = 32; /* arbitrary, sorta */
+                },
+
+                {
+                    name = "awg_addr";
+                    id = 0xBC;
+                }
+<? } ?>
+<? if ($fw_rev_cc_jtag) { ?>
+                ,
+                {
+                    name = "jtag0";
+                    id = 0xBD;
+		    write_only = 1;
+                },
+
+                {
+                    name = "jtag1";
+                    id = 0xBE;
+		    status = 0;
+                },
+
+                {
+                    name = "jtag2";
+                    id = 0xBF;
+		    write_only = 1;
+                }
+<? } ?>
+<? if ($fw_rev_cc_jtag) { ?>
+                ,
+                {
+                    name = "tms_tdi";
+                    id = 0x50;
+		    write_only = 1;
+                },
+
+                {
+                    name = "tdo";
+                    id = 0xAA;
+		    status = 0;
+                },
+
+                {
+                    name = "tdo_sample_dly";
+                    id = 0xAE;
+                },
+
+                {
+                    name = "tck_half_period";
+                    id = 0xAF;
+                }
+<? } ?>
             );
         }, // clock commands
