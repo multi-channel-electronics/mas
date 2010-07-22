@@ -43,7 +43,6 @@ $tes_para = "classic";
 
 /* And execute. */
 
-include 'computations';
-include 'templates/master.template';
+include 'components/mce';
 
 ?>
