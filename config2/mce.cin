@@ -44,6 +44,6 @@ $tes_para = "classic";
 /* And execute. */
 
 include 'computations';
-include 'templates/master-5.template';
+include 'templates/master.template';
 
 ?>

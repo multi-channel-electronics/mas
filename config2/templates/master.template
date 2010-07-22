@@ -18,19 +18,15 @@ hardware:
     parameter_sets = (
 
 <?php
-    /**/
-include "cards/open-5";
-include "cards/ac-5";
-include "cards/cc-5";
-include "cards/rc-5";
-if ($hw_rev["bc"] == "revF")
-	include "cards/bc-5-revF";
-else
-	include "cards/bc-5";
+include "cards/open";
+include "cards/ac";
+include "cards/cc";
+include "cards/rc";
+include "cards/bc";
 include "cards/psc";
-include "cards/sys-5";
+include "cards/sys";
 if ($hw_bac)
-	include "cards/bac-5"
+	include "cards/bac";
 ?>
 
         {
@@ -42,7 +38,7 @@ if ($hw_bac)
     mappings = (
 
 <?
-include "mappings/squids-full";
+include "mappings/squids";
 include "mappings/tes";
 ?>
 
@@ -55,7 +51,7 @@ include "mappings/tes";
 <?
 include "mappings/card-types";
 
-include "systems/subrack-full";
+include "systems/subrack";
 ?>
 
 };

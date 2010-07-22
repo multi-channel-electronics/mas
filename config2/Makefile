@@ -1,4 +1,4 @@
-default: all
+default: mce.cfg
 
 BASE := ../
 include $(BASE)Makefile.children
@@ -7,6 +7,9 @@ TARGETS=$(shell ./makefile.py --targets)
 DEPS=$(shell ./makefile.py --dependencies)
 
 OTHER_ARGS=--define RC_40E
+
+mce.cfg: mce.cin
+	php mce.cin > mce.cfg
 
 all: $(TARGETS)
 
