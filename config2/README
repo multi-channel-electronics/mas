@@ -1,0 +1,23 @@
+  So you want to amplify your TESes
+=====================================
+
+To create the hardware configuration file (mce.cfg), do the following:
+
+1. Copy a template from the templates folder, e.g.
+
+        cp templates/mce_v1.cin mce.cin
+
+
+2. Modify the template as required (to change the TES configuration,
+   or readout cards, or fast SQ2 switching settings).
+
+
+3. Compile mce.cin into mce.cfg
+
+        make mce.cfg
+
+
+4. Install mce.cfg to /etc
+
+        sudo make install
+
