@@ -1,27 +1,51 @@
 <?php
-/* fool c-mode  */
+
+/*
+ * Constants and functions
+ */
+
+/* Map from card name to hardware address */
+
+$CARD_ADDRESS = array(
+  "psc" => 0x01,
+  "cc"  => 0x02,
+  "rc1" => 0x03,
+  "rc2" => 0x04,
+  "rc3" => 0x05,
+  "rc4" => 0x06,
+  "bc1" => 0x07,
+  "bc2" => 0x08,
+  "bac" => 0x08,
+  "bc3" => 0x09,
+  "ac"  => 0x0a
+);
+
+$CARD_ERRBITS = array(
+  "psc" => 0x00000007,
+  "ac"  => 0x38000000,
+  "bc1" => 0x07000000,
+  "bc2" => 0x00e00000,
+  "bac" => 0x00e00000,
+  "bc3" => 0x001c0000,
+  "rc1" => 0x00038000,
+  "rc2" => 0x00007000,
+  "rc3" => 0x00000e00,
+  "rc4" => 0x000001c0,
+  "cc"  => 0x00000038
+);
+
+
+/* "sys" cards -- order and eligibility */
+
+$SYS_CARDS = array(
+ "cc", "rc1", "rc2", "rc3", "rc4", "bc1", "bc2", "bac", "bc3", "ac"
+);
+
 
 /* All possible readout cards. */
 
 $RC_LIST = array("rc1", "rc2", "rc3", "rc4");
 
-
-/* Compute flags for readout cards in this system. */
-$rc_present = array();
-$num_rc = 0;
-foreach( $RC_LIST as $rc ) {
-  array_push($rc_present, in_array($rc, $card_list));
-  $num_rc += 1;
-}
-
-
-/* Squid systems (bias card DAC sets) have width based on subrack
-   size. */
-
-if ($hw_subrack == "full")
-  $num_columns = 32;
-else
-  $num_columns = 16;
 
 
 /* Functions for mappings */
@@ -53,21 +77,69 @@ function fw_range($card, $min=NULL, $max=NULL) {
 }
 
 function map_array($prefix, $count, $card, $length) {
+  /* For fast SQ2 feedback.  Includes trailing command and line feed. */
   $output = "";
   for ($i=0; $i<$count; $i++) {
-    $output += "                {  name=\"{$prefix}{$i}\"; count={$length}; " .
+    $output .= "                {  name=\"{$prefix}{$i}\"; count={$length}; " .
         "maps=( { start=0;count={$length};card=\"{$card}\";param=\"{$prefix}{$i}\";" .
         "offset=0; }); },\n";
   }
-  $output = substr($output, 0, -2);
   return $output;
 }
 
 
-/* Identify new bias card firmware that supports fast switching */
+/*
+ * Useful pre-computations
+ */
+
+/* List of card addresses to which "sys" will be broadcast. */
+
+$sys_id_list = array();
+foreach ($SYS_CARDS as $card)
+  if (in_array($card, $card_list))
+    array_push($sys_id_list, sprintf("0x%02x", $CARD_ADDRESS[$card]));
+
+
+/* List of card addresses to which "rca" will be broadcast. */
+
+$rca_id_list = array();
+foreach ($RC_LIST as $card)
+  if (in_array($card, $card_list))
+    array_push($rca_id_list, sprintf("0x%02x", $CARD_ADDRESS[$card]));
+
+
+/* Compute flags for readout cards in this system. */
+
+$rc_present = array();
+$num_rc = 0;
+foreach( $RC_LIST as $rc ) {
+  array_push($rc_present, in_array($rc, $card_list));
+  $num_rc += 1;
+}
+
+
+/* Squid systems (bias card DAC sets) have width based on subrack
+   size. */
+
+if ($hw_subrack == "full")
+  $num_columns = 32;
+else
+  $num_columns = 16;
+
+
+/* Frequently used hardware/firmware support flags: */
+
+/* Are we running with a biasing address card? */
+$hw_bac = in_array("bac", $card_list);
+
+/* Does bias card firmware support fast switching? */
 $fw_rev_bc_fast = fw_range("bc", $min=0x5000002);
-$fw_rev_cc_awg = fw_range("bc", $min=0x5000003);
-$fw_rev_cc_jtag = fw_range("bc", $min=0x5000005);
+
+/* Does clock card firmware support AWG? */
+$fw_rev_cc_awg = fw_range("cc", $min=0x5000003);
+
+/* Does clock card firmware support remote configuration? */
+$fw_rev_cc_jtag = fw_range("cc", $min=0x5000005);
 
 
 ?>

@@ -1,0 +1,72 @@
+<?php
+
+
+/*
+ *   MCE HARDWARE
+ */
+
+/* Set $hw_subrack based on whether your MCE has 3 ("small") or 5
+ * ("full") MDM connectors.
+ */
+
+$hw_subrack = "full";
+
+
+/* In $card_list, list all cards present in your MCE.  The order
+ * probably doesn't matter.
+ */
+
+$card_list = array("ac", "bc1", "bc2", "bc3", "rc1", "rc2", "rc3", "rc4", "cc", "psc");
+
+
+/* In some cases we need to know what hardware revision the cards
+ * are. List here by card type.
+ */
+
+$hw_rev = array(
+	"bc" => "revD",
+);	
+
+
+/* The TES bias line configuration can vary widely.  For now support:
+ *
+ *   "classic"       one line from each bias card (rev D)
+ *   "small16"       on 3-MDM subracks, 16 lines from bc3 flux_fb[:16]
+ *   "none"          none
+ */
+
+$tes_para = "classic";
+
+
+
+
+/*
+ *   MCE FIRMWARE
+ */
+
+/* Describe firmware revisions (doesn't have to be exact) */
+
+$fw_rev = array(
+	"cc" => 0x5000000,
+	"rc" => 0x5000000,
+	"bc" => 0x5000000,
+	"ac" => 0x5000000,
+);
+
+
+/*
+ *   VIRTUAL FUNCTIONS
+ */
+
+/* List of virtual cards to expose (you probably don't want to change
+ * this).  */
+
+$virt_list = array("rcs", "rca", "sys", "sa", "sq2", "sq1", "tes");
+
+
+
+/* And execute. */
+
+include 'components/mce';
+
+?>

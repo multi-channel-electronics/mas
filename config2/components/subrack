@@ -14,82 +14,38 @@
 
         components = (
 
-<? if (in_array("psc", $card_list)) { ?>
-            {
-                name = "psc";
-                nature = "physical";
-                card_type = "power supply card";
-                id = ( 0x01 );
-                error_bits = 0x00000007;
-            },
-<? } ?>
-            {
-                name = "cc";
-                nature = "physical";
-                card_type = "clock card";
-                id = ( 0x02 );
-                error_bits = 0x00000038;
-            },
-<? /* Readout cards */
-   foreach ($rc_present as $i => $ok) {
-     if (!$ok) continue;
-     $rc = $RC_LIST[$i];
-     $id = sprintf("0x%02x", 3+$i);
-     $ebits = sprintf("0x%08X", 0x00038000 >> (3*$i));
+<? /* Physical cards */
+   function dump_card_block($card, $text, $test=False) {
+      global $CARD_ADDRESS, $CARD_ERRBITS, $card_list;
+      if ($test && !in_array($card, $card_list))
+        return;
+      $id = $CARD_ADDRESS[$card];
+      $ebits = $CARD_ERRBITS[$card];
+      $id = sprintf("0x%02x", $id);
+      $ebits = sprintf("0x%08x", $ebits);
 ?>
             {
-                name = "<?=$rc?>";
+                name = "<?=$card?>";
                 nature = "physical";
-                card_type = "readout card";
+                card_type = "<?=$text?>";
                 id = ( <?=$id?> );
                 error_bits = <?=$ebits?>;
             },
-<? } ?>
-<? if (in_array("bc1", $card_list)) { ?>
-            {
-                name = "bc1";
-                nature = "physical";
-                card_type = "bias card";
-                id = ( 0x07 );
-                error_bits = 0x07000000;
-            },
-<? } ?>
-<? if (in_array("bac", $card_list)) { ?>
-            {
-                name = "bac";
-                nature = "physical";
-                card_type = "biasing-address card";
-                id = ( 0x08 );
-                error_bits = 0x00E00000;
-            },
-<? } ?>
-<? if (in_array("bc2", $card_list)) { ?>
-            {
-                name = "bc2";
-                nature = "physical";
-                card_type = "bias card";
-                id = ( 0x08 );
-                error_bits = 0x00E00000;
-            },
-<? } ?>
-<? if (in_array("bc3", $card_list)) { ?>
-            {
-                name = "bc3";
-                nature = "physical";
-                card_type = "bias card";
-                id = ( 0x09 );
-                error_bits = 0x001C0000;
-            },
-<? } ?>
-<? if (in_array("ac", $card_list)) { ?>
-            {
-                name = "ac";
-                nature = "physical";
-                card_type = "address card";
-                id = ( 0x0A );
-                error_bits = 0x38000000;
-            },
-<? } ?>
+<?  }
+
+    dump_card_block("psc", "power supply card", True);
+    dump_card_block("cc",  "clock card", True);
+    dump_card_block("rc1", "readout card", True);
+    dump_card_block("rc2", "readout card", True);
+    dump_card_block("rc3", "readout card", True);
+    dump_card_block("rc4", "readout card", True);
+    dump_card_block("bc1", "bias card", True);
+    dump_card_block("bc2", "bias card", True);
+    dump_card_block("bac", "biasing address card", True);
+    dump_card_block("bc3", "bias card", True);
+    dump_card_block("ac",  "address card", True);
+ ?>
+
 <? if (in_array("rcs", $virt_list)) { ?>
             {
                 name = "rcs";
@@ -104,8 +60,7 @@
                 name = "sys";
                 nature = "physical";
                 card_type = "system alias";
-                id = ( 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A );
-                card_count = 9;
+                id = ( <?=join(", ", $sys_id_list)?> );
             },
 <? } ?>
 <? if (in_array("rca", $virt_list)) { ?>
@@ -113,7 +68,7 @@
                 name = "rca";
                 nature = "physical";
                 card_type = "readout-all alias";
-                id = ( 0x03, 0x04, 0x05, 0x06 );
+                id = ( <?=join(", ", $rca_id_list)?> );
                 status = 0;
             },
 <? } ?>

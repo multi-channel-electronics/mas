@@ -3,28 +3,23 @@ default: mce.cfg
 BASE := ../
 include $(BASE)Makefile.children
 
-TARGETS=$(shell ./makefile.py --targets)
-DEPS=$(shell ./makefile.py --dependencies)
 
-OTHER_ARGS=--define RC_40E
+SOURCE = mce.cin
+TARGET = mce.cfg
 
-mce.cfg: mce.cin
-	php mce.cin > mce.cfg
+# General rule...
+%.cfg : %.cin components/
+	php $< > $@ || rm $@
 
-all: $(TARGETS)
-
-$(TARGETS) : $(DEPS)
-	./makefile.py $(OTHER_ARGS)
+$(SOURCE) :
+	@echo "$(SOURCE) does not exit... can not produce mce.cfg"
+	@echo "Create $(SOURCE) from your preferred template." && false
 
 install:
 	install --group=$(MAS_GROUP) --mode=775 -d /etc/mce
-	@for V in v4 v5; do \
-	  install --group=$(MAS_GROUP) --mode=775 -d /etc/mce/$$V ;\
-	  install --group=$(MAS_GROUP) --mode=664 -t /etc/mce/$$V $$V/* ;\
-	done
-	test -h /etc/mce/mce.cfg || ln -s v5/mce_v1.cfg /etc/mce/mce.cfg
 	install --group=$(MAS_GROUP) --mode=664 mas.cfg /etc/mce/
+	install --group=$(MAS_GROUP) --mode=664 $(TARGET) /etc/mce/mce.cfg
 
 clean:
-	rm $(TARGETS)
+	-rm $(TARGET)
 
