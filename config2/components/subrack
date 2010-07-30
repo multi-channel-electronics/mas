@@ -15,7 +15,7 @@
         components = (
 
 <? /* Physical cards */
-   function dump_card_block($card, $text, $test=False) {
+   function dump_card_block($card, $text, $test=False, $comma=True) {
       global $CARD_ADDRESS, $CARD_ERRBITS, $card_list;
       if ($test && !in_array($card, $card_list))
         return;
@@ -30,8 +30,10 @@
                 card_type = "<?=$text?>";
                 id = ( <?=$id?> );
                 error_bits = <?=$ebits?>;
-            },
-<?  }
+            }
+<?    if ($comma)
+          echo ",\n";
+   }
 
     dump_card_block("psc", "power supply card", True);
     dump_card_block("cc",  "clock card", True);
@@ -72,26 +74,12 @@
                 status = 0;
             },
 <? } ?>
-<? if (in_array("sq2", $virt_list)) {
-      if ($hw_bac) {  ?>
-            {
-                name = "sq2";
-                nature = "virtual";
-                mapping = "fast_sq2_mapping_bac";
-            },
-<?    } elseif ($fw_rev_bc_fast) { ?>
-            {
-                name = "sq2";
-                nature = "virtual";
-                mapping = "fast_sq2_mapping";
-            },
-<?    } else { ?>
+<? if (in_array("sq2", $virt_list)) { ?>
             {
                 name = "sq2";
                 nature = "virtual";
                 mapping = "sq2_mapping";
             },
-<?    } ?>
 <? } ?>
 <? if (in_array("sq1", $virt_list)) { ?>
             {
@@ -114,10 +102,11 @@
                 mapping = "tes_mapping";
             },
 <? } ?>
+            /* Terminator */
 	    {
-	        name = "_dummy";
+	        name = "dummy";
 		nature = "virtual";
-		mapping = "none";
+		mapping = "no_mapping";
 	    }
         ); //components list
 
