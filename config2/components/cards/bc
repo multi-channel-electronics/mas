@@ -42,7 +42,8 @@
                 }
 */
 <? if ($fw_rev_bc_fast) {
-      $output = "";
+      // Include leading comma
+      $output =     "                ,\n";
       for ($i=0; $i<32; $i++) {
          $id = sprintf("0x%02X", 0xc0 + $i);
          $output .= "                " .
