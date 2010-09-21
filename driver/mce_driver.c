@@ -3,6 +3,7 @@
 #include <asm/uaccess.h>
 #include <asm/io.h>
 #include <linux/interrupt.h>
+#include <linux/sched.h>
 
 #include "kversion.h"
 #include "mce_options.h"

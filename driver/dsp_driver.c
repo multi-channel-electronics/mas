@@ -8,6 +8,7 @@
 #include <linux/kernel.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
+#include <linux/sched.h>
 
 #include "mce_options.h"
 #include "kversion.h"
