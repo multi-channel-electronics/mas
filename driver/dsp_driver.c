@@ -1265,7 +1265,7 @@ int dsp_configure(struct pci_dev *pci)
 	dsp_set_msg_handler(DSP_HEY, dsp_hey_handler, (unsigned long)dev, card);
 
 	PRINT_INFO(SUBNAME "ok\n");
-	return 0;
+	return card;
 
 fail:
 	PRINT_ERR(SUBNAME "failed!\n");
