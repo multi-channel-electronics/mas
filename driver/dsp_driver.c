@@ -567,7 +567,7 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card,
 		     dsp_request_t reserve)
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
-	unsigned int irqflags;
+	unsigned long irqflags;
 	int err = 0;
 
 	DDAT_LOCK;
@@ -600,7 +600,7 @@ int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card,
 
 void dsp_unreserve(int card)
 {
-	unsigned int irqflags;
+	unsigned long irqflags;
 	struct dsp_dev_t *dev = dsp_dev + card;
 	DDAT_LOCK;
 	dev->state &= ~DDAT_RESERVE;
@@ -691,7 +691,7 @@ int dsp_grant_now_callback( int error, dsp_message *msg, int card)
 
 int dsp_clear_RP_now(struct dsp_dev_t *dev)
 {
-	unsigned int irqflags;
+	unsigned long irqflags;
  	dsp_command cmd = { DSP_INT_RPC, {0, 0, 0} };
 	int err;
 	DDAT_LOCK;
@@ -715,7 +715,7 @@ void dsp_priority_task(unsigned long data)
 {
 	int card = (int)data;
 	struct dsp_dev_t *dev = dsp_dev+card;
-	unsigned int irqflags;
+	unsigned long irqflags;
 	int err = 0;
 	int success_mask = ~0;
 	if (dev->state & DDAT_RPC) {
@@ -756,7 +756,7 @@ void dsp_priority_task(unsigned long data)
 int dsp_request_grant(int card, int new_tail)
 {
 	struct dsp_dev_t *dev = dsp_dev + card;
-	unsigned int irqflags;
+	unsigned long irqflags;
 
 	DDAT_LOCK;
 	// Only reanimate the tasklet if it's not active.
@@ -775,7 +775,7 @@ int dsp_request_grant(int card, int new_tail)
 
 void dsp_request_clear_RP(int card)
 {
-	unsigned int irqflags;
+	unsigned long irqflags;
 	struct dsp_dev_t *dev = dsp_dev + card;
 	DDAT_LOCK;
 	if (!(dev->state & DDAT_PRIORITY))

@@ -817,7 +817,7 @@ int mce_probe(int card, int dsp_version)
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
-	PRINT_ERR("%s(%i, %i) entry\n", __FUNCTION__, card, dsp_version);
+	PRINT_INFO("%s(%i, %i) entry\n", __FUNCTION__, card, dsp_version);
 
 	memset(mdat, 0, sizeof(*mdat));
 
