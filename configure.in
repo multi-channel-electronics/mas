@@ -21,6 +21,16 @@ AC_SUBST(DO_MAS_DRIVER)
 
 # Some driver options.
 
+AC_ARG_ENABLE([verbose-driver], [AS_HELP_STRING([--enable-verbose-driver],
+      [build a very chatty kernel driver (for debugging only)])],
+    [if test "x$withval" = "xno"; then
+   DRIVER_VERBOSE=no
+else
+   DRIVER_VERBOSE=yes
+fi],
+[DRIVER_VERBOSE=no])
+AC_SUBST(DRIVER_VERBOSE)
+
 AC_ARG_WITH([bigphysarea],
             [AS_HELP_STRING([--without-bigphysarea], [disable bigphysarea])],
             [DRIVER_BIGPHYS=$withval], [DRIVER_BIGPHYS=yes])
@@ -36,7 +46,7 @@ AC_SUBST(DRIVER_FAKEMCE)
 KERNEL_DIR=/lib/modules/`uname -r`/
 AC_ARG_WITH([kernel-dir],
             [AS_HELP_STRING([--with-kernel-dir], [set the target kernel source tree (e.g. $KERNEL_DIR)])],
-	    [KERNEL_DIR=$withval], [])
+            [KERNEL_DIR=$withval], [])
 AC_SUBST(KERNEL_DIR)
 
 
@@ -57,10 +67,10 @@ AC_SUBST(DO_MAS_SWIG)
 
 AC_ARG_WITH([user],
             [AS_HELP_STRING([--with-user=LOGIN],[set default MAS user])],
-	    [MAS_USER=$withval], [MAS_USER=mce])
+            [MAS_USER=$withval], [MAS_USER=mce])
 AC_ARG_WITH([group],
             [AS_HELP_STRING([--with-group=GROUP],[set default MAS group])],
-	    [MAS_GROUP=$withval], [MAS_GROUP=mce])
+            [MAS_GROUP=$withval], [MAS_GROUP=mce])
 AC_SUBST(MAS_USER)
 AC_SUBST(MAS_GROUP)
 
@@ -78,7 +88,7 @@ AC_ARG_WITH([libconfig],
               [specify location of libconfig, e.g. /usr/local/])],
             [LIBCONFIG_DIR=$withval],
             [LIBCONFIG_DIR=])
-if test "$LIBCONFIG_DIR" != ""; then 
+if test "$LIBCONFIG_DIR" != ""; then
   LIBCONFIG_ARGS="-L$LIBCONFIG_DIR/lib"
 else
   LIBCONFIG_ARGS=""
@@ -100,15 +110,15 @@ AC_CHECK_HEADER([readline/readline.h], ,
              [AC_MSG_FAILURE([please install the libreadline-dev package.])])
 AC_CHECK_LIB([readline], [readline], ,
              [AC_MSG_FAILURE([please install the libreadline package.])])
-	     
+
 
 # Check for bigphysarea.
 
 if test "$DO_MAS_DRIVER" != "no" && test "$DRIVER_BIGPHYS" != "no"; then
 BIGPHYS_H=${KERNEL_DIR}/build/include/linux/bigphysarea.h
 AC_CHECK_HEADER([$BIGPHYS_H],
-		[],
-		[AC_MSG_FAILURE([could not find bigphysarea.h in the kernel build tree; perhaps you want --without-bigphysarea])])
+                [],
+                [AC_MSG_FAILURE([could not find bigphysarea.h in the kernel build tree; perhaps you want --without-bigphysarea])])
 fi
 
 
@@ -129,5 +139,5 @@ AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
 AC_CONFIG_FILES([scripts/mas scripts/mas_mknodes],
-                [chmod a+x scripts/mas scripts/mas_mknodes])
+                [chmod a+x $ac_file])
 AC_OUTPUT

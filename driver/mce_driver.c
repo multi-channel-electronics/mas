@@ -678,9 +678,9 @@ int mce_buffer_allocate(mce_comm_buffer *buffer)
 	
 	PRINT_INFO("cmd/rep[virt->bus]: [%lx->%lx]/[%lx->%lx]\n",
 		   (long unsigned int)buffer->command,
-		   virt_to_bus(buffer->command),
+		   (long unsigned int)virt_to_bus(buffer->command),
 		   (long unsigned int)buffer->reply,
-		   virt_to_bus(buffer->reply));
+		   (long unsigned int)virt_to_bus(buffer->reply));
 	
 	return 0;
 }
@@ -817,7 +817,8 @@ int mce_probe(int card, int dsp_version)
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
-	PRINT_ERR(SUBNAME "entry\n");
+	PRINT_ERR("%s(%i, %i) entry\n", __FUNCTION__, card, dsp_version);
+
 	memset(mdat, 0, sizeof(*mdat));
 
 	init_MUTEX(&mdat->sem);

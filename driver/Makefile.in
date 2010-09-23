@@ -18,6 +18,7 @@ BRANCH_ID = $(shell cat ../branch_id.txt)
 
 # Module configuration options, set to 'yes' or 'no'
 
+VERBOSE    ?= @DRIVER_VERBOSE@
 FAKEMCE    ?= @DRIVER_FAKEMCE@
 REALTIME   ?= no
 BIGPHYS    ?= @DRIVER_BIGPHYS@
@@ -40,6 +41,10 @@ ifeq ($(REALTIME),yes)
   DEFS += -DREALTIME
   INCLUDES += -I$(RTAI_DIR)/include -I$(RTAI_DIR)
 endif #REALTIME=yes
+
+ifeq ($(VERBOSE),yes)
+  DEFS += -DOPT_VERBOSE
+endif #VERBOSE=yes
 
 ifeq ($(BIGPHYS),yes)
   DEFS += -DBIGPHYS

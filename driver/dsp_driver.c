@@ -289,8 +289,8 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 
 	//Verify handshake bit
 	if ( !(dsp_read_hstr(dsp) & HSTR_HC3) ) {
-		//FIX ME: Continuous stream of general interrupts
-		PRINT_ERR(SUBNAME "irq entry without HF3 bit!\n");
+		/* not our interrupt -- another device interrupted on our
+		   shared IRQ */
 		return IRQ_NONE;
 	}
 
@@ -1171,7 +1171,7 @@ int dsp_configure(struct pci_dev *pci)
 	int card;
 	struct dsp_dev_t *dev;
 
-	PRINT_INFO(SUBNAME "entry\n");
+	PRINT_INFO("%s(%p) entry\n", __FUNCTION__, pci);
 
 	// Find a free slot in dsp_dev array; this defines the card id
 	if (pci==NULL) {
@@ -1186,6 +1186,7 @@ int dsp_configure(struct pci_dev *pci)
 		PRINT_ERR(SUBNAME "too many cards, dsp_dev[] is full.\n");
 		return -EPERM;
 	}
+	PRINT_INFO("%s: card = %i\n", __FUNCTION__, card);
 
         // Initialize device structure
 	memset(dev, 0, sizeof(*dev));
