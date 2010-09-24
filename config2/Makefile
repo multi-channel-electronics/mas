@@ -12,7 +12,7 @@ TARGET = mce.cfg
 	php $< > $@ || rm -f $@
 
 $(SOURCE) :
-	@echo "$(SOURCE) does not exit... can not produce mce.cfg"
+	@echo "$(SOURCE) does not exist... can not produce mce.cfg"
 	@echo "Create $(SOURCE) from your preferred template." && false
 
 install:
