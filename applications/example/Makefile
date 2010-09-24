@@ -20,7 +20,7 @@ install:
 	@echo "The examples don't install!"
 
 tidy:
-	-rm *.o *~ #*
+	rm -f *.o *~
 
 clean: tidy
-	-rm example example_data
+	rm -f example example_data

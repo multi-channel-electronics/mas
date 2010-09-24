@@ -18,10 +18,10 @@
 #include "cfg_dump.h"
 
 options_t options = {
-        device_file:   DEFAULT_CMDFILE,
-	config_file:   DEFAULT_MASFILE,
-	hardware_file: DEFAULT_HARDWAREFILE,
-	mode:          CRAWLER_DAS,
+	.fibre_card = DEFAULT_FIBRE_CARD,
+	.config_file = DEFAULT_MASFILE,
+	.hardware_file = DEFAULT_HARDWAREFILE,
+	.mode = CRAWLER_DAS,
 };
 
 

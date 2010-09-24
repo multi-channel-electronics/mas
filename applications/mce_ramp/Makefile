@@ -26,10 +26,10 @@ mce_ramp: $(OBJECTS) $(HEADERS)
 $(OBJECTS): $(HEADERS)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm mce_ramp
+	rm -f mce_ramp
 
 # Make the install__mce_ramp rule
 INSTALL_TARGET=mce_ramp

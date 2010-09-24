@@ -13,8 +13,7 @@
 
 #define USAGE_MESSAGE "" \
 "  Initial options (MAS config):\n" \
-"        -c <cmd device>         override default command device\n"\
-"        -d <data device>        override default data device\n"\
+"        -n <card number>        override default fibre card\n"\
 "        -w <hardware file>      override default hardware configuration file\n"\
 "        -m <MAS config file>    override default MAS configuration file\n"\
 "        -s <experiment file>    override default experiment configuration file\n"\
@@ -29,10 +28,11 @@ void usage()
 
 int process_options(option_t *options, int argc, char **argv)
 {
+  char *s;
   int option;
   // Note the "+" at the beginning of the options string forces the
   // first non-option string to return a -1, which is what we want.
-  while ( (option = getopt(argc, argv, "+?hm:c:d:w:p:s:E:0123456789")) >=0) {
+  while ( (option = getopt(argc, argv, "+?hm:n:w:p:s:E:0123456789")) >=0) {
 
     switch(option) {
     case '?':
@@ -44,37 +44,43 @@ int process_options(option_t *options, int argc, char **argv)
       strcpy(options->config_file, optarg);
       break;
 
-    case 'c':
-      strcpy(options->cmd_device, optarg);
-      break;
+	case 'n':
+	  options->fibre_card = (int)strtoul(optarg, &s, 10);
+	  if (*optarg == '\0' || *s != '\0' || options->fibre_card > 4) {
+		fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+		return -1;
+	  }
+	  break;
 
-    case 'd':
-      strcpy(options->data_device, optarg);
-      break;
+	case 'w':
+	  strcpy(options->hardware_file, optarg);
+	  break;
 
-    case 'w':
-      strcpy(options->hardware_file, optarg);
-      break;
+	case 'p':
+	  options->preservo = atoi(optarg);
+	  break;
 
-    case 'p':
-      options->preservo = atoi(optarg);
-      break;
+	case 's':
+	  strcpy(options->experiment_file, optarg);
+	  break;
 
-    case 's':
-      strcpy(options->experiment_file, optarg);
-      break;
+	case 'E':
+	  options->argument_opts = !(atoi(optarg));
+	  break;
 
-    case 'E':
-      options->argument_opts = !(atoi(optarg));
-      break;
+	case '0' ... '9':
+	  //It's a number! Get out of here!
+	  optind--;
+	  break;
 
-    case '0' ... '9':
-      //It's a number! Get out of here!
-      return optind-1;
-
-    default:
-      printf("Unimplemented option '-%c'!\n", option);
-   }
+	default:
+	  printf("Unimplemented option '-%c'!\n", option);
+	}
   }
+
+  /* set fibre card devices */
+  sprintf(options->data_device, "/dev/mce_data%i", options->fibre_card);
+  sprintf(options->cmd_device, "/dev/mce_cmd%i", options->fibre_card);
+
   return optind;
 }

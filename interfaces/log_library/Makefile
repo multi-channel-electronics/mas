@@ -20,7 +20,7 @@ include $(MAKERULES)Makefile.install_rule_lib
 install: install__$(LIBNAME)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm $(LIBNAME)
+	rm -f $(LIBNAME)

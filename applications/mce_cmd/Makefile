@@ -5,8 +5,7 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-include $(MAKERULES)Makefile.defaults
-DEFS += -DVERSION_STRING="$(REPO_VER)" $(CONFIGFILE_DEFS)
+DEFS += -DVERSION_STRING="$(REPO_VER)"
 
 LIBRARY=$(MAS_LIB) $(MASMISC_F)cmdtree.o
 
@@ -15,7 +14,7 @@ CFLAGS += $(DEFS)
 # targets
 
 OBJECTS = mce_cmd.o options.o
-HEADERS = options.h cmd.h
+HEADERS = options.h cmd.h ../../defaults/config.h
 
 all: mce_cmd
 
@@ -25,10 +24,10 @@ mce_cmd: mce_cmd.o options.o
 $(OBJECTS): $(HEADERS)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm mce_cmd
+	rm -f mce_cmd
 
 # Make the install__mce_cmd rule
 INSTALL_TARGET=mce_cmd

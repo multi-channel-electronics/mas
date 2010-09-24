@@ -5,8 +5,7 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-include $(MAKERULES)Makefile.defaults
-DEFS += -DVERSION_STRING="$(REPO_VER)" $(CONFIGFILE_DEFS)
+DEFS += -DVERSION_STRING="$(REPO_VER)"
 
 LIBRARY=$(MAS_LIB) $(MASMISC_F)cmdtree.o
 
@@ -25,10 +24,10 @@ mas_mon: mas_mon.o
 $(OBJECTS): $(HEADERS)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm mas_mon
+	rm -f mas_mon
 
 # Make the install__raw_acq rule
 INSTALL_TARGET=mas_mon

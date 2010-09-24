@@ -9,10 +9,7 @@ LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 	-L$(LOGLIB_F) -l$(LOGLIB) \
 	-lconfig
 
-include $(MAKERULES)Makefile.defaults
-DEFS += $(CONFIGFILE_DEFS)
-
-CFLAGS += $(INCLUDE) -Wall $(DEFS) -fPIC -fno-stack-protector
+CFLAGS += $(INCLUDE) -Wall $(DEFS) -fPIC -fno-stack-protector -fno-strict-aliasing
 CC=gcc
 
 all: _mce_library.so
@@ -26,10 +23,10 @@ mce_library_wrap.c: mce_library.i
 	swig -python $^
 
 tidy:
-	-rm *.o *~ *_wrap.c
+	rm -f *.o *~ *_wrap.c
 
 clean: tidy
-	-rm *.pyc mce_library.py _mce_library.so
+	rm -f *.pyc mce_library.py _mce_library.so
 
 install: install___mce_library.so install__mce_library.py install__mce.py
 

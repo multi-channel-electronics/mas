@@ -131,12 +131,11 @@ int main (int argc, char **argv)
    
    /* Define default MAS options */
    option_t options = {
-     config_file:   DEFAULT_MASFILE,
-     cmd_device:    DEFAULT_CMDFILE,
-     data_device:   DEFAULT_DATAFILE,
-     hardware_file: DEFAULT_HARDWAREFILE,
-     experiment_file: DEFAULT_EXPERIMENTFILE,
-     argument_opts: 0,
+     .config_file = DEFAULT_MASFILE,
+	 .fibre_card = DEFAULT_FIBRE_CARD,
+     .hardware_file = DEFAULT_HARDWAREFILE,
+     .experiment_file = DEFAULT_EXPERIMENTFILE,
+     .argument_opts = 0,
    };
    int arg_offset = 0;
    

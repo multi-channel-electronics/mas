@@ -11,6 +11,7 @@ functionality. */
 
 %{
 
+#include "../defaults/config.h"
 #include "../include/mce_library.h"
 
 %}
@@ -32,8 +33,7 @@ functionality. */
 %inline %{
 	/* Expose the default config/device files */
 
-	const char default_cmdfile[] = DEFAULT_CMDFILE;
-	const char default_datafile[] = DEFAULT_DATAFILE;
+	const int default_fibre_card = DEFAULT_FIBRE_CARD;
 	const char default_masfile[] = DEFAULT_MASFILE;
 	const char default_hardwarefile[] = DEFAULT_HARDWAREFILE;
 	const char default_experimentfile[] = DEFAULT_EXPERIMENTFILE;

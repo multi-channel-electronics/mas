@@ -24,7 +24,7 @@ install: install__$(LIBNAME)
 
 
 clean: tidy
-	-rm $(LIBNAME)
+	rm -f $(LIBNAME)
 
 tidy:
-	-rm -f core.* *~ *.c~ *.h~ core.* *.o *.a
+	rm -f core.* *~ *.c~ *.h~ core.* *.o *.a

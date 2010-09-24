@@ -13,11 +13,49 @@ AC_PROG_LN_S
 # Allow the user to suppress driver compile / install.
 
 AC_ARG_WITH([driver],
-            [AS_HELP_STRING([--with-driver=(yes|no)],
-                            [enable/disable driver compilation and installation])],
+			[AS_HELP_STRING([--with-driver=(yes|no)],
+			[enable/disable driver compilation and installation])],
             [DO_MAS_DRIVER=$withval], [DO_MAS_DRIVER=yes])
 AC_SUBST(DO_MAS_DRIVER)
 
+dnl Some defaults.
+
+AC_ARG_VAR([DEFAULT_EXPERIMENTFILE],
+		   [the default experiment configuration file ]
+		   [(/data/cryo/current_data/experiment.cfg is used if not specified)])
+if test -z "$DEFAULT_EXPERIMENTFILE"; then
+	DEFAULT_EXPERIMENTFILE="/data/cryo/current_data/experiment.cfg"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_EXPERIMENTFILE], ["$DEFAULT_EXPERIMENTFILE"],
+				   [ Define to the default experiment configuration file. ])
+
+AC_ARG_VAR([DEFAULT_FIBRE_CARD],
+		   [the default fibre card number (0 is used if not specified)])
+if test -z "$DEFAULT_FIBRE_CARD"; then
+	DEFAULT_FIBRE_CARD=0
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
+				   [ Define to the number of the default fibre card. ])
+AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
+				   [ Define to the number of the default fibre card. ])
+
+AC_ARG_VAR([DEFAULT_HARDWAREFILE],
+		   [the default hardware configuration file (/etc/mce/mce.cfg is used ]
+		   [if not specified)])
+if test -z "$DEFAULT_HARDWAREFILE"; then
+	DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFILE], ["$DEFAULT_HARDWAREFILE"],
+				   [ Define to the default hardware configuration file. ])
+
+AC_ARG_VAR([DEFAULT_MASFILE],
+		   [the default MAS configuration file (/etc/mce/mas.cfg is used if ]
+		   [not specified)])
+if test -z "$DEFAULT_MASFILE"; then
+	DEFAULT_MASFILE="/etc/mce/mas.cfg"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_MASFILE], ["$DEFAULT_MASFILE"],
+				   [ Define to the default MAS configuration file. ])
 
 # Some driver options.
 
@@ -45,7 +83,9 @@ AC_SUBST(DRIVER_FAKEMCE)
 
 KERNEL_DIR=/lib/modules/`uname -r`/
 AC_ARG_WITH([kernel-dir],
-            [AS_HELP_STRING([--with-kernel-dir], [set the target kernel source tree (e.g. $KERNEL_DIR)])],
+            [AS_HELP_STRING([--with-kernel-dir],
+							[set the target kernel source tree ]
+							[(e.g. $KERNEL_DIR)])],
             [KERNEL_DIR=$withval], [])
 AC_SUBST(KERNEL_DIR)
 
@@ -56,7 +96,8 @@ PYTHON_VERSION=`echo 'import sys; print sys.version[[:3]]' | python`
 PYTHON_DIR=/usr/include/python${PYTHON_VERSION}/
 AC_ARG_WITH([python],
             [AS_HELP_STRING([--with-python=(PATH|yes|no)],
-                            [enable/disable swig/python compilation and installation, PATH default is $PYTHON_DIR])],
+                            [enable/disable swig/python compilation and ]
+							[installation, PATH default is $PYTHON_DIR])],
             [PYTHON_DIR=$withval])
 AC_SUBST(PYTHON_DIR)
 DO_MAS_SWIG=yes
@@ -100,7 +141,8 @@ AC_SUBST(LIBCONFIG_ARGS)
 # Check for libconfig.
 
 AC_CHECK_LIB([config], [config_init], ,
-             [AC_MSG_FAILURE([could not find libconfig, please install it from www.hyperrealm.com/libconfig/!])],
+             [AC_MSG_FAILURE([could not find libconfig, ]
+			 [please install it from www.hyperrealm.com/libconfig/!])],
              "$LIBCONFIG_ARGS" )
 
 
@@ -118,7 +160,8 @@ if test "$DO_MAS_DRIVER" != "no" && test "$DRIVER_BIGPHYS" != "no"; then
 BIGPHYS_H=${KERNEL_DIR}/build/include/linux/bigphysarea.h
 AC_CHECK_HEADER([$BIGPHYS_H],
                 [],
-                [AC_MSG_FAILURE([could not find bigphysarea.h in the kernel build tree; perhaps you want --without-bigphysarea])])
+                [AC_MSG_FAILURE([could not find bigphysarea.h in the ]
+				[kernel build tree; perhaps you want --without-bigphysarea])])
 fi
 
 
@@ -129,12 +172,14 @@ if test "$PYTHON_DIR" != "no"; then
    test "$HAS_SWIG" != "yes" && \
       AC_MSG_FAILURE([please install swig package or pass --without-python.])
    AC_CHECK_HEADER([$PYTHON_DIR/Python.h], ,
-                   [AC_MSG_FAILURE([could not find Python.h; perhaps you want --with-python=... or you need to install python-dev])])
+                   [AC_MSG_FAILURE([could not find Python.h; perhaps you want ]
+				   [--with-python=... or you need to install python-dev])])
 fi
 
 
 dnl Write.
 
+AC_CONFIG_HEADERS([defaults/config.h])
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])

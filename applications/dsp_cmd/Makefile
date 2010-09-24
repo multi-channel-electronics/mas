@@ -18,10 +18,10 @@ dsp_cmd: dsp_cmd.o
 	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY)
 
 tidy:
-	-rm dsp_cmd
+	rm -f dsp_cmd
 
 clean: tidy
-	-rm *.o *~
+	rm -f *.o *~
 
 # Make the install__dsp_cmd rule
 INSTALL_TARGET=dsp_cmd

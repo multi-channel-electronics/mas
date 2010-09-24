@@ -25,7 +25,7 @@ test: test.o cmdtree.o $(HEADERS)
 	$(CC) $(CFLAGS) test.o cmdtree.o -o test
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm $(OBJECT)
+	rm -f $(OBJECT)

@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <mce/socks.h>
+#include "../../defaults/config.h"
 
 #define MAX_CLIENTS 16
 #define MEDLEN 1024

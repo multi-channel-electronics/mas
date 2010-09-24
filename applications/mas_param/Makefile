@@ -5,15 +5,14 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-include $(MAKERULES)Makefile.defaults
-DEFS = -DVERSION_STRING="$(REPO_VER)" $(CONFIGFILE_DEFS)
+DEFS = -DVERSION_STRING="$(REPO_VER)"
 
 LIBRARY=$(MAS_LIB) $(MASMISC_F)masconfig.o
 
 CFLAGS += $(DEFS)
 
 OBJECTS = main.o options.o get.o crawl.o bash.o csh.o idl.o
-HEADERS = mas_param.h get.h crawl.h bash.h csh.h idl.h
+HEADERS = mas_param.h get.h crawl.h bash.h csh.h idl.h ../../defaults/config.h
 
 # targets
 
@@ -25,10 +24,10 @@ mas_param: $(OBJECTS)
 $(OBJECTS): $(HEADERS)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm mas_param
+	rm -f mas_param
 
 # Make the install__mas_param rule
 INSTALL_TARGET=mas_param

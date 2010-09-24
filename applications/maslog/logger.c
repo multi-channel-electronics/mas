@@ -173,7 +173,7 @@ int log_command(params_t *p, int client_idx, char *buf)
 	log_client_t *client = p->clients + client_idx;
 
 	int n;
-	char *lasts;
+	char *lasts = NULL;
 	char *keyword = strtok_r(buf, " ", &lasts);
 	char *nextword = strtok_r(NULL, " ", &lasts);
 

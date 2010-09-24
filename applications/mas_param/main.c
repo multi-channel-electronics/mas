@@ -17,7 +17,7 @@ options_t options = {
 int main(int argc, char **argv)
 {
 	config_t cfg;
-  int status;
+	int status = 0;
 
 	if (process_options(&options, argc, argv))
 		return 1;

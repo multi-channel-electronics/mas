@@ -170,13 +170,12 @@ char *line = NULL;
 char *line_buffer = NULL;
 
 options_t options = {
-	cmd_device:     DEFAULT_CMDFILE,
-	data_device:    DEFAULT_DATAFILE,
-	hardware_file:  DEFAULT_HARDWAREFILE,
-	masconfig_file: DEFAULT_MASFILE,
-	display:       SPECIAL_DEF,
-	acq_path:      "./",
-	use_readline: 1,
+	.hardware_file =  DEFAULT_HARDWAREFILE,
+	.masconfig_file = DEFAULT_MASFILE,
+	.display =        SPECIAL_DEF,
+	.acq_path =       "./",
+	.use_readline =   1,
+	.fibre_card =     DEFAULT_FIBRE_CARD,
 };
 
 
@@ -311,8 +310,8 @@ int  main(int argc, char **argv)
 				line = line_buffer;
 			} else {
 				line = line_buffer;
-				getline(&line, &n, fin);
-				if (n==0 || feof(fin)) break;
+				int ret = getline(&line, &n, fin);
+				if (ret == -1 || n==0 || feof(fin)) break;
 			}
 
 			n = strlen(line);

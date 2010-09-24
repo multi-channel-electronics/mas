@@ -9,7 +9,7 @@ TARGET = mce.cfg
 
 # General rule...
 %.cfg : %.cin components/
-	php $< > $@ || rm $@
+	php $< > $@ || rm -f $@
 
 $(SOURCE) :
 	@echo "$(SOURCE) does not exit... can not produce mce.cfg"
@@ -21,5 +21,5 @@ install:
 	install --group=$(MAS_GROUP) --mode=664 $(TARGET) /etc/mce/mce.cfg
 
 clean:
-	-rm $(TARGET)
+	rm -f $(TARGET)
 

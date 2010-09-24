@@ -35,7 +35,7 @@ int log_data( logger_t *logger,
 	      int level)
 {
 	char out[2048];
-	char *s = out + sprintf(out, msg);
+	char *s = out + sprintf(out, "%s", msg);
 
 	if (count > 2048/5) count = 2048/5;
 

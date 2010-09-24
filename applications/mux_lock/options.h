@@ -11,6 +11,7 @@ typedef struct {
   char hardware_file[OPTSTR];
   char experiment_file[OPTSTR];
 
+  int fibre_card;
   int argument_opts;
   int preservo;
 

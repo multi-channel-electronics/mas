@@ -23,5 +23,5 @@ install:
 	install --group=$(MAS_GROUP) --mode=664 mas.cfg /etc/mce/
 
 clean:
-	rm $(TARGETS)
+	rm -f $(TARGETS)
 

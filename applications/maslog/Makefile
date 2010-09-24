@@ -6,10 +6,7 @@ LIBRARY = $(MAS_LIB)
 SOCK = $(MASMISC_F)/socks.o
 
 SOURCE = logger.c main.c init.c
-HEADER = logger.h init.h
-
-include $(MAKERULES)Makefile.defaults
-DEFS += $(CONFIGFILE_DEFS)
+HEADER = logger.h init.h ../../defaults/config.h
 
 CFLAGS += $(DEFS)
 
@@ -28,11 +25,11 @@ $(CLIENT): client.c
 	$(CC) $(CFLAGS) $< -o$@ $(LIBRARY)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm $(LOGAPP)
-	-rm $(CLIENT)
+	rm -f $(LOGAPP)
+	rm -f $(CLIENT)
 
 #Make install rules for app, client, wrapper
 INSTALL_TARGET := $(LOGAPP)

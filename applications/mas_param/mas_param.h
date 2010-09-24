@@ -1,9 +1,9 @@
 #ifndef _MAS_PARAM_H_
 #define _MAS_PARAM_H_
 
+#include "../../defaults/config.h"
 #include <libconfig.h>
 #include <libmaslog.h>
-
 
 #define PROGRAM_NAME           "mas_param"
 

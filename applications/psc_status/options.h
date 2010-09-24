@@ -10,6 +10,7 @@ typedef struct {
   char data_device[OPTSTR];
   char hardware_file[OPTSTR];
 
+  int fibre_card;
   int read_stdin;
 } option_t;
 

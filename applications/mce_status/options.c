@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -6,7 +7,7 @@
 
 #define USAGE_MESSAGE \
 "Usage:\n\t%s [options]\n"\
-"  -d <device file>       choose a particular mce device\n"\
+"  -n <card number>       choose a particular fibre card\n"\
 "  -c <hardware config>   choose a particular mce config file\n"\
 "  -m <mas config>        choose a particular mce config file\n"\
 "  -o <output directory>  destination folder for output\n"\
@@ -19,8 +20,9 @@
 
 int process_options(options_t* options, int argc, char **argv)
 {
+	char *s;
 	int option;
-	while ( (option = getopt(argc, argv, "?hd:c:m:o:f:gvs")) >=0) {
+	while ( (option = getopt(argc, argv, "?hn:c:m:o:f:gvs")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -32,8 +34,12 @@ int process_options(options_t* options, int argc, char **argv)
 			strcpy(options->hardware_file, optarg);
 			break;
 
-		case 'd':
-			strcpy(options->device_file, optarg);
+		case 'n':
+			options->fibre_card = (int)strtoul(optarg, &s, 10);
+			if (*optarg == '\0' || *s != '\0' || options->fibre_card > 4) {
+				fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+				return -1;
+			}
 			break;
 
 		case 'm':
@@ -66,6 +72,9 @@ int process_options(options_t* options, int argc, char **argv)
 			printf("Unimplemented option '-%c'!\n", option);
 		}
 	}
+
+	/* set fibre card devices */
+	sprintf(options->device_file, "/dev/mce_cmd%i", options->fibre_card);
 
 	return 0;
 }

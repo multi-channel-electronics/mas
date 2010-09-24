@@ -11,7 +11,7 @@ clean_dirs = interfaces applications swig
 install_dirs = include interfaces applications scripts config
 
 # Set up dependencies for each target
-all_deps = 
+all_deps = Makefile defaults/config.h
 clean_deps = clean_driver
 install_deps = all
 
@@ -30,15 +30,33 @@ endif
 default: all
 
 all: $(all_deps)
-	for d in $(all_dirs); do make -C $$d; done
+	for d in $(all_dirs); do make -C $$d || exit 1; done
 
 clean: $(clean_deps)
-	for d in $(clean_dirs); do make -C $$d clean; done
+	for d in $(clean_dirs); do make -C $$d clean || exit 1; done
 
 install: $(install_deps)
-	for d in $(install_dirs); do make -C $$d install; done
+	for d in $(install_dirs); do make -C $$d install || exit 1; done
 
 .PHONY: default all clean install
+
+# configuration rules
+
+.PRECIOUS: Makefile
+Makefile: config.status Makefile.in
+	$(SHELL) ./config.status $@
+
+config.status: configure
+	$(SHELL) ./config.status --recheck
+
+configure: configure.in
+	autoconf -o $@ $<
+
+defaults/config.h: config.status defaults/config.h.in
+	$(SHELL) ./config.status $@
+
+defaults/config.h.in: configure.in
+	autoheader $<
 
 # Supporting targets; driver needs some hand-holding...
 
@@ -52,8 +70,3 @@ install_driver:
 	cd driver; make install
 
 .PHONY: make_driver clean_driver install_driver
-
-
-configure: configure.in
-	autoconf -o $@ $<
-

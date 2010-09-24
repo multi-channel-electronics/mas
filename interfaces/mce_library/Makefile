@@ -39,9 +39,9 @@ docs:
 	doxygen
 
 clean: tidy
-	-rm $(LIBNAME) version.h
+	rm -f $(LIBNAME) version.h
 
 tidy:
-	-rm -f core.* *~ *.c~ *.h~ core.* *.o #*#
+	rm -f core.* *~ *.c~ *.h~ core.* *.o #*#
 
 .PHONY: FORCE

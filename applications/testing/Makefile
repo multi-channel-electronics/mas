@@ -5,7 +5,6 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-include $(MAKERULES)Makefile.defaults
 
 # targets
 TARGETS = mce_state
@@ -21,9 +20,9 @@ mce_state: mce_state.o
 $(OBJECTS): $(HEADERS)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm $(TARGETS)
+	rm -f $(TARGETS)
 
 install:

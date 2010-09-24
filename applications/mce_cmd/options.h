@@ -14,6 +14,7 @@ typedef struct {
 	int echo;
 	int use_readline;
 	int acq_now;
+	int fibre_card;
 
 	int das_compatible; // horror
 

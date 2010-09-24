@@ -5,8 +5,7 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-include $(MAKERULES)Makefile.defaults
-DEFS += -DVERSION_STRING="$(REPO_VER)" $(CONFIGFILE_DEFS)
+DEFS += -DVERSION_STRING="$(REPO_VER)"
 
 LIBRARY=$(MAS_LIB)
 
@@ -16,7 +15,7 @@ CFLAGS += $(DEFS)
 
 TARGETS = psc_status 
 OBJECTS = psc_status.o options.o
-HEADERS = psc_status.h options.h
+HEADERS = psc_status.h options.h ../../defaults/config.h
 
 all: $(TARGETS)
 
@@ -29,10 +28,10 @@ psc_status: psc_status.o options.o
 .c.o: 	$(HEADERS)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm $(TARGETS)
+	rm -f $(TARGETS)
 
 # Make the install__psc_status rules
 INSTALL_TARGET=psc_status

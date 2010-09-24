@@ -10,6 +10,7 @@
 #include <string.h>
 #include <float.h>
 #include <mce_library.h>
+#include "../../defaults/config.h"
 #include "options.h"
 #include "psc_status.h"
 
@@ -26,11 +27,10 @@ int main (int argc, char **argv){
 
    /* Define default MAS options */
    option_t options = {
-     config_file:   DEFAULT_MASFILE,
-     cmd_device:    DEFAULT_CMDFILE,
-     data_device:   DEFAULT_DATAFILE,
-     hardware_file: DEFAULT_HARDWAREFILE,
-     read_stdin:    0,
+     .config_file = DEFAULT_MASFILE,
+     .fibre_card = DEFAULT_FIBRE_CARD,
+     .hardware_file = DEFAULT_HARDWAREFILE,
+     .read_stdin = 0,
    };
    
    if (process_options(&options, argc, argv) < 0) {
@@ -66,7 +66,10 @@ int main (int argc, char **argv){
    } else { //read_stdin
      printf("Reading ascii from stdin: ");
      for (index=0; index< PSC_DATA_BLK_SIZE / 8; index++) {
-       scanf("%u", data + index);
+       if (scanf("%u", data + index) != 1) {
+         fprintf(stderr, "short read from stdin.\n");
+         return 1;
+       }
      }
    }
 

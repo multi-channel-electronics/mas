@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <time.h>
 
+#include "../../defaults/config.h"
 #include <mce_library.h>
 
 #define MAX_BARLEN 400
@@ -26,7 +27,7 @@ char *bar(int len, int fill)
 }
 
 
-int main()
+int main(int argc, char **argv)
 {
 	int head, tail, count;
 	int last_usage = -1;
@@ -35,9 +36,14 @@ int main()
 	char ts[1024];
 	time_t t;
 
+  if (argc > 1)
+    sprintf(ts, "/dev/mce_data%i", atoi(argv[1]));
+  else 
+    sprintf(ts, "/dev/mce_data%i", DEFAULT_FIBRE_CARD);
+
 	if ((mce=mcelib_create())==NULL ||
-	    (mcedata_open(mce, DEFAULT_DATAFILE)!=0)) {
-		fprintf(stderr, "Failed to connect data device.\n");
+	    (mcedata_open(mce, ts)!=0)) {
+		fprintf(stderr, "%s: failed to connect data device %s\n", argv[0], ts);
 		exit(1);
 	}
 

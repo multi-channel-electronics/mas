@@ -23,10 +23,10 @@ raw_acq: raw_acq.o
 $(OBJECTS): $(HEADERS)
 
 tidy:
-	-rm *~ *.o
+	rm -f *~ *.o
 
 clean:	tidy
-	-rm raw_acq
+	rm -f raw_acq
 
 # Make the install__raw_acq rule
 INSTALL_TARGET=raw_acq

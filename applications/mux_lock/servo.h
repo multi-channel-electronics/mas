@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <mce_library.h>
 
+#include "../../defaults/config.h"
 #include "options.h"
 
 #define HEADER_OFFSET 43

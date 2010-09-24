@@ -3,6 +3,8 @@
 
 #include <mce_library.h>
 
+#include "../../defaults/config.h"
+
 #define PROGRAM_NAME "mce_cmd"
 
 #define LINE_LEN 1024
