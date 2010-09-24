@@ -4,7 +4,6 @@
 #include "kversion.h"
 #include "mce/dsp.h"
 #include "mce/types.h"
-#include "../defaults/config.h"
 
 #define MCEDEV_NAME "mce_cmd"
 #define MCEDATA_NAME "mce_data"

@@ -46,7 +46,7 @@ int process_options(option_t *options, int argc, char **argv)
 
 	case 'n':
 	  options->fibre_card = (int)strtoul(optarg, &s, 10);
-	  if (*optarg == '\0' || *s != '\0' || options->fibre_card > 4) {
+	  if (*optarg == '\0' || *s != '\0' || options->fibre_card >= MAX_FIBRE_CARD) {
 		fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
 		return -1;
 	  }

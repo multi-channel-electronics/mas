@@ -1,7 +1,9 @@
 #ifndef _MCE_OPTIONS_H_
 #define _MCE_OPTIONS_H_
 
-#define MAX_CARDS 2
+#include "../defaults/config.h"
+
+#define MAX_CARDS MAX_FIBRE_CARD
 
 #define DEVICE_NAME "mceds"
 

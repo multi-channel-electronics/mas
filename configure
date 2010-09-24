@@ -2977,6 +2977,10 @@ $as_echo "#define FAKEMCE 1" >>confdefs.h
 fi
 
 
+
+$as_echo "#define MAX_FIBRE_CARD 2" >>confdefs.h
+
+
 if /bin/false; then
 
 $as_echo "#define REALTIME 1" >>confdefs.h

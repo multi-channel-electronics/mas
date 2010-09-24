@@ -104,6 +104,10 @@ if test "x$DRIVER_FAKEMCE" = "xyes"; then
 fi
 AC_SUBST(DRIVER_FAKEMCE)
 
+dnl Should this be user configurable?
+AC_DEFINE(MAX_FIBRE_CARD, [2],
+          [ Define to the total allowable number of fibre cards. ])
+
 dnl Always off, but here so autoheader picks it up.
 if /bin/false; then
   AC_DEFINE(REALTIME, [1],

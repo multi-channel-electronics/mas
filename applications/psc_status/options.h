@@ -1,6 +1,8 @@
 #ifndef _OPTIONS_H_
 #define _OPTIONS_H_
 
+#include "../../defaults/config.h"
+
 #define OPTSTR 1024
 
 typedef struct {
