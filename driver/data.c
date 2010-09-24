@@ -10,16 +10,16 @@
 #include "kversion.h"
 #include "mce_options.h"
 
-#ifdef BIGPHYS
-# include <linux/bigphysarea.h>
-#endif
-
 #include "dsp_driver.h"
 #include "data.h"
 #include "data_ops.h"
 #include "data_qt.h"
 #include "mce_driver.h"
 #include "memory.h"
+
+#ifdef BIGPHYS
+# include <linux/bigphysarea.h>
+#endif
 
 #ifdef OPT_WATCHER
 # include "data_watcher.h"

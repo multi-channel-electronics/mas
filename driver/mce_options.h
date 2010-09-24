@@ -8,15 +8,14 @@
 
 /*
 
-  The following parameters may be set in the Makefile to control
-  certain behaviours. Some defaults are set through the ./configure
-  script.
+  The following parameters may be set in ../defaults/config.h (via
+  the ./configure script).
 
   FAKEMCE - replace PCI card support with the fake_mce emulator
   REALTIME - use RTAI.  This only affects the PCI card interrupt.
   BIGPHYS - use bigphysarea.  This allows a larger frame buffer.
-  OPT_VERBOSE - log, a lot
-  OPT_QUIET - don't even log errors
+  DRIVER_VERBOSE - log, a lot
+  DRIVER_QUIET - don't even log errors
 
 */
 
@@ -25,13 +24,13 @@
   DEBUG MESSAGES
 */
 
-#ifdef OPT_QUIET
+#ifdef DRIVER_QUIET
 #  define PRINT_ERR(A...) //shh(A)
 #else
 #  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
 #endif
 
-#ifdef OPT_VERBOSE
+#ifdef DRIVER_VERBOSE
 #  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
 #else
 #  define PRINT_INFO(A...) // shh(A)

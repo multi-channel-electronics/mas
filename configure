@@ -606,8 +606,6 @@ DO_MAS_SWIG
 PYTHON_DIR
 KERNEL_DIR
 DRIVER_FAKEMCE
-DRIVER_BIGPHYS
-DRIVER_VERBOSE
 DEFAULT_MASFILE
 DEFAULT_HARDWAREFILE
 DEFAULT_FIBRE_CARD
@@ -663,6 +661,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_driver
+enable_quiet_driver
 enable_verbose_driver
 with_bigphysarea
 with_fakemce
@@ -1293,6 +1292,7 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-quiet-driver   build an unnecessarily quiet kernel driver
   --enable-verbose-driver build a very chatty kernel driver (for debugging
                           only)
 
@@ -2912,6 +2912,24 @@ _ACEOF
 
 # Some driver options.
 
+# Check whether --enable-quiet-driver was given.
+if test "${enable_quiet_driver+set}" = set; then :
+  enableval=$enable_quiet_driver; if test "x$withval" = "xno"; then
+   DRIVER_QUIET=no
+else
+   DRIVER_QUIET=yes
+fi
+else
+  DRIVER_QUIET=no
+fi
+
+
+if test "x$DRIVER_QUIET" = "xyes"; then
+
+$as_echo "#define DRIVER_QUIET 1" >>confdefs.h
+
+fi
+
 # Check whether --enable-verbose-driver was given.
 if test "${enable_verbose_driver+set}" = set; then :
   enableval=$enable_verbose_driver; if test "x$withval" = "xno"; then
@@ -2924,6 +2942,11 @@ else
 fi
 
 
+if test "x$DRIVER_VERBOSE" = "xyes"; then
+
+$as_echo "#define DRIVER_VERBOSE 1" >>confdefs.h
+
+fi
 
 
 # Check whether --with-bigphysarea was given.
@@ -2933,6 +2956,11 @@ else
   DRIVER_BIGPHYS=yes
 fi
 
+if test "x$DRIVER_BIGPHYS" = "xyes"; then
+
+$as_echo "#define BIGPHYS 1" >>confdefs.h
+
+fi
 
 
 # Check whether --with-fakemce was given.
@@ -2942,7 +2970,18 @@ else
   DRIVER_FAKEMCE=no
 fi
 
+if test "x$DRIVER_FAKEMCE" = "xyes"; then
 
+$as_echo "#define FAKEMCE 1" >>confdefs.h
+
+fi
+
+
+if /bin/false; then
+
+$as_echo "#define REALTIME 1" >>confdefs.h
+
+fi
 
 
 # Configure the kernel source directory.

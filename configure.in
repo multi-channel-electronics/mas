@@ -59,6 +59,20 @@ AC_DEFINE_UNQUOTED([DEFAULT_MASFILE], ["$DEFAULT_MASFILE"],
 
 # Some driver options.
 
+AC_ARG_ENABLE([quiet-driver], [AS_HELP_STRING([--enable-quiet-driver],
+      [build an unnecessarily quiet kernel driver])],
+    [if test "x$withval" = "xno"; then
+   DRIVER_QUIET=no
+else
+   DRIVER_QUIET=yes
+fi],
+[DRIVER_QUIET=no])
+
+if test "x$DRIVER_QUIET" = "xyes"; then
+  AC_DEFINE(DRIVER_QUIET, [1],
+            [ Define to 1 to remove most messages from the kernel driver. ])
+fi
+
 AC_ARG_ENABLE([verbose-driver], [AS_HELP_STRING([--enable-verbose-driver],
       [build a very chatty kernel driver (for debugging only)])],
     [if test "x$withval" = "xno"; then
@@ -67,16 +81,34 @@ else
    DRIVER_VERBOSE=yes
 fi],
 [DRIVER_VERBOSE=no])
-AC_SUBST(DRIVER_VERBOSE)
+
+if test "x$DRIVER_VERBOSE" = "xyes"; then
+  AC_DEFINE(DRIVER_VERBOSE, [1],
+            [ Define to 1 to add debugging messages to the kernel driver. ])
+fi
 
 AC_ARG_WITH([bigphysarea],
             [AS_HELP_STRING([--without-bigphysarea], [disable bigphysarea])],
             [DRIVER_BIGPHYS=$withval], [DRIVER_BIGPHYS=yes])
-AC_SUBST(DRIVER_BIGPHYS)
+if test "x$DRIVER_BIGPHYS" = "xyes"; then
+  AC_DEFINE(BIGPHYS, [1],
+            [ Define to 1 to use bigphysarea in the kernel driver. ])
+fi
+
 AC_ARG_WITH([fakemce],
             [AS_HELP_STRING([--with-fakemce], [enable fakemce])],
             [DRIVER_FAKEMCE=$withval], [DRIVER_FAKEMCE=no])
+if test "x$DRIVER_FAKEMCE" = "xyes"; then
+  AC_DEFINE(FAKEMCE, [1],
+            [ Define to 1 to enable fakemce in the kernel driver. ])
+fi
 AC_SUBST(DRIVER_FAKEMCE)
+
+dnl Always off, but here so autoheader picks it up.
+if /bin/false; then
+  AC_DEFINE(REALTIME, [1],
+            [ Define to 1 to enable realtime in the kernel driver. ])
+fi
 
 
 # Configure the kernel source directory.

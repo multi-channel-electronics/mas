@@ -1,5 +1,8 @@
 /* defaults/config.h.in.  Generated from configure.in by autoheader.  */
 
+/* Define to 1 to use bigphysarea in the kernel driver. */
+#undef BIGPHYS
+
 /* Define to the default experiment configuration file. */
 #undef DEFAULT_EXPERIMENTFILE
 
@@ -11,6 +14,15 @@
 
 /* Define to the default MAS configuration file. */
 #undef DEFAULT_MASFILE
+
+/* Define to 1 to remove most messages from the kernel driver. */
+#undef DRIVER_QUIET
+
+/* Define to 1 to add debugging messages to the kernel driver. */
+#undef DRIVER_VERBOSE
+
+/* Define to 1 to enable fakemce in the kernel driver. */
+#undef FAKEMCE
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -62,6 +74,9 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
+
+/* Define to 1 to enable realtime in the kernel driver. */
+#undef REALTIME
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS

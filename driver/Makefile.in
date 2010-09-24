@@ -16,12 +16,11 @@ RTAI_DIR   ?= /usr/src/rtai
 REPO_VERSION   = $(shell svnversion $(src))
 BRANCH_ID = $(shell cat ../branch_id.txt)
 
-# Module configuration options, set to 'yes' or 'no'
+# Module configuration options, set to 'yes' or 'no' (also see
+# defaults/config.h)
 
-VERBOSE    ?= @DRIVER_VERBOSE@
 FAKEMCE    ?= @DRIVER_FAKEMCE@
 REALTIME   ?= no
-BIGPHYS    ?= @DRIVER_BIGPHYS@
 
 KERNEL_SOURCE = @KERNEL_DIR@
 
@@ -42,13 +41,6 @@ ifeq ($(REALTIME),yes)
   INCLUDES += -I$(RTAI_DIR)/include -I$(RTAI_DIR)
 endif #REALTIME=yes
 
-ifeq ($(VERBOSE),yes)
-  DEFS += -DOPT_VERBOSE
-endif #VERBOSE=yes
-
-ifeq ($(BIGPHYS),yes)
-  DEFS += -DBIGPHYS
-endif #BIGPHYS=yes
 
 
 
@@ -106,5 +98,9 @@ install: modules
 	install -d $(INSTALLDIR)
 	install $(DRIVER_FILE) $(INSTALLDIR)
 	depmod -v $(KERNELVER) > /dev/null
+
+.PRECIOUS: Makefile
+Makefile: ../config.status Makefile.in
+	$(SHELL) ../config.status $@
 
 .PHONY: FORCE

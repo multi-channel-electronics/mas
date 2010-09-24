@@ -52,11 +52,21 @@ config.status: configure
 configure: configure.in
 	autoconf -o $@ $<
 
-defaults/config.h: config.status defaults/config.h.in
-	$(SHELL) ./config.status $@
+# this misdirection prevents us from having to run autoheader every time
+defaults/config.h: defaults/config-stamp
+	@if test ! -f $@; then \
+		rm -f $<; \
+		$(MAKE) $<; \
+		fi
+
+defaults/config-stamp: defaults/config.h.in $<
+	$(SHELL) ./config.status defaults/config.h
+	touch $@
 
 defaults/config.h.in: configure.in
 	autoheader $<
+	rm -f defaults/config-stamp
+	touch $@
 
 # Supporting targets; driver needs some hand-holding...
 
