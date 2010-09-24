@@ -43,12 +43,14 @@ int main (int argc, char **argv){
      
      // Load MCE hardware inforamtion
      if (mceconfig_open(mce, options.hardware_file, NULL) != 0) {
-       fprintf(stderr, "Failed to open %s as hardware configuration file.", options.config_file);
+       fprintf(stderr, "Failed to open %s as hardware configuration file.\n",
+           options.config_file);
        return 2;
      }
      // connect to an mce_cmd device 
      if (mcecmd_open(mce, options.cmd_device)) {
-       fprintf(stderr, "Failed to open %s as command device.", options.cmd_device);
+       fprintf(stderr, "Failed to open %s as command device.\n",
+           options.cmd_device);
        return 3;     
      }
      

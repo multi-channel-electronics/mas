@@ -45,37 +45,39 @@ int process_options(option_t *options, int argc, char **argv)
       break;
 
 	case 'n':
-	  options->fibre_card = (int)strtoul(optarg, &s, 10);
-	  if (*optarg == '\0' || *s != '\0' || options->fibre_card >= MAX_FIBRE_CARD) {
-		fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
-		return -1;
-	  }
-	  break;
+	  options->fibre_card = (int)strtol(optarg, &s, 10);
+    if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0 ||
+        options->fibre_card >= MAX_FIBRE_CARD)
+    {
+      fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+      return -1;
+    }
+    break;
 
-	case 'w':
-	  strcpy(options->hardware_file, optarg);
-	  break;
+  case 'w':
+    strcpy(options->hardware_file, optarg);
+    break;
 
-	case 'p':
-	  options->preservo = atoi(optarg);
-	  break;
+  case 'p':
+    options->preservo = atoi(optarg);
+    break;
 
-	case 's':
-	  strcpy(options->experiment_file, optarg);
-	  break;
+  case 's':
+    strcpy(options->experiment_file, optarg);
+    break;
 
-	case 'E':
-	  options->argument_opts = !(atoi(optarg));
-	  break;
+  case 'E':
+    options->argument_opts = !(atoi(optarg));
+    break;
 
-	case '0' ... '9':
-	  //It's a number! Get out of here!
-	  optind--;
-	  break;
+  case '0' ... '9':
+    //It's a number! Get out of here!
+    optind--;
+    break;
 
-	default:
-	  printf("Unimplemented option '-%c'!\n", option);
-	}
+  default:
+    printf("Unimplemented option '-%c'!\n", option);
+    }
   }
 
   /* set fibre card devices */
