@@ -101,6 +101,6 @@ install: modules
 
 .PRECIOUS: Makefile
 Makefile: ../config.status Makefile.in
-	$(SHELL) ../config.status $@
+	cd .. && $(MAKE) driver/Makefile
 
 .PHONY: FORCE

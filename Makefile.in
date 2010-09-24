@@ -46,6 +46,21 @@ install: $(install_deps)
 Makefile: config.status Makefile.in
 	$(SHELL) ./config.status $@
 
+driver/Makefile: config.status driver/Makefile.in
+	$(SHELL) ./config.status $@
+
+makefiles/Makefile.install: config.status makefiles/Makefile.install.in
+	$(SHELL) ./config.status $@
+
+makefiles/Makefile.paths: config.status makefiles/Makefile.paths.in
+	$(SHELL) ./config.status $@
+
+scrips/mas: config.status scripts/mas.in
+	$(SHELL) ./config.status $@
+
+scrips/mas_mknodes: config.status scripts/mas_mknodes.in
+	$(SHELL) ./config.status $@
+
 config.status: configure
 	$(SHELL) ./config.status --recheck
 
