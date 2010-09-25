@@ -1,4 +1,20 @@
 #!/bin/bash
+# @configure_input@
+
+function do_card {
+  local i=$1
+  mknod $DSP_FILE$i c $DSP_MAJOR $i
+  chgrp $GRP $DSP_FILE$i
+  chmod g+rw  $DSP_FILE$i
+
+  mknod $MCEC_FILE$i c $MCEC_MAJOR $i
+  chgrp $GRP $MCEC_FILE$i
+  chmod g+rw  $MCEC_FILE$i
+
+  mknod $MCED_FILE$i c $MCED_MAJOR $i
+  chgrp $GRP $MCED_FILE$i
+  chmod g+rw  $MCED_FILE$i
+}
 
 if [ "`whoami`" != "root" ]; then
     echo "Must be run as root or sudo."
@@ -34,18 +50,13 @@ MCEC_MAJOR=`awk "$awkp" /proc/devices`
 awkp="\$2==\"$MCED_DEV\" {print \$1;}"
 MCED_MAJOR=`awk "$awkp" /proc/devices`
 
-for i in $(seq $dev0 $(( $ndev + $dev0 - 1 )) ); do
-
-    mknod $DSP_FILE$i c $DSP_MAJOR $i
-    chgrp $GRP $DSP_FILE$i
-    chmod g+rw  $DSP_FILE$i
-
-    mknod $MCEC_FILE$i c $MCEC_MAJOR $i
-    chgrp $GRP $MCEC_FILE$i
-    chmod g+rw  $MCEC_FILE$i
-
-    mknod $MCED_FILE$i c $MCED_MAJOR $i
-    chgrp $GRP $MCED_FILE$i
-    chmod g+rw  $MCED_FILE$i
-
-done
+# make devices based on a PCI slot (used by udev)
+# here dev0 contains the slot address
+if [ "$ndev" == "pci" ]; then
+  do_card `grep '\(CARD\|bus address\)' /proc/mce_dsp | \
+    awk "/CARD/ {c=\\\$2} /$dev0/ { print c }"`
+else
+  for i in $(seq $dev0 $(( $ndev + $dev0 - 1 )) ); do
+    do_card $i
+  done
+fi
