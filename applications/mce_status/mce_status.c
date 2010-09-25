@@ -20,7 +20,7 @@
 options_t options = {
 	.fibre_card = DEFAULT_FIBRE_CARD,
 	.config_file = DEFAULT_MASFILE,
-	.hardware_file = DEFAULT_HARDWAREFILE,
+	.hardware_file = "",
 	.mode = CRAWLER_DAS,
 };
 
@@ -137,6 +137,6 @@ int crawl_festival(crawler_t *crawler)
 void error_log_exit(logger_t* logger, const char *msg, int error)
 {
 	logger_print(logger, msg);
-	fprintf(stderr, msg);
+	fprintf(stderr, "%s", msg);
 	exit(error);
 }

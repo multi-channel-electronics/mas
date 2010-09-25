@@ -9,8 +9,8 @@
 /* Define to the number of the default fibre card. */
 #undef DEFAULT_FIBRE_CARD
 
-/* Define to the default hardware configuration file. */
-#undef DEFAULT_HARDWAREFILE
+/* Define to the default hardware configuration filename format specifier. */
+#undef DEFAULT_HARDWAREFMT
 
 /* Define to the default MAS configuration file. */
 #undef DEFAULT_MASFILE

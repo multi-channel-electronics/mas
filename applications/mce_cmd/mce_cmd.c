@@ -170,7 +170,7 @@ char *line = NULL;
 char *line_buffer = NULL;
 
 options_t options = {
-	.hardware_file =  DEFAULT_HARDWAREFILE,
+	.hardware_file =  "",
 	.masconfig_file = DEFAULT_MASFILE,
 	.display =        SPECIAL_DEF,
 	.acq_path =       "./",

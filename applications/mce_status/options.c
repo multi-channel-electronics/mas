@@ -77,6 +77,8 @@ int process_options(options_t* options, int argc, char **argv)
 
 	/* set fibre card devices */
 	sprintf(options->device_file, "/dev/mce_cmd%i", options->fibre_card);
+  if (options->hardware_file[0] == '\0')
+    sprintf(options->hardware_file, DEFAULT_HARDWAREFMT, options->fibre_card);
 
 	return 0;
 }

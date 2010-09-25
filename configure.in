@@ -39,14 +39,16 @@ AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
 AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
 				   [ Define to the number of the default fibre card. ])
 
-AC_ARG_VAR([DEFAULT_HARDWAREFILE],
-		   [the default hardware configuration file (/etc/mce/mce.cfg is used ]
-		   [if not specified)])
-if test -z "$DEFAULT_HARDWAREFILE"; then
-	DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
+AC_ARG_VAR([DEFAULT_HARDWAREFMT],
+		   [the default hardware configuration filename format specifier.  Must ]
+       [contain '%i', which will be replaced by a fibre card number.  ]
+       [(/etc/mce/mce%i.cfg is used if not specified)])
+if test -z "$DEFAULT_HARDWAREFMT"; then
+	DEFAULT_HARDWAREFMT="/etc/mce/mce%i.cfg"
 fi
-AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFILE], ["$DEFAULT_HARDWAREFILE"],
-				   [ Define to the default hardware configuration file. ])
+AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFMT], ["$DEFAULT_HARDWAREFMT"],
+                   [ Define to the default hardware configuration filename ]
+                   [format specifier. ])
 
 AC_ARG_VAR([DEFAULT_MASFILE],
 		   [the default MAS configuration file (/etc/mce/mas.cfg is used if ]

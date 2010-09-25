@@ -133,7 +133,7 @@ int main (int argc, char **argv)
    option_t options = {
      .config_file = DEFAULT_MASFILE,
 	 .fibre_card = DEFAULT_FIBRE_CARD,
-     .hardware_file = DEFAULT_HARDWAREFILE,
+     .hardware_file = "",
      .experiment_file = DEFAULT_EXPERIMENTFILE,
      .argument_opts = 0,
    };

@@ -610,7 +610,7 @@ MCE_CFG_LIST
 MCE_CIN_LIST
 DRIVER_FAKEMCE
 DEFAULT_MASFILE
-DEFAULT_HARDWAREFILE
+DEFAULT_HARDWAREFMT
 DEFAULT_FIBRE_CARD
 DEFAULT_EXPERIMENTFILE
 DO_MAS_DRIVER
@@ -684,7 +684,7 @@ LIBS
 CPPFLAGS
 DEFAULT_EXPERIMENTFILE
 DEFAULT_FIBRE_CARD
-DEFAULT_HARDWAREFILE
+DEFAULT_HARDWAREFMT
 DEFAULT_MASFILE
 CPP'
 
@@ -1327,9 +1327,10 @@ Some influential environment variables:
               specified)
   DEFAULT_FIBRE_CARD
               the default fibre card number (0 is used if not specified)
-  DEFAULT_HARDWAREFILE
-              the default hardware configuration file (/etc/mce/mce.cfg is
-              used if not specified)
+  DEFAULT_HARDWAREFMT
+              the default hardware configuration filename format specifier.
+              Must contain '%i', which will be replaced by a fibre card
+              number. (/etc/mce/mce%i.cfg is used if not specified)
   DEFAULT_MASFILE
               the default MAS configuration file (/etc/mce/mas.cfg is used if
               not specified)
@@ -2894,12 +2895,12 @@ _ACEOF
 
 
 
-if test -z "$DEFAULT_HARDWAREFILE"; then
-	DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
+if test -z "$DEFAULT_HARDWAREFMT"; then
+	DEFAULT_HARDWAREFMT="/etc/mce/mce%i.cfg"
 fi
 
 cat >>confdefs.h <<_ACEOF
-#define DEFAULT_HARDWAREFILE "$DEFAULT_HARDWAREFILE"
+#define DEFAULT_HARDWAREFMT "$DEFAULT_HARDWAREFMT"
 _ACEOF
 
 
