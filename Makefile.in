@@ -6,9 +6,9 @@ MAKE_DRIVER=@DO_MAS_DRIVER@
 MAKE_SWIG=@DO_MAS_SWIG@
 
 # Set up the sets of folders to recurse into for each target
-all_dirs = interfaces applications config
+all_dirs = interfaces applications config2
 clean_dirs = interfaces applications swig
-install_dirs = include interfaces applications scripts config
+install_dirs = include interfaces applications scripts config2
 
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h
@@ -44,6 +44,9 @@ install: $(install_deps)
 
 .PRECIOUS: Makefile
 Makefile: config.status Makefile.in
+	$(SHELL) ./config.status $@
+
+config2/Makefile: config.status config2/Makefile.in
 	$(SHELL) ./config.status $@
 
 driver/Makefile: config.status driver/Makefile.in

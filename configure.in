@@ -105,8 +105,20 @@ fi
 AC_SUBST(DRIVER_FAKEMCE)
 
 dnl Should this be user configurable?
-AC_DEFINE(MAX_FIBRE_CARD, [2],
+MAX_FIBRE_CARD=2
+AC_DEFINE_UNQUOTED(MAX_FIBRE_CARD, [$MAX_FIBRE_CARD],
           [ Define to the total allowable number of fibre cards. ])
+MCE_CFG_LIST="mce0.cfg"
+MCE_CIN_LIST="mce0.cin"
+if test $MAX_FIBRE_CARD -gt 1; then
+  for n in $(seq $(expr $MAX_FIBRE_CARD - 1)); do
+    MCE_CFG_LIST="$MCE_CFG_LIST mce$n.cfg"
+    MCE_CIN_LIST="$MCE_CIN_LIST mce$n.cin"
+  done
+fi
+AC_SUBST(MCE_CIN_LIST)
+AC_SUBST(MCE_CFG_LIST)
+
 
 dnl Always off, but here so autoheader picks it up.
 if /bin/false; then
@@ -114,6 +126,12 @@ if /bin/false; then
             [ Define to 1 to enable realtime in the kernel driver. ])
 fi
 
+
+# Check for php for config2
+AC_CHECK_PROG([PHP_IS], [php], [yes], [no])
+if test "$PHP_IS" = "no"; then
+  AC_MSG_ERROR([cannot find php; perhaps you need to install php5-cli])
+fi
 
 # Configure the kernel source directory.
 
@@ -217,8 +235,20 @@ dnl Write.
 
 AC_CONFIG_HEADERS([defaults/config.h])
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([config2/Makefile])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
 AC_CONFIG_FILES([scripts/mas scripts/mas_mknodes],
                 [chmod a+x $ac_file])
 AC_OUTPUT
+
+if test ! -f config2/mce0.cin; then
+  echo
+  echo "  Before building MAS, you must first select a mce.cin files to use as"
+  echo "  your hardware configuration files.  For each fibre card in your"
+  echo "  system, copy an appropriate template files from config2/v4 or "
+  echo "  config2/v5 to config2/mce#.cin, (where # is the fibre card number),"
+  echo "  Then modify each of these files to match the configuration of the"
+  echo "  subrack attached to the given fibre card."
+  echo 
+fi

@@ -1,0 +1,96 @@
+default: all
+
+BASE := ../
+include $(BASE)Makefile.children
+
+SOURCE = @MCE_CIN_LIST@
+TARGET = @MCE_CFG_LIST@
+
+all: Makefile $(TARGET)
+
+# General rule...
+%.cfg : %.cin components/
+	@if test -f $<; then \
+		echo php $< > $@; \
+		php $< > $@ || rm -f $@; \
+	fi
+
+# we only die if mce0.cin doesn't exist, because the user may only have
+# one fibre card.
+$(SOURCE) :
+	@if test $@ = "mce0.cin"; then \
+		echo; \
+		echo "  ERROR: $@ does not exist... can not produce mce0.cfg"; \
+		echo "  Create $@ from your preferred template."; \
+	  /bin/false; \
+	else \
+		base=`basename $@ .cin`; \
+		echo; \
+		echo "  WARNING: $@ does not exist... skipping production of $$base.cfg"; \
+	fi
+
+/etc/mce:
+	install --group=$(MAS_GROUP) --mode=775 -d /etc/mce
+
+install: install-mas install-mce
+
+install-mas: /etc/mce
+	@if [ -f /etc/mce/mas.cfg ]; then \
+		if ! diff -q mas.cfg /etc/mce/mas.cfg > /dev/null; then \
+			echo; \
+			echo "  WARNING: /etc/mce/mas.cfg already exists, not overwriting."; \
+			echo "  To install the new mas.cfg; delete /etc/mce/mas.cfg first."; \
+		else \
+			echo "skipping install of /etc/mce/mas.cfg (unchanged)"; \
+		fi; \
+	else \
+		echo "installing /etc/mce/mas.cfg"; \
+		install --group=$(MAS_GROUP) --mode=664 mas.cfg /etc/mce/; \
+	fi
+
+# First, if /etc/mce/mce.cfg is a regular file but /etc/mce/mce0.cfg doesn't
+#   exist, we rename mce.cfg to mce0.cfg.
+# Second, if /etc/mce/mce.cfg exists and is not a regular file, we complain,
+#   otherwise, if it doesn't exist we create the symlink
+# Third, we go through our list of mce#.cfg; and install them if they exist,
+#   taking care to not overwrite existing files.
+install-mce: /etc/mce mce0.cfg
+	@if [ -f /etc/mce/mce.cfg -a ! -e /etc/mce/mce0.cfg ]; then \
+		echo "moving /etc/mce/mce.cfg to /etc/mce/mce0.cfg"; \
+		mv /etc/mce/mce.cfg /etc/mce/mce0.cfg; \
+	fi
+	@if [ -e /etc/mce/mce.cfg -a \( ! -h /etc/mce/mce.cfg \
+				-o "`readlink /etc/mce/mce.cfg`" != mce0.cfg \) ]; then \
+		echo; \
+		echo "  WARNING: /etc/mce/mce.cfg should be a symlink pointing to"; \
+		echo "  /etc/mce/mce0.cfg; but it appears to be something else."; \
+		echo "  Check your configuration."; \
+	elif [ ! -h /etc/mce/mce.cfg ]; then \
+		echo "creating symlink /etc/mce/mce.cfg -> mce0.cfg"; \
+		ln -s mce0.cfg /etc/mce/mce.cfg; \
+	fi
+	@for x in $(TARGET); do \
+		if [ -f $$x ]; then \
+			if [ -f /etc/mce/$$x ]; then \
+				if ! diff -q $$x /etc/mce/$$x > /dev/null; then \
+					echo; \
+					echo "  WARNING: /etc/mce/$$x already exists, not overwriting."; \
+					echo "  To install the new $$x; delete /etc/mce/$$x first."; \
+				else \
+					echo "skipping install of /etc/mce/$$x (unchanged)"; \
+				fi; \
+			else \
+				echo "installing /etc/mce/$$x"; \
+				install --group=$(MAS_GROUP) --mode=664 $$x /etc/mce/; \
+			fi; \
+		fi; \
+	done
+
+.PHONY: install install-mas install-mce clean all default
+
+clean:
+	rm -f $(TARGET)
+
+.PRECIOUS: Makefile
+Makefile: ../config.status Makefile.in
+	cd .. && $(MAKE) config2/Makefile
