@@ -244,8 +244,8 @@ AC_OUTPUT
 
 if test ! -f config2/mce0.cin; then
   echo
-  echo "  Before building MAS, you must first select a mce.cin files to use as"
-  echo "  your hardware configuration files.  For each fibre card in your"
+  echo "  Before building MAS, you must first select the mce.cin files to use"
+  echo "  as your hardware configuration files.  For each fibre card in your"
   echo "  system, copy an appropriate template files from config2/v4 or "
   echo "  config2/v5 to config2/mce#.cin, (where # is the fibre card number),"
   echo "  Then modify each of these files to match the configuration of the"
