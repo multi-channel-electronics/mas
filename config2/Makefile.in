@@ -11,7 +11,7 @@ all: Makefile $(TARGET)
 # General rule...
 %.cfg : %.cin components/
 	@if test -f $<; then \
-		echo php $< > $@; \
+		echo "php $< > $@"; \
 		php $< > $@ || rm -f $@; \
 	fi
 

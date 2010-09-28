@@ -1,3 +1,5 @@
+default: all
+
 BASE = ../
 include $(BASE)Makefile.children
 
@@ -10,4 +12,16 @@ include $(MAKERULES)Makefile.install_rule_init
 INSTALL_TARGET=mas_mknodes
 include $(MAKERULES)Makefile.install_rule
 
-install: install__mas install__mas_mknodes
+INSTALL_TARGET=mas_make_card_id
+include $(MAKERULES)Makefile.install_rule
+
+all: mas mas_mknodes
+
+install: install__mas install__mas_mknodes install__mas_make_card_id
+	install --mode=644 91-mas.rules /etc/udev/rules.d
+
+mas: ../config.status mas.in
+	cd .. && $(MAKE) scripts/mas
+
+mas_mknodes: ../config.status mas_mknodes.in
+	cd .. && $(MAKE) scripts/mas_mknodes

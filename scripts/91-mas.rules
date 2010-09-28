@@ -1,0 +1,22 @@
+# udev rule for MCE/MAS
+#  Matthew Hasselfield, 2009-07-22
+#  D. V. Wiebe          2010-09-24
+#
+# This should make sure that the presence of SDSU cards triggers
+# the loading of the MAS driver and the creation of device nodes
+# for each card.
+
+# Identify SDSU cards by their Motorola DSP:
+SUBSYSTEM=="pci", ATTR{vendor}=="0x1057", ATTR{device}=="0x1801", GOTO="mas_device"
+GOTO="mas_done"
+
+LABEL="mas_device"
+
+# Load driver
+PROGRAM="/sbin/modprobe mce_dsp"
+
+# Make nodes for this device
+PROGRAM="/usr/mce/bin/mas_mknodes pci $env{PCI_SLOT_NAME}"
+
+# Exit
+LABEL="mas_done"

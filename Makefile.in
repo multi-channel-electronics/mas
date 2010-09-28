@@ -11,7 +11,8 @@ clean_dirs = interfaces applications swig
 install_dirs = include interfaces applications scripts config2
 
 # Set up dependencies for each target
-all_deps = Makefile defaults/config.h
+all_deps = Makefile defaults/config.h makefiles/Makefile.install \
+					 makefiles/Makefile.paths scripts/mas scripts/mas_mknodes
 clean_deps = clean_driver
 install_deps = all
 
@@ -58,10 +59,10 @@ makefiles/Makefile.install: config.status makefiles/Makefile.install.in
 makefiles/Makefile.paths: config.status makefiles/Makefile.paths.in
 	$(SHELL) ./config.status $@
 
-scrips/mas: config.status scripts/mas.in
+scripts/mas: config.status scripts/mas.in
 	$(SHELL) ./config.status $@
 
-scrips/mas_mknodes: config.status scripts/mas_mknodes.in
+scripts/mas_mknodes: config.status scripts/mas_mknodes.in
 	$(SHELL) ./config.status $@
 
 config.status: configure
