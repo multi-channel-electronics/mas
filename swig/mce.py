@@ -148,10 +148,16 @@ class mce:
         self.context = mcelib_create()
         self.open()
 
-    def open(self,
-             cmd_file=default_cmdfile,
-             data_file=default_datafile,
-             config_file=default_hardwarefile):
+    def open(self, card=default_fibre_card,
+             cmd_file=None, data_file=None,
+             config_file=None):
+        if (cmd_file == None):
+            cmd_file = "/dev/mce_cmd{0}".format(card)
+        if (data_file == None):
+            data_file = "/dev/mce_data{0}".format(card)
+        if (config_file == None):
+            config_file = default_hardwarefmt % card
+
         mcecmd_open(self.context, cmd_file)
         mcedata_open(self.context, data_file)
         mceconfig_open(self.context, config_file, "hardware")

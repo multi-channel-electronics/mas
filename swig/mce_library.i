@@ -35,7 +35,7 @@ functionality. */
 
 	const int default_fibre_card = DEFAULT_FIBRE_CARD;
 	const char default_masfile[] = DEFAULT_MASFILE;
-	const char default_hardwarefile[] = DEFAULT_HARDWAREFILE;
+	const char default_hardwarefmt[] = DEFAULT_HARDWAREFMT;
 	const char default_experimentfile[] = DEFAULT_EXPERIMENTFILE;
 
 	typedef struct {
