@@ -116,7 +116,6 @@ ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
 int data_mmap(struct file *filp, struct vm_area_struct *vma)
 {
   struct filp_pdata *fpdata = filp->private_data;
-  int card = fpdata->minor;
   frame_buffer_t *dframes = data_frames + fpdata->minor;
 
   // Mark memory as reserved (prevents core dump inclusion) and
@@ -124,7 +123,7 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
   vma->vm_flags |= VM_IO | VM_RESERVED;
 
   // Do args checking on vma... start, end, prot.
-  PRINT_INFO(card, "mapping %#lx bytes to user address %#lx\n",
+  PRINT_INFO(fpdata->minor, "mapping %#lx bytes to user address %#lx\n",
       vma->vm_end - vma->vm_start, vma->vm_start);
 
   //remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
