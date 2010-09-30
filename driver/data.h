@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
+ *      vim: sw=2 ts=2 et tw=80
+ */
 #ifndef _DATA_H_
 #define _DATA_H_
 
@@ -43,52 +46,52 @@
 
 typedef struct {
 
-	// Buffer addresses are, for 0 <= i < max_index,
-        //  addr[i] = base + frame_size*i
-	// But each buffer contains only data_size bytes of real data.
+  // Buffer addresses are, for 0 <= i < max_index,
+  //  addr[i] = base + frame_size*i
+  // But each buffer contains only data_size bytes of real data.
 
-	void*     base;
-	u32       size;
+  void*     base;
+  u32       size;
 
-	int       frame_size;
-	int       data_size;
-        int       max_index;
+  int       frame_size;
+  int       data_size;
+  int       max_index;
 
-        // New data is written at head, consumer data is read at tail.
-	volatile
-	int       head_index;
-	volatile
-	int       tail_index;
+  // New data is written at head, consumer data is read at tail.
+  volatile
+    int       head_index;
+  volatile
+    int       tail_index;
 
-	// Data mode of the DSP - DATAMODE_*
-	unsigned  data_mode;
+  // Data mode of the DSP - DATAMODE_*
+  unsigned  data_mode;
 
-	// If frame at tail_index has been only partially consumed, 
-	//  partial will indicate the current index into the buffer.
-	int       partial;
+  // If frame at tail_index has been only partially consumed, 
+  //  partial will indicate the current index into the buffer.
+  int       partial;
 
-	// Low level equivalent information
-	unsigned long base_busaddr;
-	
-	// Semaphore should be held when modifying structure, but
-	// interrupt routines may modify head_index at any time.
+  // Low level equivalent information
+  unsigned long base_busaddr;
 
-	struct semaphore sem;
+  // Semaphore should be held when modifying structure, but
+  // interrupt routines may modify head_index at any time.
 
-	// Device lock - controls read access on data device and
-	// provides a system for checking whether the system is
-	// mid-acquisition.  Should be NULL (for idle) or pointer to
-        // reader's filp (for locking).
+  struct semaphore sem;
 
-	void *data_lock;	
+  // Device lock - controls read access on data device and
+  // provides a system for checking whether the system is
+  // mid-acquisition.  Should be NULL (for idle) or pointer to
+  // reader's filp (for locking).
 
-	int dropped;
+  void *data_lock;	
 
-	int flags;
+  int dropped;
+
+  int flags;
 #define     FRAME_ERR 0x1
-	wait_queue_head_t queue;
+  wait_queue_head_t queue;
 
-	int major;
+  int major;
 
 } frame_buffer_t;
 
@@ -117,7 +120,7 @@ int  data_frame_contribute(int count, int card);
 int  data_frame_divide(int new_data_size, int card);
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count, int nonblock, int card);
+    int count, int nonblock, int card);
 int data_frame_fake_stop(int card);
 
 int data_frame_resize(int size, int card);
