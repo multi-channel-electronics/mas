@@ -1,6 +1,3 @@
-/* -*- mode: C; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- *      vim: sw=2 ts=2 et tw=80
- */
 #ifndef _MCE_OPTIONS_H_
 #define _MCE_OPTIONS_H_
 
@@ -13,49 +10,40 @@
 
 /*
 
-   The following parameters may be set in ../defaults/config.h (via
-   the ./configure script).
+  The following parameters may be set in ../defaults/config.h (via
+  the ./configure script).
 
-   FAKEMCE - replace PCI card support with the fake_mce emulator
-   REALTIME - use RTAI.  This only affects the PCI card interrupt.
-   BIGPHYS - use bigphysarea.  This allows a larger frame buffer.
-   DRIVER_VERBOSE - log, a lot
-   DRIVER_QUIET - don't even log errors
+  FAKEMCE - replace PCI card support with the fake_mce emulator
+  REALTIME - use RTAI.  This only affects the PCI card interrupt.
+  BIGPHYS - use bigphysarea.  This allows a larger frame buffer.
+  DRIVER_VERBOSE - log, a lot
+  DRIVER_QUIET - don't even log errors
 
 */
 
 
 /*
-   DEBUG MESSAGES
-   */
-
-#define NOCARD -1
-#define PRINT_MCE(level, card, fmt, ...) \
-  do { \
-    if (card == NOCARD) \
-    printk(level DEVICE_NAME "[-](%s): " fmt, __func__, ##__VA_ARGS__); \
-    else \
-    printk(level DEVICE_NAME "[%i](%s): " fmt, card, __func__, ##__VA_ARGS__); \
-  } while (0)
+  DEBUG MESSAGES
+*/
 
 #ifdef DRIVER_QUIET
 #  define PRINT_ERR(A...) //shh(A)
 #else
-#  define PRINT_ERR(...) PRINT_MCE(KERN_WARNING, __VA_ARGS__)
+#  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
 #endif
 
 #ifdef DRIVER_VERBOSE
-#  define PRINT_INFO(...) PRINT_MCE(KERN_INFO, __VA_ARGS__)
+#  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
 #else
-#  define PRINT_INFO(...) // shh(A)
+#  define PRINT_INFO(A...) // shh(A)
 #endif
 
-#define PRINT_IOCT(...) PRINT_MCE(KERN_INFO, __VA_ARGS__)
+#define PRINT_IOCT(A...) printk(KERN_INFO A)
 
 
 /*
-   FRAME_BUFFER_SIZE - must be reduced if BIGPHYS is not used
-   */
+  FRAME_BUFFER_SIZE - must be reduced if BIGPHYS is not used
+*/
 
 #ifndef BIGPHYS
 
@@ -75,12 +63,12 @@
 
 
 /*
-   WATCHER - adds functionality for characterizing buffer usage.
-   Adds a fast function call to data_frame_increment, and enables the
-   WATCH options in mce_data IOCTL.
+  WATCHER - adds functionality for characterizing buffer usage.
+  Adds a fast function call to data_frame_increment, and enables the
+  WATCH options in mce_data IOCTL.
 
-   Source file: data_watch.c, data_watch.h
-   */
+  Source file: data_watch.c, data_watch.h
+*/
 
 #define OPT_WATCHER
 

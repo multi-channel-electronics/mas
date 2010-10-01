@@ -1,6 +1,3 @@
-/* -*- mode: C; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- *      vim: sw=2 ts=2 et tw=80
- */
 #ifndef _MCE_DRIVER_H
 #define _MCE_DRIVER_H
 
@@ -32,14 +29,14 @@ int mce_error_register(int card);
 void mce_error_reset(int card);
 
 int mce_send_command( mce_command *cmd,
-    mce_callback callback,
-    int nonblock, int card );
+		      mce_callback callback,
+		      int nonblock, int card );
 
 int mce_qt_command( dsp_qt_code code, int arg1, 
-    int arg2, int card);
+		    int arg2, int card);
 
 int mce_get_reply( __user void* reply_user,
-    void* reply_kern, int count );
+		   void* reply_kern, int count );
 
 int mce_clear_commflags(void);
 
