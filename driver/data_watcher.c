@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
+ *      vim: sw=8 ts=8 et tw=80
+ */
 #include <linux/kernel.h>
 #include <asm/uaccess.h>
 

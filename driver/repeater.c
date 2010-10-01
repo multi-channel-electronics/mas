@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
+ *      vim: sw=8 ts=8 et tw=80
+ */
 #include <linux/interrupt.h>
 
 #include "mce_options.h"
@@ -12,11 +15,12 @@ void repeater_task(unsigned long data)
 		if (!last_chance) {
 			tasklet_schedule(&r->tasklet);
 		} else {
-			PRINT_ERR("giving up after %i attempts\n", r->attempts);
+                        PRINT_ERR(NOCARD, "giving up after %i attempts\n",
+                                        r->attempts);
 		}
 	}
 	if (err == 0 && r->attempts != 1) {
-		PRINT_ERR("succeeded after %i attempts\n", r->attempts);
+                PRINT_ERR(NOCARD, "succeeded after %i attempts\n", r->attempts);
 	}
 }
 

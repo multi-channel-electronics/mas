@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
+ *      vim: sw=8 ts=8 et tw=80
+ */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
@@ -118,16 +121,16 @@ know if the MCE works or not.
 
 */
 
-#define SUBNAME "mce_read: "
 ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
                  loff_t *f_pos)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 	struct mce_ops_t *mops = mce_ops + fpdata->minor;
+        int card = fpdata->minor;
 	int err = 0;
 	int ret_val = 0;
 
-	PRINT_INFO(SUBNAME "state=%#x\n", mops->state);
+        PRINT_INFO(card, "state=%#x\n", mops->state);
 
 	// Loop until we get the semaphore and there is a reply available.
 	while (1) {
@@ -160,13 +163,13 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 		up(&mops->sem);
 		if (filp->f_flags & O_NONBLOCK)
 			ret_val = -EAGAIN;
-		PRINT_INFO("read is waiting for state change.\n");
+          PRINT_INFO(card, "read is waiting for state change.\n");
 		if (wait_event_interruptible(mops->queue,
 					     mops->state != OPS_CMD))
 			return -ERESTARTSYS;
 	}
 	/* Now sem is held and state is either REP or ERR. */
-	PRINT_INFO("clear, getting reply.\n");
+        PRINT_INFO(card, "clear, getting reply.\n");
 	if (mops->state == OPS_REP) {
 		// Fix me: partial packet reads not supported
 		ret_val = sizeof(mops->rep);
@@ -174,8 +177,8 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 		err = copy_to_user(buf, (void*)&mops->rep, ret_val);
 		ret_val -= err;
 		if (err) {
-			PRINT_ERR(SUBNAME
-				  "could not copy %#x bytes to user\n", err );
+                        PRINT_ERR(card, "could not copy %#x bytes to user\n",
+                                        err);
 			fpdata->error = -MCE_ERR_KERNEL;
 		} else {
 			fpdata->error = 0;
@@ -189,34 +192,32 @@ ssize_t mce_read(struct file *filp, char __user *buf, size_t count,
 	wake_up_interruptible(&mops->queue);
 		
 out:
-	PRINT_INFO(SUBNAME "exiting (%i)\n", ret_val);
+        PRINT_INFO(card, "exiting (%i)\n", ret_val);
 	up(&mops->sem);
 	return ret_val;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_write_callback: "
 int mce_write_callback( int error, mce_reply* rep, int card)
 {
 	struct mce_ops_t *mops = mce_ops + card;
 
 	// Reject unexpected interrupts
 	if (mops->state != OPS_CMD) {
-		PRINT_ERR(SUBNAME "state is %#x, expected %#x\n",
+                PRINT_ERR(card, "state is %#x, expected %#x\n",
 			  mops->state, OPS_CMD);
 		return -1;
 	}			  
 
 	// Change state to REP or ERR, awaken readers, exit with success.
 	if (error || rep==NULL) {
-		PRINT_ERR(SUBNAME "called with error=-%#x, rep=%lx\n",
+                PRINT_ERR(card, "called with error=-%#x, rep=%lx\n",
 			  -error, (unsigned long)rep);
 		memset(&mops->rep, 0, sizeof(mops->rep));
 		mops->state = OPS_ERR;
 		mops->cmd_error = error ? error : -MCE_ERR_INT_UNKNOWN;
 	} else {
-		PRINT_INFO(SUBNAME "type=%#x\n", rep->ok_er);
+                PRINT_INFO(card, "type=%#x\n", rep->ok_er);
 		memcpy(&mops->rep, rep, sizeof(mops->rep));
 		mops->state = OPS_REP;
 		mops->cmd_error = 0;
@@ -225,18 +226,17 @@ int mce_write_callback( int error, mce_reply* rep, int card)
 	wake_up_interruptible(&mops->queue);
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_write: "
 ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 	struct mce_ops_t *mops = mce_ops + fpdata->minor;
+        int card = fpdata->minor;
 	int err = 0;
 	int ret_val = 0;
 
-	PRINT_INFO(SUBNAME "state=%#x\n", mops->state);
+        PRINT_INFO(card, "state=%#x\n", mops->state);
 
 	/* Don't sleep with the semaphore because this will prevent a
 	   reader from clearing the state. */
@@ -267,7 +267,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 
 	// Command size check
 	if (count != sizeof(mops->cmd)) {
-		PRINT_ERR(SUBNAME "count != sizeof(mce_command)\n");
+                PRINT_ERR(card, "count != sizeof(mce_command)\n");
 		ret_val = -EPROTO;
 		goto out;
 	}
@@ -275,7 +275,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	// Copy command to local buffer
 	if ( (err=copy_from_user(&mops->cmd, buf,
 				 sizeof(mops->cmd)))!=0) {
-		PRINT_ERR(SUBNAME "copy_from_user incomplete\n");
+                PRINT_ERR(card, "copy_from_user incomplete\n");
 		ret_val = count - err;
 		goto out;
 	}
@@ -297,7 +297,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		ret_val = count;
 		break;
 	default:
-		PRINT_ERR(SUBNAME "mce_send_command failed (%i), returning %i\n",
+                PRINT_ERR(card, "mce_send_command failed (%i), returning %i\n",
 			  err, ret_val);
 		mops->state = OPS_IDLE;
 		fpdata->error = err;
@@ -307,13 +307,11 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
  out:
 	up(&mops->sem);
 
-	PRINT_INFO(SUBNAME "exiting [%#x]\n", ret_val);
+        PRINT_INFO(card, "exiting [%#x]\n", ret_val);
 	return ret_val;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_ioctl: "
 int mce_ioctl(struct inode *inode, struct file *filp,
 	      unsigned int iocmd, unsigned long arg)
 {
@@ -325,7 +323,7 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 
 	case MCEDEV_IOCT_RESET:
 	case MCEDEV_IOCT_QUERY:
-		PRINT_ERR("ioctl: not yet implemented!\n");
+                PRINT_ERR(card, "not yet implemented!\n");
 		return -1;
 
 	case MCEDEV_IOCT_HARDWARE_RESET:
@@ -347,14 +345,11 @@ int mce_ioctl(struct inode *inode, struct file *filp,
 		return 0;
 		
 	default:
-		PRINT_ERR("ioctl: unknown command (%#x)\n", iocmd );
+                PRINT_ERR(card, "unknown command (%#x)\n", iocmd );
 	}
 
 	return -1;
 }
-#undef SUBNAME
-
-#define SUBNAME "mce_open: "
 
 int mce_open(struct inode *inode, struct file *filp)
 {
@@ -362,7 +357,7 @@ int mce_open(struct inode *inode, struct file *filp)
 	int minor = iminor(inode);
 
 	if (!mce_ready(minor)) {
-		PRINT_ERR(SUBNAME "card %i not enabled.\n", minor);
+                PRINT_ERR(minor, "card %i not enabled.\n", minor);
 		return -ENODEV;
 	}
 
@@ -370,48 +365,46 @@ int mce_open(struct inode *inode, struct file *filp)
 	fpdata->minor = iminor(inode);
 	filp->private_data = fpdata;
 
-	PRINT_INFO("mce_open %p\n", fpdata);
+        PRINT_INFO(minor, "mce_open %p\n", fpdata);
 	return 0;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_release: "
 int mce_release(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 	struct mce_ops_t *mops = mce_ops + fpdata->minor;
+        int card = fpdata->minor;
 
-	PRINT_INFO(SUBNAME "entry %p\n", fpdata);
+        PRINT_INFO(card, "entry %p\n", fpdata);
 
 	if(fpdata != NULL) {
 		kfree(fpdata);
-	} else PRINT_ERR(SUBNAME "called with NULL private_data\n");
+        } else
+          PRINT_ERR(card, "called with NULL private_data\n");
 
 	/* If a command is outstanding on this connection, re-idle the
 	   state so subsequent commands don't (necessarily) fail. */
 	if ((fpdata->properties & MCEDEV_CLOSE_CLEANLY) && mops->state != OPS_IDLE &&
 	    mops->commander==fpdata) {
-		PRINT_ERR("mce_release: closure forced, setting state to idle.\n");
+                PRINT_ERR(card, "closure forced, setting state to idle.\n");
 		mops->state = OPS_IDLE;
 		wake_up_interruptible(&mops->queue);
 	}
 
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_ops_init: "
 int mce_ops_init(void)
 {
 	int err = 0;
 	int i = 0;
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(NOCARD, "entry\n");
 
 	err = register_chrdev(0, MCEDEV_NAME, &mce_fops);
 	if (err<0) {
-		PRINT_ERR("mce_ops_init: could not register_chrdev,"
-			  "err=%#x\n", -err);
+                PRINT_ERR(NOCARD, "mce_ops_init: could not register_chrdev, "
+                                "err=%#x\n", -err);
 	} else {
 		for(i=0; i<MAX_CARDS; i++) {
 			struct mce_ops_t *mops = mce_ops + i;		
@@ -420,37 +413,32 @@ int mce_ops_init(void)
 		err = 0;
 	}
 
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(NOCARD, "ok\n");
 	return err;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_ops_probe: "
 int mce_ops_probe(int card)
 {
 	struct mce_ops_t *mops = mce_ops + card;
 
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(card, "entry\n");
 
 	init_waitqueue_head(&mops->queue);
 	init_MUTEX(&mops->sem);
 
 	mops->state = OPS_IDLE;
  
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(card, "ok\n");
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_ops_remove: "
 int mce_ops_cleanup(void)
 {
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(NOCARD, "entry\n");
 
 	if (mce_ops->major != 0) 
 		unregister_chrdev(mce_ops->major, MCEDEV_NAME);
 
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(NOCARD, "ok\n");
 	return 0;
 }
-#undef SUBNAME

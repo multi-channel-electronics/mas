@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
+ *      vim: sw=8 ts=8 et tw=80
+ */
 #ifndef _MCE_OPTIONS_H_
 #define _MCE_OPTIONS_H_
 
@@ -26,19 +29,30 @@
   DEBUG MESSAGES
 */
 
+#define NOCARD -1
+#define PRINT_MCE(level, card, fmt, ...) \
+        do { \
+                if (unlikely(card == NOCARD)) \
+                printk(level DEVICE_NAME "[-](%s): " fmt, \
+                                __func__, ##__VA_ARGS__); \
+                else \
+                printk(level DEVICE_NAME "[%i](%s): " fmt, card, \
+                                __func__, ##__VA_ARGS__); \
+        } while (0)
+
 #ifdef DRIVER_QUIET
 #  define PRINT_ERR(A...) //shh(A)
 #else
-#  define PRINT_ERR(A...) printk(KERN_WARNING DEVICE_NAME ": " A)
+#  define PRINT_ERR(...) PRINT_MCE(KERN_WARNING, __VA_ARGS__)
 #endif
 
 #ifdef DRIVER_VERBOSE
-#  define PRINT_INFO(A...) printk(KERN_INFO DEVICE_NAME ": " A)
+#  define PRINT_INFO(...) PRINT_MCE(KERN_INFO, __VA_ARGS__)
 #else
-#  define PRINT_INFO(A...) // shh(A)
+#  define PRINT_INFO(...) // shh(A)
 #endif
 
-#define PRINT_IOCT(A...) printk(KERN_INFO A)
+#define PRINT_IOCT(...) PRINT_MCE(KERN_INFO, __VA_ARGS__)
 
 
 /*

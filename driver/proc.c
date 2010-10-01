@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
+ *      vim: sw=8 ts=8 et tw=80
+ */
 
 #include <linux/proc_fs.h>
 
@@ -48,7 +51,7 @@ int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
 
 	for(i=0; i<MAX_CARDS; i++) {
 		
-		PRINT_INFO("proc: i=%d\n", i);
+                PRINT_INFO(NOCARD, "i=%d\n", i);
 		if (len < limit) {
 			len += sprintf(buf+len,"\nCARD: %d\n\n", i);
 		}

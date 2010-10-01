@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
+ *      vim: sw=8 ts=8 et tw=80
+ */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -44,7 +47,6 @@ struct filp_pdata {
  * flushed and stuff like that.
  */
 
-#define SUBNAME "data_read: "
 ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
@@ -62,7 +64,7 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 			return -ERESTARTSYS;
 	}
 
-	PRINT_INFO(SUBNAME "user demands %li with nonblock=%i\n",
+        PRINT_INFO(card, "user demands %li with nonblock=%i\n",
 		   (long) count, filp->f_flags & O_NONBLOCK);
 
 	while (count > 0) {
@@ -99,7 +101,6 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 	up(&dframes->sem);
 	return read_count;
 }
-#undef SUBNAME
 
 
 ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
@@ -109,12 +110,9 @@ ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
 }
 
 
-
-
 /* Map the DSP buffer into user space (rather than occupying limited
  * kernel space.  The driver doesn't need direct access to the buffer
  * provided we can tell the user how to get the data. */
-#define SUBNAME "data_mmap: "
 int data_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	struct filp_pdata *fpdata = filp->private_data;
@@ -125,7 +123,7 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_flags |= VM_IO | VM_RESERVED;
 
 	// Do args checking on vma... start, end, prot.
-	PRINT_INFO(SUBNAME "mapping %#lx bytes to user address %#lx\n",
+        PRINT_INFO(fpdata->minor, "mapping %#lx bytes to user address %#lx\n",
 		   vma->vm_end - vma->vm_start, vma->vm_start);
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
@@ -134,10 +132,8 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 			vma->vm_end - vma->vm_start, vma->vm_page_prot);
 	return 0;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "data_ioctl: "
 int data_ioctl(struct inode *inode, struct file *filp,
 	       unsigned int iocmd, unsigned long arg)
 {
@@ -148,11 +144,11 @@ int data_ioctl(struct inode *inode, struct file *filp,
 	switch(iocmd) {
 
 	case DATADEV_IOCT_RESET:
-		PRINT_INFO(SUBNAME"reset\n");
+                PRINT_INFO(card, "reset\n");
 		break;
 
 	case DATADEV_IOCT_QUERY:
-		PRINT_INFO(SUBNAME "query\n");
+                PRINT_INFO(card, "query\n");
 		switch (arg) {
 		case QUERY_HEAD:
 			return dframes->head_index;
@@ -174,36 +170,36 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		break;
 
 	case DATADEV_IOCT_SET_DATASIZE:
-		PRINT_INFO(SUBNAME "set data_size to %li (%#lx)\n",
+                PRINT_INFO(card, "set data_size to %li (%#lx)\n",
 			   arg, arg);
 		return data_frame_resize(arg, card);
 
 	case DATADEV_IOCT_FAKE_STOPFRAME:
-		PRINT_ERR(SUBNAME "fake_stopframe initiated!\n");
+                PRINT_ERR(card, "fake_stopframe initiated!\n");
 		return data_frame_fake_stop(card);
 
 	case DATADEV_IOCT_WATCH:
 	case DATADEV_IOCT_WATCH_DL:
 #ifdef OPT_WATCHER
-		PRINT_INFO(SUBNAME "watch control\n");
+                PRINT_INFO(card, "watch control\n");
 		return watcher_ioctl(iocmd, arg);
 #else
-		PRINT_IOCT(SUBNAME "watch function; disabled!\n");
+                PRINT_IOCT(card, "watch function; disabled!\n");
 		return -1;
 #endif
 
 	case DATADEV_IOCT_EMPTY:
-		PRINT_INFO(SUBNAME "reset data buffer\n");
+                PRINT_INFO(card, "reset data buffer\n");
 		mce_error_reset(card);
 		return data_frame_empty_buffers(card);
 
 	case DATADEV_IOCT_QT_CONFIG:
-		PRINT_INFO(SUBNAME "configure Quiet Transfer mode "
+                PRINT_INFO(card, "configure Quiet Transfer mode "
 			   "[inform=%li]\n", arg);
 		return data_qt_configure(arg, card);
 
 	case DATADEV_IOCT_QT_ENABLE:
-		PRINT_INFO(SUBNAME "enable/disable quiet Transfer mode "
+                PRINT_INFO(card, "enable/disable quiet Transfer mode "
 			   "[on=%li]\n", arg);
 		return data_qt_enable(arg, card);
 
@@ -217,26 +213,23 @@ int data_ioctl(struct inode *inode, struct file *filp,
 		return data_lock_operation(card, arg, filp);
 
 	default:
-		PRINT_ERR(SUBNAME "unknown command (%#x)\n", iocmd );
+                PRINT_ERR(card, "unknown command (%#x)\n", iocmd );
 	}
 
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "data_open: "
 int data_open(struct inode *inode, struct file *filp)
 {
 	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(iminor(inode), "entry\n");
 
 	fpdata->minor = iminor(inode);
 	filp->private_data = fpdata;
 
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(fpdata->minor, "ok\n");
 	return 0;
 }
-#undef SUBNAME
 
 int data_release(struct inode *inode, struct file *filp)
 {
@@ -266,17 +259,15 @@ struct file_operations data_fops =
  *                                                                        *
  **************************************************************************/
 
-#define SUBNAME "data_ops_init: "
 int data_ops_init(void)
 {
 	int err = 0;
 	int i = 0;
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(NOCARD, "entry\n");
 	
 	err = register_chrdev(0, MCEDATA_NAME, &data_fops);
 	if (err<0) {
-		PRINT_ERR(SUBNAME "could not register_chrdev, "
-			  "err=%#x\n", err);
+                PRINT_ERR(NOCARD, "could not register_chrdev, err=%#x\n", err);
 	} else {
 		for(i=0; i<MAX_CARDS; i++) {
 			frame_buffer_t *dframes = data_frames + i;
@@ -285,33 +276,28 @@ int data_ops_init(void)
 		err = 0;
 	}
 
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(NOCARD, "ok\n");
 	return err;
 }
-#undef SUBNAME
 
-#define SUBNAME "data_ops_probe: "
 int data_ops_probe(int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(card, "entry\n");
 
 	init_MUTEX(&dframes->sem); 
 
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(card, "ok\n");
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "data_ops_cleanup: "
 int data_ops_cleanup(void)
 {
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(NOCARD, "entry\n");
 
 	if (data_frames->major != 0) 
 		unregister_chrdev(data_frames->major, MCEDATA_NAME);
 
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(NOCARD, "ok\n");
 	return 0;
 }
-#undef SUBNAME

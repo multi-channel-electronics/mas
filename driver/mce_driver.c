@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
+ *      vim: sw=8 ts=8 et tw=80
+ */
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
@@ -95,7 +98,7 @@ int mce_error_register(int card)
  	struct mce_control *mdat = mce_dat + card;
 
 	if (mdat->ferror_count == MAX_FERR)
-		PRINT_ERR("no further frame errors will be logged.\n");
+                PRINT_ERR(card, "no further frame errors will be logged.\n");
 						 
 	return (mdat->ferror_count++ < MAX_FERR);
 }
@@ -128,7 +131,6 @@ int  mce_HST_dsp_callback( int error, dsp_message *msg, int card);
    Call while holding state_lock.
  */
 
-#define SUBNAME "mce_command_do_callback: "
 int mce_command_do_callback( int error, mce_reply *rep, int card)
 {
 	/* spinlock is assumed held! */
@@ -139,7 +141,7 @@ int mce_command_do_callback( int error, mce_reply *rep, int card)
 	if ( mdat->callback != NULL ) {
 		mdat->callback(error, rep, card);
 	} else {
-		PRINT_INFO(SUBNAME "no callback specified\n");
+                PRINT_INFO(card, "no callback specified\n");
 	} 
 	
 	// Clear the buffer for the next reply
@@ -148,27 +150,25 @@ int mce_command_do_callback( int error, mce_reply *rep, int card)
 
 	return 0;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_CON_dsp_callback: "
 int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 {
 	unsigned long irqflags;
  	struct mce_control *mdat = mce_dat + card;
 
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(card, "entry\n");
 
 	MDAT_LOCK;
 	if (mdat->state != MDAT_CON) {
-		PRINT_ERR(SUBNAME "unexpected callback! (state=%i)\n",
-			  mdat->state);
+                PRINT_ERR(card, "unexpected callback! (state=%i)\n",
+                                mdat->state);
 		MDAT_UNLOCK;
 		return -1;
 	}
 
 	if (error<0 || msg==NULL) {
-		PRINT_ERR(SUBNAME "called with error %i\n", error);
+                PRINT_ERR(card, "called with error %i\n", error);
 		if (error == DSP_ERR_TIMEOUT) {
 			mce_command_do_callback(-MCE_ERR_INT_TIMEOUT, NULL, card);
 		} else {
@@ -179,14 +179,14 @@ int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 	}
 
 	if (msg->command != DSP_CON) {
-		PRINT_ERR(SUBNAME "dsp command was not CON!\n");
+                PRINT_ERR(card, "dsp command was not CON!\n");
 		mce_command_do_callback(-MCE_ERR_INT_PROTO, NULL, card);
 		MDAT_UNLOCK;
 		return 0;
 	}
 
 	if (msg->reply != DSP_ACK) {
-		PRINT_ERR(SUBNAME "dsp reply was not ACK!\n");
+                PRINT_ERR(card, "dsp reply was not ACK!\n");
 		mce_command_do_callback(-MCE_ERR_INT_FAILURE, NULL, card);
 		MDAT_UNLOCK;
 		return 0;
@@ -194,14 +194,12 @@ int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 
 	mdat->state = MDAT_CONOK;
 	MDAT_UNLOCK;
-	PRINT_INFO(SUBNAME "state<-CONOK\n");
+        PRINT_INFO(card, "state<-CONOK\n");
 	
 	return 0;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_NFY_RP_handler: "
 int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 {
 	unsigned long irqflags;
@@ -211,8 +209,8 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 
 	// We'll just trust the NFY for now, assuming no error.
 	if ( error || (msg==NULL) ) {
-		PRINT_ERR(SUBNAME "called error=%i, msg=%lx\n",
-			  error, (unsigned long)msg);
+                PRINT_ERR(card, "called error=%i, msg=%lx\n", error,
+                                (unsigned long)msg);
 		mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL, card);
 		dsp_unreserve(card);
 		MDAT_UNLOCK;
@@ -220,7 +218,7 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 	}
 
 	if (mdat->state != MDAT_CONOK) {
-		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat->state);
+                PRINT_ERR(card, "unexpected state=%i\n", mdat->state);
 		MDAT_UNLOCK;
 		return -1;
 	}
@@ -234,14 +232,12 @@ int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 	mce_do_HST_or_schedule( (unsigned long)mdat );
 	return 0;
 }
-#undef SUBNAME
 
 
 #define HST_FILL(cmd, bus) cmd.command = DSP_HST; \
                            cmd.args[0] = (bus >> 16) & 0xffff; \
                            cmd.args[1] = bus & 0xffff
 
-#define SUBNAME "mce_do_HST_or_schedule: "
 void mce_do_HST_or_schedule(unsigned long data)
 {
 	/* Do not call with state_lock held!
@@ -256,24 +252,24 @@ void mce_do_HST_or_schedule(unsigned long data)
 
 	MDAT_LOCK;
 	if (mdat->state != MDAT_NFY) {
-		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat->state);
+                PRINT_ERR(card, "unexpected state=%i\n", mdat->state);
 		goto up_and_out;
 	}
 
 	if ( (err=dsp_send_command(&cmd, mce_HST_dsp_callback, card, 0)) ) {
 		if(err == -EAGAIN) {
 			if (mdat->hst_sched_count == 0)
-				PRINT_ERR(SUBNAME "dsp busy; rescheduling.\n");
+                                PRINT_ERR(card, "dsp busy; rescheduling.\n");
 			mdat->hst_sched_count++;
 			tasklet_schedule(&mdat->hst_tasklet);
 		} else {
-			PRINT_ERR(SUBNAME "dsp_send_command failed after %i "
+                        PRINT_ERR(card, "dsp_send_command failed after %i "
 				  "tries.\n", mdat->hst_sched_count);
 			mce_command_do_callback(-MCE_ERR_INT_FAILURE, NULL, card);
 		}
 	} else {
 		if (mdat->hst_sched_count > 0)
-			PRINT_ERR(SUBNAME "succeeded after %i tries.\n",
+                        PRINT_ERR(card, "succeeded after %i tries.\n",
 				  mdat->hst_sched_count);
 		mdat->state = MDAT_HST;;
 	}
@@ -281,10 +277,8 @@ up_and_out:
 	MDAT_UNLOCK;
 	return;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_HST_dsp_callback: "
 int mce_HST_dsp_callback(int error, dsp_message *msg, int card)
 {
 	unsigned long irqflags;
@@ -293,14 +287,14 @@ int mce_HST_dsp_callback(int error, dsp_message *msg, int card)
 
 	MDAT_LOCK;
 	if (mdat->state != MDAT_HST) {
-		PRINT_ERR(SUBNAME "unexpected callback! (state=%i)\n",
+                PRINT_ERR(card, "unexpected callback! (state=%i)\n",
 			  mdat->state);
 		ret_val = -1;
 		goto up_and_out;
 	}
 
 	if (error<0 || msg==NULL) {
-		PRINT_ERR(SUBNAME "called with error %i\n", error);
+                PRINT_ERR(card, "called with error %i\n", error);
 		if (error == DSP_ERR_TIMEOUT) {
 			mce_command_do_callback(-MCE_ERR_INT_TIMEOUT, NULL, card);
 		} else {
@@ -310,13 +304,13 @@ int mce_HST_dsp_callback(int error, dsp_message *msg, int card)
 	}
 
 	if (msg->command != DSP_HST) {
-		PRINT_ERR(SUBNAME "dsp command was not HST!\n");
+                PRINT_ERR(card, "dsp command was not HST!\n");
 		mce_command_do_callback(-MCE_ERR_INT_PROTO, NULL, card);
 		goto up_and_out;
 	}
 
 	if (msg->reply != DSP_ACK) {
-		PRINT_ERR(SUBNAME "dsp reply was not ACK!\n");
+                PRINT_ERR(card, "dsp reply was not ACK!\n");
 		mce_command_do_callback(-MCE_ERR_INT_FAILURE, NULL, card);
 		goto up_and_out;
 	}
@@ -326,7 +320,6 @@ up_and_out:
 	MDAT_UNLOCK;
 	return ret_val;
 }
-#undef SUBNAME
 
 /* Simplified reply system, for DSP >= U0105.  Reply buffer address
  * is pre-loaded to the DSP, so we don't have to hand-shake in
@@ -335,7 +328,6 @@ up_and_out:
  * mce_NFY_RPQ_handler: immediately calls back with the mce reply.
  */
 
-#define SUBNAME "mce_NFY_RPQ_handler: "
 int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
 {
 	unsigned long irqflags;
@@ -345,8 +337,8 @@ int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
 
 	// We'll just trust the NFY for now, assuming no error.
 	if ( error || (msg==NULL) ) {
-		PRINT_ERR(SUBNAME "called error=%i, msg=%lx\n",
-			  error, (unsigned long)msg);
+                PRINT_ERR(card, "called error=%i, msg=%lx\n", error,
+                                (unsigned long)msg);
 		mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL, card);
 		dsp_unreserve(card);
 		MDAT_UNLOCK;
@@ -354,7 +346,7 @@ int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
 	}
 
 	if (mdat->state != MDAT_CONOK) {
-		PRINT_ERR(SUBNAME "unexpected state=%i\n", mdat->state);
+                PRINT_ERR(card, "unexpected state=%i\n", mdat->state);
 		MDAT_UNLOCK;
 		return -1;
 	}
@@ -369,7 +361,6 @@ int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
 
 	return 0;
 }
-#undef SUBNAME
 
 int mce_qt_command( dsp_qt_code code, int arg1, int arg2, int card)
 {
@@ -378,25 +369,24 @@ int mce_qt_command( dsp_qt_code code, int arg1, int arg2, int card)
 	return dsp_send_command_wait(&cmd, &reply, card);
 }	
 
-#define SUBNAME "mce_quiet_RP_config: "
 int mce_quiet_RP_config(int enable, int card)
 {
  	struct mce_control *mdat = mce_dat + card;
 	int err = 0;
 	u32 bus = mdat->buff.reply_busaddr;
 
-	PRINT_INFO(SUBNAME "disabling...\n");
+        PRINT_INFO(card, "disabling...\n");
 	
 	err |= mce_qt_command(DSP_QT_RPENAB, 0, 0, card);
 	mdat->quiet_rp = 0;
 	if (err) {
-		PRINT_ERR(SUBNAME "failed to disable quiet RP\n");
+                PRINT_ERR(card, "failed to disable quiet RP\n");
 		return -1;
 	}
 	if (!enable) return 0;
 
 	// Enable qt replies
-	PRINT_INFO(SUBNAME "enabling...\n");
+        PRINT_INFO(card, "enabling...\n");
 	
 	err |= mce_qt_command(DSP_QT_RPSIZE, sizeof(mce_reply), 0, card);
 	err |= mce_qt_command(DSP_QT_RPBASE,
@@ -405,18 +395,15 @@ int mce_quiet_RP_config(int enable, int card)
 	err |= mce_qt_command(DSP_QT_RPENAB, 1, 0, card);
 	
 	if (err) {
-		PRINT_ERR(SUBNAME "failed to configure DSP.\n");
+                PRINT_ERR(card, "failed to configure DSP.\n");
 		return -1;
 	}
 
 	mdat->quiet_rp = 1;
 	return 0;
 }
-#undef SUBNAME
 
 //Command must already be in mdat->buff.command.
-
-#define SUBNAME "mce_send_command_now: "
 int mce_send_command_now (int card)
 {
  	struct mce_control *mdat = mce_dat + card;
@@ -428,13 +415,13 @@ int mce_send_command_now (int card)
 		{ (baddr >> 16) & 0xffff, baddr & 0xffff, 0 }
 	};
 
-	PRINT_INFO(SUBNAME "Sending CON [%#08x %#04x %#04x]\n",
+        PRINT_INFO(card, "Sending CON [%#08x %#04x %#04x]\n",
 		   mdat->buff.command->command,
 		   (int)mdat->buff.command->para_id,
 		   (int)mdat->buff.command->card_id);
 	
 	if ( (err=dsp_send_command( &cmd, mce_CON_dsp_callback, card, 1))) {
-		PRINT_INFO(SUBNAME "dsp_send_command failed (%#x)\n",
+                PRINT_INFO(card, "dsp_send_command failed (%#x)\n",
 			  err);
 		switch(-err) {
 		case EAGAIN:
@@ -447,9 +434,7 @@ int mce_send_command_now (int card)
 	}
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_send_command_timer: "
 void mce_send_command_timer(unsigned long data)
 {
 	unsigned long irqflags;
@@ -458,18 +443,16 @@ void mce_send_command_timer(unsigned long data)
 
 	MDAT_LOCK;
 	if (mdat->state == MDAT_IDLE) {
-		PRINT_INFO(SUBNAME "timer ignored\n");
+                PRINT_INFO(card, "timer ignored\n");
 	} else {
 		dsp_unreserve(card);
-		PRINT_ERR(SUBNAME "mce reply timed out!\n");
+                PRINT_ERR(card, "mce reply timed out!\n");
 		mce_command_do_callback( -MCE_ERR_TIMEOUT, NULL, card);
 	}
 	MDAT_UNLOCK;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_send_command: "
 int mce_send_command(mce_command *cmd, mce_callback callback, int non_block, int card)
 {
 	unsigned long irqflags;
@@ -487,7 +470,7 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block, int
 	// Protect mdat->state ; exit with up_and_out from now on.
 	MDAT_LOCK;
 	if (mdat->state != MDAT_IDLE) {
-		PRINT_INFO(SUBNAME "transaction in progress (state=%i)\n",
+                PRINT_INFO(card, "transaction in progress (state=%i)\n",
 			   mdat->state);
 		ret_val = -MCE_ERR_ACTIVE;
 		goto up_and_out;
@@ -496,7 +479,7 @@ int mce_send_command(mce_command *cmd, mce_callback callback, int non_block, int
 	// Copy the command and initiate
 	memcpy(mdat->buff.command, cmd, sizeof(*cmd));
 	if ( (ret_val = mce_send_command_now(card)) ) {
-		PRINT_INFO(SUBNAME "send now failed [%i]!\n", ret_val);
+                PRINT_INFO(card, "send now failed [%i]!\n", ret_val);
 		mdat->callback = NULL;
 	} else {
 		// Register callback, advance state, enable time-out.
@@ -510,7 +493,6 @@ up_and_out:
 	up(&mdat->sem);
 	return ret_val;
 }
-#undef SUBNAME
 
 
 /******************************************************************/
@@ -522,7 +504,6 @@ up_and_out:
   functions are responsible for immediately 
 */
 
-#define SUBNAME "mce_da_hst_callback: "
 int mce_da_hst_callback(int error, dsp_message *msg, int card)
 {
 	//FIX ME: "error" case should be natural and handled smoothly.
@@ -533,14 +514,14 @@ int mce_da_hst_callback(int error, dsp_message *msg, int card)
 
 		if (!mce_error_register(card)) return -1;
 
-		PRINT_ERR(SUBNAME "called with error = %i\n", error);
+                PRINT_ERR(card, "called with error = %i\n", error);
 		if (msg==NULL) {
-			PRINT_ERR(SUBNAME "dsp_message is NULL\n");
+                        PRINT_ERR(card, "dsp_message is NULL\n");
 		} else {
-			PRINT_INFO(SUBNAME
-				   "dsp_message=(%06x, %06x, %06x, %06x)\n",
-				   msg->type, msg->command,
-				   msg->reply, msg->data);
+                        PRINT_INFO(card, "dsp_message="
+                                        "(%06x, %06x, %06x, %06x)\n",
+                                        msg->type, msg->command,
+                                        msg->reply, msg->data);
 		}
 		mdat->data_flags &= ~MDAT_HST;
 		return -1;
@@ -548,14 +529,14 @@ int mce_da_hst_callback(int error, dsp_message *msg, int card)
 
 	if (mdat->data_flags != (MDAT_DHST)) {
 		if (mce_error_register(card))
-			PRINT_ERR(SUBNAME "unexpected flags state %#x\n",
+                        PRINT_ERR(card, "unexpected flags state %#x\n",
 				  mdat->data_flags);
 		mdat->data_flags = 0;
 		return -1;
 	}
 
 	if (data_frame_increment(card) && mce_error_register(card)) {
-		PRINT_ERR(SUBNAME "frame_increment error; packet lost\n");
+                PRINT_ERR(card, "frame_increment error; packet lost\n");
 	}
 
 	//Only action is to increment tail pointer or whatever
@@ -563,9 +544,7 @@ int mce_da_hst_callback(int error, dsp_message *msg, int card)
 	mdat->data_flags &= ~MDAT_DHST;
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_da_hst_now: "
 int mce_da_hst_now(int card)
 {
  	struct mce_control *mdat = mce_dat + card;
@@ -573,20 +552,19 @@ int mce_da_hst_now(int card)
 	u32 baddr;
 	dsp_command cmd;
 
-	PRINT_INFO(SUBNAME "NFY-DA accepted, sending HST\n");
+        PRINT_INFO(card, "NFY-DA accepted, sending HST\n");
 
 	if ( (mdat->data_flags & MDAT_DHST) && mce_error_register(card) ) {
-		PRINT_ERR(SUBNAME
-			  "NFY-DA interrupts outstanding HST!\n");
+                PRINT_ERR(card, "NFY-DA interrupts outstanding HST!\n");
 	}
 
 	data_frame_address(&baddr, card);
 	HST_FILL(cmd, baddr);
 
 	if ((err = dsp_send_command(&cmd, mce_da_hst_callback, card, 0))) {
-		PRINT_INFO(SUBNAME "dsp_send_command failed!\n");
+                PRINT_INFO(card, "dsp_send_command failed!\n");
 		if (mce_error_register(card)) {
-			PRINT_ERR(SUBNAME "dsp_send_command error %i; "
+                        PRINT_ERR(card, "dsp_send_command error %i; "
 				   "packet dropped\n",
 				   err);
 		}
@@ -597,10 +575,8 @@ int mce_da_hst_now(int card)
 
 	return 0;
 }
-#undef SUBNAME
 
 
-#define SUBNAME "mce_int_handler: "
 int mce_int_handler( dsp_message *msg, unsigned long data )
 {
 	struct mce_control *mdat = (struct mce_control *)data;
@@ -610,7 +586,7 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 	frame_buffer_t *dframes = data_frames + card;
 
        	if (note->type != DSP_NFY) {
-		PRINT_ERR(SUBNAME "message is not NFY!\n");
+                PRINT_ERR(card, "message is not NFY!\n");
 		return -1;
 	}
 
@@ -618,14 +594,14 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 
 	case DSP_RP:
 
-		PRINT_INFO(SUBNAME "NFY RP identified\n");
+                PRINT_INFO(card, "NFY RP identified\n");
 		mce_NFY_RP_handler(0, msg, card);
 
 		break;
 
 	case DSP_RPQ:
 
-		PRINT_INFO(SUBNAME "NFY RPQ identified\n");
+                PRINT_INFO(card, "NFY RPQ identified\n");
 		mce_NFY_RPQ_handler(0, msg, card);
 
 		break;
@@ -633,8 +609,7 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 	case DSP_DA:
 		if (packet_size != dframes->data_size) {
 			if (mce_error_register(card))
-				PRINT_ERR(SUBNAME
-					  "unexpected DA packet size"
+                                PRINT_ERR(card, "unexpected DA packet size"
 					  "%i bytes; dropping.\n",
 					  packet_size);
 			return -1;
@@ -643,15 +618,14 @@ int mce_int_handler( dsp_message *msg, unsigned long data )
 		break;
 
 	default:
-		PRINT_ERR(SUBNAME "unknown packet type, ignoring\n");
+                PRINT_ERR(card, "unknown packet type, ignoring\n");
 	}
 	return 0;
 }
-#undef SUBNAME
 
 //mce_send_command_wait (_callback) lived here once upon a time...
 
-int mce_buffer_allocate(mce_comm_buffer *buffer)
+int mce_buffer_allocate(mce_comm_buffer *buffer, int card)
 {
 	unsigned long bus;
 
@@ -667,7 +641,8 @@ int mce_buffer_allocate(mce_comm_buffer *buffer)
 	if (buffer->command==NULL)
 		return -ENOMEM;
 	if ((bus >> 16) >> 16 != 0) {
-		PRINT_ERR("dsp_allocate returned out of bounds address %lx\n", bus);
+                PRINT_ERR(card, "dsp_allocate returned out of bounds "
+                                "address %lx\n", bus);
 		return -ENOMEM;
 	}
 	buffer->command_busaddr = (u32)bus;
@@ -676,7 +651,7 @@ int mce_buffer_allocate(mce_comm_buffer *buffer)
 	buffer->reply_busaddr = buffer->command_busaddr + offset;
 	buffer->dma_size = size;
 	
-	PRINT_INFO("cmd/rep[virt->bus]: [%lx->%lx]/[%lx->%lx]\n",
+        PRINT_INFO(card, "cmd/rep[virt->bus]: [%lx->%lx]/[%lx->%lx]\n",
 		   (long unsigned int)buffer->command,
 		   (long unsigned int)virt_to_bus(buffer->command),
 		   (long unsigned int)buffer->reply,
@@ -778,11 +753,10 @@ int mce_interface_reset(int card)
 }
 
 
-#define SUBNAME "mce_init: "
 int mce_init()
 {
 	int err = 0;
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(NOCARD, "entry\n");
 
 	err = mce_ops_init();
 	if(err != 0) goto out;
@@ -790,34 +764,27 @@ int mce_init()
 	//FIX ME:: add error checking for data_ops
 	data_ops_init();
 	
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(NOCARD, "ok\n");
 	return 0;
  out:
-	PRINT_ERR(SUBNAME "exiting with error\n");
+        PRINT_ERR(NOCARD, "exiting with error\n");
 	return err;
 }
-#undef SUBNAME
 
-
-#define SUBNAME "mce_ready: "
 
 int mce_ready(int card) {
 	struct mce_control *mdat = mce_dat + card;
 	return mdat->initialized;
 }
 
-#undef SUBNAME
 
-
-
-#define SUBNAME "mce_probe: "
 int mce_probe(int card, int dsp_version)
 {
  	struct mce_control *mdat = mce_dat + card;
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
-	PRINT_INFO("%s(%i, %i) entry\n", __FUNCTION__, card, dsp_version);
+        PRINT_INFO(card, "(%i, %i) entry\n", card, dsp_version);
 
 	memset(mdat, 0, sizeof(*mdat));
 
@@ -847,7 +814,7 @@ int mce_probe(int card, int dsp_version)
 	err = data_probe(dsp_version, card, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
 	if (err !=0 ) goto out;
 
-	err = mce_buffer_allocate(&mdat->buff);
+        err = mce_buffer_allocate(&mdat->buff, card);
 	if (err != 0) goto out;
 
 	err = mce_ops_probe(card);
@@ -861,35 +828,31 @@ int mce_probe(int card, int dsp_version)
 		mce_quiet_RP_config(1, card);
 	}
 
-	PRINT_INFO(SUBNAME "ok.\n");
+        PRINT_INFO(card, "ok.\n");
 	return 0;
 
  out:
-	PRINT_ERR(SUBNAME "error!\n");
+        PRINT_ERR(card, "error!\n");
 
 	mce_remove(card);
 	return err;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_cleanup: "
 int mce_cleanup()
 {
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(NOCARD, "entry\n");
 	mce_ops_cleanup();
 	data_ops_cleanup();
 	
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(NOCARD, "ok\n");
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "mce_remove: "
 int mce_remove(int card)
 {
  	struct mce_control *mdat = mce_dat + card;
 
-	PRINT_INFO(SUBNAME "entry\n");
+        PRINT_INFO(card, "entry\n");
 
 	if (!mdat->initialized) return 0;
 
@@ -905,7 +868,6 @@ int mce_remove(int card)
 	
 	data_remove(card);
 
-	PRINT_INFO(SUBNAME "ok\n");
+        PRINT_INFO(card, "ok\n");
 	return 0;
 }
-#undef SUBNAME

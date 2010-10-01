@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
+ *      vim: sw=8 ts=8 et tw=80
+ */
 /*
   data_qt.c
 
@@ -30,14 +33,13 @@
 #include "dsp_driver.h"
 #include "mce_driver.h"
 
-#define SUBNAME "mce_qti_handler: "
 int mce_qti_handler (dsp_message *msg, unsigned long data)
 {
 	frame_buffer_t *dframes = (frame_buffer_t *)data;
 	int card = dframes - data_frames;
 	dsp_qtinform *qti = (dsp_qtinform*)msg;
 
-	PRINT_INFO(SUBNAME
+        PRINT_INFO(card,
 		   "update head to %u with %u drops; active tail is %u\n",
 		   qti->dsp_head, qti->dsp_drops,
 		   qti->dsp_tail);
@@ -50,9 +52,7 @@ int mce_qti_handler (dsp_message *msg, unsigned long data)
 
 	return 0;
 }
-#undef SUBNAME
 
-#define SUBNAME "data_qt_enable: "
 int data_qt_enable(int on, int card) 
 {
 	frame_buffer_t *dframes = data_frames + card;
@@ -62,15 +62,13 @@ int data_qt_enable(int on, int card)
 		dframes->data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
 	return err;
 }
-#undef SUBNAME
 
 //FIX ME: requires mce_qt_command
-#define SUBNAME "data_qt_configure: "
 int data_qt_configure(int qt_interval, int card)
 {
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
-	PRINT_INFO(SUBNAME "entry, card: %d\n", card);
+        PRINT_INFO(card, "entry\n");
 
 	if ( data_qt_enable(0, card) || data_reset(card) )
 		err = -1;
@@ -110,4 +108,3 @@ int data_qt_configure(int qt_interval, int card)
 
 	return err;
 }
-#undef SUBNAME
