@@ -14,7 +14,7 @@ CFLAGS += $(DEFS)
 # targets
 
 TARGETS = sq1servo   sq2servo   sq1servo_all
-OBJECTS = sq1servo.o sq2servo.o servo.o
+OBJECTS = sq1servo.o sq2servo.o servo.o options.o
 HEADERS = servo.h servo_err.h options.h ../../defaults/config.h
 
 all: $(TARGETS)

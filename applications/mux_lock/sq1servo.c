@@ -142,7 +142,11 @@ int main ( int argc, char **argv )
    option_t options = {
 	   .fibre_card = DEFAULT_FIBRE_CARD,
 	   .config_file =  DEFAULT_MASFILE,
-	   .hardware_file = "",
+#ifdef DEFAULT_HARDWAREFILE
+     .hardware_file =  DEFAULT_HARDWAREFILE,
+#else
+     .hardware_file =  "",
+#endif
 	   .experiment_file = DEFAULT_EXPERIMENTFILE,
 	   .argument_opts = 0,
    };
@@ -189,7 +193,7 @@ int main ( int argc, char **argv )
 	    "    sq1servo [options] <rc> <filename>\n\n"
 	    "where\n"
 	    "    rc           readout card number (1-4)\n"
-	    "    filename     output file basename ($$MAS_DATA will be prepended)\n");
+	    "    filename     output file basename ($MAS_DATA will be prepended)\n");
      return ERR_NUM_ARGS;
    }
 

@@ -11,9 +11,16 @@
   must return the offset of the first unprocessed argument.
 */
 
+#if MAX_FIBRE_CARD == 1
+#  define USAGE_OPTION_N "        -n <card number>       ignored\n"
+#else
+#  define USAGE_OPTION_N \
+  "        -n <card number>       use the specified fibre card\n"
+#endif
+
 #define USAGE_MESSAGE "" \
 "  Initial options (MAS config):\n" \
-"        -n <card number>        override default fibre card\n"\
+USAGE_OPTION_N \
 "        -w <hardware file>      override default hardware configuration file\n"\
 "        -m <MAS config file>    override default MAS configuration file\n"\
 "        -s <experiment file>    override default experiment configuration file\n"\
@@ -45,6 +52,7 @@ int process_options(option_t *options, int argc, char **argv)
       break;
 
 	case 'n':
+#if MAX_FIBRE_CARD != -1
 	  options->fibre_card = (int)strtol(optarg, &s, 10);
     if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0 ||
         options->fibre_card >= MAX_FIBRE_CARD)
@@ -52,6 +60,7 @@ int process_options(option_t *options, int argc, char **argv)
       fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
       return -1;
     }
+#endif
     break;
 
   case 'w':
@@ -83,8 +92,10 @@ int process_options(option_t *options, int argc, char **argv)
   /* set fibre card devices */
   sprintf(options->data_device, "/dev/mce_data%i", options->fibre_card);
   sprintf(options->cmd_device, "/dev/mce_cmd%i", options->fibre_card);
+#ifdef DEFAULT_HARDWAREFMT
   if (options->hardware_file[0] == '\0')
     sprintf(options->hardware_file, DEFAULT_HARDWAREFMT, options->fibre_card);
+#endif
 
   return optind;
 }

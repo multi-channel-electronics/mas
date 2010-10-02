@@ -606,14 +606,18 @@ DO_MAS_SWIG
 PYTHON_DIR
 KERNEL_DIR
 PHP_IS
-MCE_CFG_LIST
-MCE_CIN_LIST
 DRIVER_FAKEMCE
 DEFAULT_MASFILE
+DEFAULT_HARDWAREFILE
 DEFAULT_HARDWAREFMT
 DEFAULT_FIBRE_CARD
 DEFAULT_EXPERIMENTFILE
+MULTICARD
+FIRST_MCE_CIN
+MCE_CFG_LIST
+MCE_CIN_LIST
 DO_MAS_DRIVER
+DO_CONFIG2
 LN_S
 OBJEXT
 EXEEXT
@@ -663,10 +667,15 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_config2
+enable_driver
 with_driver
+enable_multicard
 enable_quiet_driver
 enable_verbose_driver
+enable_bigphysarea
 with_bigphysarea
+enable_fakemce
 with_fakemce
 with_kernel_dir
 with_python
@@ -685,6 +694,7 @@ CPPFLAGS
 DEFAULT_EXPERIMENTFILE
 DEFAULT_FIBRE_CARD
 DEFAULT_HARDWAREFMT
+DEFAULT_HARDWAREFILE
 DEFAULT_MASFILE
 CPP'
 
@@ -1295,17 +1305,26 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --disable-config2       disable building or installing mce.cfg and mas.cfg
+  --disable-driver        disable driver compilation and installation
+  --enable-multicard=N    build a MAS which supports multiple (up to N) fibre
+                          cards. If N is omitted, 2 is assumed. N=0 and N=1
+                          are eqivalent to --disable-multicard (ie. the
+                          default behaviour: multicard support disabled).
   --enable-quiet-driver   build an unnecessarily quiet kernel driver
   --enable-verbose-driver build a very chatty kernel driver (for debugging
                           only)
+  --disable-bigphysarea   compile driver without bigphysarea support
+  --enable-fakemce        build the fakemce device into the kernel driver
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-driver=(yes|no)  enable/disable driver compilation and installation
-  --without-bigphysarea   disable bigphysarea
-  --with-fakemce          enable fakemce
-  --with-kernel-dir       set the target kernel source tree (e.g. $KERNEL_DIR)
+  --without-driver        deprecated: use --disable-driver instead
+  --without-bigphysarea   deprecated: use --disable-bigphysarea instead
+  --with-fakemce          deprecated: use --enable-fakemce instead
+  --with-kernel-dir=DIR   set the target kernel source tree to DIR (e.g.
+                          $KERNEL_DIR)
   --with-python=(PATH|yes|no)
                           enable/disable swig/python compilation and
                           installation, PATH default is $PYTHON_DIR
@@ -1328,9 +1347,14 @@ Some influential environment variables:
   DEFAULT_FIBRE_CARD
               the default fibre card number (0 is used if not specified)
   DEFAULT_HARDWAREFMT
-              the default hardware configuration filename format specifier.
-              Must contain '%i', which will be replaced by a fibre card
-              number. (/etc/mce/mce%i.cfg is used if not specified)
+              the default hardware configuration filename format specifier
+              used by multicard MAS. Must contain '%i', which will be replaced
+              by a fibre card number. (/etc/mce/mce%i.cfg is used if not
+              specified)
+  DEFAULT_HARDWAREFILE
+              the default hardware configuration filename format specifier
+              used by single card MAS. (/etc/mce/mce.cfg is used if not
+              specified)
   DEFAULT_MASFILE
               the default MAS configuration file (/etc/mce/mas.cfg is used if
               not specified)
@@ -2855,16 +2879,75 @@ $as_echo "no, using $LN_S" >&6; }
 fi
 
 
+# Check whether --enable-config2 was given.
+if test "${enable_config2+set}" = set; then :
+  enableval=$enable_config2; DO_CONFIG2=$enableval
+else
+  DO_CONFIG2=yes
+fi
+
+
+
 
 # Allow the user to suppress driver compile / install.
+
+# Check whether --enable-driver was given.
+if test "${enable_driver+set}" = set; then :
+  enableval=$enable_driver; DO_MAS_DRIVER=$enableval
+else
+  DO_MAS_DRIVER=yes
+fi
 
 
 # Check whether --with-driver was given.
 if test "${with_driver+set}" = set; then :
-  withval=$with_driver; DO_MAS_DRIVER=$withval
+  withval=$with_driver; { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: --with-driver and --without-driver are deprecated,
+      use --enable-driver or --disable-driver instead." >&5
+$as_echo "$as_me: WARNING: --with-driver and --without-driver are deprecated,
+      use --enable-driver or --disable-driver instead." >&2;}
+      DO_MAS_DRIVER=$withval
 else
   DO_MAS_DRIVER=yes
 fi
+
+
+
+# Check whether --enable-multicard was given.
+if test "${enable_multicard+set}" = set; then :
+  enableval=$enable_multicard;
+               case "${enableval}" in
+                 (0|no) MAX_FIBRE_CARD=1 ;;
+                 (1|2|3|4|5|6|7|8|9) MAX_FIBRE_CARD="${enableval}" ;;
+                 (*) MAX_FIBRE_CARD=2 ;;
+               esac
+
+else
+  MAX_FIBRE_CARD=1
+fi
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define MAX_FIBRE_CARD $MAX_FIBRE_CARD
+_ACEOF
+
+if test $MAX_FIBRE_CARD -eq 1; then
+  FIRST_MCE_CIN="mce.cin"
+  MCE_CFG_LIST="mce.cfg"
+  MCE_CIN_LIST="mce.cin"
+  MULTICARD="no"
+else
+  FIRST_MCE_CIN="mce0.cin"
+  MCE_CFG_LIST="mce0.cfg"
+  MCE_CIN_LIST="mce0.cin"
+  MULTICARD="yes"
+  for n in $(seq $(expr $MAX_FIBRE_CARD - 1)); do
+    MCE_CFG_LIST="$MCE_CFG_LIST mce$n.cfg"
+    MCE_CIN_LIST="$MCE_CIN_LIST mce$n.cin"
+  done
+fi
+
+
 
 
 
@@ -2898,10 +2981,25 @@ _ACEOF
 if test -z "$DEFAULT_HARDWAREFMT"; then
 	DEFAULT_HARDWAREFMT="/etc/mce/mce%i.cfg"
 fi
+if test $MAX_FIBRE_CARD -ne 1; then
 
 cat >>confdefs.h <<_ACEOF
 #define DEFAULT_HARDWAREFMT "$DEFAULT_HARDWAREFMT"
 _ACEOF
+
+fi
+
+
+if test -z "$DEFAULT_HARDWAREFILE"; then
+	DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
+fi
+if test $MAX_FIBRE_CARD -eq 1; then
+
+cat >>confdefs.h <<_ACEOF
+#define DEFAULT_HARDWAREFILE "$DEFAULT_HARDWAREFILE"
+_ACEOF
+
+fi
 
 
 
@@ -2952,10 +3050,23 @@ $as_echo "#define DRIVER_VERBOSE 1" >>confdefs.h
 
 fi
 
+# Check whether --enable-bigphysarea was given.
+if test "${enable_bigphysarea+set}" = set; then :
+  enableval=$enable_bigphysarea; DRIVER_BIGPHYS=$enableval
+else
+  DRIVER_BIGPHYS=yes
+fi
+
 
 # Check whether --with-bigphysarea was given.
 if test "${with_bigphysarea+set}" = set; then :
-  withval=$with_bigphysarea; DRIVER_BIGPHYS=$withval
+  withval=$with_bigphysarea; { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: --with-bigphysarea and --without-bigphysarea are
+            deprecated, use --enable-bigphysarea or --disable-bigphysarea
+            instead." >&5
+$as_echo "$as_me: WARNING: --with-bigphysarea and --without-bigphysarea are
+            deprecated, use --enable-bigphysarea or --disable-bigphysarea
+            instead." >&2;}
+            DRIVER_BIGPHYS=$withval
 else
   DRIVER_BIGPHYS=yes
 fi
@@ -2966,10 +3077,21 @@ $as_echo "#define BIGPHYS 1" >>confdefs.h
 
 fi
 
+# Check whether --enable-fakemce was given.
+if test "${enable_fakemce+set}" = set; then :
+  enableval=$enable_fakemce; DRIVER_FAKEMCE=$enableval
+else
+  DRIVER_FAKEMCE=no
+fi
+
 
 # Check whether --with-fakemce was given.
 if test "${with_fakemce+set}" = set; then :
-  withval=$with_fakemce; DRIVER_FAKEMCE=$withval
+  withval=$with_fakemce; { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: --with-fakemce and --without-fakemce are
+            deprecated, use --enable-fakemce or --disable-fakemce instead." >&5
+$as_echo "$as_me: WARNING: --with-fakemce and --without-fakemce are
+            deprecated, use --enable-fakemce or --disable-fakemce instead." >&2;}
+            DRIVER_FAKEMCE=$withval
 else
   DRIVER_FAKEMCE=no
 fi
@@ -2979,23 +3101,6 @@ if test "x$DRIVER_FAKEMCE" = "xyes"; then
 $as_echo "#define FAKEMCE 1" >>confdefs.h
 
 fi
-
-
-MAX_FIBRE_CARD=2
-
-cat >>confdefs.h <<_ACEOF
-#define MAX_FIBRE_CARD $MAX_FIBRE_CARD
-_ACEOF
-
-MCE_CFG_LIST="mce0.cfg"
-MCE_CIN_LIST="mce0.cin"
-if test $MAX_FIBRE_CARD -gt 1; then
-  for n in $(seq $(expr $MAX_FIBRE_CARD - 1)); do
-    MCE_CFG_LIST="$MCE_CFG_LIST mce$n.cfg"
-    MCE_CIN_LIST="$MCE_CIN_LIST mce$n.cin"
-  done
-fi
-
 
 
 
@@ -3590,13 +3695,14 @@ See \`config.log' for more details." "$LINENO" 5; }
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for readline in -lreadline" >&5
-$as_echo_n "checking for readline in -lreadline... " >&6; }
-if test "${ac_cv_lib_readline_readline+set}" = set; then :
+
+# old versions of readline don't automatically bring in ncurses:
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing readline" >&5
+$as_echo_n "checking for library containing readline... " >&6; }
+if test "${ac_cv_search_readline+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lreadline  $LIBS"
+  ac_func_search_save_LIBS=$LIBS
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3615,30 +3721,168 @@ return readline ();
   return 0;
 }
 _ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_readline_readline=yes
-else
-  ac_cv_lib_readline_readline=no
+for ac_lib in '' readline; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_readline=$ac_res
 fi
 rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
+    conftest$ac_exeext
+  if test "${ac_cv_search_readline+set}" = set; then :
+  break
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_readline_readline" >&5
-$as_echo "$ac_cv_lib_readline_readline" >&6; }
-if test "x$ac_cv_lib_readline_readline" = x""yes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBREADLINE 1
-_ACEOF
-
-  LIBS="-lreadline $LIBS"
+done
+if test "${ac_cv_search_readline+set}" = set; then :
 
 else
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+  ac_cv_search_readline=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_readline" >&5
+$as_echo "$ac_cv_search_readline" >&6; }
+ac_res=$ac_cv_search_readline
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+else
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing tgetent" >&5
+$as_echo_n "checking for library containing tgetent... " >&6; }
+if test "${ac_cv_search_tgetent+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char tgetent ();
+int
+main ()
+{
+return tgetent ();
+  ;
+  return 0;
+}
+_ACEOF
+for ac_lib in '' ncurses; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_tgetent=$ac_res
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext
+  if test "${ac_cv_search_tgetent+set}" = set; then :
+  break
+fi
+done
+if test "${ac_cv_search_tgetent+set}" = set; then :
+
+else
+  ac_cv_search_tgetent=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_tgetent" >&5
+$as_echo "$ac_cv_search_tgetent" >&6; }
+ac_res=$ac_cv_search_tgetent
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+    # found ncurses, invalidate the cache and try again
+    unset ac_cv_search_readline
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing readline" >&5
+$as_echo_n "checking for library containing readline... " >&6; }
+if test "${ac_cv_search_readline+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char readline ();
+int
+main ()
+{
+return readline ();
+  ;
+  return 0;
+}
+_ACEOF
+for ac_lib in '' readline; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_readline=$ac_res
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext
+  if test "${ac_cv_search_readline+set}" = set; then :
+  break
+fi
+done
+if test "${ac_cv_search_readline+set}" = set; then :
+
+else
+  ac_cv_search_readline=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_readline" >&5
+$as_echo "$ac_cv_search_readline" >&6; }
+ac_res=$ac_cv_search_readline
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+else
+  # found ncurses, but still readline doesn't work
+      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error "please install the libreadline package.
 See \`config.log' for more details." "$LINENO" 5; }
 fi
+
+
+else
+
+       # no ncurses, so just complain about readline
+       { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error "please install the libreadline package.
+See \`config.log' for more details." "$LINENO" 5; }
+fi
+
+fi
+
 
 
 
@@ -5005,13 +5249,40 @@ $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
 
-if test ! -f config2/mce0.cin; then
+echo
+echo "Configure summary:"
+echo "  kernel driver:           ${DO_MAS_DRIVER}"
+if test "$DO_MAS_DRIVER" != "no"; then
+  echo "    ... bigphysarea:       ${DRIVER_BIGPHYS}"
+  echo "    ... fakemce:           ${DRIVER_FAKEMCE}"
+  echo "    ... verbose debugging: ${DRIVER_VERBOSE}"
+  echo "    ... disable error msg: ${DRIVER_QUIET}"
   echo
-  echo "  Before building MAS, you must first select the mce.cin files to use"
-  echo "  as your hardware configuration files.  For each fibre card in your"
-  echo "  system, copy an appropriate template files from config2/v4 or "
-  echo "  config2/v5 to config2/mce#.cin, (where # is the fibre card number),"
-  echo "  Then modify each of these files to match the configuration of the"
-  echo "  subrack attached to the given fibre card."
+fi
+if test $MAX_FIBRE_CARD -eq 1; then
+  echo "  Multicard support:       no"
+else
+  echo "  Multicard support:       yes (max ${MAX_FIBRE_CARD} cards)"
+fi
+echo "  build mce.cfg/mas.cfg:   ${DO_CONFIG2}"
+echo "  MAS user/group:          ${MAS_USER}/${MAS_GROUP}"
+
+if test ! -f config2/$FIRST_MCE_CIN; then
   echo
+  if test $MAX_FIBRE_CARD -eq 1; then
+    echo "
+  Before building MAS, you must first select the mce.cin file to use as your
+  hardware configuration file.  To do this, copy an appropriate template file
+  from config2/v4 or config2/v5 to config2/mce.cin.  Then modify this file to
+  match the configuration of your subrack.
+"
+  else
+    echo "
+  Before building MAS, you must first select the mce.cin files to use as your
+  hardware configuration files.  For each fibre card in your system, copy an
+  appropriate template files from config2/v4 or config2/v5 to config2/mce#.cin,
+  (where # is the fibre card number).  Then modify each of these files to match
+  the configuration of the subrack attached to the given fibre card.
+"
+  fi
 fi

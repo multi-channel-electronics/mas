@@ -9,7 +9,12 @@
 /* Define to the number of the default fibre card. */
 #undef DEFAULT_FIBRE_CARD
 
-/* Define to the default hardware configuration filename format specifier. */
+/* Define to the default hardware configuration filename format specifier used
+   by single card MAS. */
+#undef DEFAULT_HARDWAREFILE
+
+/* Define to the default hardware configuration filename format specifier used
+   by multicard MAS. */
 #undef DEFAULT_HARDWAREFMT
 
 /* Define to the default MAS configuration file. */
@@ -29,9 +34,6 @@
 
 /* Define to 1 if you have the `config' library (-lconfig). */
 #undef HAVE_LIBCONFIG
-
-/* Define to 1 if you have the `readline' library (-lreadline). */
-#undef HAVE_LIBREADLINE
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -57,7 +59,8 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
-/* Define to the total allowable number of fibre cards. */
+/* Define to the total allowable number of fibre cards. Setting this to 1 will
+   disable multicard MAS. */
 #undef MAX_FIBRE_CARD
 
 /* Define to the address where bug reports for this package should be sent. */

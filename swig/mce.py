@@ -144,23 +144,29 @@ class mce:
     Object representing an MCE.
     """
 
-    def __init__(self):
+    def __init__(self, fibre_card=default_fibre_card):
         self.context = mcelib_create()
+        self.fibre_card = fibre_card
         self.open()
 
-    def open(self, card=default_fibre_card,
-             cmd_file=None, data_file=None,
-             config_file=None):
+    def open(self, cmd_file=None, data_file=None, config_file=None,
+             fibre_card=None):
+        if (fibre_card == None):
+            fibre_card = self.fibre_card
         if (cmd_file == None):
-            cmd_file = "/dev/mce_cmd{0}".format(card)
+            cmd_file = "/dev/mce_cmd%i" % fibre_card
         if (data_file == None):
-            data_file = "/dev/mce_data{0}".format(card)
+            data_file = "/dev/mce_data%i" % fibre_card
         if (config_file == None):
-            config_file = default_hardwarefmt % card
+          if (multicard_mas):
+            config_file = default_hardwarefmt % fibre_card
+          else:
+            config_file = default_hardwarefile
 
         mcecmd_open(self.context, cmd_file)
         mcedata_open(self.context, data_file)
         mceconfig_open(self.context, config_file, "hardware")
+        self.fibre_card = fibre_card
 
     def lookup(self, card, para):
         """

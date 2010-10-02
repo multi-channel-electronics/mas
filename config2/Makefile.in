@@ -5,6 +5,14 @@ include $(BASE)Makefile.children
 
 SOURCE = @MCE_CIN_LIST@
 TARGET = @MCE_CFG_LIST@
+FIRST_MCE_CIN = @FIRST_MCE_CIN@
+MULTICARD = @MULTICARD@
+
+ifeq ($(MULTICARD),yes)
+	INSTALL_MCE=install-multimce
+else
+	INSTALL_MCE=install-mce
+endif
 
 all: Makefile $(TARGET)
 
@@ -15,12 +23,13 @@ all: Makefile $(TARGET)
 		php $< > $@ || rm -f $@; \
 	fi
 
-# we only die if mce0.cin doesn't exist, because the user may only have
+# we only die if the first .cin doesn't exist, because the user may only have
 # one fibre card.
 $(SOURCE) :
-	@if test $@ = "mce0.cin"; then \
+	@if test $@ = "$(FIRST_MCE_CIN)"; then \
+		base=`basename $@ .cin`; \
 		echo; \
-		echo "  ERROR: $@ does not exist... can not produce mce0.cfg"; \
+		echo "  ERROR: $@ does not exist... can not produce $$base.cfg"; \
 		echo "  Create $@ from your preferred template."; \
 	  /bin/false; \
 	else \
@@ -32,9 +41,9 @@ $(SOURCE) :
 /etc/mce:
 	install --group=$(MAS_GROUP) --mode=775 -d /etc/mce
 
-install: install-mas install-mce
+install: install-mas $(INSTALL_MCE)
 
-install-mas: /etc/mce
+install-mas: /etc/mce mas.cfg
 	@if [ -f /etc/mce/mas.cfg ]; then \
 		if ! diff -q mas.cfg /etc/mce/mas.cfg > /dev/null; then \
 			echo; \
@@ -48,13 +57,27 @@ install-mas: /etc/mce
 		install --group=$(MAS_GROUP) --mode=664 mas.cfg /etc/mce/; \
 	fi
 
+install-mce: /etc/mce mce.cfg
+	@if [ -f /etc/mce/mce.cfg ]; then \
+		if ! diff -q mce.cfg /etc/mce/mce.cfg > /dev/null; then \
+			echo; \
+			echo "  WARNING: /etc/mce/mce.cfg already exists, not overwriting."; \
+			echo "  To install the new mce.cfg; delete /etc/mce/mce.cfg first."; \
+		else \
+			echo "skipping install of /etc/mce/mce.cfg (unchanged)"; \
+		fi; \
+	else \
+		echo "installing /etc/mce/mce.cfg"; \
+		install --group=$(MAS_GROUP) --mode=664 mce.cfg /etc/mce/; \
+	fi
+
 # First, if /etc/mce/mce.cfg is a regular file but /etc/mce/mce0.cfg doesn't
 #   exist, we rename mce.cfg to mce0.cfg.
 # Second, if /etc/mce/mce.cfg exists and is not a regular file, we complain,
 #   otherwise, if it doesn't exist we create the symlink
 # Third, we go through our list of mce#.cfg; and install them if they exist,
 #   taking care to not overwrite existing files.
-install-mce: /etc/mce mce0.cfg
+install-multimce: /etc/mce mce0.cfg
 	@if [ -f /etc/mce/mce.cfg -a ! -e /etc/mce/mce0.cfg ]; then \
 		echo "moving /etc/mce/mce.cfg to /etc/mce/mce0.cfg"; \
 		mv /etc/mce/mce.cfg /etc/mce/mce0.cfg; \

@@ -14,6 +14,16 @@ functionality. */
 #include "../defaults/config.h"
 #include "../include/mce_library.h"
 
+#if MAX_FIBRE_CARD == 1
+#  define MULTICARD_MAS 0
+#  undef DEFAULT_HARDWAREFMT
+#  define DEFAULT_HARDWAREFMT ""
+#else
+#  define MULTICARD_MAS 1
+#  undef DEFAULT_HARDAREFILE
+#  define DEFAULT_HARDWAREFILE ""
+#endif
+
 %}
 
 /* Types we want to manipulate directly should be described */
@@ -33,8 +43,10 @@ functionality. */
 %inline %{
 	/* Expose the default config/device files */
 
+  const int multicard_mas = MULTICARD_MAS;
 	const int default_fibre_card = DEFAULT_FIBRE_CARD;
 	const char default_masfile[] = DEFAULT_MASFILE;
+	const char default_hardwarefile[] = DEFAULT_HARDWAREFILE;
 	const char default_hardwarefmt[] = DEFAULT_HARDWAREFMT;
 	const char default_experimentfile[] = DEFAULT_EXPERIMENTFILE;
 

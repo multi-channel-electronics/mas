@@ -36,9 +36,11 @@ int main(int argc, char **argv)
 	char ts[1024];
 	time_t t;
 
+#if MAX_FIBRE_CARD != 1
   if (argc > 1)
     sprintf(ts, "/dev/mce_data%i", atoi(argv[1]));
   else 
+#endif
     sprintf(ts, "/dev/mce_data%i", DEFAULT_FIBRE_CARD);
 
 	if ((mce=mcelib_create())==NULL ||

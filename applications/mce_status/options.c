@@ -5,9 +5,16 @@
 
 #include "mce_status.h"
 
+#if MAX_FIBRE_CARD == 1
+#  define USAGE_OPTION_N "  -n <card number>       ignored\n"
+#else
+#  define USAGE_OPTION_N \
+  "  -n <card number>       use the specified fibre card\n"
+#endif
+
 #define USAGE_MESSAGE \
 "Usage:\n\t%s [options]\n"\
-"  -n <card number>       choose a particular fibre card\n"\
+USAGE_OPTION_N \
 "  -c <hardware config>   choose a particular mce config file\n"\
 "  -m <mas config>        choose a particular mce config file\n"\
 "  -o <output directory>  destination folder for output\n"\
@@ -35,6 +42,7 @@ int process_options(options_t* options, int argc, char **argv)
 			break;
 
 		case 'n':
+#if MAX_FIBRE_CARD != 1
 			options->fibre_card = (int)strtol(optarg, &s, 10);
 			if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0 ||
           options->fibre_card >= MAX_FIBRE_CARD)
@@ -42,6 +50,7 @@ int process_options(options_t* options, int argc, char **argv)
 				fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
 				return -1;
 			}
+#endif
 			break;
 
 		case 'm':
@@ -77,8 +86,10 @@ int process_options(options_t* options, int argc, char **argv)
 
 	/* set fibre card devices */
 	sprintf(options->device_file, "/dev/mce_cmd%i", options->fibre_card);
+#ifdef DEFAULT_HARDWAREFMT
   if (options->hardware_file[0] == '\0')
     sprintf(options->hardware_file, DEFAULT_HARDWAREFMT, options->fibre_card);
+#endif
 
 	return 0;
 }

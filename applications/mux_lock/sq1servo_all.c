@@ -128,9 +128,13 @@ int main(int argc, char **argv)
 
    /* Define default MAS options */
    option_t options = {
-	 .fibre_card = DEFAULT_FIBRE_CARD,
+     .fibre_card = DEFAULT_FIBRE_CARD,
      .config_file = DEFAULT_MASFILE,
-     .hardware_file = "",
+#ifdef DEFAULT_HARDWAREFILE
+     .hardware_file =  DEFAULT_HARDWAREFILE,
+#else
+     .hardware_file =  "",
+#endif
      .experiment_file = DEFAULT_EXPERIMENTFILE,
      .argument_opts = 0,
    };

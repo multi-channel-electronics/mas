@@ -20,7 +20,11 @@
 options_t options = {
 	.fibre_card = DEFAULT_FIBRE_CARD,
 	.config_file = DEFAULT_MASFILE,
-	.hardware_file = "",
+#ifdef DEFAULT_HARDWAREFILE
+	.hardware_file =  DEFAULT_HARDWAREFILE,
+#else
+	.hardware_file =  "",
+#endif
 	.mode = CRAWLER_DAS,
 };
 
