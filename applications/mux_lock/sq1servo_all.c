@@ -316,8 +316,13 @@ int main(int argc, char **argv)
 	 sq2fb[j][i] = control.sfb_init[j];
    }
 
+   /*prepare a line of init values for runfile*/
+   sprintf(init_line1, "<sq2fb.init>");
+   for (j=0; j<control.column_n; j++ )
+     sprintf(init_line1 + strlen(init_line1), " %d", temparr[j]);
+
    /** generate a runfile **/
-   sprintf(init_line2, "# All rows servoed simultaneously");
+   sprintf(init_line2, "<super_servo> 1");
    error=genrunfile (full_datafilename, control.filename, 1, control.rc,
 		     control.bias, control.dbias, control.nbias,
 		     control.fb, control.dfb, control.nfb, 

@@ -304,17 +304,16 @@ int main (int argc, char **argv)
    if (options.argument_opts) {
      /* Get starting SA feedback values  from a file called safb.init*/
      load_initfile(datadir, "safb.init", control.column_0, control.column_n, ssafb);
-     /* prepare a line of init values for runfile*/   
-     sprintf(init_line, "<safb.init> ");
-     for (j=0; j<control.column_n; j++) {
-       sprintf(tempbuf, "%d ", ssafb[j]);
-       strcat(init_line, tempbuf);
-     }
    } else {
      // Initialize servo output
      for (j=0; j<control.column_n; j++)
 	 ssafb[j] = control.sfb_init[j];
    }
+
+   /* prepare a line of init values for runfile*/   
+   sprintf(init_line, "<safb.init>");
+   for (j=0; j<control.column_n; j++)
+     sprintf(init_line+strlen(init_line), " %d", ssafb[j]);
 
    /** generate a runfile **/
    error=genrunfile (full_datafilename, control.filename, 2, control.rc, 
