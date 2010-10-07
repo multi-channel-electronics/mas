@@ -66,8 +66,6 @@ int dsp_open(char *dev_name)
     clean_dev_name = 1;
   }
 
-  fprintf(stderr, "dsp_open(\"%s\")\n", dev_name);
-
 	for (handle=0; handle<MAX_CONS; handle++) {
 		if (!cons[handle].opened)
 			break;
