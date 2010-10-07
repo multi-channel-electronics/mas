@@ -3,7 +3,7 @@
   API for SDSU DSP for MCE
 
 ***************************/
-
+#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
@@ -16,6 +16,7 @@
 #include <mcedsp.h>
 #include <mce/dsp_errors.h>
 #include <mce/dsp_ioctl.h>
+#include <mce/defaults.h>
 
 #define PATH_LENGTH
 
@@ -58,16 +59,32 @@ int count_users() {
 int dsp_open(char *dev_name)
 {
 	int handle, fd;
+  int clean_dev_name = 0;
+
+  if (dev_name == NULL) {
+    dev_name = mcelib_dsp_device(-1);
+    clean_dev_name = 1;
+  }
+
+  fprintf(stderr, "dsp_open(\"%s\")\n", dev_name);
 
 	for (handle=0; handle<MAX_CONS; handle++) {
 		if (!cons[handle].opened)
 			break;
 	}  
 	CHECK_HANDLE(handle);
-	if (strlen(dev_name)>=PATH_LENGTH-1) return -DSP_ERR_BOUNDS;
+	if (strlen(dev_name) >= PATH_LENGTH - 1) {
+    if (clean_dev_name)
+        free(dev_name);
+    return -DSP_ERR_BOUNDS;
+  }
 
 	fd = open(dev_name, O_RDWR);
-	if (fd<0) return -DSP_ERR_DEVICE;
+	if (fd < 0) {
+    if (clean_dev_name)
+      free(dev_name);
+    return -DSP_ERR_DEVICE;
+  }
 
 	cons[handle].fd = fd;
 	cons[handle].opened = 1;

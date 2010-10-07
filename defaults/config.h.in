@@ -3,19 +3,23 @@
 /* Define to 1 to use bigphysarea in the kernel driver. */
 #undef BIGPHYS
 
+/* Define to the default command device. */
+#undef DEFAULT_CMD_DEVICE
+
+/* Define to the default data device format. */
+#undef DEFAULT_DATA_DEVICE
+
+/* Define to the default dsp device format. */
+#undef DEFAULT_DSP_DEVICE
+
 /* Define to the default experiment configuration file. */
 #undef DEFAULT_EXPERIMENTFILE
 
 /* Define to the number of the default fibre card. */
 #undef DEFAULT_FIBRE_CARD
 
-/* Define to the default hardware configuration filename format specifier used
-   by single card MAS. */
+/* Define to the default hardware configuration file. */
 #undef DEFAULT_HARDWAREFILE
-
-/* Define to the default hardware configuration filename format specifier used
-   by multicard MAS. */
-#undef DEFAULT_HARDWAREFMT
 
 /* Define to the default MAS configuration file. */
 #undef DEFAULT_MASFILE
@@ -59,9 +63,17 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
-/* Define to the total allowable number of fibre cards. Setting this to 1 will
-   disable multicard MAS. */
+/* The MAS group */
+#undef MAS_GROUP
+
+/* The MAS user */
+#undef MAS_USER
+
+/* Define to the total allowable number of fibre cards. */
 #undef MAX_FIBRE_CARD
+
+/* Define to 1 to enable multicard MAS */
+#undef MULTICARD
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
@@ -83,6 +95,9 @@
 
 /* Define to 1 to enable realtime in the kernel driver. */
 #undef REALTIME
+
+/* Define if building shared libraries */
+#undef SHARED
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS

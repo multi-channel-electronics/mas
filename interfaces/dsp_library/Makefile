@@ -3,13 +3,16 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-LIBNAME = lib$(DSPLIB).a
+LIBNAME = lib$(DSPLIB)
 
 HEADERS = $(MAS_INCLUDE_F)mcedsp.h
 
-all: $(LIBNAME)
+all: $(LIBNAME)$(LIB_SUFFIX)
 
-$(LIBNAME): dsp_library.o errors.o
+$(LIBNAME).so : dsp_library.o errors.o
+	$(CC) -shared -o $@ $^ -lc $(MCE_LIBS) -lpthread
+
+$(LIBNAME).a: dsp_library.o errors.o
 	$(AR) rs $@ $^
 
 dsp_library.o: dsp_library.c $(HEADERS)
@@ -24,7 +27,7 @@ install: install__$(LIBNAME)
 
 
 clean: tidy
-	rm -f $(LIBNAME)
+	rm -f $(LIBNAME).a $(LIBNAME).so
 
 tidy:
 	rm -f core.* *~ *.c~ *.h~ core.* *.o *.a

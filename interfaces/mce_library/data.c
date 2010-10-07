@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 
 #include "mce_library.h"
+#include "mce/defaults.h"
 #include <mce/data_ioctl.h>
 
 /* Local header files */
@@ -28,7 +29,12 @@ int mcedata_open(mce_context_t *context, const char *dev_name)
 	void *map;
 	int map_size;
 
-	if (C_data.connected) mcedata_close(context);
+	if (C_data.connected)
+    mcedata_close(context);
+
+  /* use default data device */
+  if (dev_name == NULL)
+    dev_name = mcelib_data_device(-1);
 
 	if (strlen(dev_name)>=MCE_LONG-1)
 		return -MCE_ERR_BOUNDS;

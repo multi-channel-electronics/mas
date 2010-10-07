@@ -1,8 +1,8 @@
 #ifndef _MCE_STATUS_H_
 #define _MCE_STATUS_H_
 
-#include "../../defaults/config.h"
 #include <mce_library.h>
+#include <mce/defaults.h>
 
 #define PROGRAM_NAME           "mce_status"
 
@@ -16,9 +16,9 @@ enum { CRAWLER_DAS = 0,
 
 typedef struct {
 	int fibre_card;
-	char device_file[MCE_LONG];
-	char config_file[MCE_LONG];
-	char hardware_file[MCE_LONG];
+	char *device_file;
+	char *config_file;
+	char *hardware_file;
 	char output_path[MCE_LONG];
 
 	char output_file[MCE_LONG];

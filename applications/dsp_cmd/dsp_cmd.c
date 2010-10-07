@@ -8,16 +8,14 @@
 #include <mcedsp.h>
 
 #include <mce/cmdtree.h>
+#include <mce/defaults.h>
 
 #define PROGRAM_NAME "dsp_cmd"
 
 #define LINE_LEN 1024
 #define NARGS 64
 
-#define DEFAULT_DEVICE "/dev/mce_dsp0"
-
 int handle;
-
 
 enum {
 	ENUM_COMMAND_LOW,
@@ -87,6 +85,7 @@ typedef struct option_struct {
 	int interactive;
 	int nonzero_only;
 	int no_prefix;
+  int fibre_card;
 
 	char batch_file[LINE_LEN];
 	int  batch_now;
@@ -98,14 +97,9 @@ typedef struct option_struct {
 
 } option_t;
 
-option_t options = {
-	device_file:  DEFAULT_DEVICE,
-};
-
-
 int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
 
-int  process_options(int argc, char **argv);
+int  process_options(int argc, char **argv, option_t *options);
 
 void uppify(char *s);
 
@@ -120,7 +114,12 @@ int main(int argc, char **argv)
 	FILE *fin = stdin;
 	char *line = (char*) malloc(LINE_LEN);
 
-	if (process_options(argc, argv)) return 1;
+  option_t options = {
+    .fibre_card = -1,
+    .device_file = ""
+  };
+
+	if (process_options(argc, argv, &options)) return 1;
 
 	if (!options.nonzero_only) {
 		printf("This is %s version %s\n",
@@ -129,7 +128,7 @@ int main(int argc, char **argv)
 
 	handle = dsp_open(options.device_file);
 	if (handle<0) {
-		printf("Could not open device %s\n", options.device_file);
+		fprintf(stderr, "Could not open device %s\n", options.device_file);
 		exit(1);
 	}
 
@@ -210,53 +209,68 @@ int main(int argc, char **argv)
 }
 
 
-int  process_options(int argc, char **argv)
+int  process_options(int argc, char **argv, option_t *options)
 {
 	int option;
 	char *s;
-	while ( (option = getopt(argc, argv, "?hiqpf:d:x")) >=0) {
+	while ( (option = getopt(argc, argv, "?hiqpf:d:n:x")) >=0) {
 
 		switch(option) {
 		case '?':
 		case 'h':
-			printf("Usage:\n\t%s [-i] [-q] [-p] [-d devfile] "
+			printf("Usage:\n\t%s [-i] [-q] [-p] [-n card] [-d devfile] "
 			       "[-f <batch file> | -x <command>]\n",
 			       argv[0]);
 			return -1;
 
 		case 'i':
-			options.interactive = 1;
+			options->interactive = 1;
 			break;
 
 		case 'q':
-			options.nonzero_only = 1;
+			options->nonzero_only = 1;
 			break;
 
 		case 'p':
-			options.no_prefix = 1;
+			options->no_prefix = 1;
 			break;
 
 		case 'f':
-			strcpy(options.batch_file, optarg);
-			options.batch_now = 1;
+			strcpy(options->batch_file, optarg);
+			options->batch_now = 1;
 			break;
 
+    case 'n':
+      options->fibre_card = atoi(optarg);
+      break;
+
 		case 'd':
-			strcpy(options.device_file, optarg);
+			strcpy(options->device_file, optarg);
 			break;
 
 		case 'x':
-			s = options.cmd_command;
+			s = options->cmd_command;
 			while (optind < argc) {
 				s += sprintf(s, "%s ", argv[optind++]);
 			}
-			options.cmd_now = 1;
+			options->cmd_now = 1;
 			break;
 
 		default:
 			printf("Unimplemented option '-%c'!\n", option);
 		}
 	}
+
+  /* fix up defaults */
+  if (options->device_file[0] == '\0') {
+    char *ptr = mcelib_dsp_device(options->fibre_card);
+    if (ptr == NULL) {
+      fprintf(stderr, "ERROR: can't obtain default DSP device!");
+      return -1;
+    }
+    strcpy(options->device_file, ptr);
+    free(ptr);
+  }
 
 	return 0;
 }

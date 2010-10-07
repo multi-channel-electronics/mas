@@ -7,7 +7,7 @@ VER_TARGET := .
 include $(MAKERULES)Makefile.version
 DEFS += -DVERSION_STRING="$(REPO_VER)"
 
-LIBRARY=$(MAS_LIB)
+LIBRARY=$(MCE_LIBS)
 
 CFLAGS += $(DEFS)
 

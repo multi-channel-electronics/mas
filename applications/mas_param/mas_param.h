@@ -3,6 +3,7 @@
 
 #include "../../defaults/config.h"
 #include <libconfig.h>
+#include <mce/defaults.h>
 #include <libmaslog.h>
 
 #define PROGRAM_NAME           "mas_param"
@@ -21,9 +22,9 @@ enum { FORMAT_BASH = 0,
 /* options structure and processor */
 
 typedef struct {
-	char config_file[MCE_LONG]; // MAS config file
+	char *config_file; // MAS config file
 
-	char source_file[MCE_LONG]; // target file for processing
+	char *source_file; // target file for processing
 	char output_path[MCE_LONG];
 	char output_file[MCE_LONG];
 
@@ -33,6 +34,7 @@ typedef struct {
 
 	int mode;
 	int format;
+  int fibre_card;
 	
 	char *param_name;           // For get and set operations
 	char **data_source;         // For set operations

@@ -2,8 +2,7 @@
 #define _INIT_H_
 
 #include "logger.h"
-
-#define CONFIG_FILE DEFAULT_MASFILE
+#include "mce/defaults.h"
 
 #define CONFIG_SERVER  "log_server"
 #define CONFIG_LOGFILE "log_file"
@@ -13,9 +12,7 @@
 
 int init(params_t *p, int argc, char **argv);
 
-int load_config(params_t *p, char *config_file);
 int process_options(params_t *p, int argc, char **argv);
-int get_config_file(char *filename, int argc, char **argv);
 int check_usage(int argc, char **argv);
 
 

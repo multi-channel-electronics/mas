@@ -3,14 +3,12 @@
 
 #include "../../defaults/config.h"
 
-#define OPTSTR 1024
-
 typedef struct {
 
-  char config_file[OPTSTR];
-  char cmd_device[OPTSTR];
-  char data_device[OPTSTR];
-  char hardware_file[OPTSTR];
+  char *config_file;
+  char *cmd_device;
+  char *data_device;
+  char *hardware_file;
 
   int fibre_card;
   int read_stdin;

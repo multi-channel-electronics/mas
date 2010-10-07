@@ -1,0 +1,43 @@
+default: all
+
+BASE := ../
+include $(BASE)Makefile.children
+
+prefix = @prefix@
+MAS_PREFIX = @MAS_PREFIX@
+
+VER_TARGET := .
+include $(MAKERULES)Makefile.version
+DEFS += -DVERSION_STRING="$(REPO_VER)" -DMAS_PREFIX="\"${MAS_PREFIX}\""
+
+LIBRARY=$(MCE_LIBS)
+
+CFLAGS += $(DEFS)
+
+# targets
+
+OBJECTS = mas_config.o
+HEADERS = ../../defaults/config.h
+
+all: Makefile mas_config
+
+mas_config: $(OBJECTS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+
+$(OBJECTS): $(HEADERS)
+
+tidy:
+	rm -f *~ *.o
+
+clean:	tidy
+	rm -f mas_config
+
+# Make the install__mas_config rule
+INSTALL_TARGET=mas_config
+include $(MAKERULES)Makefile.install_rule
+
+install: install__mas_config
+
+.PRECIOUS: Makefile
+Makefile: ../../config.status Makefile.in
+	cd ../.. && $(MAKE) applications/mas_config/Makefile

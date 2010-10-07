@@ -13,21 +13,41 @@ MCELIB=mcecmd
 DSPLIB=mcedsp
 LOGLIB=maslog
 
+SHARED = @SHARED@
+
+CONFIG_LIBS = @LIBCONFIG_ARGS@
+
+ifeq ($(SHARED), yes)
+LIB_SUFFIX=.so
+LOG_EXTRA =
+else
+LIB_SUFFIX=.a
+LOG_EXTRA =
+endif
+
 # Special includes
 PYTHON_INC = @PYTHON_DIR@
 
 # Linking arguments, including libconfig
-MAS_LIB = -L$(MCELIB_F) -l$(MCELIB) -L$(DSPLIB_F) -l$(DSPLIB) \
-          -L$(LOGLIB_F) -l$(LOGLIB) @LIBCONFIG_ARGS@
+LOG_LIBS = -L$(LOGLIB_F) -l$(LOGLIB) $(LOG_EXTRA)
+ifeq ($(SHARED), yes)
+MCE_EXTRA = -Wl,--rpath-link=$(LOGLIB_F) $(LOG_EXTRA)
+DSP_EXTRA = -Wl,--rpath-link=$(MCELIB_F) $(MCE_EXTRA)
+else
+MCE_EXTRA = $(CONFIG_LIBS) $(LOG_LIBS)
+DSP_EXTRA =
+endif
+MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) -lpthread
+DSP_LIBS = -L$(DSPLIB_F) -l$(DSPLIB) $(DSP_EXTRA)
 
 prefix=@prefix@
 MAS_INSTALL=@MAS_PREFIX@
 
-MAS_INSTALL_BIN=$(MAS_INSTALL)bin/
-MAS_INSTALL_LIB=$(MAS_INSTALL)lib/
-MAS_INSTALL_INC=$(MAS_INSTALL)include/
-MAS_INSTALL_SWIG=$(MAS_INSTALL)python/
-MAS_INSTALL_PYTHON=$(MAS_INSTALL)python/
+MAS_INSTALL_BIN=$(MAS_INSTALL)/bin/
+MAS_INSTALL_LIB=$(MAS_INSTALL)/lib/
+MAS_INSTALL_INC=$(MAS_INSTALL)/include/
+MAS_INSTALL_SWIG=$(MAS_INSTALL)/python/
+MAS_INSTALL_PYTHON=$(MAS_INSTALL)/python/
 
 MAS_INSTALL_INIT=/etc/init.d/
 MAS_INSTALL_INIT_RC=/etc/

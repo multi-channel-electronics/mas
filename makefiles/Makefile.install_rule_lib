@@ -2,6 +2,6 @@
 
 install__$(INSTALL_TARGET): mas_base_install
 	install -m u+rw,g+rw,o+r --owner=$(MAS_USER) --group=$(MAS_GROUP) \
-		$(@:install__%=%) $(MAS_INSTALL_LIB)
-	-rm $(MAS_SYS_LIB)$(@:install__%=%)
-	ln -s $(MAS_INSTALL_LIB)$(@:install__%=%) $(MAS_SYS_LIB)
+		$(@:install__%=%)$(LIB_SUFFIX) $(MAS_INSTALL_LIB)
+	rm -f $(MAS_SYS_LIB)$(@:install__%=%)$(LIB_SUFFIX)
+	ln -s $(MAS_INSTALL_LIB)$(@:install__%=%)$(LIB_SUFFIX) $(MAS_SYS_LIB)

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -32,6 +33,11 @@ int st_get_id(const string_table_t *st, const char *name, int *id);
 static
 int st_index(const string_table_t *st, const char *name);
 
+#if !MULTICARD
+# define USAGE_OPTION_N "  -n <card>              ignored\n"
+#else
+# define USAGE_OPTION_N "  -n <card>              fibre card number\n"
+#endif
 
 #define USAGE_MESSAGE \
 "Usage:\n\t%s [options] [command]\n\n"\
@@ -42,6 +48,7 @@ int st_index(const string_table_t *st, const char *name);
 "  get <param>             output value of the variable <param>\n"\
 "  set <param> [ data...]  set the value of variable <param>\n\n"\
 "Options:\n"\
+USAGE_OPTION_N \
 "  -s <source file>       config file to parse\n"\
 "  -m <mas config>        choose a particular mas config file\n"\
 "  -f <output filename>   filename for output (stdout/source file by default)\n"\
@@ -53,7 +60,11 @@ int process_options(options_t* options, int argc, char **argv)
 {
 	int i;
 	int option;
-	while ( (option = getopt(argc, argv, "+?hm:f:s:v")) >=0) {
+#if MULTICARD
+  char *s;
+#endif
+
+	while ( (option = getopt(argc, argv, "+?hm:n:f:s:v")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -62,8 +73,20 @@ int process_options(options_t* options, int argc, char **argv)
 			return -1;
 
 		case 'm':
-			strcpy(options->config_file, optarg);
+      if (options->config_file)
+        free(options->config_file);
+			options->config_file = strdup(optarg);
 			break;
+
+    case 'n':
+#if MULTICARD
+			options->fibre_card = (int)strtol(optarg, &s, 10);
+			if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
+				fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+				return -1;
+			}
+#endif
+      break;
 
 		case 'f':
 			strcpy(options->output_file, optarg);
@@ -71,7 +94,9 @@ int process_options(options_t* options, int argc, char **argv)
 			break;
 
 		case 's':
-			strcpy(options->source_file, optarg);
+      if (options->source_file)
+        free(options->source_file);
+			options->source_file = strdup(optarg);
 			break;
 
 		case 'v':
@@ -83,6 +108,10 @@ int process_options(options_t* options, int argc, char **argv)
 			printf("Unimplemented option '-%c'!\n", option);
 		}
 	}
+
+  // Set defaults
+  options->config_file = mcelib_default_masfile();
+  options->source_file = mcelib_default_experimentfile(options->fibre_card);
 
 	// Process command words
 	int cmd_idx = -1;

@@ -8,7 +8,7 @@ TARGET = @MCE_CFG_LIST@
 FIRST_MCE_CIN = @FIRST_MCE_CIN@
 MULTICARD = @MULTICARD@
 
-ifeq ($(MULTICARD),yes)
+ifeq ($(MULTICARD),1)
 	INSTALL_MCE=install-multimce
 else
 	INSTALL_MCE=install-mce

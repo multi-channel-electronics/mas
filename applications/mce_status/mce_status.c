@@ -18,13 +18,9 @@
 #include "cfg_dump.h"
 
 options_t options = {
-	.fibre_card = DEFAULT_FIBRE_CARD,
-	.config_file = DEFAULT_MASFILE,
-#ifdef DEFAULT_HARDWAREFILE
-	.hardware_file =  DEFAULT_HARDWAREFILE,
-#else
-	.hardware_file =  "",
-#endif
+	.fibre_card = -1,
+	.config_file = NULL,
+	.hardware_file = NULL,
 	.mode = CRAWLER_DAS,
 };
 

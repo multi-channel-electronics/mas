@@ -609,7 +609,9 @@ PHP_IS
 DRIVER_FAKEMCE
 DEFAULT_MASFILE
 DEFAULT_HARDWAREFILE
-DEFAULT_HARDWAREFMT
+DEFAULT_DSP_DEVICE
+DEFAULT_DATA_DEVICE
+DEFAULT_CMD_DEVICE
 DEFAULT_FIBRE_CARD
 DEFAULT_EXPERIMENTFILE
 MULTICARD
@@ -617,6 +619,7 @@ FIRST_MCE_CIN
 MCE_CFG_LIST
 MCE_CIN_LIST
 DO_MAS_DRIVER
+SHARED
 DO_CONFIG2
 LN_S
 OBJEXT
@@ -668,6 +671,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_config2
+enable_shared
 enable_driver
 with_driver
 enable_multicard
@@ -693,7 +697,9 @@ LIBS
 CPPFLAGS
 DEFAULT_EXPERIMENTFILE
 DEFAULT_FIBRE_CARD
-DEFAULT_HARDWAREFMT
+DEFAULT_CMD_DEVICE
+DEFAULT_DATA_DEVICE
+DEFAULT_DSP_DEVICE
 DEFAULT_HARDWAREFILE
 DEFAULT_MASFILE
 CPP'
@@ -1306,6 +1312,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-config2       disable building or installing mce.cfg and mas.cfg
+  --enable-shared         build shared libraries instead of static ones
   --disable-driver        disable driver compilation and installation
   --enable-multicard=N    build a MAS which supports multiple (up to N) fibre
                           cards. If N is omitted, 2 is assumed. N=0 and N=1
@@ -1342,19 +1349,23 @@ Some influential environment variables:
               you have headers in a nonstandard directory <include dir>
   DEFAULT_EXPERIMENTFILE
               the default experiment configuration file
-              (/data/cryo/current_data/experiment.cfg is used if not
-              specified)
+              (${MAS_DATA}/experiment.cfg is used if not specified)
   DEFAULT_FIBRE_CARD
               the default fibre card number (0 is used if not specified)
-  DEFAULT_HARDWAREFMT
-              the default hardware configuration filename format specifier
-              used by multicard MAS. Must contain '%i', which will be replaced
-              by a fibre card number. (/etc/mce/mce%i.cfg is used if not
+  DEFAULT_CMD_DEVICE
+              the default command device (/dev/mce_cmd${MAS_CARD} is used if
+              not specified)
+  DEFAULT_DATA_DEVICE
+              the default data device (/dev/mce_data${MAS_CARD} is used if not
+              specified)
+  DEFAULT_DSP_DEVICE
+              the default dsp device (/dev/mce_dsp${MAS_CARD} is used if not
               specified)
   DEFAULT_HARDWAREFILE
               the default hardware configuration filename format specifier
               used by single card MAS. (/etc/mce/mce.cfg is used if not
-              specified)
+              specified, or /etc/mce/mce${MAS_CARD}.cfg, in the case of
+              Multicard MAS)
   DEFAULT_MASFILE
               the default MAS configuration file (/etc/mce/mas.cfg is used if
               not specified)
@@ -2889,6 +2900,22 @@ fi
 
 
 
+# Shared libraries
+# Check whether --enable-shared was given.
+if test "${enable_shared+set}" = set; then :
+  enableval=$enable_shared; if test "$enableval" = "no"; then SHARED="no"; else SHARED="yes";
+               fi
+else
+  SHARED="no"
+fi
+
+
+if test "x$SHARED" = "xyes"; then
+
+$as_echo "#define SHARED /**/" >>confdefs.h
+
+fi
+
 # Allow the user to suppress driver compile / install.
 
 # Check whether --enable-driver was given.
@@ -2935,12 +2962,12 @@ if test $MAX_FIBRE_CARD -eq 1; then
   FIRST_MCE_CIN="mce.cin"
   MCE_CFG_LIST="mce.cfg"
   MCE_CIN_LIST="mce.cin"
-  MULTICARD="no"
+  MULTICARD=0
 else
   FIRST_MCE_CIN="mce0.cin"
   MCE_CFG_LIST="mce0.cfg"
   MCE_CIN_LIST="mce0.cin"
-  MULTICARD="yes"
+  MULTICARD=1
   for n in $(seq $(expr $MAX_FIBRE_CARD - 1)); do
     MCE_CFG_LIST="$MCE_CFG_LIST mce$n.cfg"
     MCE_CIN_LIST="$MCE_CIN_LIST mce$n.cin"
@@ -2951,10 +2978,15 @@ fi
 
 
 
+cat >>confdefs.h <<_ACEOF
+#define MULTICARD $MULTICARD
+_ACEOF
+
+
 
 
 if test -z "$DEFAULT_EXPERIMENTFILE"; then
-	DEFAULT_EXPERIMENTFILE="/data/cryo/current_data/experiment.cfg"
+	DEFAULT_EXPERIMENTFILE="\${MAS_DATA}/experiment.cfg"
 fi
 
 cat >>confdefs.h <<_ACEOF
@@ -2972,34 +3004,49 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+
+if test -z "$DEFAULT_CMD_DEVICE"; then
+	DEFAULT_CMD_DEVICE="/dev/mce_cmd\${MAS_CARD}"
+fi
+
 cat >>confdefs.h <<_ACEOF
-#define DEFAULT_FIBRE_CARD $DEFAULT_FIBRE_CARD
+#define DEFAULT_CMD_DEVICE "$DEFAULT_CMD_DEVICE"
 _ACEOF
 
 
 
-if test -z "$DEFAULT_HARDWAREFMT"; then
-	DEFAULT_HARDWAREFMT="/etc/mce/mce%i.cfg"
+if test -z "$DEFAULT_DATA_DEVICE"; then
+	DEFAULT_DATA_DEVICE="/dev/mce_data\${MAS_CARD}"
 fi
-if test $MAX_FIBRE_CARD -ne 1; then
 
 cat >>confdefs.h <<_ACEOF
-#define DEFAULT_HARDWAREFMT "$DEFAULT_HARDWAREFMT"
+#define DEFAULT_DATA_DEVICE "$DEFAULT_DATA_DEVICE"
 _ACEOF
 
+
+
+if test -z "$DEFAULT_DSP_DEVICE"; then
+	DEFAULT_DSP_DEVICE="/dev/mce_dsp\${MAS_CARD}"
 fi
+
+cat >>confdefs.h <<_ACEOF
+#define DEFAULT_DSP_DEVICE "$DEFAULT_DSP_DEVICE"
+_ACEOF
+
 
 
 if test -z "$DEFAULT_HARDWAREFILE"; then
-	DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
+  if test $MAX_FIBRE_CARD -eq 1; then
+    DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
+  else
+    DEFAULT_HARDWAREFILE="/etc/mce/mce\${MAS_CARD}.cfg"
+  fi
 fi
-if test $MAX_FIBRE_CARD -eq 1; then
 
 cat >>confdefs.h <<_ACEOF
 #define DEFAULT_HARDWAREFILE "$DEFAULT_HARDWAREFILE"
 _ACEOF
 
-fi
 
 
 
@@ -3202,10 +3249,20 @@ fi
 
 
 
+cat >>confdefs.h <<_ACEOF
+#define MAS_USER "$MAS_USER"
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define MAS_GROUP "$MAS_GROUP"
+_ACEOF
+
+
 
 # MAS install path is configurable via --prefix
 
-MAS_PREFIX="\${prefix}/"
+MAS_PREFIX="\${prefix}"
 
 
 
@@ -3974,6 +4031,8 @@ ac_config_headers="$ac_config_headers defaults/config.h"
 
 ac_config_files="$ac_config_files Makefile"
 
+ac_config_files="$ac_config_files applications/mas_config/Makefile"
+
 ac_config_files="$ac_config_files config2/Makefile"
 
 ac_config_files="$ac_config_files driver/Makefile"
@@ -4666,6 +4725,7 @@ do
   case $ac_config_target in
     "defaults/config.h") CONFIG_HEADERS="$CONFIG_HEADERS defaults/config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
+    "applications/mas_config/Makefile") CONFIG_FILES="$CONFIG_FILES applications/mas_config/Makefile" ;;
     "config2/Makefile") CONFIG_FILES="$CONFIG_FILES config2/Makefile" ;;
     "driver/Makefile") CONFIG_FILES="$CONFIG_FILES driver/Makefile" ;;
     "makefiles/Makefile.install") CONFIG_FILES="$CONFIG_FILES makefiles/Makefile.install" ;;
@@ -5259,6 +5319,7 @@ if test "$DO_MAS_DRIVER" != "no"; then
   echo "    ... disable error msg: ${DRIVER_QUIET}"
   echo
 fi
+echo "  shared libraries:        ${SHARED}"
 if test $MAX_FIBRE_CARD -eq 1; then
   echo "  Multicard support:       no"
 else

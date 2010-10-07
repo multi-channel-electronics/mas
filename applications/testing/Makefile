@@ -15,7 +15,7 @@ HEADERS =
 all: $(TARGETS)
 
 mce_state: mce_state.o
-	$(CC) $(CFLAGS) $^ -o $@ $(MAS_LIB)
+	$(CC) $(CFLAGS) $^ -o $@ $(MCE_LIBS)
 
 $(OBJECTS): $(HEADERS)
 

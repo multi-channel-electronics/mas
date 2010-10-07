@@ -16,6 +16,16 @@ AC_ARG_ENABLE([config2], [AS_HELP_STRING([--disable-config2],
 AC_SUBST(DO_CONFIG2)
 
 
+# Shared libraries
+AC_ARG_ENABLE([shared], [AS_HELP_STRING([--enable-shared],
+              [build shared libraries instead of static ones])],
+              [if test "$enableval" = "no"; then SHARED="no"; else SHARED="yes";
+               fi], [SHARED="no"])
+AC_SUBST(SHARED)
+if test "x$SHARED" = "xyes"; then
+  AC_DEFINE([SHARED],, [ Define if building shared libraries ])
+fi
+
 # Allow the user to suppress driver compile / install.
 
 AC_ARG_ENABLE([driver],
@@ -45,18 +55,17 @@ AC_ARG_ENABLE([multicard],
                ], [MAX_FIBRE_CARD=1])
                    
 AC_DEFINE_UNQUOTED(MAX_FIBRE_CARD, [$MAX_FIBRE_CARD],
-          [ Define to the total allowable number of fibre cards.  Setting this ]
-          [ to 1 will disable multicard MAS. ])
+          [ Define to the total allowable number of fibre cards. ])
 if test $MAX_FIBRE_CARD -eq 1; then
   FIRST_MCE_CIN="mce.cin"
   MCE_CFG_LIST="mce.cfg"
   MCE_CIN_LIST="mce.cin"
-  MULTICARD="no"
+  MULTICARD=0
 else
   FIRST_MCE_CIN="mce0.cin"
   MCE_CFG_LIST="mce0.cfg"
   MCE_CIN_LIST="mce0.cin"
-  MULTICARD="yes"
+  MULTICARD=1
   for n in $(seq $(expr $MAX_FIBRE_CARD - 1)); do
     MCE_CFG_LIST="$MCE_CFG_LIST mce$n.cfg"
     MCE_CIN_LIST="$MCE_CIN_LIST mce$n.cin"
@@ -66,14 +75,16 @@ AC_SUBST(MCE_CIN_LIST)
 AC_SUBST(MCE_CFG_LIST)
 AC_SUBST(FIRST_MCE_CIN)
 AC_SUBST(MULTICARD)
+AC_DEFINE_UNQUOTED(MULTICARD, [$MULTICARD],
+                   [ Define to 1 to enable multicard MAS ])
 
 dnl Some defaults.
 
 AC_ARG_VAR([DEFAULT_EXPERIMENTFILE],
 		   [the default experiment configuration file ]
-		   [(/data/cryo/current_data/experiment.cfg is used if not specified)])
+		   [($][{MAS_DATA}/experiment.cfg is used if not specified)])
 if test -z "$DEFAULT_EXPERIMENTFILE"; then
-	DEFAULT_EXPERIMENTFILE="/data/cryo/current_data/experiment.cfg"
+	DEFAULT_EXPERIMENTFILE="\${MAS_DATA}/experiment.cfg"
 fi
 AC_DEFINE_UNQUOTED([DEFAULT_EXPERIMENTFILE], ["$DEFAULT_EXPERIMENTFILE"],
 				   [ Define to the default experiment configuration file. ])
@@ -85,33 +96,44 @@ if test -z "$DEFAULT_FIBRE_CARD"; then
 fi
 AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
 				   [ Define to the number of the default fibre card. ])
-AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
-				   [ Define to the number of the default fibre card. ])
 
-AC_ARG_VAR([DEFAULT_HARDWAREFMT],
-		   [the default hardware configuration filename format specifier used by ]
-       [multicard MAS.  Must contain '%i', which will be replaced by a fibre ]
-       [card number.  (/etc/mce/mce%i.cfg is used if not specified)])
-if test -z "$DEFAULT_HARDWAREFMT"; then
-	DEFAULT_HARDWAREFMT="/etc/mce/mce%i.cfg"
+AC_ARG_VAR([DEFAULT_CMD_DEVICE], [the default command device ]
+[(/dev/mce_cmd${MAS_CARD} is used if not specified)])
+if test -z "$DEFAULT_CMD_DEVICE"; then
+	DEFAULT_CMD_DEVICE="/dev/mce_cmd\${MAS_CARD}"
 fi
-if test $MAX_FIBRE_CARD -ne 1; then
-  AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFMT], ["$DEFAULT_HARDWAREFMT"],
-                     [ Define to the default hardware configuration filename ]
-                     [format specifier used by multicard MAS. ])
+AC_DEFINE_UNQUOTED([DEFAULT_CMD_DEVICE], ["$DEFAULT_CMD_DEVICE"],
+				   [ Define to the default command device. ])
+
+AC_ARG_VAR([DEFAULT_DATA_DEVICE], [the default data device ]
+[(/dev/mce_data${MAS_CARD} is used if not specified)])
+if test -z "$DEFAULT_DATA_DEVICE"; then
+	DEFAULT_DATA_DEVICE="/dev/mce_data\${MAS_CARD}"
 fi
+AC_DEFINE_UNQUOTED([DEFAULT_DATA_DEVICE], ["$DEFAULT_DATA_DEVICE"],
+				   [ Define to the default data device format. ])
+
+AC_ARG_VAR([DEFAULT_DSP_DEVICE], [the default dsp device ]
+[(/dev/mce_dsp${MAS_CARD} is used if not specified)])
+if test -z "$DEFAULT_DSP_DEVICE"; then
+	DEFAULT_DSP_DEVICE="/dev/mce_dsp\${MAS_CARD}"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_DSP_DEVICE], ["$DEFAULT_DSP_DEVICE"],
+				   [ Define to the default dsp device format. ])
 
 AC_ARG_VAR([DEFAULT_HARDWAREFILE],
 		   [the default hardware configuration filename format specifier used by ]
-       [single card MAS.  (/etc/mce/mce.cfg is used if not specified)])
+       [single card MAS.  (/etc/mce/mce.cfg is used if not specified, or ]
+       [/etc/mce/mce${MAS_CARD}.cfg, in the case of Multicard MAS)])
 if test -z "$DEFAULT_HARDWAREFILE"; then
-	DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
+  if test $MAX_FIBRE_CARD -eq 1; then
+    DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
+  else
+    DEFAULT_HARDWAREFILE="/etc/mce/mce\${MAS_CARD}.cfg"
+  fi
 fi
-if test $MAX_FIBRE_CARD -eq 1; then
-  AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFILE], ["$DEFAULT_HARDWAREFILE"],
-                     [ Define to the default hardware configuration filename ]
-                     [format specifier used by single card MAS. ])
-fi
+AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFILE], ["$DEFAULT_HARDWAREFILE"],
+                   [ Define to the default hardware configuration file. ])
 
 
 AC_ARG_VAR([DEFAULT_MASFILE],
@@ -234,11 +256,13 @@ AC_ARG_WITH([group],
             [MAS_GROUP=$withval], [MAS_GROUP=mce])
 AC_SUBST(MAS_USER)
 AC_SUBST(MAS_GROUP)
+AC_DEFINE_UNQUOTED([MAS_USER], ["$MAS_USER"], [ The MAS user ])
+AC_DEFINE_UNQUOTED([MAS_GROUP], ["$MAS_GROUP"], [ The MAS group ])
 
 
 # MAS install path is configurable via --prefix
 
-MAS_PREFIX="\${prefix}/"
+MAS_PREFIX="\${prefix}"
 AC_SUBST(MAS_PREFIX)
 
 
@@ -312,6 +336,7 @@ dnl Write.
 
 AC_CONFIG_HEADERS([defaults/config.h])
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([applications/mas_config/Makefile])
 AC_CONFIG_FILES([config2/Makefile])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
@@ -330,6 +355,7 @@ if test "$DO_MAS_DRIVER" != "no"; then
   echo "    ... disable error msg: ${DRIVER_QUIET}"
   echo
 fi
+echo "  shared libraries:        ${SHARED}"
 if test $MAX_FIBRE_CARD -eq 1; then
   echo "  Multicard support:       no"
 else

@@ -2,4 +2,4 @@
 #
 #  PIC and no-stack-protector seem to be required for swig.
 #
-CFLAGS += -Wall -O2 -fPIC -fno-stack-protector -I $(MAS_INCLUDE_F)
+CFLAGS += -Wall -g -O2 -fPIC -fno-stack-protector -I $(MAS_INCLUDE_F)

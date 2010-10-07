@@ -1,17 +1,13 @@
 #ifndef _OPTIONS_H_
 #define _OPTIONS_H_
 
-#include "../../defaults/config.h"
-
-#define OPTSTR 1024
-
 typedef struct {
 
-  char config_file[OPTSTR];
-  char cmd_device[OPTSTR];
-  char data_device[OPTSTR];
-  char hardware_file[OPTSTR];
-  char experiment_file[OPTSTR];
+  char *config_file;
+  char *cmd_device;
+  char *data_device;
+  char *hardware_file;
+  char *experiment_file;
 
   int fibre_card;
   int argument_opts;

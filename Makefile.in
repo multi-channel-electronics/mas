@@ -53,6 +53,9 @@ install: $(install_deps)
 Makefile: config.status Makefile.in
 	$(SHELL) ./config.status $@
 
+applications/mas_config/Makefile: config.status applications/mas_config/Makefile.in
+	$(SHELL) ./config.status $@
+
 config2/Makefile: config.status config2/Makefile.in
 	$(SHELL) ./config.status $@
 

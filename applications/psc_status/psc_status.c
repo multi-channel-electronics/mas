@@ -10,7 +10,6 @@
 #include <string.h>
 #include <float.h>
 #include <mce_library.h>
-#include "../../defaults/config.h"
 #include "options.h"
 #include "psc_status.h"
 
@@ -27,13 +26,9 @@ int main (int argc, char **argv){
 
    /* Define default MAS options */
    option_t options = {
-     .config_file = DEFAULT_MASFILE,
-     .fibre_card = DEFAULT_FIBRE_CARD,
-#ifdef DEFAULT_HARDWAREFILE
-     .hardware_file =  DEFAULT_HARDWAREFILE,
-#else
-     .hardware_file =  "",
-#endif
+     .config_file = NULL,
+     .fibre_card = -1,
+     .hardware_file = NULL,
      .read_stdin = 0,
    };
 

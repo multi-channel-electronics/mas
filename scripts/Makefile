@@ -25,3 +25,5 @@ mas: ../config.status mas.in
 
 mas_mknodes: ../config.status mas_mknodes.in
 	cd .. && $(MAKE) scripts/mas_mknodes
+
+clean:

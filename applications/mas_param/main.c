@@ -8,10 +8,9 @@
 #include "masconfig.h"
 
 options_t options = {
-	config_file: DEFAULT_MASFILE,
-	source_file: DEFAULT_EXPERIMENTFILE,
-	mode:        MODE_IDLE,
-	format:      FORMAT_BASH,
+	.mode = MODE_IDLE,
+	.format = FORMAT_BASH,
+  .fibre_card = -1
 };
 
 int main(int argc, char **argv)

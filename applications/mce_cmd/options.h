@@ -27,10 +27,10 @@ typedef struct {
 	int  cmds_now;
 	int  cmds_idx;
 
-	char data_device[LINE_LEN];
-	char cmd_device[LINE_LEN];
-	char hardware_file[LINE_LEN];
-	char masconfig_file[LINE_LEN];
+	char *data_device;
+	char *cmd_device;
+	char *hardware_file;
+	char *masconfig_file;
 
 	char acq_path[LINE_LEN];
 	char acq_filename[LINE_LEN];

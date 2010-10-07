@@ -84,6 +84,11 @@ int load_exp_config(const char *filename)
 {
   config_setting_t* cfg = load_config(filename);
 
+  if (cfg == NULL) {
+    fprintf(stderr, "Error loading config file: %s\n", filename);
+    exit(1);
+  }
+
   load_int(cfg, "sq2_servo_flux_start", &control.fb);
   load_int(cfg, "sq2_servo_flux_count", &control.nfb);
   load_int(cfg, "sq2_servo_flux_step", &control.dfb);
@@ -131,14 +136,10 @@ int main (int argc, char **argv)
    
    /* Define default MAS options */
    option_t options = {
-     .config_file = DEFAULT_MASFILE,
-     .fibre_card = DEFAULT_FIBRE_CARD,
-#ifdef DEFAULT_HARDWAREFILE
-     .hardware_file =  DEFAULT_HARDWAREFILE,
-#else
-     .hardware_file =  "",
-#endif
-     .experiment_file = DEFAULT_EXPERIMENTFILE,
+     .config_file = NULL,
+     .fibre_card = -1,
+     .hardware_file = NULL,
+     .experiment_file = NULL,
      .argument_opts = 0,
    };
    int arg_offset = 0;

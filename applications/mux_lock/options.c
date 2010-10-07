@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <mce/defaults.h>
 
 #include "options.h"
+#include "../../defaults/config.h"
 
 /*
   This is for MAS configuration file specification, mostly.  Since
@@ -48,15 +50,15 @@ int process_options(option_t *options, int argc, char **argv)
       return -1;
 
     case 'm':
-      strcpy(options->config_file, optarg);
+      if (options->config_file)
+        free(options->config_file);
+      options->config_file = strdup(optarg);
       break;
 
 	case 'n':
-#if MAX_FIBRE_CARD != -1
+#if MULTICARD
 	  options->fibre_card = (int)strtol(optarg, &s, 10);
-    if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0 ||
-        options->fibre_card >= MAX_FIBRE_CARD)
-    {
+    if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
       fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
       return -1;
     }
@@ -64,7 +66,9 @@ int process_options(option_t *options, int argc, char **argv)
     break;
 
   case 'w':
-    strcpy(options->hardware_file, optarg);
+    if (options->hardware_file)
+      free(options->hardware_file);
+    options->hardware_file = strdup(optarg);
     break;
 
   case 'p':
@@ -72,7 +76,9 @@ int process_options(option_t *options, int argc, char **argv)
     break;
 
   case 's':
-    strcpy(options->experiment_file, optarg);
+    if (options->experiment_file)
+      free(options->experiment_file);
+    options->experiment_file = strdup(optarg);
     break;
 
   case 'E':
@@ -90,12 +96,15 @@ int process_options(option_t *options, int argc, char **argv)
   }
 
   /* set fibre card devices */
-  sprintf(options->data_device, "/dev/mce_data%i", options->fibre_card);
-  sprintf(options->cmd_device, "/dev/mce_cmd%i", options->fibre_card);
-#ifdef DEFAULT_HARDWAREFMT
-  if (options->hardware_file[0] == '\0')
-    sprintf(options->hardware_file, DEFAULT_HARDWAREFMT, options->fibre_card);
-#endif
+  options->data_device = mcelib_data_device(options->fibre_card);
+  options->cmd_device = mcelib_cmd_device(options->fibre_card);
+  if (options->hardware_file == NULL)
+    options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
+  if (options->experiment_file == NULL)
+    options->experiment_file =
+      mcelib_default_experimentfile(options->fibre_card);
+  if (options->config_file == NULL)
+    options->config_file = mcelib_default_masfile();
 
   return optind;
 }

@@ -6,11 +6,14 @@ include $(BASE)Makefile.children
 EXTERN_OBJ = $(MASMISC_F)socks.o
 
 # Target name for logger client library
-LIBNAME = lib$(LOGLIB).a
+LIBNAME = lib$(LOGLIB)
 
-all: $(LIBNAME)
+all: $(LIBNAME)$(LIB_SUFFIX)
 
-$(LIBNAME): $(EXTERN_OBJ) libmaslog.o $(MAS_INCLUDE_F)libmaslog.h
+$(LIBNAME).so: $(EXTERN_OBJ) libmaslog.o $(MAS_INCLUDE_F)libmaslog.h
+	$(LD) -shared -o $@ $(EXTERN_OBJ) libmaslog.o -lc -lpthread -lconfig
+
+$(LIBNAME).a: $(EXTERN_OBJ) libmaslog.o $(MAS_INCLUDE_F)libmaslog.h
 	$(AR) rs $@ $(EXTERN_OBJ) libmaslog.o
 
 # Make the install__libmaslog.a rule
@@ -23,4 +26,4 @@ tidy:
 	rm -f *~ *.o
 
 clean:	tidy
-	rm -f $(LIBNAME)
+	rm -f $(LIBNAME).a $(LIBNAME).so

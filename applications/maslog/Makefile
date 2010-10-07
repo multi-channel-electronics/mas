@@ -2,11 +2,11 @@ default: all
 
 include ../Makefile.children
 
-LIBRARY = $(MAS_LIB)
+LIBRARY = $(MCE_LIBS)
 SOCK = $(MASMISC_F)/socks.o
 
 SOURCE = logger.c main.c init.c
-HEADER = logger.h init.h ../../defaults/config.h
+HEADER = logger.h init.h
 
 CFLAGS += $(DEFS)
 
