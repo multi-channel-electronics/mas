@@ -53,7 +53,7 @@ void __attribute__((noreturn)) Usage(int ret)
       "  --user            the MAS username\n"
       "  --version         the mas_config version\n"
       "\nIf -q is not specified, multiple parameters may be given.  The value "
-      "of each\nparameter will be reported on standard output a separate line, "
+      "of each\nparameter will be reported on standard output, one per line, "
       "in the order\nspecified.\n");
 
   exit(ret);
