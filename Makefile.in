@@ -77,8 +77,11 @@ scripts/mas_mknodes: config.status scripts/mas_mknodes.in
 config.status: configure
 	$(SHELL) ./config.status --recheck
 
-configure: configure.in
+configure: configure.in aclocal.m4
 	autoconf -o $@ $<
+
+aclocal.m4: configure.in defaults/masdefault.m4
+	aclocal -I defaults
 
 # this misdirection prevents us from having to run autoheader every time
 defaults/config.h: defaults/config-stamp
@@ -87,7 +90,7 @@ defaults/config.h: defaults/config-stamp
 		$(MAKE) $<; \
 		fi
 
-defaults/config-stamp: defaults/config.h.in $<
+defaults/config-stamp: defaults/config.h.in config.status
 	$(SHELL) ./config.status defaults/config.h
 	touch $@
 

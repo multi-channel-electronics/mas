@@ -80,23 +80,6 @@ AC_DEFINE_UNQUOTED(MULTICARD, [$MULTICARD],
 
 dnl Some defaults.
 
-AC_ARG_VAR([DEFAULT_EXPERIMENTFILE],
-		   [the default experiment configuration file ]
-		   [($][{MAS_DATA}/experiment.cfg is used if not specified)])
-if test -z "$DEFAULT_EXPERIMENTFILE"; then
-	DEFAULT_EXPERIMENTFILE="\${MAS_DATA}/experiment.cfg"
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_EXPERIMENTFILE], ["$DEFAULT_EXPERIMENTFILE"],
-				   [ Define to the default experiment configuration file. ])
-
-AC_ARG_VAR([DEFAULT_FIBRE_CARD],
-		   [the default fibre card number (0 is used if not specified)])
-if test -z "$DEFAULT_FIBRE_CARD"; then
-	DEFAULT_FIBRE_CARD=0
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
-				   [ Define to the number of the default fibre card. ])
-
 AC_ARG_VAR([DEFAULT_CMD_DEVICE], [the default command device ]
 [(/dev/mce_cmd${MAS_CARD} is used if not specified)])
 if test -z "$DEFAULT_CMD_DEVICE"; then
@@ -121,6 +104,23 @@ fi
 AC_DEFINE_UNQUOTED([DEFAULT_DSP_DEVICE], ["$DEFAULT_DSP_DEVICE"],
 				   [ Define to the default dsp device format. ])
 
+AC_ARG_VAR([DEFAULT_EXPERIMENTFILE],
+		   [the default experiment configuration file ]
+		   [($][{MAS_DATA}/experiment.cfg is used if not specified)])
+if test -z "$DEFAULT_EXPERIMENTFILE"; then
+	DEFAULT_EXPERIMENTFILE="\${MAS_DATA}/experiment.cfg"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_EXPERIMENTFILE], ["$DEFAULT_EXPERIMENTFILE"],
+				   [ Define to the default experiment configuration file. ])
+
+AC_ARG_VAR([DEFAULT_FIBRE_CARD],
+		   [the default fibre card number (0 is used if not specified)])
+if test -z "$DEFAULT_FIBRE_CARD"; then
+	DEFAULT_FIBRE_CARD=0
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
+				   [ Define to the number of the default fibre card. ])
+
 AC_ARG_VAR([DEFAULT_HARDWAREFILE],
 		   [the default hardware configuration filename format specifier used by ]
        [single card MAS.  (/etc/mce/mce.cfg is used if not specified, or ]
@@ -144,6 +144,7 @@ if test -z "$DEFAULT_MASFILE"; then
 fi
 AC_DEFINE_UNQUOTED([DEFAULT_MASFILE], ["$DEFAULT_MASFILE"],
 				   [ Define to the default MAS configuration file. ])
+
 
 # Some driver options.
 
@@ -331,6 +332,28 @@ if test "$PYTHON_DIR" != "no"; then
 				   [--with-python=... or you need to install python-dev])])
 fi
 
+
+dnl MCE script default defaults.  These are declared late for help munging
+dnl reasons
+m4_divert_once([HELP_VAR], [[
+The following variables may be set to influence the values computed for
+environmental variables returned by mas_config.  They may be overridden later
+by the user by creating environmental variables MASDEFAULT_<foo> for the default
+to the MAS_<foo> environemntal variable.  Unlike shell variables, these may
+contain references to other MAS_<foo> variables, which will be multiply expanded
+as needed.  Note: the value of MAS_ROOT is not specified here, but done instead
+by mce_script itself.
+]])
+
+MAS_DEFAULT_VAR([BIN], [${MAS_PREFIX}/bin])
+MAS_DEFAULT_VAR([DATA], [${MAS_DATA_ROOT}/current_data])
+MAS_DEFAULT_VAR([DATA_ROOT], [/data/cryo], [/data/cryo${MAS_CARD}])
+MAS_DEFAULT_VAR([IDL], [${MAS_ROOT}/idl])
+MAS_DEFAULT_VAR([PYTHON], [${MAS_ROOT}/python])
+MAS_DEFAULT_VAR([SCRIPT], [${MAS_ROOT}/script])
+MAS_DEFAULT_VAR([TEMP], [/tmp])
+MAS_DEFAULT_VAR([TEMPLATE], [${MAS_ROOT}/template])
+MAS_DEFAULT_VAR([TEST_SUITE], [${MAS_ROOT}/test_suite])
 
 dnl Write.
 

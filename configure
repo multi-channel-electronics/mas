@@ -594,6 +594,15 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+MASDEFAULT_TEST_SUITE
+MASDEFAULT_TEMPLATE
+MASDEFAULT_TEMP
+MASDEFAULT_SCRIPT
+MASDEFAULT_PYTHON
+MASDEFAULT_IDL
+MASDEFAULT_DATA_ROOT
+MASDEFAULT_DATA
+MASDEFAULT_BIN
 HAS_SWIG
 EGREP
 GREP
@@ -609,11 +618,11 @@ PHP_IS
 DRIVER_FAKEMCE
 DEFAULT_MASFILE
 DEFAULT_HARDWAREFILE
+DEFAULT_FIBRE_CARD
+DEFAULT_EXPERIMENTFILE
 DEFAULT_DSP_DEVICE
 DEFAULT_DATA_DEVICE
 DEFAULT_CMD_DEVICE
-DEFAULT_FIBRE_CARD
-DEFAULT_EXPERIMENTFILE
 MULTICARD
 FIRST_MCE_CIN
 MCE_CFG_LIST
@@ -695,14 +704,23 @@ CFLAGS
 LDFLAGS
 LIBS
 CPPFLAGS
-DEFAULT_EXPERIMENTFILE
-DEFAULT_FIBRE_CARD
 DEFAULT_CMD_DEVICE
 DEFAULT_DATA_DEVICE
 DEFAULT_DSP_DEVICE
+DEFAULT_EXPERIMENTFILE
+DEFAULT_FIBRE_CARD
 DEFAULT_HARDWAREFILE
 DEFAULT_MASFILE
-CPP'
+CPP
+MASDEFAULT_BIN
+MASDEFAULT_DATA
+MASDEFAULT_DATA_ROOT
+MASDEFAULT_IDL
+MASDEFAULT_PYTHON
+MASDEFAULT_SCRIPT
+MASDEFAULT_TEMP
+MASDEFAULT_TEMPLATE
+MASDEFAULT_TEST_SUITE'
 
 
 # Initialize some variables set by options.
@@ -1347,11 +1365,6 @@ Some influential environment variables:
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
-  DEFAULT_EXPERIMENTFILE
-              the default experiment configuration file
-              (${MAS_DATA}/experiment.cfg is used if not specified)
-  DEFAULT_FIBRE_CARD
-              the default fibre card number (0 is used if not specified)
   DEFAULT_CMD_DEVICE
               the default command device (/dev/mce_cmd${MAS_CARD} is used if
               not specified)
@@ -1361,6 +1374,11 @@ Some influential environment variables:
   DEFAULT_DSP_DEVICE
               the default dsp device (/dev/mce_dsp${MAS_CARD} is used if not
               specified)
+  DEFAULT_EXPERIMENTFILE
+              the default experiment configuration file
+              (${MAS_DATA}/experiment.cfg is used if not specified)
+  DEFAULT_FIBRE_CARD
+              the default fibre card number (0 is used if not specified)
   DEFAULT_HARDWAREFILE
               the default hardware configuration filename format specifier
               used by single card MAS. (/etc/mce/mce.cfg is used if not
@@ -1370,6 +1388,43 @@ Some influential environment variables:
               the default MAS configuration file (/etc/mce/mas.cfg is used if
               not specified)
   CPP         C preprocessor
+
+The following variables may be set to influence the values computed for
+environmental variables returned by mas_config.  They may be overridden later
+by the user by creating environmental variables MASDEFAULT_<foo> for the default
+to the MAS_<foo> environemntal variable.  Unlike shell variables, these may
+contain references to other MAS_<foo> variables, which will be multiply expanded
+as needed.  Note: the value of MAS_ROOT is not specified here, but done instead
+by mce_script itself.
+
+  MASDEFAULT_BIN
+              the default (template) for MAS_BIN ("${MAS_PREFIX}/bin" is used
+              if not specified)
+  MASDEFAULT_DATA
+              the default (template) for MAS_DATA
+              ("${MAS_DATA_ROOT}/current_data" is used if not specified)
+  MASDEFAULT_DATA_ROOT
+              the default (template) for MAS_DATA_ROOT ("/data/cryo" is used
+              if not specified, or "/data/cryo${MAS_CARD}", in the case of
+              Multicard MAS)
+  MASDEFAULT_IDL
+              the default (template) for MAS_IDL ("${MAS_ROOT}/idl" is used if
+              not specified)
+  MASDEFAULT_PYTHON
+              the default (template) for MAS_PYTHON ("${MAS_ROOT}/python" is
+              used if not specified)
+  MASDEFAULT_SCRIPT
+              the default (template) for MAS_SCRIPT ("${MAS_ROOT}/script" is
+              used if not specified)
+  MASDEFAULT_TEMP
+              the default (template) for MAS_TEMP ("/tmp" is used if not
+              specified)
+  MASDEFAULT_TEMPLATE
+              the default (template) for MAS_TEMPLATE ("${MAS_ROOT}/template"
+              is used if not specified)
+  MASDEFAULT_TEST_SUITE
+              the default (template) for MAS_TEST_SUITE
+              ("${MAS_ROOT}/test_suite" is used if not specified)
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -2985,26 +3040,6 @@ _ACEOF
 
 
 
-if test -z "$DEFAULT_EXPERIMENTFILE"; then
-	DEFAULT_EXPERIMENTFILE="\${MAS_DATA}/experiment.cfg"
-fi
-
-cat >>confdefs.h <<_ACEOF
-#define DEFAULT_EXPERIMENTFILE "$DEFAULT_EXPERIMENTFILE"
-_ACEOF
-
-
-
-if test -z "$DEFAULT_FIBRE_CARD"; then
-	DEFAULT_FIBRE_CARD=0
-fi
-
-cat >>confdefs.h <<_ACEOF
-#define DEFAULT_FIBRE_CARD $DEFAULT_FIBRE_CARD
-_ACEOF
-
-
-
 if test -z "$DEFAULT_CMD_DEVICE"; then
 	DEFAULT_CMD_DEVICE="/dev/mce_cmd\${MAS_CARD}"
 fi
@@ -3035,6 +3070,26 @@ _ACEOF
 
 
 
+if test -z "$DEFAULT_EXPERIMENTFILE"; then
+	DEFAULT_EXPERIMENTFILE="\${MAS_DATA}/experiment.cfg"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define DEFAULT_EXPERIMENTFILE "$DEFAULT_EXPERIMENTFILE"
+_ACEOF
+
+
+
+if test -z "$DEFAULT_FIBRE_CARD"; then
+	DEFAULT_FIBRE_CARD=0
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define DEFAULT_FIBRE_CARD $DEFAULT_FIBRE_CARD
+_ACEOF
+
+
+
 if test -z "$DEFAULT_HARDWAREFILE"; then
   if test $MAX_FIBRE_CARD -eq 1; then
     DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
@@ -3057,6 +3112,7 @@ fi
 cat >>confdefs.h <<_ACEOF
 #define DEFAULT_MASFILE "$DEFAULT_MASFILE"
 _ACEOF
+
 
 
 # Some driver options.
@@ -4024,6 +4080,103 @@ fi
 
 
 fi
+
+
+
+
+
+
+if test -z "$MASDEFAULT_BIN"; then
+MASDEFAULT_BIN="\${MAS_PREFIX}/bin"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_BIN "$MASDEFAULT_BIN"
+_ACEOF
+
+
+
+if test -z "$MASDEFAULT_DATA"; then
+MASDEFAULT_DATA="\${MAS_DATA_ROOT}/current_data"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_DATA "$MASDEFAULT_DATA"
+_ACEOF
+
+
+
+if test -z "$MASDEFAULT_DATA_ROOT"; then
+if test $MAX_FIBRE_CARD -eq 1; then
+    MASDEFAULT_DATA_ROOT="/data/cryo"
+  else
+    MASDEFAULT_DATA_ROOT="/data/cryo\${MAS_CARD}"
+  fi
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_DATA_ROOT "$MASDEFAULT_DATA_ROOT"
+_ACEOF
+
+
+
+if test -z "$MASDEFAULT_IDL"; then
+MASDEFAULT_IDL="\${MAS_ROOT}/idl"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_IDL "$MASDEFAULT_IDL"
+_ACEOF
+
+
+
+if test -z "$MASDEFAULT_PYTHON"; then
+MASDEFAULT_PYTHON="\${MAS_ROOT}/python"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_PYTHON "$MASDEFAULT_PYTHON"
+_ACEOF
+
+
+
+if test -z "$MASDEFAULT_SCRIPT"; then
+MASDEFAULT_SCRIPT="\${MAS_ROOT}/script"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_SCRIPT "$MASDEFAULT_SCRIPT"
+_ACEOF
+
+
+
+if test -z "$MASDEFAULT_TEMP"; then
+MASDEFAULT_TEMP="/tmp"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_TEMP "$MASDEFAULT_TEMP"
+_ACEOF
+
+
+
+if test -z "$MASDEFAULT_TEMPLATE"; then
+MASDEFAULT_TEMPLATE="\${MAS_ROOT}/template"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_TEMPLATE "$MASDEFAULT_TEMPLATE"
+_ACEOF
+
+
+
+if test -z "$MASDEFAULT_TEST_SUITE"; then
+MASDEFAULT_TEST_SUITE="\${MAS_ROOT}/test_suite"
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define MASDEFAULT_TEST_SUITE "$MASDEFAULT_TEST_SUITE"
+_ACEOF
 
 
 

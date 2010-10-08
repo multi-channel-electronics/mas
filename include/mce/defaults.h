@@ -3,8 +3,8 @@
 #define _MCE_DEFAULTS_H_
 
 /* shell expand input; returns a newly malloc'd string on success or
- * NULL on error */
-char *mcelib_shell_expand(const char* input);
+ * NULL on error; to use the default fibre card, pass card=-1 */
+char *mcelib_shell_expand(const char* input, int card);
 
 int mcelib_default_fibre_card(void);
 

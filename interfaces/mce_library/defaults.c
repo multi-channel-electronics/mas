@@ -4,6 +4,10 @@
 #include <string.h>
 #include <wordexp.h>
 #include "../../defaults/config.h"
+#include "mce/defaults.h"
+
+#define SET_MASDEFAULT(x) \
+  setenv("MASDEFAULT_" #x, MASDEFAULT_ ## x, 0)
 
 /* sanitise the environment */
 static void check_env(int card)
@@ -26,7 +30,6 @@ static void check_env(int card)
 
 #if !MULTICARD
   setenv("MAS_CARD", "0", 1);
-  setenv("MAS_DATA", "/data/cryo/current_data", 0);
 #else
   /* MAS_CARD is overridden if card is set */
   char buffer[10];
@@ -38,10 +41,36 @@ static void check_env(int card)
     sprintf(buffer, "%i", card);
     setenv("MAS_CARD", buffer, 1);
   }
-  setenv("MAS_DATA", "/data/cryo${MAS_CARD}/current_data", 0);
 #endif
+  SET_MASDEFAULT(BIN);
+  SET_MASDEFAULT(DATA);
+  SET_MASDEFAULT(DATA_ROOT);
+  SET_MASDEFAULT(IDL);
+  SET_MASDEFAULT(PYTHON);
+  SET_MASDEFAULT(SCRIPT);
+  SET_MASDEFAULT(TEMP);
+  SET_MASDEFAULT(TEMPLATE);
+  SET_MASDEFAULT(TEST_SUITE);
   done = card;
 }
+
+/* set an environmental variable from the default, if needed */
+static void set_env(const char* key, int card)
+{
+  char name[1000] = "MAS_";
+  char dflt[1000] = "MASDEFAULT_";
+
+  check_env(card);
+
+  /* look for the variable */
+  strcat(name, key);
+
+  if (getenv(name) == NULL) {
+    strcat(dflt, key);
+    setenv(name, mcelib_shell_expand(dflt, card), 0);
+  }
+}
+
 
 /* shell expand input; returns a newly malloc'd string on success or
  * NULL on error */
@@ -82,7 +111,7 @@ char *mcelib_shell_expand(const char* input, int card)
   wordfree(&expansion);
   
   /* if there are still things to expand, run it through again */
-  if (strchr(ptr, '$')) {
+  if (strcmp(ptr, input) && strchr(ptr, '$')) {
     char *old = ptr;
     ptr = mcelib_shell_expand(ptr, card);
     free(old);

@@ -12,8 +12,10 @@ install:
 	@for d in ${SUB_DIRS}; do		\
 		make -C $$d install || exit 1;	\
 	done
-	@echo -e "\n Make sure you stop maslog_server before re-installing, or "\
-		"the install will fail.\n"
+	@echo
+	@echo "Make sure you stop maslog_server before re-installing, or"\
+		"the install will fail."
+	@echo
 
 clean:
 	@for d in ${SUB_DIRS}; do		\
