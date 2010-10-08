@@ -5,13 +5,8 @@
 /* This is the MCE include file; it should be in /usr/local/include or something */
 
 #include <mce_library.h>
-
-
-/* Default device, config files */
-
-#define CMD_DEVICE "/dev/mce_cmd0"
-#define DATA_DEVICE "/dev/mce_data0"
-#define CONFIG_FILE "/etc/mce/mce.cfg"
+#include <mce/defaults.h>
+#include "../../defaults/config.h"
 
 /* Our buffer size */
 
@@ -70,27 +65,33 @@ void print_u32(u32 *data, int count)
 	printf("\n");
 }
 
-mce_context_t* mce_connect()
+mce_context_t* mce_connect(int fibre_card)
 {
+  char *ptr;
+
 	// Get a library context structure (cheap)
 	mce_context_t *mce = mcelib_create();
 
 	// Load MCE config information ("xml")
-	if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {
-		fprintf(stderr, "Failed to load MCE configuration file %s.\n",
-			CONFIG_FILE);
+  ptr = mcelib_default_hardwarefile(fibre_card);
+	if (mceconfig_open(mce, ptr, NULL) != 0) {
+		fprintf(stderr, "Failed to load MCE configuration file %s.\n", ptr);
 		return NULL;
 	}
+  free(ptr);
 
 	// Connect to an mce_cmd device.
-	if (mcecmd_open(mce, CMD_DEVICE) != 0) {
-		fprintf(stderr, "Failed to open %s.\n", CMD_DEVICE);;
+  ptr = mcelib_cmd_device(fibre_card);
+	if (mcecmd_open(mce, ptr) != 0) {
+		fprintf(stderr, "Failed to open %s.\n", ptr);
 		return NULL;
 	}
+  free(ptr);
 
 	// Open data device
-	if (mcedata_open(mce, DATA_DEVICE) != 0) {
-		fprintf(stderr, "Could not open '%s'\n", DATA_DEVICE);
+  ptr = mcelib_data_device(fibre_card);
+	if (mcedata_open(mce, ptr) != 0) {
+		fprintf(stderr, "Could not open '%s'\n", ptr);
 		return NULL;
 	}
 
@@ -103,13 +104,15 @@ int main(int argc, char **argv)
 	char card_str[] = "rcx";
 	char *filename = NULL;
 	int card = 0;
+  int fibre_card = -1;
 	int store_scheme = SINGLE_ROW;
-	mce_context_t *mce = mce_connect();
+	mce_context_t *mce;
 
-	if (mce == NULL) exit(1);
-	
 	if (argc >= 3 && strlen(argv[2])==1)
 		card_str[2] = argv[2][0];
+  
+  if (argc >= 4)
+    fibre_card = atoi(argv[3]);
 
 	switch(card_str[2]) {
 	case '1':
@@ -127,14 +130,28 @@ int main(int argc, char **argv)
 	}
 
 	if (card == 0) {
-		printf("Usage: %s <filename> <card>\n\nwhere card is 1 2 3 or 4.\n", argv[0]);
+		printf("Usage: %s <filename> <readout-card>"
+#if MULTICARD
+        " [fibre-card]"
+#endif
+        "\n\nwhere readout-card is 1 2 3 or 4"
+#if MULTICARD
+        " and fibre-card is your fibre card of choice"
+#endif
+        ".\n", argv[0]);
 		printf("You should probably be running this from some kind of script...\n");
 		exit(1);
 	}
 	filename = argv[1];
 
+  mce = mce_connect(fibre_card);
+
+	if (mce == NULL)
+    exit(1);
+	
 	/* Lookups */
-	mce_param_t p_row_len, p_num_rows, p_num_rows_reported, p_ret_dat_s, p_data_mode, p_captr_raw;
+	mce_param_t p_row_len, p_num_rows, p_num_rows_reported, p_ret_dat_s,
+              p_data_mode, p_captr_raw;
 	
 	err |= mcecmd_load_param(mce, &p_row_len, "cc", "row_len");
 	err |= mcecmd_load_param(mce, &p_num_rows, "cc", "num_rows");
