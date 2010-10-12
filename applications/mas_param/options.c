@@ -61,8 +61,12 @@ int process_options(options_t* options, int argc, char **argv)
 	int i;
 	int option;
 #if MULTICARD
-  char *s;
+	char *s;
 #endif
+
+        // Set defaults
+	options->config_file = mcelib_default_masfile();
+	options->source_file = mcelib_default_experimentfile(options->fibre_card);
 
 	while ( (option = getopt(argc, argv, "+?hm:n:f:s:v")) >=0) {
 
@@ -73,12 +77,12 @@ int process_options(options_t* options, int argc, char **argv)
 			return -1;
 
 		case 'm':
-      if (options->config_file)
-        free(options->config_file);
+			if (options->config_file)
+				free(options->config_file);
 			options->config_file = strdup(optarg);
 			break;
 
-    case 'n':
+		case 'n':
 #if MULTICARD
 			options->fibre_card = (int)strtol(optarg, &s, 10);
 			if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
@@ -86,7 +90,7 @@ int process_options(options_t* options, int argc, char **argv)
 				return -1;
 			}
 #endif
-      break;
+			break;
 
 		case 'f':
 			strcpy(options->output_file, optarg);
@@ -94,8 +98,8 @@ int process_options(options_t* options, int argc, char **argv)
 			break;
 
 		case 's':
-      if (options->source_file)
-        free(options->source_file);
+			if (options->source_file)
+				free(options->source_file);
 			options->source_file = strdup(optarg);
 			break;
 
@@ -108,10 +112,6 @@ int process_options(options_t* options, int argc, char **argv)
 			printf("Unimplemented option '-%c'!\n", option);
 		}
 	}
-
-  // Set defaults
-  options->config_file = mcelib_default_masfile();
-  options->source_file = mcelib_default_experimentfile(options->fibre_card);
 
 	// Process command words
 	int cmd_idx = -1;
