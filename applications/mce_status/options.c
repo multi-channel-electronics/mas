@@ -29,7 +29,9 @@ USAGE_OPTION_N \
 
 int process_options(options_t* options, int argc, char **argv)
 {
+#if MULTICARD
 	char *s;
+#endif
 	int option;
 	while ( (option = getopt(argc, argv, "?hn:c:m:o:f:gvs")) >=0) {
 
@@ -89,12 +91,12 @@ int process_options(options_t* options, int argc, char **argv)
 	}
 
     /* set defaults, if necessary */
-    if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL) {
+    if ((options->device_file = mcelib_cmd_device(options->fibre_card)) == NULL) {
         fprintf(stderr, "Unable to obtain path to default command device!\n");
         return -1;
     }
     if (options->config_file == NULL) {
-        options->config_file = mcelib_default_masfile(options->fibre_card);
+        options->config_file = mcelib_default_masfile();
         if (options->config_file == NULL) {
             fprintf(stderr, "Unable to obtain path to default mas.cfg!\n");
             return -1;
