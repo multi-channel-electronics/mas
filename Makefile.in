@@ -13,7 +13,8 @@ install_dirs = include interfaces applications scripts
 
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h makefiles/Makefile.install \
-					 makefiles/Makefile.paths scripts/mas scripts/mas_mknodes
+					 makefiles/Makefile.paths scripts/mas scripts/mas_mknodes \
+					 applications/mas_config/Makefile
 clean_deps = clean_driver
 install_deps = all
 

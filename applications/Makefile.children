@@ -5,4 +5,3 @@ include $(BASE)/Makefile.children
 
 CC=gcc -std=c99
 CFLAGS += -g -D_GNU_SOURCE
-MAS_LIB += -lpthread -lreadline

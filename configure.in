@@ -1,6 +1,13 @@
-# Use branch_id.txt to verify the tree identity?
+dnl get svn version for AC_INIT
+m4_define(branch_id_val, sinclude(branch_id.txt))
+m4_define(repo_version, [esyscmd(svnversion .)])
+m4_define(mas_version, [translit(branch_id_val/repo_version, [
+])])
 
-AC_INIT(branch_id.txt)
+AC_INIT([MAS], [mas_version], [mhasse@phas.ubc.ca or dvw@phas.ubc.ca])
+
+# Use branch_id.txt to verify the tree identity?
+AC_CONFIG_SRCDIR([branch_id.txt])
 AC_PREFIX_DEFAULT([/usr/mce])
 
 
@@ -37,7 +44,7 @@ AC_ARG_WITH([driver],
 			[deprecated: use --disable-driver instead])],
       [AC_MSG_WARN([--with-driver and --without-driver are deprecated, ]
       [use --enable-driver or --disable-driver instead.])
-      DO_MAS_DRIVER=$withval], [DO_MAS_DRIVER=yes])
+      DO_MAS_DRIVER=$withval], [])
 AC_SUBST(DO_MAS_DRIVER)
 
 dnl Multicard MAS
@@ -186,7 +193,7 @@ AC_ARG_WITH([bigphysarea],
             [AC_MSG_WARN([--with-bigphysarea and --without-bigphysarea are ]
             [deprecated, use --enable-bigphysarea or --disable-bigphysarea ]
             [instead.])
-            DRIVER_BIGPHYS=$withval], [DRIVER_BIGPHYS=yes])
+            DRIVER_BIGPHYS=$withval], [])
 if test "x$DRIVER_BIGPHYS" = "xyes"; then
   AC_DEFINE(BIGPHYS, [1],
             [ Define to 1 to use bigphysarea in the kernel driver. ])
@@ -201,7 +208,7 @@ AC_ARG_WITH([fakemce],
                             [deprecated: use --enable-fakemce instead])],
             [AC_MSG_WARN([--with-fakemce and --without-fakemce are ]
             [deprecated, use --enable-fakemce or --disable-fakemce instead.])
-            DRIVER_FAKEMCE=$withval], [DRIVER_FAKEMCE=no])
+            DRIVER_FAKEMCE=$withval], [])
 if test "x$DRIVER_FAKEMCE" = "xyes"; then
   AC_DEFINE(FAKEMCE, [1],
             [ Define to 1 to enable fakemce in the kernel driver. ])
@@ -289,6 +296,10 @@ AC_CHECK_LIB([config], [config_init], ,
              [AC_MSG_FAILURE([could not find libconfig, ]
 			 [please install it from www.hyperrealm.com/libconfig/!])],
              "$LIBCONFIG_ARGS" )
+
+
+# Check for pthread library
+AC_SEARCH_LIBS([pthread_create],[pthread])
 
 
 # Check for libreadline

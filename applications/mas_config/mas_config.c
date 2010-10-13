@@ -271,8 +271,8 @@ int main(int argc, char **argv)
 #ifdef SHARED
         printf("-L%s/lib -lmcedsp -lmcecmd -lmaslog\n", MAS_PREFIX);
 #else
-        printf("-L%s/lib -lmcedsp -lmcecmd -lmaslog -lconfig -lpthread\n",
-            MAS_PREFIX);
+        printf("-L%s/lib -lmcedsp -lmcecmd -lmaslog %s\n", MAS_PREFIX,
+            MCE_STATIC_LIBS);
 #endif
         break;
       case OPT_CFLAGS:

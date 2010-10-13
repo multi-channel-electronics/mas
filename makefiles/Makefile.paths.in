@@ -13,6 +13,7 @@ MCELIB=mcecmd
 DSPLIB=mcedsp
 LOGLIB=maslog
 
+LIBS = @LIBS@
 SHARED = @SHARED@
 
 CONFIG_LIBS = @LIBCONFIG_ARGS@
@@ -37,7 +38,7 @@ else
 MCE_EXTRA = $(CONFIG_LIBS) $(LOG_LIBS)
 DSP_EXTRA =
 endif
-MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) -lpthread
+MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) $(LIBS)
 DSP_LIBS = -L$(DSPLIB_F) -l$(DSPLIB) $(DSP_EXTRA)
 
 prefix=@prefix@
