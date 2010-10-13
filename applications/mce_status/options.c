@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,8 +11,7 @@
 #if !MULTICARD
 #  define USAGE_OPTION_N "  -n <card number>       ignored\n"
 #else
-#  define USAGE_OPTION_N \
-  "  -n <card number>       use the specified fibre card\n"
+#  define USAGE_OPTION_N "  -n <card number>       use the specified fibre card\n"
 #endif
 
 #define USAGE_MESSAGE \
@@ -38,9 +40,9 @@ int process_options(options_t* options, int argc, char **argv)
 			return -1;
 
 		case 'c':
-      if (options->hardware_file)
-        free(options->hardware_file);
-			options->hardware_file = strdup(optarg);
+            if (options->hardware_file)
+                free(options->hardware_file);
+            options->hardware_file = strdup(optarg);
 			break;
 
 		case 'n':
@@ -54,8 +56,8 @@ int process_options(options_t* options, int argc, char **argv)
 			break;
 
 		case 'm':
-      if (options->config_file)
-        free(options->config_file);
+            if (options->config_file)
+                free(options->config_file);
 			options->config_file = strdup(optarg);
 			break;
 
@@ -86,9 +88,25 @@ int process_options(options_t* options, int argc, char **argv)
 		}
 	}
 
-	/* set fibre card devices */
-	options->device_file = mcelib_cmd_device(options->fibre_card);
-  options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
+    /* set defaults, if necessary */
+    if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL) {
+        fprintf(stderr, "Unable to obtain path to default command device!\n");
+        return -1;
+    }
+    if (options->config_file == NULL) {
+        options->config_file = mcelib_default_masfile(options->fibre_card);
+        if (options->config_file == NULL) {
+            fprintf(stderr, "Unable to obtain path to default mas.cfg!\n");
+            return -1;
+        }
+    }
+    if (options->hardware_file == NULL) {
+        options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
+        if (options->hardware_file == NULL) {
+            fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
+            return -1;
+        }
+    }
 
 	return 0;
 }

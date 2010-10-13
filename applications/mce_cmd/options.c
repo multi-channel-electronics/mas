@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,8 +13,7 @@
 #if MAX_FIBRE_CARD == 1
 #  define USAGE_OPTION_N "  -n <card number>       ignored\n"
 #else
-#  define USAGE_OPTION_N \
-  "  -n <card number>       use the specified fibre card\n"
+#  define USAGE_OPTION_N "  -n <card number>       use the specified fibre card\n"
 #endif
 
 #define USAGE_MESSAGE \
@@ -74,8 +76,8 @@ int process_options(options_t *options, int argc, char **argv)
 			break;
 
 		case 'c':
-      if (options->hardware_file)
-        free(options->hardware_file);
+            if (options->hardware_file)
+                free(options->hardware_file);
 			options->hardware_file = strdup(optarg);
 			break;
 
@@ -125,10 +127,21 @@ int process_options(options_t *options, int argc, char **argv)
 	}
 
 	/* set fibre card defaults */
-	options->data_device = mcelib_data_device(options->fibre_card);
-	options->cmd_device = mcelib_cmd_device(options->fibre_card);
-  if (options->hardware_file == NULL)
-    options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
+    if ((options->data_device = mcelib_data_device(options->fibre_card)) == NULL) {
+        fprintf(stderr, "Unable to obtain path to default data device!\n");
+        return -1;
+    }
+    if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL) {
+        fprintf(stderr, "Unable to obtain path to default command device!\n");
+        return -1;
+    }
+    if (options->hardware_file == NULL) {
+        options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
+        if (options->hardware_file == NULL) {
+            fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
+            return -1;
+        }
+    }
 
 	// Check for stragglers (these are files we should be reading...)
 	if (optind < argc) {

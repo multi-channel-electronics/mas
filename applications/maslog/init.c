@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -105,7 +108,7 @@ int init(params_t *p, int argc, char **argv)
 	if ((config_file = get_config_file(argc, argv)) == NULL) {
 		config_file = mcelib_default_masfile();
 		if (config_file == NULL) {
-			fprintf(stderr, "Unable to retrieve default config file.\n");
+			fprintf(stderr, "Unable to obtain path to default mas.cfg.\n");
 			return 2; 
 		}
 	}

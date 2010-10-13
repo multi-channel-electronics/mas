@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,35 +70,45 @@ void print_u32(u32 *data, int count)
 
 mce_context_t* mce_connect(int fibre_card)
 {
-  char *ptr;
+    char *ptr;
 
 	// Get a library context structure (cheap)
 	mce_context_t *mce = mcelib_create();
 
 	// Load MCE config information ("xml")
-  ptr = mcelib_default_hardwarefile(fibre_card);
-	if (mceconfig_open(mce, ptr, NULL) != 0) {
+    ptr = mcelib_default_hardwarefile(fibre_card);
+    if (ptr == NULL) {
+        fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
+        return NULL;
+    } else if (mceconfig_open(mce, ptr, NULL) != 0) {
 		fprintf(stderr, "Failed to load MCE configuration file %s.\n", ptr);
 		return NULL;
 	}
-  free(ptr);
+    free(ptr);
 
 	// Connect to an mce_cmd device.
-  ptr = mcelib_cmd_device(fibre_card);
-	if (mcecmd_open(mce, ptr) != 0) {
+    ptr = mcelib_cmd_device(fibre_card);
+    if (ptr == NULL) {
+        fprintf(stderr, "Unable to obtain path to default command device!\n");
+        return NULL;
+    } else if (mcecmd_open(mce, ptr) != 0) {
 		fprintf(stderr, "Failed to open %s.\n", ptr);
 		return NULL;
 	}
-  free(ptr);
+    free(ptr);
 
 	// Open data device
-  ptr = mcelib_data_device(fibre_card);
-	if (mcedata_open(mce, ptr) != 0) {
+    ptr = mcelib_data_device(fibre_card);
+    if (ptr == NULL) {
+        fprintf(stderr, "Unable to obtain path to default data device!\n");
+        return NULL;
+    } else if (mcedata_open(mce, ptr) != 0) {
 		fprintf(stderr, "Could not open '%s'\n", ptr);
 		return NULL;
 	}
+    free(ptr);
 
-	return mce;		
+	return mce;
 }
 
 int main(int argc, char **argv)
@@ -104,15 +117,15 @@ int main(int argc, char **argv)
 	char card_str[] = "rcx";
 	char *filename = NULL;
 	int card = 0;
-  int fibre_card = -1;
+    int fibre_card = -1;
 	int store_scheme = SINGLE_ROW;
 	mce_context_t *mce;
 
 	if (argc >= 3 && strlen(argv[2])==1)
 		card_str[2] = argv[2][0];
   
-  if (argc >= 4)
-    fibre_card = atoi(argv[3]);
+    if (argc >= 4)
+        fibre_card = atoi(argv[3]);
 
 	switch(card_str[2]) {
 	case '1':
@@ -132,19 +145,19 @@ int main(int argc, char **argv)
 	if (card == 0) {
 		printf("Usage: %s <filename> <readout-card>"
 #if MULTICARD
-        " [fibre-card]"
+                " [fibre-card]"
 #endif
-        "\n\nwhere readout-card is 1 2 3 or 4"
+                "\n\nwhere readout-card is 1 2 3 or 4"
 #if MULTICARD
-        " and fibre-card is your fibre card of choice"
+                " and fibre-card is your fibre card of choice"
 #endif
-        ".\n", argv[0]);
+                ".\n", argv[0]);
 		printf("You should probably be running this from some kind of script...\n");
 		exit(1);
 	}
 	filename = argv[1];
 
-  mce = mce_connect(fibre_card);
+    mce = mce_connect(fibre_card);
 
 	if (mce == NULL)
     exit(1);

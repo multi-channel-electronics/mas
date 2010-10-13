@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -63,10 +66,6 @@ int process_options(options_t* options, int argc, char **argv)
 #if MULTICARD
 	char *s;
 #endif
-
-        // Set defaults
-	options->config_file = mcelib_default_masfile();
-	options->source_file = mcelib_default_experimentfile(options->fibre_card);
 
 	while ( (option = getopt(argc, argv, "+?hm:n:f:s:v")) >=0) {
 
@@ -184,6 +183,22 @@ int process_options(options_t* options, int argc, char **argv)
 		fprintf(stderr, "Unimplemented command '%s'\n", argv[optind]);
 		return -1;
 	}
+
+    // Set defaults
+    if (options->config_file == NULL) {
+        options->config_file = mcelib_default_masfile();
+        if (options->config_file == NULL) {
+            fprintf(stderr, "Unable to obtain path to default mas.cfg!\n");
+            return -1;
+        }
+    }
+    if (options->source_file == NULL) {
+        options->source_file = mcelib_default_experimentfile(options->fibre_card);
+        if (options->source_file == NULL) {
+            fprintf(stderr, "Unable to obtain path to default experiment.cfg!\n");
+            return -1;
+        }
+    }
 
 	return 0;
 }
