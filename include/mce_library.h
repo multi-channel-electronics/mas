@@ -24,6 +24,7 @@ typedef struct mce_context mce_context_t;
 
 struct mce_context {
 
+  int fibre_card;
 	mcecmd_t    cmd;
 	mcedata_t   data;
 	mceconfig_t config;
@@ -33,8 +34,8 @@ struct mce_context {
 
 
 /* Creation / destruction of context structure */
-
-mce_context_t* mcelib_create(void);
+#define MCE_DEFAULT_CARD (-1)
+mce_context_t* mcelib_create(int fibre_card);
 void mcelib_destroy(mce_context_t* context);
 
 

@@ -230,7 +230,7 @@ int  main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	if ((mce = mcelib_create()) == NULL) {
+	if ((mce = mcelib_create(options.fibre_card)) == NULL) {
 		fprintf(ferr, "Could not create mce library context.\n");
 		err = ERR_MEM;
 		goto exit_now;

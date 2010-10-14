@@ -13,8 +13,8 @@
 
 int  main(int argc, char **argv)
 {
-	mce_context_t *mce1 = mcelib_create();
-	mce_context_t *mce2 = mcelib_create();
+	mce_context_t *mce1 = mcelib_create(MCE_DEFAULT_CARD);
+	mce_context_t *mce2 = mcelib_create(MCE_DEFAULT_CARD);
 
 	// Connect command module.
 	char device[] = "/dev/mce_cmd0";

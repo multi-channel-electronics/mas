@@ -54,24 +54,6 @@ static void check_env(int card)
   done = card;
 }
 
-/* set an environmental variable from the default, if needed */
-static void set_env(const char* key, int card)
-{
-  char name[1000] = "MAS_";
-  char dflt[1000] = "MASDEFAULT_";
-
-  check_env(card);
-
-  /* look for the variable */
-  strcat(name, key);
-
-  if (getenv(name) == NULL) {
-    strcat(dflt, key);
-    setenv(name, mcelib_shell_expand(dflt, card), 0);
-  }
-}
-
-
 /* shell expand input; returns a newly malloc'd string on success or
  * NULL on error */
 char *mcelib_shell_expand(const char* input, int card)

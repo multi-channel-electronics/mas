@@ -34,15 +34,15 @@ int main(int argc, char **argv)
 	logger_t logger;
 	char msg[MCE_LONG];
 
+	if (process_options(&options, argc, argv))
+		error_log_exit(&logger, "invalid arguments", 2);
+
 	logger_connect( &logger, options.config_file, "mce_status" );
 	sprintf(msg, "initiated with hardware config '%s'", options.hardware_file);
 	logger_print( &logger, msg );
-
-	if (process_options(&options, argc, argv))
-		error_log_exit(&logger, "invalid arguments", 2);
 	
 	// Connect to MCE
-	if ((options.context = mcelib_create())==NULL) {
+	if ((options.context = mcelib_create(options.fibre_card))==NULL) {
 		error_log_exit(&logger,
 			       "failed to create mce library structure", 3);
 	}

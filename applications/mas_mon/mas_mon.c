@@ -36,14 +36,16 @@ int main(int argc, char **argv)
 	char *dev = NULL;
 	char ts[1024];
 	time_t t;
+  int fibre_card = MCE_DEFAULT_CARD;
 
 #if MULTICARD
-  if (argc > 1)
-    dev = mcelib_data_device(atoi[1]);
+  if (argc > 1) {
+    fibre_card = atoi[1];
+    dev = mcelib_data_device(fibre_card);
+  }
 #endif
 
-	if ((mce=mcelib_create())==NULL ||
-	    (mcedata_open(mce, dev)!=0)) {
+	if ((mce=mcelib_create(fibre_card))==NULL || (mcedata_open(mce, dev)!=0)) {
     if (dev == NULL)
       fprintf(stderr, "%s: failed to connect default data device\n", argv[0]);
     else

@@ -27,7 +27,7 @@ int main (int argc, char **argv){
    /* Define default MAS options */
    option_t options = {
      .config_file = NULL,
-     .fibre_card = -1,
+     .fibre_card = MCE_DEFAULT_CARD,
      .hardware_file = NULL,
      .read_stdin = 0,
    };
@@ -38,7 +38,7 @@ int main (int argc, char **argv){
 
    if (!options.read_stdin) {
      // Create MCE context 
-     mce_context_t *mce = mcelib_create();
+     mce_context_t *mce = mcelib_create(options.fibre_card);
 
      // Load MCE hardware inforamtion
      if (mceconfig_open(mce, options.hardware_file, NULL) != 0) {
