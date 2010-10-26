@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <mce_library.h>
 #include <mce/defaults.h>
 

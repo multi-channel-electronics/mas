@@ -40,7 +40,9 @@ void usage()
 
 int process_options(option_t *options, int argc, char **argv)
 {
+#if MULTICARD
   char *s;
+#endif
   int option;
   // Note the "+" at the beginning of the options string forces the
   // first non-option string to return a -1, which is what we want.
