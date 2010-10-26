@@ -404,14 +404,14 @@ if test ! -f config2/$FIRST_MCE_CIN; then
     echo "
   Before building MAS, you must first select the mce.cin file to use as your
   hardware configuration file.  To do this, copy an appropriate template file
-  from config2/v4 or config2/v5 to config2/mce.cin.  Then modify this file to
+  from config2/templates to config2/mce.cin.  Then modify this file to
   match the configuration of your subrack.
 "
   else
     echo "
   Before building MAS, you must first select the mce.cin files to use as your
   hardware configuration files.  For each fibre card in your system, copy an
-  appropriate template files from config2/v4 or config2/v5 to config2/mce#.cin,
+  appropriate template files from config2/templates to config2/mce#.cin,
   (where # is the fibre card number).  Then modify each of these files to match
   the configuration of the subrack attached to the given fibre card.
 "
