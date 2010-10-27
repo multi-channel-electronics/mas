@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
@@ -6,8 +9,6 @@
 #include <libconfig.h>
 
 #include "libmaslog.h"
-
-#define CONFIG_FILE "/etc/mce/mas.cfg"
 
 #define CONFIG_CLIENT "log_client"
 #define CONFIG_LOGADDR "log_address"
@@ -60,12 +61,15 @@ int logger_connect(logger_t *logger, char *config_file, char *name)
 			return -1;
 		}
 	} else {
-		if (!config_read_file(&cfg, CONFIG_FILE)) {
+        char *ptr = mcelib_default_masfile();
+        if (ptr == NULL)
+            fprintf(stderr, "Unable to obtain path to default configfile!\n");
+        else if (!config_read_file(&cfg, ptr)) {
 			fprintf(stderr, SUBNAME
-				"Could not read default configfile '%s'\n",
-				CONFIG_FILE);
+				"Could not read default configfile '%s'\n", ptr);
 			return -1;
 		}
+        free(ptr);
 	}
 
 	config_setting_t *client = config_lookup(&cfg, CONFIG_CLIENT);
