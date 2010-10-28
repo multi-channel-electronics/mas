@@ -139,19 +139,26 @@
 		    name = "fltr_type";
 		    id = 0x65;
 		},
+<? } ?>
+<? if (fw_range("rc", $min=0x500000d)) { ?>
                 {
 		    name = "integral_clamp";
                     id = 0x66;
                     default_set = 0;
 		},
 <? } ?>
+<? if (fw_range("rc", $min=0x5010000)) { ?>
+                {
+                    name = "fltr_coeff";
+                    id = 0x1A;
+                    count = 6;
+                },
+<? } ?>
                 {
                     name = "flx_lp_init";
                     id = 0x37;
                     write_only = 1;
                 }
-
-
             );
         }, // readout-all commands
 
