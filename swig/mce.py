@@ -146,11 +146,11 @@ class mce:
     """
 
     def __init__(self, fibre_card=None):
-        self.context = mcelib_create()
         if (fibre_card == None):
           self.__fibre_card__ = mcelib_default_fibre_card()
         else:
           self.__fibre_card__ = fibre_card
+        self.context = mcelib_create(self.__fibre_card__)
         self.open()
 
     def open(self, cmd_file=None, data_file=None, config_file=None,
