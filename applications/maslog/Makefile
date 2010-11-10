@@ -2,7 +2,7 @@ default: all
 
 include ../Makefile.children
 
-LIBRARY = $(MCE_LIBS)
+LIBRARY = $(LOG_LIBS) $(MCE_LIBS)
 SOCK = $(MASMISC_F)/socks.o
 
 SOURCE = logger.c main.c init.c
