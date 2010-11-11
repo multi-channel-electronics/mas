@@ -2,10 +2,12 @@
  *      vim: sw=4 ts=4 et tw=80
  */
 #include <unistd.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
 #include "mce/socks.h"
+#include "mce/defaults.h"
 #include <libconfig.h>
 
 #include "libmaslog.h"
