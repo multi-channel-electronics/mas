@@ -10,6 +10,7 @@
 ### END INIT INFO
 
 # Author: Matthew Hasselfield <mhasse@phas.ubc.ca>
+#         D. V. Wiebe         <dvw@phas.ubc.ca>
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
@@ -17,10 +18,8 @@ DESC="MCE Aquisition Software"
 NAME=mas
 USER=@MAS_USER@
 GROUP=@MAS_GROUP@
-NUM_DEV=1
 DAEMON=/usr/mce/bin/maslog_server
 DAEMON_ARGS=
-DRIVER=mce_dsp
 MKNODES=/usr/mce/bin/mas_mknodes
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
@@ -59,13 +58,6 @@ do_start()
 	    --chuid $USER --group $GROUP \
 	    --exec $DAEMON -- $DAEMON_ARGS \
 		|| return 2
-
-	# Install MAS driver
-        echo "Loading $DRIVER driver."
-	modprobe $DRIVER || return 2
-
-	# Create device nodes
-	$MKNODES $NUM_DEV
 }
 
 #
@@ -73,12 +65,6 @@ do_start()
 #
 do_stop()
 {
-        # We're not removing the device nodes, tough.
-
-        # Remove driver
-        echo "Removing $DRIVER driver."
-        rmmod $DRIVER
-
 	# Return
 	#   0 if daemon has been stopped
 	#   1 if daemon was already stopped
@@ -147,5 +133,3 @@ case "$1" in
 	exit 3
 	;;
 esac
-
-:
