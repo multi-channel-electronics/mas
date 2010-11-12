@@ -27,6 +27,7 @@
 #define SQ2_FB   "fb"
 #define SQ1_FB   "fb_const"
 #define SQ2_FB_COL   "fb_col"
+#define SQ2_FB_MUX   "enbl_mux"
 
 typedef struct {
   int fcount;

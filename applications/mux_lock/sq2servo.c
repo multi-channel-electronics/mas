@@ -51,7 +51,7 @@ struct {
 
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
-		mce_param_t *m_sq2fb_col, int biasing_ac,
+		mce_param_t *m_sq2fb_col, int fast_sq2,
 		i32 *data, int offset, int count);
 
 
@@ -123,11 +123,10 @@ int main (int argc, char **argv)
    FILE *fd;                /* pointer to output file*/
    char outfile[MAXLINE];   /* output data file */
    char init_line[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
-   char tempbuf[MAXLINE];
   
    char *endptr;
    i32 ssafb[MAXCOLS];     /* series array feedback voltages */
-   int  biasing_ac = 0;     /* does MCE have a biasing address card? */
+   int  fast_sq2 = 0;      /* is bias card doing fast SQ2 switching? */
 
    int  error = 0;
    char errmsg_temp[MAXLINE];
@@ -261,29 +260,45 @@ int main (int argc, char **argv)
      control.nbias = 1;
 
    // Lookup MCE parameters, or exit with error message
-   mce_param_t m_safb, m_sq2fb, m_sq2bias, m_sq2fb_col[MAXCOLS];
+   mce_param_t m_safb, m_sq2fb, m_sq2bias, m_sq2fb_col[MAXCOLS],
+	   m_sq2fb_mux;
 
    load_param_or_exit(mce, &m_safb,    SA_CARD,  SA_FB, 0);
    load_param_or_exit(mce, &m_sq2bias, SQ2_CARD, SQ2_BIAS, 0);
 
-   // Check for biasing address card
-   error = load_param_or_exit(mce, &m_sq2fb,   SQ2_CARD, SQ2_FB, 1);
-   if (error != 0) {
-     error = load_param_or_exit(mce, &m_sq2fb, SQ2_CARD, SQ2_FB_COL "0", 1);
+   /* To determine whether to use fast_sq2, check for both sq2 fb and
+      sq2 fb_col.  When both are present, check the current muxing
+      state of the SQ2. */
+
+   int fb0_err = load_param_or_exit(mce, &m_sq2fb, SQ2_CARD, SQ2_FB_COL "0", 1);
+   int fb_err = load_param_or_exit(mce, &m_sq2fb, SQ2_CARD, SQ2_FB, 1);
+
+   if (fb_err != 0 && fb0_err != 0) {
+     sprintf(errmsg_temp, "Neither %s %s nor %s %s could be loaded!",
+	     SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0"); 
+     ERRPRINT(errmsg_temp);
+     exit(ERR_MCE_PARA);
+   } else if (fb0_err == 0 && fb_err != 0) {
+     // Biasing address card.
+     fast_sq2 = 1;
+   } else if (fb0_err == 0 && fb_err == 0) {
+     // New bias card with dual support, so check value of enbl_mux
+     error = load_param_or_exit(mce, &m_sq2fb_mux, SQ2_CARD, SQ2_FB_MUX, 1);
      if (error) {
-       sprintf(errmsg_temp, "Neither %s %s nor %s %s could be loaded!",
-	       SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0"); 
-       ERRPRINT(errmsg_temp);
+       ERRPRINT("Could not load " SQ2_CARD " " SQ2_FB_MUX " to check fast-SQ2 setting.");
        exit(ERR_MCE_PARA);
      }
-     biasing_ac = 1;
-     
-     // Load params for all columns
-     for (i=0; i<control.column_n; i++) {
-       sprintf(tempbuf, "%s%i", SQ2_FB_COL, control.column_0+i);
-       load_param_or_exit(mce, m_sq2fb_col+i, SQ2_CARD, tempbuf, 0);
+     u32 mux_mode[MAXCOLS];
+     error = mcecmd_read_range(mce, &m_sq2fb_mux, control.column_0, mux_mode,
+			       control.column_n);
+     if (error) {
+       ERRPRINT("Failed to read " SQ2_CARD " " SQ2_FB_MUX " to check fast-SQ2 setting.");
+       exit(ERR_MCE_PARA);
      }
-   }     
+     // Just use first value to determine whether SQ2 is muxing.
+     if (mux_mode[0] != 0)
+       fast_sq2 = 1;
+   }
 
    if ((datadir=getenv("MAS_DATA")) == NULL){
      ERRPRINT("Enviro var. $MAS_DATA not set, quit");
@@ -345,7 +360,7 @@ int main (int argc, char **argv)
 
       // Set starting sa fb and sq2 fb
       duplicate_fill(control.fb, temparr, control.column_n);
-      write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, biasing_ac, temparr, control.column_0, control.column_n);
+      write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, fast_sq2, temparr, control.column_0, control.column_n);
 	      
       // Preservo and run the FB ramp.
       for (i=-options.preservo; i<control.nfb; i++) {
@@ -356,7 +371,7 @@ int main (int argc, char **argv)
 
 	 if (i > 0) {
 	   // Advance SQ2 FB
-	   if (biasing_ac) {
+	   if (fast_sq2) {
 	     // Must write all rows here, since row_order may bring any
 	     // real row into the smaller subset we're tuning.
 	     duplicate_fill(control.fb + i*control.dfb, temparr, MAXROWS);
@@ -414,16 +429,16 @@ int main (int argc, char **argv)
 }
 
 /* Writes values to sq2 feedback columns offset through offset+count.
- * Even with biasing_ac, the same value is applied for the whole
+ * Even with fast_sq2 != 0, the same value is applied for the whole
  * column.  In that case, m_sq2fb_col should point to the desired
  * columns only (i.e. m_sq2fb_col[0] through mm_sq2fb_col[count-1] are
  * used, *not* m_sq2fb_col[offset] through [offset+count-1]. */
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
-		 mce_param_t *m_sq2fb_col, int biasing_ac,
+		 mce_param_t *m_sq2fb_col, int fast_sq2,
 		 i32 *data, int offset, int count)
 {
-	if (biasing_ac) {
+	if (fast_sq2) {
 		int i;
 		i32 temparr[MAXROWS];
 		for (i=0; i<count; i++) {
