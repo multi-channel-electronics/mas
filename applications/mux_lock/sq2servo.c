@@ -123,6 +123,7 @@ int main (int argc, char **argv)
    FILE *fd;                /* pointer to output file*/
    char outfile[MAXLINE];   /* output data file */
    char init_line[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
+   char tempbuf[MAXLINE];
   
    char *endptr;
    i32 ssafb[MAXCOLS];     /* series array feedback voltages */
@@ -220,7 +221,6 @@ int main (int argc, char **argv)
      } else {
        control.rc = atoi(argv[1]);
        control.column_0 = (control.rc - 1)*8;
-       printf("%s %s | %i %i\n", argv[2], argv[1], control.rc, control.column_0);
      }
      // Fill in control.column_n later when we create the acq.
      control.filename = argv[2];
@@ -252,9 +252,6 @@ int main (int argc, char **argv)
    if (!options.argument_opts)
      load_exp_config(options.experiment_file);
 
-   printf("Card bits=%#x, column count=%i num_rows_reported=%d\n",
-	  acq.cards, control.column_n, control.rows);
-
    // Make sure we servo exactly once when bias is supressed.
    if (!control.bias_active)
      control.nbias = 1;
@@ -279,9 +276,11 @@ int main (int argc, char **argv)
      ERRPRINT(errmsg_temp);
      exit(ERR_MCE_PARA);
    } else if (fb0_err == 0 && fb_err != 0) {
+     printf("Identified biasing address card.\n");
      // Biasing address card.
      fast_sq2 = 1;
    } else if (fb0_err == 0 && fb_err == 0) {
+     printf("Identified bias card with fast-SQ2 support.\n");
      // New bias card with dual support, so check value of enbl_mux
      error = load_param_or_exit(mce, &m_sq2fb_mux, SQ2_CARD, SQ2_FB_MUX, 1);
      if (error) {
@@ -298,6 +297,17 @@ int main (int argc, char **argv)
      // Just use first value to determine whether SQ2 is muxing.
      if (mux_mode[0] != 0)
        fast_sq2 = 1;
+   } else {
+     printf("Identified bias card with non-muxing SQ2 FB.\n");
+   }
+   printf(" --> fast_sq2 = %i\n", fast_sq2);
+
+   // Load all per-column FB params
+   if (fast_sq2) {
+     for (i=0; i<control.column_n; i++) {
+       sprintf(tempbuf, "%s%i", SQ2_FB_COL, control.column_0+i);
+       load_param_or_exit(mce, m_sq2fb_col+i, SQ2_CARD, tempbuf, 0);
+     }
    }
 
    if ((datadir=getenv("MAS_DATA")) == NULL){
