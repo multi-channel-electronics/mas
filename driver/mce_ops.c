@@ -227,6 +227,9 @@ int mce_write_callback( int error, mce_reply* rep, int card)
 	return 0;
 }
 
+/* This number should be big enough to avoid falsely aborting legitimate busy
+   waits. */
+#define MAX_BUSY_TRIES 10000
 ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 		  loff_t *f_pos)
 {
@@ -235,6 +238,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
         int card = fpdata->minor;
 	int err = 0;
 	int ret_val = 0;
+	int busy_tries = 0;
 
         PRINT_INFO(card, "state=%#x\n", mops->state);
 
@@ -291,6 +295,16 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 				       filp->f_flags & O_NONBLOCK, fpdata->minor);
 		if (err != -MCE_ERR_INT_BUSY && !(filp->f_flags & O_NONBLOCK))
 			break;
+
+		/* Mitigate the BICEP2 bug */
+		if (err == -MCE_ERR_INT_BUSY) {
+			busy_tries++;
+			if (busy_tries > MAX_BUSY_TRIES) {
+				PRINT_ERR(card,
+					"aborting due to excess busy_tries");
+				break;
+			}
+		}
 	}
 	switch(err) {
 	case 0:
