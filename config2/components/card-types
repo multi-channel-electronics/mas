@@ -48,6 +48,15 @@
             );
         },
 
+        {
+            name = "bias-fast card";
+            parameter_sets = (
+                "open commands",
+                "bias commands",
+                "bias-fast commands"
+            );
+        },
+
 <? if ($hw_bac) { ?>
         {
             name = "biasing-address card";

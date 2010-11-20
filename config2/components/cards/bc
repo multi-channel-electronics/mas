@@ -4,14 +4,6 @@
             name = "bias commands";
 
             parameters = (
-<? if ($fw_rev_bc_fast) { ?>
-                {
-                    name = "enbl_mux";
-                    id = 0x05;
-		    count = 32;
-                },
-
-<? } ?>
                 {
                     name = "flux_fb";
                     id = 0x20;
@@ -41,9 +33,22 @@
                     id = 0x23;
                 }
 */
-<? if ($fw_rev_bc_fast) {
-      // Include leading comma
-      $output =     "                ,\n";
+	      );
+
+        }, // bias commands
+
+        {
+            name = "bias-fast commands";
+
+            parameters = (
+<? if ($fw_rev_bc_fast) { ?>
+                {
+                    name = "enbl_mux";
+                    id = 0x05;
+		    count = 32;
+                },
+<?
+      $output = "";
       for ($i=0; $i<32; $i++) {
          $id = sprintf("0x%02X", 0xc0 + $i);
          $output .= "                " .
@@ -53,4 +58,4 @@
    } ?>
 	      );
 
-        }, // bias commands
+        }, // bias-fast commands

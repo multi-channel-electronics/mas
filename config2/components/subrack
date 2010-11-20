@@ -42,7 +42,7 @@
     dump_card_block("rc3", "readout card", True);
     dump_card_block("rc4", "readout card", True);
     dump_card_block("bc1", "bias card", True);
-    dump_card_block("bc2", "bias card", True);
+    dump_card_block("bc2", "bias-fast card", True);
     dump_card_block("bac", "biasing-address card", True);
     dump_card_block("bc3", "bias card", True);
     dump_card_block("ac",  "address card", True);
