@@ -48,38 +48,28 @@
                 {
                     name = "enbl_mux";
                     count = <?=$num_columns?>;
-                    maps = ( { start= 0; count=<?=$num_columns?>; card="bc2"; param="enbl_mux"; offset=0; } );
+                    maps = ( { start=0; count=<?=$num_columns?>; card="bc2"; param="enbl_mux"; offset=0; } );
                 },
-<?     /* bc_fast */
-     } /* bc_fast */
-     /* New bias cards still support flux_fb. */
-     if ($hw_subrack == "full") { ?>
+<?   }  /* fw_rev_bc_fast */   ?>
                 {
                     name = "fb";
-                    count = 32;
-                    maps = ( { start= 0; count=32; card="bc2"; param="flux_fb"; offset=0; } );
+                    count = <?=$num_columns?>;
+                    maps = ( { start=0; count=<?=$num_columns?>; card="bc2"; param="flux_fb"; offset=0; } );
                 },
-<?   } else { ?>
-                {
-                    name = "fb";
-                    count = 16;
-                    maps = ( { start= 0; count=16; card="bc2"; param="flux_fb"; offset=16; } );
-                },
-<?   } ?>
 <? } /* if bac */ ?>
 
-<? /* SQ2 bias just depends on subrack size */ ?>
+<? /* SQ2 bias comes from bc3 or bc1 depending on sub-rack size. */ ?>
 <?    if ($hw_subrack == "full") { ?>
                 {
                     name = "bias";
-                    count = 32;
-                    maps = ( { start= 0; count=32; card="bc3"; param="flux_fb"; offset=0; } );
+                    count = <?=$num_columns?>;
+                    maps = ( { start=0; count=<?=$num_columns?>; card="bc3"; param="flux_fb"; offset=0; } );
                 }
 <?    } else { ?>
                 {
                     name = "bias";
-                    count = 16;
-                    maps = ( { start= 0; count=16; card="bc1"; param="flux_fb"; offset=16; } );
+                    count = <?=$num_columns?>;
+                    maps = ( { start=0; count=<?=$num_columns?>; card="bc1"; param="flux_fb"; offset=16; } );
                 }
 <?    } ?>
             );

@@ -118,19 +118,21 @@ foreach( $RC_LIST as $rc ) {
 }
 
 
-/* Squid systems (bias card DAC sets) have width based on subrack
-   size. */
+/* Squid systems (bias card DAC sets) have width based on maximum RC
+   number */
 
-if ($hw_subrack == "full")
-  $num_columns = 32;
-else
-  $num_columns = 16;
+foreach ($rc_present as $i => $ok) {	
+  if ($ok) $num_columns = ($i+1)*8;
+}
 
 
 /* Frequently used hardware/firmware support flags: */
 
 /* Are we running with a biasing address card? */
 $hw_bac = in_array("bac", $card_list);
+
+/* Are these 12-line TES bias cards? */
+$hw_12tes = $hw_rev["bc"] >= "revE";
 
 /* Does bias card firmware support fast switching? */
 $fw_rev_bc_fast = fw_range("bc", $min=0x5000002);

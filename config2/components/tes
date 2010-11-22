@@ -12,6 +12,10 @@
 <? } elseif ($tes_para == "small16") { ?>
                     count = 16;
                     maps = ( { start=0; count=16; card="bc3"; param="flux_fb"; offset=0; } );
+
+<? } elseif ($tes_para == "bc1_f_24_31") { ?>
+                    count = 8;
+                    maps = ( { start=0; count=8; card="bc1"; param="flux_fb"; offset=24; } );
 <? } else { ?>
 	            count = 0;
 		    maps = ( { start=0; count=0; card=""; params=""; offset=0; } );
