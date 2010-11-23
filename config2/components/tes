@@ -16,10 +16,15 @@
 <? } elseif ($tes_para == "bc1_f_24_31") { ?>
                     count = 8;
                     maps = ( { start=0; count=8; card="bc1"; param="flux_fb"; offset=24; } );
-<? } else { ?>
+<? } elseif ($tes_para == "bc3_f_24_31") { ?>
+                    count = 8;
+                    maps = ( { start=0; count=8; card="bc3"; param="flux_fb"; offset=24; } );
+<? } elseif ($tes_para == "none") { ?>
 	            count = 0;
 		    maps = ( { start=0; count=0; card=""; params=""; offset=0; } );
-<? } /* $tes_para */ ?>
+<? } else {
+      throw new Exception("Unhandled value for \$tes_para: \"$tes_para\".");
+   } /* $tes_para */ ?>
                 }
             );
         },
