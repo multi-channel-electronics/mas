@@ -101,11 +101,9 @@ int load_exp_config(const char *filename)
 
   load_double_array(cfg, "sq1_servo_gain",
 		    control.column_0, control.column_n, control.gain);
+
   load_int_array(cfg, "sq2_fb",
 		 control.column_0, control.column_n, control.sfb_init);
-  // Clear!
-  for (int i=0; i<control.column_n; i++)
-    control.sfb_init[i] = 0;
 
   load_int_array(cfg, "sq2_flux_quanta",
 		 control.column_0, control.column_n, control.quanta);
