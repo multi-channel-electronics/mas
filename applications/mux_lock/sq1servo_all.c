@@ -263,10 +263,12 @@ int main(int argc, char **argv)
    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
 
    // Check for biasing address card
-   error = load_param_or_exit(mce, &m_sq2fb, SQ2_CARD, SQ2_FB_COL "0", 1);
-   if (error) {
+   int fast_sq2 = check_fast_sq2(mce, &m_sq2fb, m_sq2fb_col,
+				 control.column_0, control.column_n);
+   if (fast_sq2 != 1) {
        sprintf(errmsg_temp,
-	       "Biasing address card (bac) required to run all-row servo!"); 
+	       "Biasing address card (bac) or bias card with muxing enabled "
+	       "is required to run all-row servo!"); 
        ERRPRINT(errmsg_temp);
        exit(ERR_MCE_PARA);
    }

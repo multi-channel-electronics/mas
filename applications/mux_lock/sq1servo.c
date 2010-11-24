@@ -132,11 +132,9 @@ int main ( int argc, char **argv )
    char outfile[MAXLINE];   /* output data file */
    char init_line1[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char init_line2[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
-   char tempbuf[MAXLINE];
 
    char *endptr;
    i32 sq2fb[MAXCOLS];      /* sq2 feedback voltages */
-   int biasing_ac = 0;      /* does MCE have a biasing address card? */
    
    int error=0;
    char errmsg_temp[MAXLINE];
@@ -275,23 +273,8 @@ int main ( int argc, char **argv )
    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
 
    // Check for biasing address card
-   error = load_param_or_exit(mce, &m_sq2fb,   SQ2_CARD, SQ2_FB, 1);
-   if (error != 0) {
-     error = load_param_or_exit(mce, &m_sq2fb, SQ2_CARD, SQ2_FB_COL "0", 1);
-     if (error) {
-       sprintf(errmsg_temp, "Neither %s %s nor %s %s could be loaded!",
-	       SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0"); 
-       ERRPRINT(errmsg_temp);
-       exit(ERR_MCE_PARA);
-     }
-     biasing_ac = 1;
-     
-     // Load params for all columns
-     for (i=0; i<control.column_n; i++) {
-       sprintf(tempbuf, "%s%i", SQ2_FB_COL, i+control.column_0);
-       load_param_or_exit(mce, m_sq2fb_col+i, SQ2_CARD, tempbuf, 0);
-     }
-   }     
+   int fast_sq2 = check_fast_sq2(mce, &m_sq2fb, m_sq2fb_col,
+				 control.column_0, control.column_n);
 
    if ((datadir=getenv("MAS_DATA")) == NULL) {
      ERRPRINT("Enviro var. $MAS_DATA not set, quit");
@@ -367,7 +350,7 @@ int main ( int argc, char **argv )
 
 	// Write SQ2 FB
 	rerange(temparr, sq2fb, control.column_n, control.quanta, control.column_n);
-	write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, biasing_ac, temparr, control.column_0, control.column_n);
+	write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, fast_sq2, temparr, control.column_0, control.column_n);
 
 	if (i > 0) {
 	  // Next sq1 fb ramp value.

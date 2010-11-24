@@ -52,6 +52,8 @@ int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
 void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
 			 int start, i32 *data, int count,
 			 const char *opmsg);
+int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
+		   mce_param_t* sq2fb_col, int col0, int n_col);
 void duplicate_fill(i32 value, i32 *data, int count);
 
 void rerange(i32 *dest, i32 *src, int n_data,

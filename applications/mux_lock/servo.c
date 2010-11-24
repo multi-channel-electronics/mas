@@ -147,6 +147,65 @@ void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
   }
 }
 
+/* check_fast_sq2 -- perform the rather involved steps necessary
+   to determine whether fast SQ2 switching is active or not.
+
+   Initializes sq2fb and/or sq2fb_col for use and returns 1 or 0
+   depending on whether fast_sq1 is active or not.
+ */
+
+int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
+		   mce_param_t* sq2fb_col, int col0, int n_col)
+{
+  char errmsg[MAXLINE];
+  int fast_sq2 = 0;
+
+  /* Check for both sq2 fb and sq2 fb_col.  When both are present,
+     check the current muxing state of the SQ2. */
+
+  int fb0_err = load_param_or_exit(mce, sq2fb, SQ2_CARD, SQ2_FB_COL "0", 1);
+  int fb_err = load_param_or_exit(mce, sq2fb, SQ2_CARD, SQ2_FB, 1);
+
+  if (fb_err != 0 && fb0_err != 0) {
+    sprintf(errmsg, "Neither %s %s nor %s %s could be loaded!",
+	    SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0"); 
+    ERRPRINT(errmsg);
+    exit(ERR_MCE_PARA);
+  } else if (fb0_err == 0 && fb_err != 0) {
+    printf("Identified biasing address card.\n");
+    // Biasing address card.
+    fast_sq2 = 1;
+  } else if (fb0_err == 0 && fb_err == 0) {
+    printf("Identified bias card with fast-SQ2 support.\n");
+    // New bias card with dual support, so check value of enbl_mux
+    mce_param_t mux;
+    if (load_param_or_exit(mce, &mux, SQ2_CARD, SQ2_FB_MUX, 1)) {
+      ERRPRINT("Could not load " SQ2_CARD " " SQ2_FB_MUX " to check fast-SQ2 setting.");
+      exit(ERR_MCE_PARA);
+    }
+    u32 mux_mode[MAXCOLS];
+    if (mcecmd_read_range(mce, &mux, col0, mux_mode, 1)) {
+      ERRPRINT("Failed to read " SQ2_CARD " " SQ2_FB_MUX " to check fast-SQ2 setting.");
+      exit(ERR_MCE_PARA);
+    }
+    // Just use first value to determine whether SQ2 is muxing.
+    if (mux_mode[0] != 0)
+      fast_sq2 = 1;
+  } else {
+    printf("Identified bias card with non-muxing SQ2 FB.\n");
+  }
+
+  if (fast_sq2) {
+    char tempbuf[MAXLINE];
+    for (int i=0; i<n_col; i++) {
+      sprintf(tempbuf, "%s%i", SQ2_FB_COL, i+col0);
+      load_param_or_exit(mce, sq2fb_col+i, SQ2_CARD, tempbuf, 0);
+    }
+  }
+
+  return fast_sq2;
+}
+
 void duplicate_fill(i32 value, i32 *data, int count)
 {
   int i;
