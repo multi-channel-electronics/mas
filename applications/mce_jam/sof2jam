@@ -1,0 +1,532 @@
+#!/bin/bash
+
+if [ "$QUARTUS_CPF_PATH" == "" ]; then
+  QUARTUS_CPF_PATH="/opt/altera9.1sp2/quartus/bin"
+fi
+
+if [ "$MCE_JAM_PATH" == "" ]; then
+  MCE_JAM_PATH="/home/mce/jp_25/mce_jam/trunk"
+fi
+
+JTAG_SPEED_EP1S=8000000 # Stratix I
+JTAG_SPEED_EPC=800000 # Configuration device
+JTAG_SPEED_EP3S=8000000 # Stratix III
+JTAG_SPEED_EPCS=100000 # Serial configuration device
+#echo "  JTAG_SPEED_EP1S=$JTAG_SPEED_EP1S"
+#echo "  JTAG_SPEED_EPC=$JTAG_SPEED_EPC"
+#echo "  JTAG_SPEED_EP3S=$JTAG_SPEED_EP3S"
+#echo "  JTAG_SPEED_EPCS=$JTAG_SPEED_EPCS"
+
+COMMAND_PARAMS="t:cg:pr:w:j:"
+
+PATH_NAME=${0%/*}
+FILE_NAME=${0##*/}
+BASE_NAME=${FILE_NAME%%.*}
+EXTN_NAME=${FILE_NAME#*.}
+
+TMP_DIR="tmp"
+TMP_CDF="tmp.cdf"
+TMP_COF="tmp.cof"
+TMP_POF="tmp.pof"
+TMP_JIC="tmp.jic"
+TMP_IDSCAN="tmp_idscan"
+TMP_DEVICES="tmp_device"
+
+MAX_NUM_DEVICES=24
+
+#---------------------------------------------------------------
+# Functions
+#---------------------------------------------------------------
+function cdf_header {
+  echo "/* Quartus II Version 9.1 Build 304 01/25/2010 Service Pack 1 SJ Full Version */">$TMP_DIR/$TMP_CDF
+  echo "JedecChain;">>$TMP_DIR/$TMP_CDF
+  echo "	FileRevision(JESD32A);">>$TMP_DIR/$TMP_CDF
+  echo "	DefaultMfr(6E);">>$TMP_DIR/$TMP_CDF
+  echo "">>$TMP_DIR/$TMP_CDF
+}
+
+function cdf_config_device {
+  device=$1
+  path=$2
+  file=$3
+  echo "	P ActionCode(Cfg)">>$TMP_DIR/$TMP_CDF
+  echo "		Device PartName($device) Path(\"$path\") File(\"$file\") MfrSpec(OpMask(1));">>$TMP_DIR/$TMP_CDF
+}
+
+function cdf_ignore_device {
+  device=$1
+  echo "	P ActionCode(Ign)">>$TMP_DIR/$TMP_CDF
+  echo "		Device PartName($device) MfrSpec(OpMask(0));">>$TMP_DIR/$TMP_CDF
+}
+
+function cdf_footer {
+  echo "">>$TMP_DIR/$TMP_CDF
+  echo "ChainEnd;">>$TMP_DIR/$TMP_CDF
+  echo "">>$TMP_DIR/$TMP_CDF
+  echo "AlteraBegin;">>$TMP_DIR/$TMP_CDF
+  echo "	ChainType(JTAG);">>$TMP_DIR/$TMP_CDF
+  echo "AlteraEnd;">>$TMP_DIR/$TMP_CDF
+  echo "">>$TMP_DIR/$TMP_CDF
+}
+
+function cof4pof {
+  echo "<?xml version=\"1.0\" encoding=\"US-ASCII\" standalone=\"yes\"?>">$TMP_DIR/$TMP_COF
+  echo "<cof>">>$TMP_DIR/$TMP_COF
+  echo "	<eprom_name>EPC16</eprom_name>">>$TMP_DIR/$TMP_COF
+  echo "	<output_filename>$TMP_DIR/$TMP_POF</output_filename>">>$TMP_DIR/$TMP_COF
+  echo "	<n_pages>1</n_pages>">>$TMP_DIR/$TMP_COF
+  echo "	<width>1</width>">>$TMP_DIR/$TMP_COF
+  echo "	<mode>6</mode>">>$TMP_DIR/$TMP_COF
+  echo "	<sof_data>">>$TMP_DIR/$TMP_COF
+  echo "		<user_name>Page_0_1_2_3_4_5_6_7</user_name>">>$TMP_DIR/$TMP_COF
+  echo "		<page_flags>255</page_flags>">>$TMP_DIR/$TMP_COF
+  echo "		<bit0>">>$TMP_DIR/$TMP_COF
+  echo "			<sof_filename>$SOF_FILE</sof_filename>">>$TMP_DIR/$TMP_COF
+  echo "		</bit0>">>$TMP_DIR/$TMP_COF
+  echo "	</sof_data>">>$TMP_DIR/$TMP_COF
+  echo "	<version>4</version>">>$TMP_DIR/$TMP_COF
+  echo "	<options>">>$TMP_DIR/$TMP_COF
+  echo "		<jtag_user_code>ffffffff</jtag_user_code>">>$TMP_DIR/$TMP_COF
+  echo "		<disable_pullups>1</disable_pullups>">>$TMP_DIR/$TMP_COF
+  echo "		<auto_usercode>0</auto_usercode>">>$TMP_DIR/$TMP_COF
+  echo "		<compression>0</compression>">>$TMP_DIR/$TMP_COF
+  echo "		<use_internal_clock>1</use_internal_clock>">>$TMP_DIR/$TMP_COF
+  echo "		<clock_frequency>10 MHz</clock_frequency>">>$TMP_DIR/$TMP_COF
+  echo "		<clock_divisor>1</clock_divisor>">>$TMP_DIR/$TMP_COF
+  echo "	</options>">>$TMP_DIR/$TMP_COF
+  echo "</cof>">>$TMP_DIR/$TMP_COF
+}
+
+function cof4jic {
+  echo "<?xml version=\"1.0\" encoding=\"US-ASCII\" standalone=\"yes\"?>">$TMP_DIR/$TMP_COF
+  echo "<cof>">>$TMP_DIR/$TMP_COF
+  echo "	<eprom_name>EPCS64</eprom_name>">>$TMP_DIR/$TMP_COF
+  echo "	<flash_loader_device>EP3SE50</flash_loader_device>">>$TMP_DIR/$TMP_COF
+  echo "	<output_filename>$TMP_DIR/$TMP_JIC</output_filename>">>$TMP_DIR/$TMP_COF
+  echo "	<n_pages>1</n_pages>">>$TMP_DIR/$TMP_COF
+  echo "	<width>1</width>">>$TMP_DIR/$TMP_COF
+  echo "	<mode>7</mode>">>$TMP_DIR/$TMP_COF
+  echo "	<sof_data>">>$TMP_DIR/$TMP_COF
+  echo "		<user_name>Page_0_1_2_3_4_5_6_7</user_name>">>$TMP_DIR/$TMP_COF
+  echo "		<page_flags>255</page_flags>">>$TMP_DIR/$TMP_COF
+  echo "		<bit0>">>$TMP_DIR/$TMP_COF
+  echo "			<sof_filename>$SOF_FILE</sof_filename>">>$TMP_DIR/$TMP_COF
+  echo "		</bit0>">>$TMP_DIR/$TMP_COF
+  echo "	</sof_data>">>$TMP_DIR/$TMP_COF
+  echo "	<version>4</version>">>$TMP_DIR/$TMP_COF
+  echo "	<options>">>$TMP_DIR/$TMP_COF
+  echo "	</options>">>$TMP_DIR/$TMP_COF
+  echo "</cof>">>$TMP_DIR/$TMP_COF
+}
+
+function usage {
+  echo "  Usage: $FILE_NAME -$COMMAND_PARAMS <filename>"
+  echo "    This script queries the JTAG chain for a listing of devices,"
+  echo "    ..then generates a .jam file that configures one device."
+  echo "    Note 1:  you must re-run this script to configure each additional device."
+  echo "    Note 2:  the device listing in a JTAG ID code scan is reversed wrt Quartus."
+  echo "  Parameters:"
+  echo "    <filename>: required."
+  echo "       <filename> is the .sof/.jam file to be used to target the -t<target_device#>."
+  echo "       If a .sof file is specified, then a conversion to .jam is done automatically."
+  echo "       If a .jam file is specified, then this script skips the conversion to .jam."
+  echo "       This script does not accept .pof files."
+  echo "    -t <target_device#>: required"
+  echo "       The <target_device#> is a device # in the JTAG ID scan produced using -p/-w options."
+  echo "    -c: optional"
+  echo "       Configure the MCE using the <filename> specified in .jam format."
+  echo "    -g <ghost_device>: optional"
+  echo "       A <ghost_device> is conected off-JTAG to the <target_device#>."
+  echo "       EPCS64's are not part of the MCE JTAG chain, and must be targeted with -gEPCS64."
+  echo "    -j <filename>: optional, default=.sof-filename"
+  echo "       <filename> specifies the name of the .jam file to be generated in the local directory."
+  echo "       Use this option to assign smart names to your .jam files, eg ac_ep1s10_v504.jam."
+  echo "    -p: optional"
+  echo "       Print the JTAG ID codes of a chain to screen, and exit."
+  echo "    -r <idcode_file>: optional"
+  echo "       Read JTAG ID codes from <idcode_file>, and use them to generate a .jam file."
+  echo "    -w <idcode_file>: optional"
+  echo "       Write the JTAG ID codes of a chain to <idcode_file>, and exit."
+}
+
+START_TIME=`date +%s`
+
+#---------------------------------------------------------------
+#echo " >Parsing command-line parameters.."
+#---------------------------------------------------------------
+# Break out command-line parameters
+args=`getopt $COMMAND_PARAMS $*`
+set -- $args
+
+TEMP_OPTION=empty
+PLAY_JAM=0
+DEVICE_NUM=empty
+OUT_OF_CHAIN=empty
+SOF_FILE=empty
+WRITE_FILE=empty
+READ_FILE=empty
+PRINT_CHAIN=0
+JAM_FILE=empty
+
+for i; do
+  # Here 'i' is a special variable:  it is a string and therefore cannot be incremented.
+  # If a flag is passed without a parameter, then an index in the stack is not created for the parameter and it's variable remains =empty.
+#  echo "  >$i"
+  
+  # After a valid flag is stored in the condition below, i is moved and point to the flag's parameter
+  if [[ $TEMP_OPTION == "-t" ]]; then
+    DEVICE_NUM=$i
+#    echo "  DEVICE_NUM=$DEVICE_NUM"
+    TEMP_OPTION=empty
+  elif [[ $TEMP_OPTION == "-c" ]]; then
+    PLAY_JAM=1
+#    echo "  PLAY_JAM=$PLAY_JAM"
+    TEMP_OPTION=empty
+  elif [[ $TEMP_OPTION == "-g" ]]; then
+    OUT_OF_CHAIN=$i
+#    echo "  OUT_OF_CHAIN=$OUT_OF_CHAIN"
+    TEMP_OPTION=empty
+  elif [[ $TEMP_OPTION == "-w" ]]; then
+    WRITE_FILE=$i
+#    echo "  WRITE_FILE=$WRITE_FILE"
+    TEMP_OPTION=empty
+  elif [[ $TEMP_OPTION == "-r" ]]; then
+    READ_FILE=$i
+#    echo "  READ_FILE=$READ_FILE"
+    TEMP_OPTION=empty
+  elif [[ $TEMP_OPTION == "-p" ]]; then
+    PRINT_CHAIN=1
+#    echo "  PRINT_CHAIN=$PRINT_CHAIN"
+    TEMP_OPTION=empty
+  elif [[ $TEMP_OPTION == "-j" ]]; then
+    JAM_FILE=$i
+#    echo "  JAM_FILE=$JAM_FILE"
+    TEMP_OPTION=empty
+  elif [[ $TEMP_OPTION == "--" ]]; then
+    SOF_FILE=$i
+#    echo "  SOF_FILE=$SOF_FILE"
+    TEMP_OPTION=empty
+  fi
+  
+  # If any one of the valid flags are used, store the flag in TEMP_OPTION
+  if [[ $i == "-t" || $i == "-c" || $i == "-g" || $i == "-w" || $i == "-r" || $i == "-p" || $i == "-j" || $i == "--" ]]; then
+    TEMP_OPTION=$i
+  fi
+  
+done
+
+#---------------------------------------------------------------
+#echo " >Testing the path of the MCE Jam Player.."
+#---------------------------------------------------------------
+if [ -f $MCE_JAM_PATH/jam ]; then
+#  echo "  $MCE_JAM_PATH/jam exists."
+  true
+else
+  echo "  $MCE_JAM_PATH/jam does not exist."
+  echo "  Retreive the latest SVN revision of jam, and specify its path with MCE_JAM_PATH in this script."
+  echo "  Exiting.."
+  exit 1
+fi
+
+if [[ $PRINT_CHAIN == "1" ]]; then
+#---------------------------------------------------------------
+#  echo " >Printing JTAG ID scan to screen.."
+#---------------------------------------------------------------
+  # Print ID scan to screen
+  `mce_cmd -q -x mce_reset`
+  `mce_cmd -q -x dsp_reset`
+  sudo $MCE_JAM_PATH/jam -u -v -f8000000 -aread_idcode read_idcode.jam | grep EP
+  exit 0
+fi
+
+# This condition exists to read out the JTAG ID codes only.
+if [[ $WRITE_FILE != "empty" ]]; then
+#---------------------------------------------------------------
+#  echo " >Writing a JTAG ID scan to file=$WRITE_FILE.."
+#---------------------------------------------------------------
+  `mce_cmd -q -x mce_reset`
+  `mce_cmd -q -x dsp_reset`
+  echo `$MCE_JAM_PATH/jam -u -v -f8000000 -aread_idcode read_idcode.jam | grep EP`>$WRITE_FILE
+  exit 0
+fi
+
+#---------------------------------------------------------------
+#echo " >Testing for the minimum required parameters.."
+#---------------------------------------------------------------
+if [ "$#" -le 1 ]; then
+  usage
+  exit 1
+elif [[ $DEVICE_NUM == "empty" ]]; then
+  echo "  -t<target_device#> undefined."
+  exit 1
+elif [[ $SOF_FILE == "empty" ]]; then
+  echo "  <sof_file> and -j<jam_file> both undefined.  Specify one or the other."
+  exit 1
+fi
+
+#---------------------------------------------------------------
+echo " >Testing the path of $SOF_FILE.."
+#---------------------------------------------------------------
+if [ -f $SOF_FILE ]; then
+  echo "  $SOF_FILE exists."
+else
+  echo "  $SOF_FILE does not exist."
+  echo "  Exiting.."
+  exit 1
+fi
+
+SOF_PATH=${SOF_FILE%/*}
+SOF_NAME=${SOF_FILE##*/}
+SOF_BASE=${SOF_NAME%%.*}
+SOF_EXTN=${SOF_NAME#*.}
+
+# This assignment determines the name of the generated .jam-file
+if [[ $JAM_FILE == "empty" ]]; then
+  JAM_FILE=$SOF_BASE.jam
+fi
+echo "  JAM_FILE=$JAM_FILE"
+
+# Do surgery on the .sof path name.  
+if [[ $SOF_PATH == */* ]]; then
+  # There is a slash in the .sof name specified, so the path variable will be parsed correctly
+  echo "  The path of $SOF_FILE is not local, and thus does not require surgery."
+else
+  # The filename was given without a path, so the path is the current directory
+  echo "  The path of $SOF_FILE is local, and thus requires surgery."
+  SOF_PATH=.
+fi
+
+echo "  SOF_PATH=$SOF_PATH"
+echo "  SOF_NAME=$SOF_NAME"
+
+#---------------------------------------------------------------
+#echo " >Testing the paths of quartus_cpf.."
+#---------------------------------------------------------------
+if [ -f $QUARTUS_CPF_PATH/quartus_cpf ]; then
+#  echo "  $QUARTUS_CPF_PATH/quartus_cpf exists."
+  true
+else
+  echo "  $QUARTUS_CPF_PATH/quartus_cpf does not exist."
+  echo "  Install Quartus II, and specify its path with QUARTUS_CPF_PATH in this script."
+  echo "  Exiting.."
+  exit 1
+fi
+
+#---------------------------------------------------------------
+echo " >Resetting MCE before accessing JTAG chain.."
+#---------------------------------------------------------------
+`mce_cmd -q -x mce_reset`
+`mce_cmd -q -x dsp_reset`
+
+
+#---------------------------------------------------------------
+echo " >Testing the existence of $TMP_DIR/.."
+#---------------------------------------------------------------
+if [ -d $TMP_DIR ]; then
+  true
+else
+  echo "  Making $TMP_DIR/"
+  `mkdir $TMP_DIR`
+fi
+
+#---------------------------------------------------------------
+echo " >Reading JTAG ID codes.."
+#---------------------------------------------------------------
+# Scan the JTAG chain with sudo ./jam -u -v -f8000000 -aread_idcode read_idcode.jam
+
+if [[ $READ_FILE != "empty" ]]; then
+  echo "  Testing the path of $READ_FILE.."
+  if [ -f $READ_FILE ]; then
+    echo "  $READ_FILE exists."
+  else
+    echo "  $READ_FILE does not exist."
+    exit 1
+  fi  
+  echo "  Copying contents of $READ_FILE to $TMP_DIR/$TMP_IDSCAN.."
+  echo `more $READ_FILE`>$TMP_DIR/$TMP_IDSCAN
+else
+  echo "  Reading ID codes from the JTAG chain.."
+#  sudo $MCE_JAM_PATH/jam -u -v -f8000000 -aread_idcode read_idcode.jam | grep EP
+  
+  echo "  Storing ID codes to $TMP_DIR/$TMP_IDSCAN.."
+  echo `sudo $MCE_JAM_PATH/jam -u -v -f8000000 -aread_idcode read_idcode.jam | grep EP`>$TMP_DIR/$TMP_IDSCAN
+fi
+
+# Echo file just for fun
+#TMP_DEVICES=`more $TMP_DIR/$TMP_IDSCAN`
+#echo "  TMP_DEVICES=$TMP_DEVICES"
+
+#---------------------------------------------------------------
+echo " >Extracting the specified device ID.."
+#---------------------------------------------------------------
+# Construct the command string and execute it.
+DEVICE_STR_LOCATION=$(($DEVICE_NUM*2))
+CMD_STR="awk 'BEGIN{FS=\"|\"} NR==1 {print \$$DEVICE_STR_LOCATION}' $TMP_DIR/$TMP_IDSCAN"
+#echo "  >$CMD_STR"
+DEVICE=`eval $CMD_STR`
+echo "  Found DEVICE_NUM=$DEVICE_NUM: $DEVICE"
+
+echo "  Checking device validity.."
+if [[ $DEVICE == *EP* ]]; then
+  echo "  Pass: valid device."
+else
+  echo "  Fail: DEVICE=$DEVICE is not valid."
+  exit 1
+fi
+
+# Start of conversion process for .sof files
+# If we were passed a .sof file, we need to run through the .jam conversion process
+if [[ $SOF_EXTN == "sof" ]]; then
+
+  #---------------------------------------------------------------
+  echo " >Converting $SOF_FILE if necessary.."
+  #---------------------------------------------------------------
+  if [[ $DEVICE == " EPC4/EPC8/EPC16 Altera " ]]; then
+    echo "  Converting $SOF_FILE-->$TMP_DIR/$TMP_POF for DEVICE=EPC16"
+    cof4pof
+    $QUARTUS_CPF_PATH/quartus_cpf -c $TMP_DIR/$TMP_COF | grep 'Info: Quartus II'
+    CDF_PATH=$TMP_DIR/
+    CDF_FILE=$TMP_POF
+  elif [[ $DEVICE == " EP3SE50 Altera " && $OUT_OF_CHAIN == "EPCS64" ]]; then
+    echo "  Converting $SOF_FILE-->$TMP_DIR/$TMP_JIC for DEVICE=EPCS64"
+    cof4jic
+    $QUARTUS_CPF_PATH/quartus_cpf -c $TMP_DIR/$TMP_COF | grep 'Info: Quartus II'
+    CDF_PATH=$TMP_DIR/
+    CDF_FILE=$TMP_JIC
+  else
+    echo "  No file conversion necessary for FPGAs."  
+    CDF_PATH=$SOF_PATH/
+  #  echo "  CDF_PATH=$CDF_PATH"
+    CDF_FILE=$SOF_NAME
+  fi
+  
+  #---------------------------------------------------------------
+  echo " >Generating $TMP_DIR/$TMP_CDF containing $CDF_PATH$CDF_FILE.."
+  #---------------------------------------------------------------
+  # Note that the order of the devices in an id_scan is in reverse of a scan by the Quartus programmer.
+  
+  echo "  Generating header"
+  cdf_header
+  
+  #for i in `seq $MAX_NUM_DEVICES 1 -1`; do  #Does not work.
+  for (( i=$MAX_NUM_DEVICES; i>0; i--)); do
+    DEVICE_INDEX=$(($i*2))
+    
+    # Extract the device name
+    CMD_STR="awk 'BEGIN{FS=\"|\"} NR==1 {print \$$DEVICE_INDEX}' $TMP_DIR/$TMP_IDSCAN"
+  #  echo "  >$CMD_STR"
+    STRING=`eval $CMD_STR`
+    
+    # If the entry is blank, then there are no more entries, and we break out of this loop
+    if [[ $STRING == "" ]]; then
+      true
+    # If the device index is the one we've generated the .pof/.jic for, add an entry to the .cdf file
+    elif [ $DEVICE_INDEX -eq $DEVICE_STR_LOCATION ]; then
+      if [[ $STRING == " EPC4/EPC8/EPC16 Altera " ]]; then
+        CDF_DEVICE="EPC16"
+      elif [[ $STRING == " EP3SE50 Altera " ]]; then
+        CDF_DEVICE="EP3SE50"
+      elif [[ $STRING == " EP1S10 Altera " ]]; then
+        CDF_DEVICE="EP1S10F780"
+      elif [[ $STRING == " EP1S30 Altera " ]]; then
+        CDF_DEVICE="EP1S30F780"
+      elif [[ $STRING == " EP1S40 Altera " ]]; then
+        CDF_DEVICE="EP1S40F780"
+      else
+        echo "  Fail: DEVICE=$STRING is not valid."     
+        exit 1
+      fi
+      echo "  Appending index $i = $CDF_DEVICE [$CDF_FILE attached]"
+      cdf_config_device $CDF_DEVICE $CDF_PATH $CDF_FILE
+    # If the device is not the one we've generated the .pof/.jic for, add an entry to the .cdf file 
+    else
+      if [[ $STRING == " EPC4/EPC8/EPC16 Altera " ]]; then
+        CDF_DEVICE="EPC16"
+      elif [[ $STRING == " EP3SE50 Altera " ]]; then
+        CDF_DEVICE="EP3SE50"
+      elif [[ $STRING == " EP1S10 Altera " ]]; then
+        CDF_DEVICE="EP1S10"
+      elif [[ $STRING == " EP1S30 Altera " ]]; then
+        CDF_DEVICE="EP1S30"
+      elif [[ $STRING == " EP1S40 Altera " ]]; then
+        CDF_DEVICE="EP1S40"
+      else
+        echo "  Fail: DEVICE=$STRING is not valid."
+        exit 1
+      fi    
+      echo "  Appending index $i = $CDF_DEVICE"
+      cdf_ignore_device $CDF_DEVICE
+    fi
+  done
+  
+  echo "  Appending footer"
+  cdf_footer
+  
+  #---------------------------------------------------------------
+  echo " >Converting $TMP_DIR/$TMP_CDF-->$SOF_PATH/$JAM_FILE"
+  #---------------------------------------------------------------
+  #CMD_STR="/opt/altera9.1sp2/quartus/bin/quartus_cpf -c mce.cdf mce.jam"
+  $QUARTUS_CPF_PATH/quartus_cpf -c $TMP_DIR/$TMP_CDF $SOF_PATH/$JAM_FILE | grep 'Info: Quartus II'
+
+fi  # End of conversion process for .sof files
+
+#---------------------------------------------------------------
+echo " >MCE programming stage.."
+#---------------------------------------------------------------
+if [[ $PLAY_JAM == "1" ]]; then
+  echo "  Firmware revisions before configuration:"
+  mce_status -s | grep fw_rev
+ 
+  if [[ $DEVICE == " EPC4/EPC8/EPC16 Altera " ]]; then
+    sudo $MCE_JAM_PATH/jam -u -f800000 -aprogram -dDO_VERIFY=0 $SOF_PATH/$JAM_FILE
+  elif [[ $DEVICE == " EP3SE50 Altera " && $OUT_OF_CHAIN == "EPCS64" ]]; then
+    sudo $MCE_JAM_PATH/jam -u -f8000000 -aconfigure $SOF_PATH/$JAM_FILE
+    sudo $MCE_JAM_PATH/jam -u -f100000 -aprogram -dDO_VERIFY=0 $SOF_PATH/$JAM_FILE
+  elif [[ $DEVICE == " EP3SE50 Altera " && $OUT_OF_CHAIN == "empty" ]]; then
+    sudo $MCE_JAM_PATH/jam -u -f8000000 -aconfigure $SOF_PATH/$JAM_FILE
+  elif [[ $DEVICE == " EP1S10 Altera " ]]; then
+    sudo $MCE_JAM_PATH/jam -u -f8000000 -aconfigure $SOF_PATH/$JAM_FILE
+  elif [[ $DEVICE == " EP1S30 Altera " ]]; then
+    sudo $MCE_JAM_PATH/jam -u -f8000000 -aconfigure $SOF_PATH/$JAM_FILE
+  elif [[ $DEVICE == " EP1S40 Altera " ]]; then
+    sudo $MCE_JAM_PATH/jam -u -f8000000 -aconfigure $SOF_PATH/$JAM_FILE
+  else
+    echo "  Error: device=$DEVICE does not exist."
+  fi    
+
+  echo "------------------------------------------"
+  echo " >Configuration complete."
+
+  if [[ $DEVICE == " EPC4/EPC8/EPC16 Altera " || $DEVICE == " EP3SE50 Altera " && $OUT_OF_CHAIN == "EPCS64" ]]; then  
+    echo "  Triggering an Clock Card reconfiguration, which reconfigures all other cards too.."
+    `mce_cmd -q -x RS cc config_fac 1`
+    sleep 15
+  fi 
+  
+  echo "  Resetting DSP.."
+  `mce_cmd -q -x dsp_reset`
+  sleep 2
+  echo "  Resetting MCE.."
+  `mce_cmd -q -x mce_reset`
+  sleep 2
+
+  echo "  Firmware revisions after configuration:"
+  mce_status -s | grep fw_rev
+
+elif [[ $PLAY_JAM == "" ]]; then
+  echo "  Command-line directive not specified: not programming the MCE."
+else
+  echo "  Command-line directive: not programming the MCE."
+fi
+
+
+#---------------------------------------------------------------
+echo " >Script complete."
+#---------------------------------------------------------------
+END_TIME=`date +%s`
+EXE_TIME=`expr $END_TIME - $START_TIME`
+#echo "  Start time     = $START_TIME s"
+#echo "  End time       = $END_TIME s"
+echo "  Execution time = $EXE_TIME seconds"
+
+exit 0

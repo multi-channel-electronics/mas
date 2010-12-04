@@ -1,0 +1,40 @@
+How to jam the MCE into JAM player
+==================================
+
+read_byteblaster, write_byteblaster are called only from jamstub.c. In particular:
+
+   jam_jtag_io - to clock bits around.  called a lot.  But usually it ignores the
+     return bit, so we can buffer these read calls.  Exceptions to this are:
+     jamjtag.c: jam_jtag_drscan, jam_jtag_irscan.
+      
+   jam_vector_io - called by 3 functions in jamexec.c:
+        jam_process_vector_capture
+        jam_process_vector_compare
+        jam_process_vector
+     The capture and compare functions read long sequences of bits, so these will
+     need to be hacked too.
+   
+   initialize_jtag_hardware
+   close_jtag_hardware
+
+Note that if a read is requested from jam_jtag_io, TDI is sampled
+before the data are clocked out.  The sequence is:
+  - set up TMS and TDO
+  - read TDI
+  - clock up
+  - clock down
+
+So the data returned by jtag_io are somehow one-behind.  This might be
+a standard jtag thing.  In any case it is convenient to adopt this
+behaviour in the MCE as well.
+
+Solution: 
+ - create "specified_mce" boolean to enable the MCE programmer.
+ - initialize_jtag and close_jtag wrapped appropriately.
+ - jam_jtag_io is mapped to "mce_write_single" -- it will succeed, but complain
+   if the user wants to read back bits.
+ - jam_jtag_drscan and jam_jtag_irscan call the vectorized write/read routine
+   "scan_mce".
+ - jam_vector_io -- error and exit if this somehow gets called with the MCE
+   programmer enabled.
+
