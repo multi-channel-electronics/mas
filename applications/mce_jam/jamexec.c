@@ -1908,7 +1908,8 @@ JAM_RETURN_TYPE jam_process_uses_item
 						}
 						break;
 					default:
-						0; //Suppress enumeration case warnings?
+					        //Suppress enumeration case warnings
+					        status = JAMC_SUCCESS;
 					}
 				}
 			}
@@ -2253,7 +2254,8 @@ JAM_RETURN_TYPE jam_call_procedure
 						}
 						break;
 					default:
-						0; //Suppress enumeration case warnings?
+					        //Suppress enumeration case warnings
+						status = JAMC_SUCCESS;
 					}
 				}
 			}

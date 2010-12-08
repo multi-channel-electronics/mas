@@ -6,7 +6,7 @@ BASE := ../
 include $(BASE)Makefile.children
 
 LIB=$(MCE_LIBS)
-CFLAGS += -Wall -std=c99
+CFLAGS += -Wall -Wno-unused-result -std=c99
 
 OBJS = jamstub.o jamexec.o jamnote.o jamcrc.o jamsym.o jamstack.o jamheap.o \
 	jamarray.o jamcomp.o jamjtag.o jamutil.o jamexp.o jam_mce.o
