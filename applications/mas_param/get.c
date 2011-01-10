@@ -61,11 +61,33 @@ int param_save(options_t *options)
 }
 
 
-			
+int print_data(char *text, const mas_param_t *m)
+{
+	char *s = text;
+
+	switch (m->type) {
+	case CFG_STR:
+		s += sprintf(s, "\"%s\"", m->data_s);
+		break;
+
+	case CFG_INT:
+		for (int i=0; i<m->count; i++)
+			s += sprintf(s, "%i ", m->data_i[i]);
+		break;
+
+	case CFG_DBL:
+		for (int i=0; i<m->count; i++)
+			s += sprintf(s, "%lf ", m->data_d[i]);
+		break;
+
+	default:
+		s += sprintf(s, "?");
+	}
+	return s - text;
+}		
 
 int param_report(options_t *options)
 {
-	int i;
 	mas_param_t m;
 	config_setting_t *c =
 		config_setting_get_member(options->root, options->param_name);
@@ -78,66 +100,12 @@ int param_report(options_t *options)
 	if (param_get(c, &m))
 		return 1;
 
-	switch (m.type) {
-	case CFG_STR:
-		printf("\"%s\"", m.data_s);
-		break;
+	char text[TEXT_SIZE]; // Text can be many thosand chars
+	print_data(text, &m);
 
-	case CFG_INT:
-		for (i=0; i<m.count; i++)
-			printf("%i ", m.data_i[i]);
-		break;
-
-	case CFG_DBL:
-		for (i=0; i<m.count; i++)
-			printf("%lf ", m.data_d[i]);
-		break;
-
-	default:
-		printf("?");
-	}
-		
-	printf("\n");
+	printf("%s\n", text);
 	return 0;
 }
-
-// Report format:  <present|absent> : (type) : <array|simple> : count
-
-int param_report_info(options_t *options)
-{
-	mas_param_t m;
-	config_setting_t *c =
-		config_setting_get_member(options->root, options->param_name);
-	if (c == NULL) {
-		printf("absent");
-	} else {
-		
-		printf("present : ");
-		
-		if (param_get(c, &m)) {
-			printf("error");
-		} else {
-			
-			switch (m.type) {
-			case CFG_STR:
-				printf("string : ");
-				break;
-			case CFG_INT:
-				printf("integer : ");
-				break;
-			case CFG_DBL:
-				printf("float : ");
-				break;
-			default:
-				printf("?");
-			}
-			printf("%s : %i", (m.array ? "array" : "simple"), m.count);
-		}
-	}
-	printf("\n");
-	return 0;
-}
-
 
 int param_get(config_setting_t *cfg, mas_param_t *m)
 {

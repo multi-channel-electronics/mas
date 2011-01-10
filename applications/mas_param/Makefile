@@ -11,7 +11,7 @@ LIBRARY=$(MCE_LIBS) $(CONFIG_LIBS) $(MASMISC_F)masconfig.o
 
 CFLAGS += $(DEFS)
 
-OBJECTS = main.o options.o get.o crawl.o bash.o csh.o idl.o
+OBJECTS = main.o options.o get.o crawl.o bash.o csh.o idl.o info.o
 HEADERS = mas_param.h get.h crawl.h bash.h csh.h idl.h ../../defaults/config.h
 
 # targets

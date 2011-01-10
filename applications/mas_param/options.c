@@ -8,7 +8,7 @@
 
 #include "mas_param.h"
 
-enum {	GET, SET, INFO, BASH, CSH, IDLT };
+enum {	GET, SET, INFO, BASH, CSH, IDLT, FULL };
 
 typedef struct {
 	char *name;
@@ -22,6 +22,7 @@ string_table_t commands[] = {
 	{"bash"   , BASH },
 	{"csh"    , CSH },
 	{"idl_template", IDLT },
+    {"full", FULL },
 	{NULL,-1}
 };
 
@@ -48,8 +49,10 @@ int st_index(const string_table_t *st, const char *name);
 "  bash [<prefix>]         output data as bash variable declarations\n"\
 "  csh [<prefix>]          output data as csh variable declarations\n"\
 "  idl_template <suffix>   output idl code for the target format\n"\
+"  info [<param>]          print type info for param (or all params)\n"\
 "  get <param>             output value of the variable <param>\n"\
 "  set <param> [ data...]  set the value of variable <param>\n\n"\
+"  full                    output full type and data for all params\n"\
 "Options:\n"\
 USAGE_OPTION_N \
 "  -s <source file>       config file to parse\n"\
@@ -160,14 +163,21 @@ int process_options(options_t* options, int argc, char **argv)
 		options->param_name = argv[optind+1];
 		break;
 	case INFO:
-		options->mode = MODE_INFO;
+        // Two possible modes depending on presence of param_name
 		if (optind + 1 >= argc) {
-			fprintf(stderr, "Command '%s' takes at least one argument.\n",
-				commands[cmd_idx].name);
-			return -1;
-		}
-		options->param_name = argv[optind+1];
+            // No argument, crawl and describe
+            options->mode = MODE_CRAWL;
+            options->format = FORMAT_INFO;
+        } else {
+            // Argument, describe single parameter only
+            options->mode = MODE_INFO;
+            options->param_name = argv[optind+1];
+        }
 		break;
+    case FULL:
+        options->mode = MODE_CRAWL;
+        options->format = FORMAT_FULL;
+        break;
 	case SET:
 		options->mode = MODE_SET;
 		if (optind + 2 >= argc) {

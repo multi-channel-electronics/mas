@@ -10,13 +10,17 @@
 
 #define MCE_LONG 1024
 
+#define TEXT_SIZE 16384 /* max data output size */
+
 /* Modes */
 enum { MODE_IDLE, MODE_CRAWL, MODE_GET, MODE_SET, MODE_INFO };
 
 /* Output formats */
 enum { FORMAT_BASH = 0,
        FORMAT_CSH,
-       FORMAT_IDLTEMPLATE };
+       FORMAT_IDLTEMPLATE,
+       FORMAT_INFO,
+       FORMAT_FULL };
 
 
 /* options structure and processor */
@@ -34,7 +38,7 @@ typedef struct {
 
 	int mode;
 	int format;
-  int fibre_card;
+	int fibre_card;
 	
 	char *param_name;           // For get and set operations
 	char **data_source;         // For set operations
@@ -70,6 +74,7 @@ typedef struct {
 #include "bash.h"
 #include "csh.h"
 #include "idl.h"
+#include "info.h"
 
 #endif
 

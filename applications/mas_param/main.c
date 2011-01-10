@@ -10,7 +10,7 @@
 options_t options = {
 	.mode = MODE_IDLE,
 	.format = FORMAT_BASH,
-  .fibre_card = -1
+	.fibre_card = -1
 };
 
 int main(int argc, char **argv)
@@ -36,13 +36,13 @@ int main(int argc, char **argv)
 		break;
 
 	case MODE_INFO:
-		status = param_report_info(&options);
+		status = param_info(&options);
 		break;
 
 	case MODE_SET:
 		status = param_save(&options);
-    if (status == 0)
-      config_write_file(&cfg, options.source_file);
+		if (status == 0)
+			config_write_file(&cfg, options.source_file);
 		break;
 
 	case MODE_IDLE:

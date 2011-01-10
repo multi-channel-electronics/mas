@@ -23,6 +23,14 @@ int crawl_now(options_t *options)
 		idl_crawler(options, &crawler);
 		break;
 
+	case FORMAT_INFO:
+		info_crawler(options, &crawler);
+		break;
+
+	case FORMAT_FULL:
+		full_crawler(options, &crawler);
+		break;
+
 	default:
 		fprintf(stderr, "Unexpected crawler encountered.\n");
 		return 1;
