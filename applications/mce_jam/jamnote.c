@@ -19,8 +19,8 @@
 BOOL jam_get_note_key
 (
 	char *statement_buffer,
-	long *key_begin,
-	long *key_end
+	int32_t *key_begin,
+	int32_t *key_end
 )
 
 /*																			*/
@@ -94,8 +94,8 @@ BOOL jam_get_note_key
 BOOL jam_get_note_value
 (
 	char *statement_buffer,
-	long *value_begin,
-	long *value_end
+	int32_t *value_begin,
+	int32_t *value_end
 )
 
 /*																			*/
@@ -200,8 +200,8 @@ BOOL jam_get_note_value
 JAM_RETURN_TYPE jam_get_note
 (
 	char *program,
-	long program_size,
-	long *offset,
+	int32_t program_size,
+	int32_t *offset,
 	char *key,
 	char *value,
 	int length
@@ -224,16 +224,16 @@ JAM_RETURN_TYPE jam_get_note
 	unsigned int statement_buffer_size = 0;
 	char label_buffer[JAMC_MAX_NAME_LENGTH + 1];
 	JAME_INSTRUCTION instruction = JAM_ILLEGAL_INSTR;
-	long key_begin = 0L;
-	long key_end = 0L;
-	long value_begin = 0L;
-	long value_end = 0L;
+	int32_t key_begin = 0L;
+	int32_t key_end = 0L;
+	int32_t value_begin = 0L;
+	int32_t value_end = 0L;
 	BOOL done = FALSE;
 	char *tmp_program = jam_program;
-	long tmp_program_size = jam_program_size;
-	long tmp_current_file_position = jam_current_file_position;
-	long tmp_current_statement_position = jam_current_statement_position;
-	long tmp_next_statement_position = jam_next_statement_position;
+	int32_t tmp_program_size = jam_program_size;
+	int32_t tmp_current_file_position = jam_current_file_position;
+	int32_t tmp_current_statement_position = jam_current_statement_position;
+	int32_t tmp_next_statement_position = jam_next_statement_position;
 
 	jam_program = program;
 	jam_program_size = program_size;

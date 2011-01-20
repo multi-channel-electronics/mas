@@ -100,7 +100,7 @@ int jam_hexchar(int ch)
 JAM_RETURN_TYPE jam_check_crc
 (
 	char *program,
-	long program_size,
+	int32_t program_size,
 	unsigned short *expected_crc,
 	unsigned short *actual_crc
 )
@@ -125,8 +125,8 @@ JAM_RETURN_TYPE jam_check_crc
 	BOOL in_instruction = FALSE;
 	BOOL found_expected_crc = FALSE;
 	int ch = 0;
-	long position = 0L;
-	long left_quote_position = -1L;
+	int32_t position = 0L;
+	int32_t left_quote_position = -1L;
 	unsigned short crc_shift_register = 0;
 	unsigned short crc_shift_register_backup[4] = {0};
 	int ch_queue[4] = {0};

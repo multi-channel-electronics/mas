@@ -151,7 +151,7 @@ int			jam_token = 0;
 char		jam_token_buffer[MAX_BUFFER_LENGTH];
 int			jam_token_buffer_index;
 char		jam_parse_string[MAX_BUFFER_LENGTH];
-long		jam_parse_value = 0;
+int32_t		jam_parse_value = 0;
 int			jam_expression_type = 0;
 JAMS_SYMBOL_RECORD *jam_array_symbol_rec = NULL;
 
@@ -206,8 +206,8 @@ typedef struct EXP_STACK
   OPERATOR_TYPE		child_otype;
   JAME_EXPRESSION_TYPE type;
   long				val;
-  long				loper;		/* left and right operands for DIV */
-  long				roper;		/* we save it for CEIL/FLOOR's use */
+  int32_t				loper;		/* left and right operands for DIV */
+  int32_t				roper;		/* we save it for CEIL/FLOOR's use */
 } EXPN_STACK;
 
 #define YYSTYPE EXPN_STACK		/* must be a #define for yacc */
@@ -263,13 +263,13 @@ YYSTYPE jam_yylval, jam_yyval;
 /************************************************************************/
 /*																   		*/
 
-long jam_exponentiate(long x, long y)
+int32_t jam_exponentiate(int32_t x, int32_t y)
 
 /*	Calculate x^y in logarithmic time wrt y.					   		*/
 /*																   		*/
 {
-	long retval = 1;
-	long partial, exponent;
+	int32_t retval = 1;
+	int32_t partial, exponent;
 
 	partial = x;
 	exponent = y;
@@ -291,13 +291,13 @@ long jam_exponentiate(long x, long y)
 
 /************************************************************************/
 /*																   		*/
-long jam_square_root(long num)
+int32_t jam_square_root(int32_t num)
 {
-	long sqrt = num;
-	long a_squared = 0L;
-	long b_squared = 0L;
-	long two_ab = 0L;
-	long square = 0L;
+	int32_t sqrt = num;
+	int32_t a_squared = 0L;
+	int32_t b_squared = 0L;
+	int32_t two_ab = 0L;
+	int32_t square = 0L;
 	int order = 0;
 
 	if (num < 0L) sqrt = 0L;
@@ -339,10 +339,10 @@ long jam_square_root(long num)
 *	index of the least significant bit.  Typically msb > lsb, otherwise the
 *	bit order will be reversed when converted into integer format.
 */
-long jam_convert_bool_to_int(long *data, long msb, long lsb)
+int32_t jam_convert_bool_to_int(int32_t *data, int32_t msb, int32_t lsb)
 {
-	long i, increment = (msb > lsb) ? 1 : -1;
-	long mask = 1L, result = 0L;
+	int32_t i, increment = (msb > lsb) ? 1 : -1;
+	int32_t mask = 1L, result = 0L;
 
 	msb += increment;
 	for (i = lsb; i != msb; i += increment)
@@ -377,7 +377,7 @@ YYSTYPE jam_exp_eval(OPERATOR_TYPE otype, YYSTYPE op1, YYSTYPE op2)
 /*																   		*/
 {
 	YYSTYPE rtn;
-	long	tmp_val;
+	int32_t	tmp_val;
 	JAMS_SYMBOL_RECORD *symbol_rec;
 	JAMS_HEAP_RECORD *heap_rec;
 
@@ -512,7 +512,7 @@ YYSTYPE jam_exp_eval(OPERATOR_TYPE otype, YYSTYPE op1, YYSTYPE op2)
 		case BITWISE_NOT:
 			if ((op1.type == JAM_INTEGER_EXPR) || (op1.type == JAM_INT_OR_BOOL_EXPR))
 			{
-				rtn.val = ~ (unsigned long) op1.val;
+				rtn.val = ~ (uint32_t) op1.val;
 				rtn.type = JAM_INTEGER_EXPR;
 			}
 			else jam_return_code = JAMC_TYPE_MISMATCH;
@@ -773,9 +773,11 @@ YYSTYPE jam_exp_eval(OPERATOR_TYPE otype, YYSTYPE op1, YYSTYPE op2)
 			if ((op1.type == JAM_ARRAY_REFERENCE) &&
 				((op2.type == JAM_INTEGER_EXPR) || (op2.type == JAM_INT_OR_BOOL_EXPR)))
 			{
+				int32_t tmpint;
 				symbol_rec = (JAMS_SYMBOL_RECORD *)op1.val;
 				jam_return_code = jam_get_array_value(
-					symbol_rec, op2.val, &rtn.val);
+					symbol_rec, op2.val, &tmpint);
+				rtn.val = tmpint;
 
 				if (jam_return_code == JAMC_SUCCESS)
 				{
@@ -1063,9 +1065,9 @@ BOOL jam_hex_constant_is_ok(char *string)
 	return (ok);
 }
 
-long jam_atol_bin(char *string)
+int32_t jam_atol_bin(char *string)
 {
-	long result = 0L;
+	int32_t result = 0L;
 	int index = 0;
 
 	while ((string[index] == '0') || (string[index] == '1'))
@@ -1077,9 +1079,9 @@ long jam_atol_bin(char *string)
 	return (result);
 }
 
-long jam_atol_hex(char *string)
+int32_t jam_atol_hex(char *string)
 {
-	long result = 0L;
+	int32_t result = 0L;
 	int index = 0;
 
 	while (((string[index] >= '0') && (string[index] <= '9')) ||
@@ -1108,7 +1110,7 @@ long jam_atol_hex(char *string)
 /************************************************************************/
 /*																   		*/
 
-BOOL jam_constant_value(char *string, long *value)
+BOOL jam_constant_value(char *string, int32_t *value)
 
 /*                                                                      */
 /*		This routine converts a string constant into its binary			*/
@@ -1188,7 +1190,7 @@ int jam_yylex()
 /*																   		*/
 {
 	JAMS_SYMBOL_RECORD *symbol_rec = NULL;
-	long val = 0L;
+	int32_t val = 0L;
 	JAME_EXPRESSION_TYPE type = JAM_ILLEGAL_EXPR_TYPE;
 	int token_length;
 	int i;
@@ -1295,7 +1297,7 @@ int jam_yylex()
 JAM_RETURN_TYPE jam_evaluate_expression
 (
 	char *expression,
-	long *result,
+	int32_t *result,
 	JAME_EXPRESSION_TYPE *result_type
 )
 

@@ -56,10 +56,10 @@ JAM_RETURN_TYPE jam_reverse_boolean_array_bin
 	JAMS_HEAP_RECORD *heap_record
 )
 {
-	long *heap_data = &heap_record->data[0];
-	long dimension = heap_record->dimension;
+	int32_t *heap_data = &heap_record->data[0];
+	int32_t dimension = heap_record->dimension;
 	int a, b;
-	long i, j;
+	int32_t i, j;
 
 	for (i = 0; i < dimension / 2; ++i)
 	{
@@ -92,9 +92,9 @@ JAM_RETURN_TYPE jam_reverse_boolean_array_hex
 	JAMS_HEAP_RECORD *heap_record
 )
 {
-	long *heap_data = &heap_record->data[0];
-	long nibbles = (heap_record->dimension + 3) / 4;
-	long a, b, i, j;
+	int32_t *heap_data = &heap_record->data[0];
+	int32_t nibbles = (heap_record->dimension + 3) / 4;
+	int32_t a, b, i, j;
 
 	for (i = 0; i < nibbles / 2; ++i)
 	{
@@ -131,12 +131,12 @@ JAM_RETURN_TYPE jam_extract_bool_comma_sep
 	int expr_begin = 0;
 	int expr_end = 0;
 	char save_ch = 0;
-	long address = 0L;
-	long value = 0L;
-	long dimension = heap_record->dimension;
+	int32_t address = 0L;
+	int32_t value = 0L;
+	int32_t dimension = heap_record->dimension;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	for (address = 0L; (status == JAMC_SUCCESS) && (address < dimension);
 		++address)
@@ -187,7 +187,7 @@ JAM_RETURN_TYPE jam_extract_bool_comma_sep
 			{
 				/* clear a single bit */
 				heap_data[address >> 5] &=
-					(~(unsigned long)(1L << (address & 0x1f)));
+					(~(uint32_t)(1L << (address & 0x1f)));
 			}
 			else if (value == 1L)
 			{
@@ -242,10 +242,10 @@ JAM_RETURN_TYPE jam_extract_bool_binary
 /****************************************************************************/
 {
 	int index = 0;
-	long address = 0L;
-	long dimension = heap_record->dimension;
+	int32_t address = 0L;
+	int32_t dimension = heap_record->dimension;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	for (address = 0L; (status == JAMC_SUCCESS) && (address < dimension);
 		++address)
@@ -260,7 +260,7 @@ JAM_RETURN_TYPE jam_extract_bool_binary
 		{
 			/* clear a single bit */
 			heap_data[address >> 5] &=
-				(~(unsigned long)(1L << (address & 0x1f)));
+				(~(uint32_t)(1L << (address & 0x1f)));
 		}
 		else if (statement_buffer[index] == '1')
 		{
@@ -311,11 +311,11 @@ JAM_RETURN_TYPE jam_extract_bool_hex
 {
 	int index = 0;
 	int ch = 0;
-	long data = 0L;
-	long nibble = 0L;
-	long nibbles = 0L;
+	int32_t data = 0L;
+	int32_t nibble = 0L;
+	int32_t nibbles = 0L;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	/* compute number of hex digits expected */
 	nibbles = (heap_record->dimension >> 2) +
@@ -333,15 +333,15 @@ JAM_RETURN_TYPE jam_extract_bool_hex
 
 		if ((ch >= 'A') && (ch <= 'F'))
 		{
-			data = (long) (ch + 10 - 'A');
+			data = (int32_t) (ch + 10 - 'A');
 		}
 		else if ((ch >= 'a') && (ch <= 'f'))
 		{
-			data = (long) (ch + 10 - 'a');
+			data = (int32_t) (ch + 10 - 'a');
 		}
 		else if ((ch >= '0') && (ch <= '9'))
 		{
-			data = (long) (ch - '0');
+			data = (int32_t) (ch - '0');
 		}
 		else
 		{
@@ -352,7 +352,7 @@ JAM_RETURN_TYPE jam_extract_bool_hex
 		{
 			/* modify four bits of data in the array */
 			heap_data[nibble >> 3] = (heap_data[nibble >> 3] & 
-				(~(unsigned long) (15L << ((nibble & 7) << 2)))) |
+				(~(uint32_t) (15L << ((nibble & 7) << 2)))) |
 				(data << ((nibble & 7) << 2));
 		}
 
@@ -470,13 +470,13 @@ JAM_RETURN_TYPE jam_extract_bool_run_length
 	int count_index = 0;
 	int count_size = 0;
 	int value = 0;
-	long bit = 0L;
-	long count = 0L;
-	long address = 0L;
-	long dimension = heap_record->dimension;
+	int32_t bit = 0L;
+	int32_t count = 0L;
+	int32_t address = 0L;
+	int32_t dimension = heap_record->dimension;
 	JAME_RLC_BLOCK_TYPE block_type = JAM_CONSTANT_ZEROS;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	/* remove all white space */
 	while (statement_buffer[index] != JAMC_NULL_CHAR)
@@ -522,7 +522,7 @@ JAM_RETURN_TYPE jam_extract_bool_run_length
 					{
 						/* add zeros to array */
 						heap_data[address >> 5] &=
-							~(unsigned long) (1L << (address & 0x1f));
+							~(uint32_t) (1L << (address & 0x1f));
 						++address;
 					}
 					break;
@@ -552,7 +552,7 @@ JAM_RETURN_TYPE jam_extract_bool_run_length
 						else
 						{
 							heap_data[address >> 5] &=
-								~(unsigned long) (1L << (address & 0x1f));
+								~(uint32_t) (1L << (address & 0x1f));
 						}
 						++address;
 					}
@@ -608,11 +608,11 @@ JAM_RETURN_TYPE jam_extract_bool_compressed
 	int value = 0;
 	int index = 0;
 	int index2 = 0;
-	long uncompressed_length = 0L;
+	int32_t uncompressed_length = 0L;
 	char *ch_data = NULL;
-	long out_size = 0L;
-	long address = 0L;
-	long *heap_data = &heap_record->data[0];
+	int32_t out_size = 0L;
+	int32_t address = 0L;
+	int32_t *heap_data = &heap_record->data[0];
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	/* remove all white space */
@@ -705,10 +705,10 @@ JAM_RETURN_TYPE jam_extract_bool_compressed
 			for (word = 0; word < out_size; ++word)
 			{
 				heap_data[word] =
-					((((long) ch_data[(word * 4) + 3]) & 0xff) << 24L) |
-					((((long) ch_data[(word * 4) + 2]) & 0xff) << 16L) |
-					((((long) ch_data[(word * 4) + 1]) & 0xff) << 8L) |
-					(((long) ch_data[word * 4]) & 0xff);
+					((((int32_t) ch_data[(word * 4) + 3]) & 0xff) << 24L) |
+					((((int32_t) ch_data[(word * 4) + 2]) & 0xff) << 16L) |
+					((((int32_t) ch_data[(word * 4) + 1]) & 0xff) << 8L) |
+					(((int32_t) ch_data[word * 4]) & 0xff);
 			}
 		}
 	}
@@ -787,14 +787,14 @@ JAM_RETURN_TYPE jam_read_bool_comma_sep
 {
 	int index = 0;
 	int ch = 0;
-	long address = 0L;
-	long value = 0L;
-	long dimension = heap_record->dimension;
+	int32_t address = 0L;
+	int32_t value = 0L;
+	int32_t dimension = heap_record->dimension;
 	char *expr_buffer = 0;
 	unsigned int statement_buffer_size = 0;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	if (jam_seek(heap_record->position) != 0)
 	{
@@ -832,7 +832,7 @@ JAM_RETURN_TYPE jam_read_bool_comma_sep
 				{
 					/* clear a single bit */
 					heap_data[address >> 5] &=
-						(~(unsigned long)(1L << (address & 0x1f)));
+						(~(uint32_t)(1L << (address & 0x1f)));
 					++address;
 				}
 				else if (value == 1L)
@@ -891,10 +891,10 @@ JAM_RETURN_TYPE jam_read_bool_binary
 /****************************************************************************/
 {
 	int ch = 0;
-	long address = 0L;
-	long dimension = heap_record->dimension;
+	int32_t address = 0L;
+	int32_t dimension = heap_record->dimension;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	if (jam_seek(heap_record->position) != 0)
 	{
@@ -909,7 +909,7 @@ JAM_RETURN_TYPE jam_read_bool_binary
 		{
 			/* clear a single bit */
 			heap_data[address >> 5] &=
-				(~(unsigned long)(1L << (address & 0x1f)));
+				(~(uint32_t)(1L << (address & 0x1f)));
 			++address;
 		}
 		else if (ch == '1')
@@ -960,11 +960,11 @@ JAM_RETURN_TYPE jam_read_bool_hex
 /****************************************************************************/
 {
 	int ch = 0;
-	long data = 0L;
-	long nibble = 0L;
-	long nibbles = 0L;
+	int32_t data = 0L;
+	int32_t nibble = 0L;
+	int32_t nibbles = 0L;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	/* compute number of hex digits expected */
 	nibbles = (heap_record->dimension >> 2) +
@@ -981,15 +981,15 @@ JAM_RETURN_TYPE jam_read_bool_hex
 
 		if ((ch >= 'A') && (ch <= 'F'))
 		{
-			data = (long) (ch + 10 - 'A');
+			data = (int32_t) (ch + 10 - 'A');
 		}
 		else if ((ch >= 'a') && (ch <= 'f'))
 		{
-			data = (long) (ch + 10 - 'a');
+			data = (int32_t) (ch + 10 - 'a');
 		}
 		else if ((ch >= '0') && (ch <= '9'))
 		{
-			data = (long) (ch - '0');
+			data = (int32_t) (ch - '0');
 		}
 		else
 		{
@@ -1000,7 +1000,7 @@ JAM_RETURN_TYPE jam_read_bool_hex
 		{
 			/* modify four bits of data in the array */
 			heap_data[nibble >> 3] = (heap_data[nibble >> 3] & 
-				(~(unsigned long) (15L << ((nibble & 7) << 2)))) |
+				(~(uint32_t) (15L << ((nibble & 7) << 2)))) |
 				(data << ((nibble & 7) << 2));
 			++nibble;
 		}
@@ -1036,13 +1036,13 @@ JAM_RETURN_TYPE jam_read_bool_run_length
 	int count_index = 0;
 	int count_size = 0;
 	int value = 0;
-	long bit = 0L;
-	long count = 0L;
-	long address = 0L;
-	long dimension = heap_record->dimension;
+	int32_t bit = 0L;
+	int32_t count = 0L;
+	int32_t address = 0L;
+	int32_t dimension = heap_record->dimension;
 	JAME_RLC_BLOCK_TYPE block_type = JAM_CONSTANT_ZEROS;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	if (jam_seek(heap_record->position) != 0)
 	{
@@ -1064,7 +1064,7 @@ JAM_RETURN_TYPE jam_read_bool_run_length
 				}
 				else
 				{
-					count += (long) value;
+					count += (int32_t) value;
 				}
 			}
 
@@ -1075,7 +1075,7 @@ JAM_RETURN_TYPE jam_read_bool_run_length
 				{
 					/* add zeros to array */
 					heap_data[address >> 5] &=
-						~(unsigned long) (1L << (address & 0x1f));
+						~(uint32_t) (1L << (address & 0x1f));
 					++address;
 				}
 				break;
@@ -1110,7 +1110,7 @@ JAM_RETURN_TYPE jam_read_bool_run_length
 					else
 					{
 						heap_data[address >> 5] &=
-							~(unsigned long) (1L << (address & 0x1f));
+							~(uint32_t) (1L << (address & 0x1f));
 					}
 					++address;
 				}
@@ -1164,14 +1164,14 @@ JAM_RETURN_TYPE jam_read_bool_compressed
 	int bit = 0;
 	int word = 0;
 	int value = 0;
-	long uncompressed_length = 0L;
+	int32_t uncompressed_length = 0L;
 	char *in = NULL;
 	char *ch_data = NULL;
-	long in_size = 0L;
-	long out_size = 0L;
-	long address = 0L;
+	int32_t in_size = 0L;
+	int32_t out_size = 0L;
+	int32_t address = 0L;
 	BOOL done = FALSE;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	if (jam_seek(heap_record->position) != 0)
@@ -1255,10 +1255,10 @@ JAM_RETURN_TYPE jam_read_bool_compressed
 			for (word = 0; word < out_size; ++word)
 			{
 				heap_data[word] =
-					((((long) ch_data[(word * 4) + 3]) & 0xff) << 24L) |
-					((((long) ch_data[(word * 4) + 2]) & 0xff) << 16L) |
-					((((long) ch_data[(word * 4) + 1]) & 0xff) << 8L) |
-					(((long) ch_data[word * 4]) & 0xff);
+					((((int32_t) ch_data[(word * 4) + 3]) & 0xff) << 24L) |
+					((((int32_t) ch_data[(word * 4) + 2]) & 0xff) << 16L) |
+					((((int32_t) ch_data[(word * 4) + 1]) & 0xff) << 8L) |
+					(((int32_t) ch_data[word * 4]) & 0xff);
 			}
 		}
 	}
@@ -1295,8 +1295,8 @@ JAM_RETURN_TYPE jam_read_boolean_array_data
 	int rep = 0;
 	int length = 0;
 	int data_offset = 0;
-	long position = 0L;
-	long data_position = 0L;
+	int32_t position = 0L;
+	int32_t data_position = 0L;
 	BOOL done = FALSE;
 	BOOL comment = FALSE;
 	BOOL found_equal = FALSE;
@@ -1629,12 +1629,12 @@ JAM_RETURN_TYPE jam_extract_int_comma_sep
 	int expr_begin = 0;
 	int expr_end = 0;
 	char save_ch = 0;
-	long address = 0L;
-	long value = 0L;
-	long dimension = heap_record->dimension;
+	int32_t address = 0L;
+	int32_t value = 0L;
+	int32_t dimension = heap_record->dimension;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	for (address = 0L; (status == JAMC_SUCCESS) && (address < dimension);
 		++address)
@@ -1726,14 +1726,14 @@ JAM_RETURN_TYPE jam_read_int_comma_sep
 {
 	int index = 0;
 	int ch = 0;
-	long address = 0L;
-	long value = 0L;
-	long dimension = heap_record->dimension;
+	int32_t address = 0L;
+	int32_t value = 0L;
+	int32_t dimension = heap_record->dimension;
 	char *expr_buffer = 0;
 	unsigned int statement_buffer_size = 0;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	long *heap_data = &heap_record->data[0];
+	int32_t *heap_data = &heap_record->data[0];
 
 	if (jam_seek(heap_record->position) != 0)
 	{
@@ -1831,8 +1831,8 @@ JAM_RETURN_TYPE jam_read_integer_array_data
 {
 	int index = 0;
 	int ch = 0;
-	long position = 0L;
-	long data_position = 0L;
+	int32_t position = 0L;
+	int32_t data_position = 0L;
 	BOOL done = FALSE;
 	BOOL comment = FALSE;
 	BOOL found_equal = FALSE;
@@ -1969,9 +1969,9 @@ JAM_RETURN_TYPE jam_read_integer_array_data
 	*/
 	if ((status == JAMC_SUCCESS) && (jam_version == 2))
 	{
-		long *heap_data = &heap_record->data[0];
-		long dimension = heap_record->dimension;
-		long a, b, i, j;
+		int32_t *heap_data = &heap_record->data[0];
+		int32_t dimension = heap_record->dimension;
+		int32_t a, b, i, j;
 
 		for (i = 0; i < dimension / 2; ++i)
 		{
@@ -1992,8 +1992,8 @@ JAM_RETURN_TYPE jam_read_integer_array_data
 JAM_RETURN_TYPE jam_get_array_value
 (
 	JAMS_SYMBOL_RECORD *symbol_record,
-	long index,
-	long *value
+	int32_t index,
+	int32_t *value
 )
 
 /*																			*/
@@ -2006,7 +2006,7 @@ JAM_RETURN_TYPE jam_get_array_value
 {
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 	JAMS_HEAP_RECORD *heap_record = NULL;
-	long *heap_data = NULL;
+	int32_t *heap_data = NULL;
 
 	if ((symbol_record == NULL) ||
 		((symbol_record->type != JAM_INTEGER_ARRAY_WRITABLE) &&

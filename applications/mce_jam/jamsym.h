@@ -42,7 +42,7 @@ typedef struct JAMS_SYMBOL_STRUCT
 	char name[JAMC_MAX_NAME_LENGTH + 1];
 	JAME_SYMBOL_TYPE type;
 	long value;
-	long position;
+	int32_t position;
 	struct JAMS_SYMBOL_STRUCT *parent;
 	struct JAMS_SYMBOL_STRUCT *next;
 
@@ -82,22 +82,22 @@ JAM_RETURN_TYPE jam_add_symbol
 (
 	JAME_SYMBOL_TYPE type,
 	char *name,
-	long value,
-	long position
+	int32_t value,
+	int32_t position
 );
 
 JAM_RETURN_TYPE jam_get_symbol_value
 (
 	JAME_SYMBOL_TYPE type,
 	char *name,
-	long *value
+	int32_t *value
 );
 
 JAM_RETURN_TYPE jam_set_symbol_value
 (
 	JAME_SYMBOL_TYPE type,
 	char *name,
-	long value
+	int32_t value
 );
 
 JAM_RETURN_TYPE jam_get_symbol_record

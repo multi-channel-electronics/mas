@@ -32,8 +32,8 @@ JAM_RETURN_TYPE jam_read_integer_array_data
 JAM_RETURN_TYPE jam_get_array_value
 (
 	JAMS_SYMBOL_RECORD *symbol_record,
-	long index,
-	long *value
+	int32_t index,
+	int32_t *value
 );
 
 #endif	/* INC_JAMARRAY_H */

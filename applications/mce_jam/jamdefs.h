@@ -163,11 +163,11 @@ typedef enum
 
 extern char *jam_workspace;
 
-extern long jam_workspace_size;
+extern int32_t jam_workspace_size;
 
 extern char *jam_program;
 
-extern long jam_program_size;
+extern int32_t jam_program_size;
 
 extern char **jam_init_list;
 

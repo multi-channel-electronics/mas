@@ -48,9 +48,9 @@ static int tck_half_period = 0;
 static int packetization_stats[MAX_PAYLOAD * MAX_PACKING];
 //static int reads[MAX_PAYLOAD * MAX_PACKING];
 //static int writes[MAX_PAYLOAD * MAX_PACKING];
-static long singles = 0;
-static long multiples = 0;
-static long percentage = 0;
+static int32_t singles = 0;
+static int32_t multiples = 0;
+static int32_t percentage = 0;
 static int total_delay = 0;
 static int total_bits = 0;
 static int total_txs = 0;
@@ -183,8 +183,10 @@ void close_mce(void)
 	if (verbose) printf("------------------------------------------\n");
 	if (verbose) printf(">> close_mce(): %d bits transmitted in %d MCE packets.\n", total_bits, total_txs);
 	percentage = (singles / total_bits) * 100;
-	if (verbose) printf(">> close_mce(): %ld single-bit stack pushes = %ld percent of data.\n", singles, percentage);
-	if (verbose) printf(">> close_mce(): %ld multiple-bit stack pushes = %ld percent of data.\n", multiples, 100 - percentage);
+	if (verbose) printf(">> close_mce(): %ld single-bit stack pushes = %ld percent of data.\n",
+			(long)singles, (long)percentage);
+	if (verbose) printf(">> close_mce(): %ld multiple-bit stack pushes = %ld percent of data.\n",
+			(long)multiples, 100L - percentage);
 	if (verbose) printf(">> close_mce(): %d us spent delaying.\n", total_delay);
 	if (verbose) printf(">> close_mce(): %d stack pushes for reads (=flush), %d stack pushes for writes.\n", reads, writes);
 
@@ -223,7 +225,7 @@ int flush_stack(int do_read)
 	}
 
 	// delay [us] = number_of_bits [bits] * delay_per_bit [ns/bit] / 1000 [ns/us]
-	int delay = ((long)write_buffer.count * delay_per_bit) / (1000*FUDGE_FACTOR);
+	int delay = ((int32_t)write_buffer.count * delay_per_bit) / (1000*FUDGE_FACTOR);
 	// Add one to delay, so that any fractions of a us are topped up.
 	delay++;
 	total_delay += delay;

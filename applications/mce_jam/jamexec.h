@@ -17,11 +17,11 @@
 /*																			*/
 /****************************************************************************/
 
-extern long jam_current_file_position;
+extern int32_t jam_current_file_position;
 
-extern long jam_current_statement_position;
+extern int32_t jam_current_statement_position;
 
-extern long jam_next_statement_position;
+extern int32_t jam_next_statement_position;
 
 extern unsigned int jam_statement_buffer_size;
 
@@ -49,9 +49,9 @@ JAM_RETURN_TYPE jam_get_statement
 	char *label_buffer
 );
 
-long jam_get_line_of_position
+int32_t jam_get_line_of_position
 (
-	long position
+	int32_t position
 );
 
 JAME_INSTRUCTION jam_get_instruction

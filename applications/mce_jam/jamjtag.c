@@ -48,10 +48,10 @@ int jam_ir_preamble  = 0;
 int jam_ir_postamble = 0;
 int jam_dr_length    = 0;
 int jam_ir_length    = 0;
-long *jam_dr_preamble_data  = NULL;
-long *jam_dr_postamble_data = NULL;
-long *jam_ir_preamble_data  = NULL;
-long *jam_ir_postamble_data = NULL;
+int32_t *jam_dr_preamble_data  = NULL;
+int32_t *jam_dr_postamble_data = NULL;
+int32_t *jam_ir_preamble_data  = NULL;
+int32_t *jam_ir_postamble_data = NULL;
 char *jam_dr_buffer         = NULL;
 char *jam_ir_buffer         = NULL;
 
@@ -167,7 +167,7 @@ JAM_RETURN_TYPE jam_init_jtag(void)
 	{
 		symbol_table = (void **) jam_workspace;
 		stack = (JAMS_STACK_RECORD *) &symbol_table[JAMC_MAX_SYMBOL_COUNT];
-		jam_dr_preamble_data = (long *) &stack[JAMC_MAX_NESTING_DEPTH];
+		jam_dr_preamble_data = (int32_t *) &stack[JAMC_MAX_NESTING_DEPTH];
 		jam_dr_postamble_data = &jam_dr_preamble_data[JAMC_MAX_JTAG_DR_PREAMBLE / 32];
 		jam_ir_preamble_data = &jam_dr_postamble_data[JAMC_MAX_JTAG_DR_POSTAMBLE / 32];
 		jam_ir_postamble_data = &jam_ir_preamble_data[JAMC_MAX_JTAG_IR_PREAMBLE / 32];
@@ -226,14 +226,14 @@ JAM_RETURN_TYPE jam_set_dr_preamble
 (
 	int count,
 	int start_index,
-	long *data
+	int32_t *data
 )
 
 /*																			*/
 /****************************************************************************/
 {
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	int alloc_longs = 0;
+	int alloc_int32_ts = 0;
 	int i = 0;
 	int bit = 0;
 
@@ -254,10 +254,10 @@ JAM_RETURN_TYPE jam_set_dr_preamble
 		{
 			if (count > jam_dr_preamble)
 			{
-				alloc_longs = (count + 31) >> 5;
+				alloc_int32_ts = (count + 31) >> 5;
 				jam_free(jam_dr_preamble_data);
-				jam_dr_preamble_data = (long *) jam_malloc(
-					alloc_longs * sizeof(long));
+				jam_dr_preamble_data = (int32_t *) jam_malloc(
+					alloc_int32_ts * sizeof(int32_t));
 
 				if (jam_dr_preamble_data == NULL)
 				{
@@ -293,7 +293,7 @@ JAM_RETURN_TYPE jam_set_dr_preamble
 					else
 					{
 						jam_dr_preamble_data[i >> 5] &=
-							~(unsigned long) (1L << (bit & 0x1f));
+							~(uint32_t) (1L << (bit & 0x1f));
 					}
 				}
 			}
@@ -310,14 +310,14 @@ JAM_RETURN_TYPE jam_set_ir_preamble
 (
 	int count,
 	int start_index,
-	long *data
+	int32_t *data
 )
 
 /*																			*/
 /****************************************************************************/
 {
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	int alloc_longs = 0;
+	int alloc_int32_ts = 0;
 	int i = 0;
 	int bit = 0;
 
@@ -338,10 +338,10 @@ JAM_RETURN_TYPE jam_set_ir_preamble
 		{
 			if (count > jam_ir_preamble)
 			{
-				alloc_longs = (count + 31) >> 5;
+				alloc_int32_ts = (count + 31) >> 5;
 				jam_free(jam_ir_preamble_data);
-				jam_ir_preamble_data = (long *) jam_malloc(
-					alloc_longs * sizeof(long));
+				jam_ir_preamble_data = (int32_t *) jam_malloc(
+					alloc_int32_ts * sizeof(int32_t));
 
 				if (jam_ir_preamble_data == NULL)
 				{
@@ -377,7 +377,7 @@ JAM_RETURN_TYPE jam_set_ir_preamble
 					else
 					{
 						jam_ir_preamble_data[i >> 5] &=
-							~(unsigned long) (1L << (bit & 0x1f));
+							~(uint32_t) (1L << (bit & 0x1f));
 					}
 				}
 			}
@@ -394,14 +394,14 @@ JAM_RETURN_TYPE jam_set_dr_postamble
 (
 	int count,
 	int start_index,
-	long *data
+	int32_t *data
 )
 
 /*																			*/
 /****************************************************************************/
 {
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	int alloc_longs = 0;
+	int alloc_int32_ts = 0;
 	int i = 0;
 	int bit = 0;
 
@@ -422,10 +422,10 @@ JAM_RETURN_TYPE jam_set_dr_postamble
 		{
 			if (count > jam_dr_postamble)
 			{
-				alloc_longs = (count + 31) >> 5;
+				alloc_int32_ts = (count + 31) >> 5;
 				jam_free(jam_dr_postamble_data);
-				jam_dr_postamble_data = (long *) jam_malloc(
-					alloc_longs * sizeof(long));
+				jam_dr_postamble_data = (int32_t *) jam_malloc(
+					alloc_int32_ts * sizeof(int32_t));
 
 				if (jam_dr_postamble_data == NULL)
 				{
@@ -461,7 +461,7 @@ JAM_RETURN_TYPE jam_set_dr_postamble
 					else
 					{
 						jam_dr_postamble_data[i >> 5] &=
-							~(unsigned long) (1L << (bit & 0x1f));
+							~(uint32_t) (1L << (bit & 0x1f));
 					}
 				}
 			}
@@ -478,14 +478,14 @@ JAM_RETURN_TYPE jam_set_ir_postamble
 (
 	int count,
 	int start_index,
-	long *data
+	int32_t *data
 )
 
 /*																			*/
 /****************************************************************************/
 {
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
-	int alloc_longs = 0;
+	int alloc_int32_ts = 0;
 	int i = 0;
 	int bit = 0;
 
@@ -506,10 +506,10 @@ JAM_RETURN_TYPE jam_set_ir_postamble
 		{
 			if (count > jam_ir_postamble)
 			{
-				alloc_longs = (count + 31) >> 5;
+				alloc_int32_ts = (count + 31) >> 5;
 				jam_free(jam_ir_postamble_data);
-				jam_ir_postamble_data = (long *) jam_malloc(
-					alloc_longs * sizeof(long));
+				jam_ir_postamble_data = (int32_t *) jam_malloc(
+					alloc_int32_ts * sizeof(int32_t));
 
 				if (jam_ir_postamble_data == NULL)
 				{
@@ -545,7 +545,7 @@ JAM_RETURN_TYPE jam_set_ir_postamble
 					else
 					{
 						jam_ir_postamble_data[i >> 5] &=
-							~(unsigned long) (1L << (bit & 0x1f));
+							~(uint32_t) (1L << (bit & 0x1f));
 					}
 				}
 			}
@@ -696,7 +696,7 @@ JAME_JTAG_STATE jam_get_jtag_state_from_name
 
 JAM_RETURN_TYPE jam_do_wait_cycles
 (
-	long cycles,
+	int32_t cycles,
 	JAME_JTAG_STATE wait_state
 )
 
@@ -709,7 +709,7 @@ JAM_RETURN_TYPE jam_do_wait_cycles
 /****************************************************************************/
 {
 	int tms = 0;
-	long count = 0L;
+	int32_t count = 0L;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	if (jam_jtag_state != wait_state)
@@ -739,7 +739,7 @@ JAM_RETURN_TYPE jam_do_wait_cycles
 
 JAM_RETURN_TYPE jam_do_wait_microseconds
 (
-	long microseconds,
+	int32_t microseconds,
 	JAME_JTAG_STATE wait_state
 )
 
@@ -782,27 +782,27 @@ JAM_RETURN_TYPE jam_do_wait_microseconds
 void jam_jtag_concatenate_data
 (
 	char *buffer,
-	long *preamble_data,
-	long preamble_count,
-	long *target_data,
-	long start_index,
-	long target_count,
-	long *postamble_data,
-	long postamble_count
+	int32_t *preamble_data,
+	int32_t preamble_count,
+	int32_t *target_data,
+	int32_t start_index,
+	int32_t target_count,
+	int32_t *postamble_data,
+	int32_t postamble_count
 )
 
 /*																			*/
 /*	Description:	Copies preamble data, target data, and postamble data	*/
 /*					into one buffer for IR or DR scans.  Note that buffer	*/
-/*					is an array of char, while other arrays are of long		*/
+/*					is an array of char, while other arrays are of int32_t		*/
 /*																			*/
 /*	Returns:		nothing													*/
 /*																			*/
 /****************************************************************************/
 {
-	long i = 0L;
-	long j = 0L;
-	long k = 0L;
+	int32_t i = 0L;
+	int32_t j = 0L;
+	int32_t k = 0L;
 
 	for (i = 0L; i < preamble_count; ++i)
 	{
@@ -851,24 +851,24 @@ void jam_jtag_concatenate_data
 void jam_jtag_extract_target_data
 (
 	char *buffer,
-	long *target_data,
-	long start_index,
-	long preamble_count,
-	long target_count
+	int32_t *target_data,
+	int32_t start_index,
+	int32_t preamble_count,
+	int32_t target_count
 )
 
 /*																			*/
 /*	Description:	Copies target data from scan buffer, filtering out		*/
 /*					preamble and postamble data.   Note that buffer is an	*/
-/*					array of char, while target_data is an array of long	*/
+/*					array of char, while target_data is an array of int32_t	*/
 /*																			*/
 /*	Returns:		nothing													*/
 /*																			*/
 /****************************************************************************/
 {
-	long i = 0L;
-	long j = 0L;
-	long k = 0L;
+	int32_t i = 0L;
+	int32_t j = 0L;
+	int32_t k = 0L;
 
 	j = preamble_count;
 	k = start_index + target_count;
@@ -880,7 +880,7 @@ void jam_jtag_extract_target_data
 		}
 		else
 		{
-			target_data[i >> 5] &= ~(unsigned long) (1L << (i & 0x1f));
+			target_data[i >> 5] &= ~(uint32_t) (1L << (i & 0x1f));
 		}
 	}
 }
@@ -1054,9 +1054,9 @@ int jam_jtag_irscan
 
 JAM_RETURN_TYPE jam_do_irscan
 (
-	long count,
-	long *data,
-	long start_index
+	int32_t count,
+	int32_t *data,
+	int32_t start_index
 )
 
 /*																			*/
@@ -1190,11 +1190,11 @@ JAM_RETURN_TYPE jam_do_irscan
 
 JAM_RETURN_TYPE jam_swap_ir
 (
-	long count,
-	long *in_data,
-	long in_index,
-	long *out_data,
-	long out_index
+	int32_t count,
+	int32_t *in_data,
+	int32_t in_index,
+	int32_t *out_data,
+	int32_t out_index
 )
 
 /*																			*/
@@ -1344,9 +1344,9 @@ JAM_RETURN_TYPE jam_swap_ir
 
 JAM_RETURN_TYPE jam_do_drscan
 (
-	long count,
-	long *data,
-	long start_index
+	int32_t count,
+	int32_t *data,
+	int32_t start_index
 )
 
 /*																			*/
@@ -1480,11 +1480,11 @@ JAM_RETURN_TYPE jam_do_drscan
 
 JAM_RETURN_TYPE jam_swap_dr
 (
-	long count,
-	long *in_data,
-	long in_index,
-	long *out_data,
-	long out_index
+	int32_t count,
+	int32_t *in_data,
+	int32_t in_index,
+	int32_t *out_data,
+	int32_t out_index
 )
 
 /*																			*/

@@ -115,7 +115,7 @@ void jam_free_symbol_table()
 BOOL jam_check_init_list
 (
 	char *name,
-	long *value
+	int32_t *value
 )
 
 /*																			*/
@@ -131,7 +131,7 @@ BOOL jam_check_init_list
 	int ch_index = 0;
 	int init_entry = 0;
 	char *init_string = NULL;
-	long val;
+	int32_t val;
 	BOOL match = FALSE;
 	BOOL negate = FALSE;
 	BOOL status = FALSE;
@@ -229,8 +229,8 @@ JAM_RETURN_TYPE jam_add_symbol
 (
 	JAME_SYMBOL_TYPE type,
 	char *name,
-	long value,
-	long position
+	int32_t value,
+	int32_t position
 )
 
 /*																			*/
@@ -251,7 +251,7 @@ JAM_RETURN_TYPE jam_add_symbol
 	char r, l;
 	int ch_index = 0;
 	int hash = 0;
-	long init_list_value = 0L;
+	int32_t init_list_value = 0L;
 	BOOL match = FALSE;
 	BOOL identical_redeclaration = FALSE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
@@ -606,7 +606,7 @@ JAM_RETURN_TYPE jam_get_symbol_value
 (
 	JAME_SYMBOL_TYPE type,
 	char *name,
-	long *value
+	int32_t *value
 )
 
 /*																			*/
@@ -655,7 +655,7 @@ JAM_RETURN_TYPE jam_set_symbol_value
 (
 	JAME_SYMBOL_TYPE type,
 	char *name,
-	long value
+	int32_t value
 )
 
 /*																			*/

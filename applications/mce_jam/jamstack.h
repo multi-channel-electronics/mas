@@ -35,11 +35,11 @@ typedef struct
 {
 	JAME_STACK_RECORD_TYPE type;
 	JAMS_SYMBOL_RECORD *iterator;	/* used only for FOR/NEXT */
-	long for_position;				/* used only for FOR/NEXT */
-	long stop_value;				/* used only for FOR/NEXT */
-	long step_value;				/* used only for FOR/NEXT */
-	long push_value;				/* used only for PUSH/POP */
-	long return_position;			/* used only for CALL/RETURN */
+	int32_t for_position;				/* used only for FOR/NEXT */
+	int32_t stop_value;				/* used only for FOR/NEXT */
+	int32_t step_value;				/* used only for FOR/NEXT */
+	int32_t push_value;				/* used only for PUSH/POP */
+	int32_t return_position;			/* used only for CALL/RETURN */
 
 } JAMS_STACK_RECORD;
 
@@ -85,19 +85,19 @@ JAM_RETURN_TYPE jam_pop_stack_record
 JAM_RETURN_TYPE jam_push_fornext_record
 (
 	JAMS_SYMBOL_RECORD *iterator,
-	long for_position,
-	long stop_value,
-	long step_value
+	int32_t for_position,
+	int32_t stop_value,
+	int32_t step_value
 );
 
 JAM_RETURN_TYPE jam_push_pushpop_record
 (
-	long value
+	int32_t value
 );
 
 JAM_RETURN_TYPE jam_push_callret_record
 (
-	long return_position
+	int32_t return_position
 );
 
 #endif /* INC_JAMSTACK_H */

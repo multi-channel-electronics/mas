@@ -14,6 +14,8 @@
 #ifndef INC_JAMEXPRT_H
 #define INC_JAMEXPRT_H
 
+#include <stdint.h>
+
 /****************************************************************************/
 /*																			*/
 /*	Return codes from most JAM functions									*/
@@ -57,13 +59,13 @@
 JAM_RETURN_TYPE jam_execute
 (
 	char *program,
-	long program_size,
+	int32_t program_size,
 	char *workspace,
-	long workspace_size,
+	int32_t workspace_size,
 	char *action,
 	char **init_list,
 	int reset_jtag,
-	long *error_line,
+	int32_t *error_line,
 	int *exit_code,
 	int *format_version
 );
@@ -71,8 +73,8 @@ JAM_RETURN_TYPE jam_execute
 JAM_RETURN_TYPE jam_get_note
 (
 	char *program,
-	long program_size,
-	long *offset,
+	int32_t program_size,
+	int32_t *offset,
 	char *key,
 	char *value,
 	int length
@@ -81,7 +83,7 @@ JAM_RETURN_TYPE jam_get_note
 JAM_RETURN_TYPE jam_check_crc
 (
 	char *program,
-	long program_size,
+	int32_t program_size,
 	unsigned short *expected_crc,
 	unsigned short *actual_crc
 );
@@ -93,7 +95,7 @@ int jam_getc
 
 int jam_seek
 (
-	long offset
+	int32_t offset
 );
 
 int jam_jtag_io
@@ -111,19 +113,19 @@ void jam_message
 void jam_export_integer
 (
 	char *key,
-	long value
+	int32_t value
 );
 
 void jam_export_boolean_array
 (
 	char *key,
 	unsigned char *data,
-	long count
+	int32_t count
 );
 
 void jam_delay
 (
-	long microseconds
+	int32_t microseconds
 );
 
 int jam_vector_map
@@ -135,14 +137,14 @@ int jam_vector_map
 int jam_vector_io
 (
 	int signal_count,
-	long *dir_vect,
-	long *data_vect,
-	long *capture_vect
+	int32_t *dir_vect,
+	int32_t *data_vect,
+	int32_t *capture_vect
 );
 
 int jam_set_frequency
 (
-	long hertz
+	int32_t hertz
 );
 
 void *jam_malloc

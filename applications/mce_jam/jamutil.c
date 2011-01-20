@@ -65,9 +65,9 @@ int jam_strlen(char *string)
 	return (len);
 }
 
-long jam_atol(char *string)
+int32_t jam_atol(char *string)
 {
-	long result = 0L;
+	int32_t result = 0L;
 	int index = 0;
 
 	while ((string[index] >= '0') && (string[index] <= '9'))
@@ -79,7 +79,7 @@ long jam_atol(char *string)
 	return (result);
 }
 
-void jam_ltoa(char *buffer, long number)
+void jam_ltoa(char *buffer, int32_t number)
 {
 	int index = 0;
 	int rev_index = 0;

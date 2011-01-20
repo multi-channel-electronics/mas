@@ -46,23 +46,23 @@
 char *jam_workspace = NULL;
 
 /* size of available memory buffer */
-long jam_workspace_size = 0L;
+int32_t jam_workspace_size = 0L;
 
 /* pointer to Jam program text */
 char *jam_program = NULL;
 
 /* size of program buffer */
-long jam_program_size = 0L;
+int32_t jam_program_size = 0L;
 
 /* current position in input stream */
-long jam_current_file_position = 0L;
+int32_t jam_current_file_position = 0L;
 
 /* position in input stream of the beginning of the current statement */
-long jam_current_statement_position = 0L;
+int32_t jam_current_statement_position = 0L;
 
 /* position of the beginning of the next statement (the one after the */
 /* current statement, but not necessarily the next one to be executed) */
-long jam_next_statement_position = 0L;
+int32_t jam_next_statement_position = 0L;
 
 unsigned int jam_statement_buffer_size = 0L;
 
@@ -74,10 +74,10 @@ char **jam_init_list = NULL;
 
 /* buffer for constant literal boolean array data */
 #define JAMC_MAX_LITERAL_ARRAYS 4
-long jam_literal_array_buffer[JAMC_MAX_LITERAL_ARRAYS];
+int32_t jam_literal_array_buffer[JAMC_MAX_LITERAL_ARRAYS];
 
 /* buffer for constant literal ACA array data */
-long *jam_literal_aca_buffer[JAMC_MAX_LITERAL_ARRAYS];
+int32_t *jam_literal_aca_buffer[JAMC_MAX_LITERAL_ARRAYS];
 
 /* number of vector signals */
 int jam_vector_signal_count = 0;
@@ -107,7 +107,7 @@ JAM_RETURN_TYPE jam_execute_statement(char *statement_buffer, BOOL *done,
 extern int jam_6bit_char(int ch);
 
 /* prototype for external function in jamsym.c */
-extern BOOL jam_check_init_list(char *name, long *value);
+extern BOOL jam_check_init_list(char *name, int32_t *value);
 
 /****************************************************************************/
 /*																			*/
@@ -141,9 +141,9 @@ JAM_RETURN_TYPE jam_init_statement_buffer
 	BOOL literal_aca_array = FALSE;
 	BOOL label_found = FALSE;
 	BOOL done = (max_index != 0);
-	long position = jam_current_file_position;
-	long first_char_position = -1L;
-	long left_quote_position = -1L;
+	int32_t position = jam_current_file_position;
+	int32_t first_char_position = -1L;
+	int32_t left_quote_position = -1L;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 #if 0
@@ -393,10 +393,10 @@ JAM_RETURN_TYPE jam_get_statement
 	BOOL literal_aca_array = FALSE;
 	BOOL label_found = FALSE;
 	BOOL done = FALSE;
-	long position = jam_current_file_position;
-	long first_char_position = -1L;
-	long semicolon_position = -1L;
-	long left_quote_position = -1L;
+	int32_t position = jam_current_file_position;
+	int32_t first_char_position = -1L;
+	int32_t semicolon_position = -1L;
+	int32_t left_quote_position = -1L;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	label_buffer[0] = JAMC_NULL_CHAR;
@@ -796,8 +796,8 @@ JAM_RETURN_TYPE jam_get_array_subrange
 (
 	JAMS_SYMBOL_RECORD *symbol_record,
 	char *statement_buffer,
-	long *start_index,
-	long *stop_index
+	int32_t *start_index,
+	int32_t *stop_index
 )
 
 /*																			*/
@@ -903,7 +903,7 @@ JAM_RETURN_TYPE jam_get_array_subrange
 	if ((status == JAMC_SUCCESS) && (jam_version == 2))
 	{
 		/* for Jam 2.0, swap the start and stop indices */
-		long temp = *start_index;
+		int32_t temp = *start_index;
 		*start_index = *stop_index;
 		*stop_index = temp;
 	}
@@ -917,8 +917,8 @@ JAM_RETURN_TYPE jam_get_array_subrange
 JAM_RETURN_TYPE jam_convert_literal_binary
 (
 	char *statement_buffer,
-	long **output_buffer,
-	long *length,
+	int32_t **output_buffer,
+	int32_t *length,
 	int arg
 )
 
@@ -939,7 +939,7 @@ JAM_RETURN_TYPE jam_convert_literal_binary
 	int j = 0;
 	char ch = 0;
 	int data = 0;
-	long *long_ptr = NULL;
+	int32_t *int32_t_ptr = NULL;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	while ((status == JAMC_SUCCESS) &&
@@ -990,7 +990,7 @@ JAM_RETURN_TYPE jam_convert_literal_binary
 
 	if (status == JAMC_SUCCESS)
 	{
-		*length = (long) in_index;
+		*length = (int32_t) in_index;
 
 		/* reverse the order of binary data */
 		rev_index = in_index / 2;
@@ -1026,15 +1026,15 @@ JAM_RETURN_TYPE jam_convert_literal_binary
 		}
 
 		out_index = (in_index + 7) / 8;		/* number of bytes */
-		rev_index = (out_index + 3) / 4;	/* number of longs */
+		rev_index = (out_index + 3) / 4;	/* number of int32_ts */
 
 		if (rev_index > 1)
 		{
-			long_ptr = (long *) (((long) statement_buffer) & 0xfffffffcL);
+			int32_t_ptr = (int32_t *) (((long) statement_buffer) & 0xfffffffcL);
 		}
 		else if (arg < JAMC_MAX_LITERAL_ARRAYS)
 		{
-			long_ptr = &jam_literal_array_buffer[arg];
+			int32_t_ptr = &jam_literal_array_buffer[arg];
 		}
 		else
 		{
@@ -1047,14 +1047,14 @@ JAM_RETURN_TYPE jam_convert_literal_binary
 		for (i = 0; i < rev_index; ++i)
 		{
 			j = i * 4;
-			long_ptr[i] = (
-				(((long)statement_buffer[j + 3] << 24L) & 0xff000000L) |
-				(((long)statement_buffer[j + 2] << 16L) & 0x00ff0000L) |
-				(((long)statement_buffer[j + 1] <<  8L) & 0x0000ff00L) |
-				(((long)statement_buffer[j    ]       ) & 0x000000ffL));
+			int32_t_ptr[i] = (
+				(((int32_t)statement_buffer[j + 3] << 24L) & 0xff000000L) |
+				(((int32_t)statement_buffer[j + 2] << 16L) & 0x00ff0000L) |
+				(((int32_t)statement_buffer[j + 1] <<  8L) & 0x0000ff00L) |
+				(((int32_t)statement_buffer[j    ]       ) & 0x000000ffL));
 		}
 
-		if (output_buffer != NULL) *output_buffer = long_ptr;
+		if (output_buffer != NULL) *output_buffer = int32_t_ptr;
 	}
 
 	return (status);
@@ -1066,8 +1066,8 @@ JAM_RETURN_TYPE jam_convert_literal_binary
 JAM_RETURN_TYPE jam_convert_literal_array
 (
 	char *statement_buffer,
-	long **output_buffer,
-	long *length,
+	int32_t **output_buffer,
+	int32_t *length,
 	int arg
 )
 
@@ -1088,7 +1088,7 @@ JAM_RETURN_TYPE jam_convert_literal_array
 	int j = 0;
 	char ch = 0;
 	int data = 0;
-	long *long_ptr = NULL;
+	int32_t *int32_t_ptr = NULL;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	while ((status == JAMC_SUCCESS) &&
@@ -1145,7 +1145,7 @@ JAM_RETURN_TYPE jam_convert_literal_array
 
 	if (status == JAMC_SUCCESS)
 	{
-		*length = (long) in_index * 4L;
+		*length = (int32_t) in_index * 4L;
 
 		if (in_index & 1)
 		{
@@ -1175,15 +1175,15 @@ JAM_RETURN_TYPE jam_convert_literal_array
 		}
 
 		out_index = (in_index + 1) / 2;		/* number of bytes */
-		rev_index = (out_index + 3) / 4;	/* number of longs */
+		rev_index = (out_index + 3) / 4;	/* number of int32_ts */
 
 		if (rev_index > 1)
 		{
-			long_ptr = (long *) (((long) statement_buffer) & 0xfffffffcL);
+			int32_t_ptr = (int32_t *) (((long) statement_buffer) & 0xfffffffcL);
 		}
 		else if (arg < JAMC_MAX_LITERAL_ARRAYS)
 		{
-			long_ptr = &jam_literal_array_buffer[arg];
+			int32_t_ptr = &jam_literal_array_buffer[arg];
 		}
 		else
 		{
@@ -1196,14 +1196,14 @@ JAM_RETURN_TYPE jam_convert_literal_array
 		for (i = 0; i < rev_index; ++i)
 		{
 			j = i * 4;
-			long_ptr[i] = (
-				(((long)statement_buffer[j + 3] << 24L) & 0xff000000L) |
-				(((long)statement_buffer[j + 2] << 16L) & 0x00ff0000L) |
-				(((long)statement_buffer[j + 1] <<  8L) & 0x0000ff00L) |
-				(((long)statement_buffer[j    ]       ) & 0x000000ffL));
+			int32_t_ptr[i] = (
+				(((int32_t)statement_buffer[j + 3] << 24L) & 0xff000000L) |
+				(((int32_t)statement_buffer[j + 2] << 16L) & 0x00ff0000L) |
+				(((int32_t)statement_buffer[j + 1] <<  8L) & 0x0000ff00L) |
+				(((int32_t)statement_buffer[j    ]       ) & 0x000000ffL));
 		}
 
-		if (output_buffer != NULL) *output_buffer = long_ptr;
+		if (output_buffer != NULL) *output_buffer = int32_t_ptr;
 	}
 
 	return (status);
@@ -1215,8 +1215,8 @@ JAM_RETURN_TYPE jam_convert_literal_array
 JAM_RETURN_TYPE jam_convert_literal_aca
 (
 	char *statement_buffer,
-	long **output_buffer,
-	long *length,
+	int32_t **output_buffer,
+	int32_t *length,
 	int arg
 )
 /*																			*/
@@ -1234,13 +1234,13 @@ JAM_RETURN_TYPE jam_convert_literal_aca
 	int index2 = 0;
 	int i = 0;
 	int j = 0;
-	int long_count = 0;
-	long binary_compressed_length = 0L;
-	long uncompressed_length = 0L;
+	int int32_t_count = 0;
+	int32_t binary_compressed_length = 0L;
+	int32_t uncompressed_length = 0L;
 	char *buffer = NULL;
-	long *long_ptr = NULL;
-	long out_size = 0L;
-	long address = 0L;
+	int32_t *int32_t_ptr = NULL;
+	int32_t out_size = 0L;
+	int32_t address = 0L;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	if ((arg < 0) || (arg >= JAMC_MAX_LITERAL_ARRAYS))
@@ -1310,10 +1310,10 @@ JAM_RETURN_TYPE jam_convert_literal_aca
 
 	/* Get uncompressed length from first DWORD of compressed data */
 	uncompressed_length = (
-		(((long)statement_buffer[3] << 24L) & 0xff000000L) |
-		(((long)statement_buffer[2] << 16L) & 0x00ff0000L) |
-		(((long)statement_buffer[1] <<  8L) & 0x0000ff00L) |
-		(((long)statement_buffer[0]       ) & 0x000000ffL));
+		(((int32_t)statement_buffer[3] << 24L) & 0xff000000L) |
+		(((int32_t)statement_buffer[2] << 16L) & 0x00ff0000L) |
+		(((int32_t)statement_buffer[1] <<  8L) & 0x0000ff00L) |
+		(((int32_t)statement_buffer[0]       ) & 0x000000ffL));
 
 	/* Allocate memory for literal binary data */
 	if (status == JAMC_SUCCESS)
@@ -1322,14 +1322,14 @@ JAM_RETURN_TYPE jam_convert_literal_aca
 		if ((uncompressed_length + 4) < 0x10000L)
 		{
 			buffer = jam_malloc((unsigned int) (uncompressed_length + 4));
-			long_ptr = (long *) jam_malloc((unsigned int) (uncompressed_length + 4));
+			int32_t_ptr = (int32_t *) jam_malloc((unsigned int) (uncompressed_length + 4));
 		}
 #else
 		buffer = jam_malloc(uncompressed_length + 4);
-		long_ptr = (long *) jam_malloc((uncompressed_length + 4)*sizeof(long)/4);
+		int32_t_ptr = (int32_t *) jam_malloc((uncompressed_length + 4)*sizeof(int32_t)/4);
 #endif
 
-		if ((buffer == NULL) || (long_ptr == NULL))
+		if ((buffer == NULL) || (int32_t_ptr == NULL))
 		{
 			status = JAMC_OUT_OF_MEMORY;
 		}
@@ -1352,23 +1352,23 @@ JAM_RETURN_TYPE jam_convert_literal_aca
 	if (status == JAMC_SUCCESS)
 	{
 		/*
-		*	Convert uncompressed data to array of long integers
+		*	Convert uncompressed data to array of int32_t integers
 		*/
-		long_count = (out_size + 3) / 4;	/* number of longs */
+		int32_t_count = (out_size + 3) / 4;	/* number of int32_ts */
 
-		for (i = 0; i < long_count; ++i)
+		for (i = 0; i < int32_t_count; ++i)
 		{
 			j = i * 4;
-			long_ptr[i] = (
-				(((long)buffer[j + 3] << 24L) & 0xff000000L) |
-				(((long)buffer[j + 2] << 16L) & 0x00ff0000L) |
-				(((long)buffer[j + 1] <<  8L) & 0x0000ff00L) |
-				(((long)buffer[j    ]       ) & 0x000000ffL));
+			int32_t_ptr[i] = (
+				(((int32_t)buffer[j + 3] << 24L) & 0xff000000L) |
+				(((int32_t)buffer[j + 2] << 16L) & 0x00ff0000L) |
+				(((int32_t)buffer[j + 1] <<  8L) & 0x0000ff00L) |
+				(((int32_t)buffer[j    ]       ) & 0x000000ffL));
 		}
 
-		jam_literal_aca_buffer[arg] = long_ptr;
+		jam_literal_aca_buffer[arg] = int32_t_ptr;
 
-		if (output_buffer != NULL) *output_buffer = long_ptr;
+		if (output_buffer != NULL) *output_buffer = int32_t_ptr;
 
 		if (length != NULL) *length = uncompressed_length * 8L;
 	}
@@ -1387,9 +1387,9 @@ JAM_RETURN_TYPE jam_get_array_argument
 (
 	char *statement_buffer,
 	JAMS_SYMBOL_RECORD **symbol_record,
-	long **literal_array_data,
-	long *start_index,
-	long *stop_index,
+	int32_t **literal_array_data,
+	int32_t *start_index,
+	int32_t *stop_index,
 	int arg
 )
 
@@ -1406,7 +1406,7 @@ JAM_RETURN_TYPE jam_get_array_argument
 	int expr_begin = 0;
 	int expr_end = 0;
 	int bracket_count = 0;
-	long literal_array_length = 0;
+	int32_t literal_array_length = 0;
 	char save_ch = 0;
 	JAMS_SYMBOL_RECORD *tmp_symbol_rec = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
@@ -1783,9 +1783,9 @@ JAM_RETURN_TYPE jam_process_uses_item
 	char save_ch = 0;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
-	long current_position = 0L;
-	long return_position = jam_next_statement_position;
-	long block_position = -1L;
+	int32_t current_position = 0L;
+	int32_t return_position = jam_next_statement_position;
+	int32_t block_position = -1L;
 	char block_buffer[JAMC_MAX_NAME_LENGTH + 1];
 	char label_buffer[JAMC_MAX_NAME_LENGTH + 1];
 	char *statement_buffer = NULL;
@@ -2150,9 +2150,9 @@ JAM_RETURN_TYPE jam_call_procedure
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAME_INSTRUCTION instruction_code = JAM_ILLEGAL_INSTR;
-	long current_position = 0L;
-	long proc_position = -1L;
-	long return_position = jam_next_statement_position;
+	int32_t current_position = 0L;
+	int32_t proc_position = -1L;
+	int32_t return_position = jam_next_statement_position;
 	char procedure_buffer[JAMC_MAX_NAME_LENGTH + 1];
 	char label_buffer[JAMC_MAX_NAME_LENGTH + 1];
 	char *statement_buffer = NULL;
@@ -2392,7 +2392,7 @@ JAM_RETURN_TYPE jam_call_procedure_from_action
 	char save_ch = 0;
 	BOOL call_it = FALSE;
 	BOOL init_value_set = FALSE;
-	long init_value = 0L;
+	int32_t init_value = 0L;
 
 	if (jam_isalpha(procedure_name[index]))
 	{
@@ -2777,8 +2777,8 @@ JAM_RETURN_TYPE jam_process_boolean
 	int expr_begin = 0;
 	int expr_end = 0;
 	int delimiter = 0;
-	long dim_value = 0L;
-	long init_value = 0L;
+	int32_t dim_value = 0L;
+	int32_t init_value = 0L;
 	char save_ch = 0;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
@@ -3010,9 +3010,9 @@ JAM_RETURN_TYPE jam_process_call_or_goto
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAME_SYMBOL_TYPE symbol_type = JAM_LABEL;
-	long current_position = 0L;
-	long goto_position = -1L;
-	long return_position = jam_next_statement_position;
+	int32_t current_position = 0L;
+	int32_t goto_position = -1L;
+	int32_t return_position = jam_next_statement_position;
 	char label_buffer[JAMC_MAX_NAME_LENGTH + 1];
 	char goto_label[JAMC_MAX_NAME_LENGTH + 1];
 	BOOL found = FALSE;
@@ -3270,9 +3270,9 @@ JAM_RETURN_TYPE jam_process_data
 JAM_RETURN_TYPE jam_process_drscan_compare
 (
 	char *statement_buffer,
-	long count_value,
-	long *in_data,
-	long in_index
+	int32_t count_value,
+	int32_t *in_data,
+	int32_t in_index
 )
 
 /*																			*/
@@ -3295,18 +3295,18 @@ JAM_RETURN_TYPE jam_process_drscan_compare
 	int actual = 0;
 	int expected = 0;
 	int mask = 0;
-	long comp_start_index = 0L;
-	long comp_stop_index = 0L;
-	long mask_start_index = 0L;
-	long mask_stop_index = 0L;
+	int32_t comp_start_index = 0L;
+	int32_t comp_stop_index = 0L;
+	int32_t mask_start_index = 0L;
+	int32_t mask_stop_index = 0L;
 	char save_ch = 0;
-	long *temp_array = NULL;
+	int32_t *temp_array = NULL;
 	BOOL result = TRUE;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
-	long *comp_data = NULL;
-	long *mask_data = NULL;
-	long *literal_array_data = NULL;
+	int32_t *comp_data = NULL;
+	int32_t *mask_data = NULL;
+	int32_t *literal_array_data = NULL;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 
 	/*
@@ -3485,7 +3485,7 @@ JAM_RETURN_TYPE jam_process_drscan_compare
 	*/
 	if (status == JAMC_SUCCESS)
 	{
-	        temp_array = jam_get_temp_workspace((count_value >> 5)*sizeof(long) + 4);
+	        temp_array = jam_get_temp_workspace((count_value >> 5)*sizeof(int32_t) + 4);
 
 		if (temp_array == NULL)
 		{
@@ -3534,9 +3534,9 @@ JAM_RETURN_TYPE jam_process_drscan_compare
 JAM_RETURN_TYPE jam_process_drscan_capture
 (
 	char *statement_buffer,
-	long count_value,
-	long *in_data,
-	long in_index
+	int32_t count_value,
+	int32_t *in_data,
+	int32_t in_index
 )
 
 /*																			*/
@@ -3553,11 +3553,11 @@ JAM_RETURN_TYPE jam_process_drscan_capture
 	int expr_begin = 0;
 	int expr_end = 0;
 	int delimiter = 0;
-	long start_index = 0L;
-	long stop_index = 0L;
+	int32_t start_index = 0L;
+	int32_t stop_index = 0L;
 	char save_ch = 0;
-	long *tdi_data = NULL;
-	long *literal_array_data = NULL;
+	int32_t *tdi_data = NULL;
+	int32_t *literal_array_data = NULL;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
@@ -3655,12 +3655,12 @@ JAM_RETURN_TYPE jam_process_drscan
 	int expr_begin = 0;
 	int expr_end = 0;
 	int delimiter = 0;
-	long count_value = 0L;
-	long start_index = 0L;
-	long stop_index = 0L;
+	int32_t count_value = 0L;
+	int32_t start_index = 0L;
+	int32_t stop_index = 0L;
 	char save_ch = 0;
-	long *tdi_data = NULL;
-	long *literal_array_data = NULL;
+	int32_t *tdi_data = NULL;
+	int32_t *literal_array_data = NULL;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
@@ -3924,7 +3924,7 @@ JAM_RETURN_TYPE jam_process_exit
 	int expr_begin = 0;
 	int expr_end = 0;
 	char save_ch = 0;
-	long exit_code_value = 0L;
+	int32_t exit_code_value = 0L;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 
@@ -4012,7 +4012,7 @@ JAM_RETURN_TYPE jam_process_export
 	int key_end = 0;
 	int expr_begin = 0;
 	int expr_end = 0;
-	long value = 0L;
+	int32_t value = 0L;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 
@@ -4126,9 +4126,9 @@ JAM_RETURN_TYPE jam_process_for
 	int variable_end = 0;
 	int expr_begin = 0;
 	int expr_end = 0;
-	long start_value = 0L;
-	long stop_value = 0L;
-	long step_value = 1L;
+	int32_t start_value = 0L;
+	int32_t stop_value = 0L;
+	int32_t step_value = 1L;
 	char save_ch = 0;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
@@ -4396,7 +4396,7 @@ JAM_RETURN_TYPE jam_process_frequency
 	int ret = 0;
 	int expr_begin = 0;
 	int expr_end = 0;
-	long expr_value = 0L;
+	int32_t expr_value = 0L;
 	char save_ch = 0;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
@@ -4489,7 +4489,7 @@ JAM_RETURN_TYPE jam_process_if
 	int index = 0;
 	int expr_begin = 0;
 	int expr_end = 0;
-	long conditional_value = 0L;
+	int32_t conditional_value = 0L;
 	int then_index = 0L;
 	char save_ch = 0;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
@@ -4580,8 +4580,8 @@ JAM_RETURN_TYPE jam_process_integer
 	int dim_end = 0;
 	int expr_begin = 0;
 	int expr_end = 0;
-	long dim_value = 0L;
-	long init_value = 0L;
+	int32_t dim_value = 0L;
+	int32_t init_value = 0L;
 	char save_ch = 0;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
@@ -4787,9 +4787,9 @@ JAM_RETURN_TYPE jam_process_integer
 JAM_RETURN_TYPE jam_process_irscan_compare
 (
 	char *statement_buffer,
-	long count_value,
-	long *in_data,
-	long in_index
+	int32_t count_value,
+	int32_t *in_data,
+	int32_t in_index
 )
 
 /*																			*/
@@ -4812,18 +4812,18 @@ JAM_RETURN_TYPE jam_process_irscan_compare
 	int actual = 0;
 	int expected = 0;
 	int mask = 0;
-	long comp_start_index = 0L;
-	long comp_stop_index = 0L;
-	long mask_start_index = 0L;
-	long mask_stop_index = 0L;
+	int32_t comp_start_index = 0L;
+	int32_t comp_stop_index = 0L;
+	int32_t mask_start_index = 0L;
+	int32_t mask_stop_index = 0L;
 	char save_ch = 0;
-	long *temp_array = NULL;
+	int32_t *temp_array = NULL;
 	BOOL result = TRUE;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
-	long *comp_data = NULL;
-	long *mask_data = NULL;
-	long *literal_array_data = NULL;
+	int32_t *comp_data = NULL;
+	int32_t *mask_data = NULL;
+	int32_t *literal_array_data = NULL;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 
 	/*
@@ -5002,7 +5002,7 @@ JAM_RETURN_TYPE jam_process_irscan_compare
 	*/
 	if (status == JAMC_SUCCESS)
 	{
-	        temp_array = jam_get_temp_workspace((count_value >> 5)*sizeof(long) + 4);
+	        temp_array = jam_get_temp_workspace((count_value >> 5)*sizeof(int32_t) + 4);
 
 		if (temp_array == NULL)
 		{
@@ -5051,9 +5051,9 @@ JAM_RETURN_TYPE jam_process_irscan_compare
 JAM_RETURN_TYPE jam_process_irscan_capture
 (
 	char *statement_buffer,
-	long count_value,
-	long *in_data,
-	long in_index
+	int32_t count_value,
+	int32_t *in_data,
+	int32_t in_index
 )
 
 /*																			*/
@@ -5070,11 +5070,11 @@ JAM_RETURN_TYPE jam_process_irscan_capture
 	int expr_begin = 0;
 	int expr_end = 0;
 	int delimiter = 0;
-	long start_index = 0L;
-	long stop_index = 0L;
+	int32_t start_index = 0L;
+	int32_t stop_index = 0L;
 	char save_ch = 0;
-	long *tdi_data = NULL;
-	long *literal_array_data = NULL;
+	int32_t *tdi_data = NULL;
+	int32_t *literal_array_data = NULL;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
@@ -5172,12 +5172,12 @@ JAM_RETURN_TYPE jam_process_irscan
 	int expr_begin = 0;
 	int expr_end = 0;
 	int delimiter = 0L;
-	long count_value = 0L;
-	long start_index = 0L;
-	long stop_index = 0L;
+	int32_t count_value = 0L;
+	int32_t start_index = 0L;
+	int32_t stop_index = 0L;
 	char save_ch = 0;
-	long *tdi_data = NULL;
-	long *literal_array_data = NULL;
+	int32_t *tdi_data = NULL;
+	int32_t *literal_array_data = NULL;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
@@ -5405,12 +5405,12 @@ JAM_RETURN_TYPE jam_process_irstop
 
 JAM_RETURN_TYPE jam_copy_array_subrange
 (
-	long *source_heap_data,
-	long source_subrange_begin,
-	long source_subrange_end,
-	long *dest_heap_data,
-	long dest_subrange_begin,
-	long dest_subrange_end
+	int32_t *source_heap_data,
+	int32_t source_subrange_begin,
+	int32_t source_subrange_end,
+	int32_t *dest_heap_data,
+	int32_t dest_subrange_begin,
+	int32_t dest_subrange_end
 )
 
 /*																			*/
@@ -5420,12 +5420,12 @@ JAM_RETURN_TYPE jam_copy_array_subrange
 /*																			*/
 /****************************************************************************/
 {
-	long source_length = 1 + source_subrange_end - source_subrange_begin;
-	long dest_length = 1 + dest_subrange_end - dest_subrange_begin;
-	long length = source_length;
-	long index = 0L;
-	long source_index = 0L;
-	long dest_index = 0L;
+	int32_t source_length = 1 + source_subrange_end - source_subrange_begin;
+	int32_t dest_length = 1 + dest_subrange_end - dest_subrange_begin;
+	int32_t length = source_length;
+	int32_t index = 0L;
+	int32_t source_index = 0L;
+	int32_t dest_index = 0L;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	/* find minimum of source_length and dest_length */
@@ -5454,7 +5454,7 @@ JAM_RETURN_TYPE jam_copy_array_subrange
 			{
 				/* clear a single bit */
 				dest_heap_data[dest_index >> 5] &=
-					(~(unsigned long)(1L << (dest_index & 0x1f)));
+					(~(uint32_t)(1L << (dest_index & 0x1f)));
 			}
 		}
 	}
@@ -5531,19 +5531,19 @@ JAM_RETURN_TYPE jam_process_assignment
 	int expr_begin = 0;
 	int expr_end = 0;
 	int bracket_count = 0;
-	long dim_value = 0L;
-	long assign_value = 0L;
+	int32_t dim_value = 0L;
+	int32_t assign_value = 0L;
 	char save_ch = 0;
-	long source_subrange_begin = 0L;
-	long source_subrange_end = 0L;
-	long dest_subrange_begin = 0L;
-	long dest_subrange_end = 0L;
+	int32_t source_subrange_begin = 0L;
+	int32_t source_subrange_end = 0L;
+	int32_t dest_subrange_begin = 0L;
+	int32_t dest_subrange_end = 0L;
 	BOOL is_array = FALSE;
 	BOOL full_array = FALSE;
 	BOOL array_subrange = FALSE;
-	long *source_heap_data = NULL;
-	long *dest_heap_data = NULL;
-	long *literal_array_data = NULL;
+	int32_t *source_heap_data = NULL;
+	int32_t *dest_heap_data = NULL;
+	int32_t *literal_array_data = NULL;
 	JAME_EXPRESSION_TYPE assign_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
@@ -5932,7 +5932,7 @@ JAM_RETURN_TYPE jam_process_assignment
 							{
 								/* clear a single bit */
 								dest_heap_data[dim_value >> 5] &=
-									(~(unsigned long)(1L << (dim_value & 0x1f)));
+									(~(uint32_t)(1L << (dim_value & 0x1f)));
 							}
 							else
 							{
@@ -6117,7 +6117,7 @@ JAM_RETURN_TYPE jam_process_padding
 	int expr_end = 0;
 	int delimiter = 0;
 	char save_ch = 0;
-	long padding[4] = {0};
+	int32_t padding[4] = {0};
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
@@ -6231,8 +6231,8 @@ JAM_RETURN_TYPE jam_process_pop
 /****************************************************************************/
 {
 	int index = 0;
-	long push_value = 0L;
-	long dim_value = 0L;
+	int32_t push_value = 0L;
+	int32_t dim_value = 0L;
 	int variable_begin = 0;
 	int variable_end = 0;
 	int dim_begin = 0;
@@ -6240,7 +6240,7 @@ JAM_RETURN_TYPE jam_process_pop
 	int bracket_count = 0;
 	char save_ch = 0;
 	BOOL is_array = FALSE;
-	long *heap_data = NULL;
+	int32_t *heap_data = NULL;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_STACK_RECORD *stack_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
@@ -6468,7 +6468,7 @@ JAM_RETURN_TYPE jam_process_pop
 							{
 								/* clear a single bit */
 								heap_data[dim_value >> 5] &=
-									(~(unsigned long)(1L << (dim_value & 0x1f)));
+									(~(uint32_t)(1L << (dim_value & 0x1f)));
 							}
 							else
 							{
@@ -6525,11 +6525,11 @@ JAM_RETURN_TYPE jam_process_pre_post
 	int expr_end = 0;
 	int delimiter = 0;
 	char save_ch = 0;
-	long count = 0L;
-	long start_index = 0L;
-	long stop_index = 0L;
-	long *literal_array_data = NULL;
-	long *padding_data = NULL;
+	int32_t count = 0L;
+	int32_t start_index = 0L;
+	int32_t stop_index = 0L;
+	int32_t *literal_array_data = NULL;
+	int32_t *padding_data = NULL;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
@@ -6719,7 +6719,7 @@ JAM_RETURN_TYPE jam_process_print
 	int expr_begin = 0;
 	int expr_end = 0;
 	char save_ch = 0;
-	long expr_value = 0L;
+	int32_t expr_value = 0L;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
 	if ((jam_version == 2) && (jam_phase != JAM_PROCEDURE_PHASE))
@@ -7086,7 +7086,7 @@ JAM_RETURN_TYPE jam_process_push
 	int expr_begin = 0;
 	int expr_end = 0;
 	char save_ch = 0;
-	long push_value = 0L;
+	int32_t push_value = 0L;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 
 	if ((jam_version == 2) && (jam_phase != JAM_PROCEDURE_PHASE))
@@ -7149,7 +7149,7 @@ JAM_RETURN_TYPE jam_process_return
 /****************************************************************************/
 {
 	int index = 0;
-	long return_position = 0L;
+	int32_t return_position = 0L;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 	JAMS_STACK_RECORD *stack_record = NULL;
 
@@ -7411,8 +7411,8 @@ JAM_RETURN_TYPE jam_process_vector_capture
 (
 	char *statement_buffer,
 	int signal_count,
-	long *dir_vector,
-	long *data_vector
+	int32_t *dir_vector,
+	int32_t *data_vector
 )
 
 /*																			*/
@@ -7429,11 +7429,11 @@ JAM_RETURN_TYPE jam_process_vector_capture
 	int expr_begin = 0;
 	int expr_end = 0;
 	int delimiter = 0;
-	long start_index = 0L;
-	long stop_index = 0L;
+	int32_t start_index = 0L;
+	int32_t stop_index = 0L;
 	char save_ch = 0;
-	long *capture_buffer = NULL;
-	long *literal_array_data = NULL;
+	int32_t *capture_buffer = NULL;
+	int32_t *literal_array_data = NULL;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
@@ -7518,8 +7518,8 @@ JAM_RETURN_TYPE jam_process_vector_compare
 (
 	char *statement_buffer,
 	int signal_count,
-	long *dir_vector,
-	long *data_vector
+	int32_t *dir_vector,
+	int32_t *data_vector
 )
 
 /*																			*/
@@ -7542,18 +7542,18 @@ JAM_RETURN_TYPE jam_process_vector_compare
 	int actual = 0;
 	int expected = 0;
 	int mask = 0;
-	long comp_start_index = 0L;
-	long comp_stop_index = 0L;
-	long mask_start_index = 0L;
-	long mask_stop_index = 0L;
+	int32_t comp_start_index = 0L;
+	int32_t comp_stop_index = 0L;
+	int32_t mask_start_index = 0L;
+	int32_t mask_stop_index = 0L;
 	char save_ch = 0;
-	long *temp_array = NULL;
+	int32_t *temp_array = NULL;
 	BOOL result = TRUE;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
-	long *comp_data = NULL;
-	long *mask_data = NULL;
-	long *literal_array_data = NULL;
+	int32_t *comp_data = NULL;
+	int32_t *mask_data = NULL;
+	int32_t *literal_array_data = NULL;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
 
 	/*
@@ -7732,7 +7732,7 @@ JAM_RETURN_TYPE jam_process_vector_compare
 	*/
 	if (status == JAMC_SUCCESS)
 	{
-	        temp_array = jam_get_temp_workspace((signal_count >> 5)*sizeof(long) + 4);
+	        temp_array = jam_get_temp_workspace((signal_count >> 5)*sizeof(int32_t) + 4);
 
 		if (temp_array == NULL)
 		{
@@ -7803,14 +7803,14 @@ JAM_RETURN_TYPE jam_process_vector
 	int expr_begin = 0;
 	int expr_end = 0;
 	int delimiter = 0;
-	long dir_start_index = 0L;
-	long dir_stop_index = 0L;
-	long data_start_index = 0L;
-	long data_stop_index = 0L;
+	int32_t dir_start_index = 0L;
+	int32_t dir_stop_index = 0L;
+	int32_t data_start_index = 0L;
+	int32_t data_stop_index = 0L;
 	char save_ch = 0;
-	long *dir_vector = NULL;
-	long *data_vector = NULL;
-	long *literal_array_data = NULL;
+	int32_t *dir_vector = NULL;
+	int32_t *data_vector = NULL;
+	int32_t *literal_array_data = NULL;
 	JAMS_SYMBOL_RECORD *symbol_record = NULL;
 	JAMS_HEAP_RECORD *heap_record = NULL;
 	JAM_RETURN_TYPE status = JAMC_SYNTAX_ERROR;
@@ -8136,7 +8136,7 @@ JAM_RETURN_TYPE jam_process_wait_cycles
 /*																			*/
 /****************************************************************************/
 {
-	long cycles = 0L;
+	int32_t cycles = 0L;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
@@ -8183,7 +8183,7 @@ JAM_RETURN_TYPE jam_process_wait_microseconds
 /*																			*/
 /****************************************************************************/
 {
-	long microseconds = 0L;
+	int32_t microseconds = 0L;
 	JAME_EXPRESSION_TYPE expr_type = JAM_ILLEGAL_EXPR_TYPE;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 
@@ -8579,9 +8579,9 @@ JAM_RETURN_TYPE jam_execute_statement
 /****************************************************************************/
 /*																			*/
 
-long jam_get_line_of_position
+int32_t jam_get_line_of_position
 (
-	long position
+	int32_t position
 )
 
 /*																			*/
@@ -8593,8 +8593,8 @@ long jam_get_line_of_position
 /*																			*/
 /****************************************************************************/
 {
-	long line = 0L;
-	long index = 0L;
+	int32_t line = 0L;
+	int32_t index = 0L;
 	int ch;
 
 	if (jam_seek(0L) == 0)
@@ -8620,13 +8620,13 @@ long jam_get_line_of_position
 JAM_RETURN_TYPE jam_execute
 (
 	char *program,
-	long program_size,
+	int32_t program_size,
 	char *workspace,
-	long workspace_size,
+	int32_t workspace_size,
 	char *action,
 	char **init_list,
 	int reset_jtag,
-	long *error_line,
+	int32_t *error_line,
 	int *exit_code,
 	int *format_version
 )

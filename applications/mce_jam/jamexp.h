@@ -14,7 +14,7 @@
 JAM_RETURN_TYPE jam_evaluate_expression
 (
 	char *expression,
-	long *result,
+	int32_t *result,
 	JAME_EXPRESSION_TYPE *result_type
 );
 

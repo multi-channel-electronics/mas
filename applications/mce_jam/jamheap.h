@@ -49,9 +49,9 @@ typedef struct JAMS_HEAP_STRUCT
 	JAMS_SYMBOL_RECORD *symbol_record;
 	JAME_BOOLEAN_REP rep;	/* data representation format */
 	BOOL cached;		/* TRUE if array data is cached */
-	long dimension;		/* number of elements in array */
-	long position;		/* position in file of initialization data */
-	long data[1];		/* first word of data (or cache buffer) */
+	int32_t dimension;		/* number of elements in array */
+	int32_t position;		/* position in file of initialization data */
+	int32_t data[1];		/* first word of data (or cache buffer) */
 
 } JAMS_HEAP_RECORD;
 
@@ -85,12 +85,12 @@ JAM_RETURN_TYPE jam_add_heap_record
 (
 	JAMS_SYMBOL_RECORD *symbol_record,
 	JAMS_HEAP_RECORD **heap_record,
-	long dimension
+	int32_t dimension
 );
 
 void *jam_get_temp_workspace
 (
-	long size
+	int32_t size
 );
 
 void jam_free_temp_workspace

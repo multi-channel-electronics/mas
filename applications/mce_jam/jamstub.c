@@ -45,7 +45,7 @@
 typedef int BOOL;
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
-typedef unsigned long DWORD;
+typedef uint32_t DWORD;
 #define TRUE 1
 #define FALSE 0
 #endif
@@ -132,11 +132,11 @@ char **file_buffer = NULL;
 #else
 char *file_buffer = NULL;
 #endif
-long file_pointer = 0L;
-long file_length = 0L;
+int32_t file_pointer = 0L;
+int32_t file_length = 0L;
 
 /* delay count for one millisecond delay */
-long one_ms_delay = 0L;
+int32_t one_ms_delay = 0L;
 
 /* delay count to reduce the maximum TCK frequency */
 int tck_delay = 0;
@@ -172,7 +172,7 @@ void close_jtag_hardware(void);
 #endif /* MEM_TRACKER */
 
 #if PORT == WINDOWS || PORT == DOS || PORT == UNIX
-//long tck_freq = 10000000;
+//int32_t tck_freq = 10000000;
 
 /* parallel port interface available on PC only */
 BOOL specified_lpt_port = FALSE;
@@ -208,7 +208,7 @@ BOOL initialize_nt_driver(void);
 #endif
 
 /* function prototypes to allow forward reference */
-extern void delay_loop(long count);
+extern void delay_loop(int32_t count);
 
 /*
 *	This structure stores information about each available vector signal
@@ -279,7 +279,7 @@ int jam_getc(void)
 	return (ch);
 }
 
-int jam_seek(long offset)
+int jam_seek(int32_t offset)
 {
 	int return_code = EOF;
 
@@ -388,11 +388,11 @@ void jam_message(char *message_text)
 	fflush(stdout);
 }
 
-void jam_export_integer(char *key, long value)
+void jam_export_integer(char *key, int32_t value)
 {
 	if (verbose)
 	{
-		printf("Export: key = \"%s\", value = %ld\n", key, value);
+		printf("Export: key = \"%s\", value = %ld\n", key, (long)value);
 		fflush(stdout);
 	}
 }
@@ -400,7 +400,7 @@ void jam_export_integer(char *key, long value)
 #define HEX_LINE_CHARS 72
 #define HEX_LINE_BITS (HEX_LINE_CHARS * 4)
 
-char conv_to_hex(unsigned long value)
+char conv_to_hex(uint32_t value)
 {
 	char c;
 
@@ -416,17 +416,17 @@ char conv_to_hex(unsigned long value)
 	return (c);
 }
 
-void jam_export_boolean_array(char *key, unsigned char *data, long count)
+void jam_export_boolean_array(char *key, unsigned char *data, int32_t count)
 {
-	unsigned long size, line, lines, linebits, value, j, k;
+	uint32_t size, line, lines, linebits, value, j, k;
 	char string[HEX_LINE_CHARS + 1];
-	long i, offset;
+	int32_t i, offset;
 
 	if (verbose)
 	{
 		if (count > HEX_LINE_BITS)
 		{
-			printf("Export: key = \"%s\", %ld bits, value = HEX\n", key, count);
+			printf("Export: key = \"%s\", %ld bits, value = HEX\n", key, (long)count);
 			lines = (count + (HEX_LINE_BITS - 1)) / HEX_LINE_BITS;
 
 			for (line = 0; line < lines; ++line)
@@ -486,13 +486,13 @@ void jam_export_boolean_array(char *key, unsigned char *data, long count)
 			if ((i & 3) > 0) string[j] = conv_to_hex(value);
 
 			printf("Export: key = \"%s\", %ld bits, value = HEX %s\n",
-				key, count, string);
+				key, (long)count, string);
 			fflush(stdout);
 		}
 	}
 }
 
-void jam_delay(long microseconds)
+void jam_delay(int32_t microseconds)
 {
 #if PORT == WINDOWS
 	/* if Windows NT, flush I/O cache buffer before delay loop */
@@ -556,9 +556,9 @@ int jam_vector_map
 int jam_vector_io
 (
 	int signal_count,
-	long *dir_vect,
-	long *data_vect,
-	long *capture_vect
+	int32_t *dir_vect,
+	int32_t *data_vect,
+	int32_t *capture_vect
 )
 {
 	int signal, vector, bit;
@@ -669,7 +669,7 @@ int jam_vector_io
 					}
 					else
 					{
-						capture_vect[signal >> 5] &= ~(unsigned long)
+						capture_vect[signal >> 5] &= ~(uint32_t)
 							(1L << (signal & 0x1f));
 					}
 				}
@@ -680,7 +680,7 @@ int jam_vector_io
 	return (matched_count);
 }
 
-int jam_set_frequency(long hertz)
+int jam_set_frequency(int32_t hertz)
 {
 	// ***This function is never called!  Nor does it need to be for the purposes of fibre programming.
 
@@ -703,7 +703,7 @@ int jam_set_frequency(long hertz)
 
 	if (verbose)
 	{
-	    printf(">> jam_set_frequency(): frequency of TCK is %ld Hz.\n", hertz);
+	    printf(">> jam_set_frequency(): frequency of TCK is %ld Hz.\n", (long)hertz);
 	}
 
 	return (0);
@@ -851,7 +851,7 @@ void jam_free(void *ptr)
 #endif /* USE_STATIC_MEMORY || MEM_TRACKER */
 
 #if defined(USE_STATIC_MEMORY)
-		if ((((unsigned long) ptr - (unsigned long) static_memory_heap) + n_bytes_to_free) == (unsigned long) n_bytes_allocated)
+		if ((((uint32_t) ptr - (uint32_t) static_memory_heap) + n_bytes_to_free) == (uint32_t) n_bytes_allocated)
 		{
 			n_bytes_allocated -= n_bytes_to_free;
 		}
@@ -895,7 +895,7 @@ DWORD get_tick_count(void)
 #if PORT == WINDOWS
 	tick_count = GetTickCount();
 #elif PORT == DOS
-	_bios_timeofday(_TIME_GETCLOCK, (long *)&tick_count);
+	_bios_timeofday(_TIME_GETCLOCK, (int32_t *)&tick_count);
 	tick_count *= 55L;	/* convert to milliseconds */
 #else
 	/* assume clock() function returns microseconds */
@@ -937,7 +937,7 @@ void calibrate_delay(void)
 
 	if (verbose)
 	{
-	    printf(">> calibrate_delay(): one ms period is %ld CPU ticks.\n", one_ms_delay);
+	    printf(">> calibrate_delay(): one ms period is %ld CPU ticks.\n", (long)one_ms_delay);
 	}
 }
 
@@ -979,8 +979,8 @@ int main(int argc, char **argv)
 	BOOL help = FALSE;
 	BOOL error = FALSE;
 	char *filename = NULL;
-	long offset = 0L;
-	long error_line = 0L;
+	int32_t offset = 0L;
+	int32_t error_line = 0L;
 	JAM_RETURN_TYPE crc_result = JAMC_SUCCESS;
 	JAM_RETURN_TYPE exec_result = JAMC_SUCCESS;
 	unsigned short expected_crc = 0;
@@ -1000,10 +1000,11 @@ int main(int argc, char **argv)
 	int init_count = 0;
 	FILE *fp = NULL;
 	struct stat sbuf;
-	long workspace_size = 0;
+	int32_t workspace_size = 0;
 	char *exit_string = NULL;
 	int reset_jtag = 1;
-  char *ptr;
+	char *ptr;
+	long tmplong;
 
 	verbose = FALSE;
 
@@ -1124,8 +1125,9 @@ int main(int argc, char **argv)
 #endif
 
 			case 'M':				/* set memory size */
-				if (sscanf(&argv[arg][2], "%ld", &workspace_size) != 1)
+				if (sscanf(&argv[arg][2], "%ld", &tmplong) != 1)
 					error = TRUE;
+				workspace_size = (int32_t)tmplong;
 				if (workspace_size == 0)
 					error = TRUE;
 				break;
@@ -1439,7 +1441,7 @@ int main(int argc, char **argv)
 			else if (exec_result < MAX_ERROR_CODE)
 			{
 				printf("Error on line %ld: %s.\nProgram terminated.\n",
-					error_line, error_text[exec_result]);
+					(long)error_line, error_text[exec_result]);
 			}
 			// Otherwise, if there was an UNKNOWN execution error
 			else
@@ -2011,8 +2013,8 @@ BOOL initialize_nt_driver()
 					fprintf(stderr,
 						"I/O error:  device driver %s is not compatible\n(Driver version is %lu, expected version %lu.\n",
 						nt_lpt_str,
-						(unsigned long) buffer[0],
-						(unsigned long) PGDC_HDLC_NTDRIVER_VERSION);
+						(uint32_t) buffer[0],
+						(uint32_t) PGDC_HDLC_NTDRIVER_VERSION);
 				}
 			}
 			else
@@ -2221,7 +2223,7 @@ void flush_ports(void)
 #pragma optimize ("ceglt", off)
 #endif
 
-void delay_loop(long count)
+void delay_loop(int32_t count)
 {
 	// This must remain here, otherwise .pof programming fails above 5000 Hz.
 	while (count != 0L) count--;

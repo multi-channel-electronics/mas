@@ -77,28 +77,28 @@ JAM_RETURN_TYPE jam_set_dr_preamble
 (
 	int count,
 	int start_index,
-	long *data
+	int32_t *data
 );
 
 JAM_RETURN_TYPE jam_set_ir_preamble
 (
 	int count,
 	int start_index,
-	long *data
+	int32_t *data
 );
 
 JAM_RETURN_TYPE jam_set_dr_postamble
 (
 	int count,
 	int start_index,
-	long *data
+	int32_t *data
 );
 
 JAM_RETURN_TYPE jam_set_ir_postamble
 (
 	int count,
 	int start_index,
-	long *data
+	int32_t *data
 );
 
 JAM_RETURN_TYPE jam_goto_jtag_state
@@ -108,46 +108,46 @@ JAM_RETURN_TYPE jam_goto_jtag_state
 
 JAM_RETURN_TYPE jam_do_wait_cycles
 (
-	long cycles,
+	int32_t cycles,
 	JAME_JTAG_STATE wait_state
 );
 
 JAM_RETURN_TYPE jam_do_wait_microseconds
 (
-	long microseconds,
+	int32_t microseconds,
 	JAME_JTAG_STATE wait_state
 );
 
 JAM_RETURN_TYPE jam_do_irscan
 (
-	long count,
-	long *data,
-	long start_index
+	int32_t count,
+	int32_t *data,
+	int32_t start_index
 );
 
 JAM_RETURN_TYPE jam_swap_ir
 (
-	long count,
-	long *in_data,
-	long in_index,
-	long *out_data,
-	long out_index
+	int32_t count,
+	int32_t *in_data,
+	int32_t in_index,
+	int32_t *out_data,
+	int32_t out_index
 );
 
 JAM_RETURN_TYPE jam_do_drscan
 (
-	long count,
-	long *data,
-	long start_index
+	int32_t count,
+	int32_t *data,
+	int32_t start_index
 );
 
 JAM_RETURN_TYPE jam_swap_dr
 (
-	long count,
-	long *in_data,
-	long in_index,
-	long *out_data,
-	long out_index
+	int32_t count,
+	int32_t *in_data,
+	int32_t in_index,
+	int32_t *out_data,
+	int32_t out_index
 );
 
 void jam_free_jtag_padding_buffers

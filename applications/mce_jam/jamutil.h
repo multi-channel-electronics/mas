@@ -17,6 +17,8 @@
 /*																			*/
 /****************************************************************************/
 
+#include <inttypes.h>
+
 char jam_toupper(char ch);
 
 int jam_iscntrl(char ch);
@@ -35,9 +37,9 @@ int jam_is_hex_char(char ch);
 
 int jam_strlen(char *string);
 
-long jam_atol(char *string);
+int32_t jam_atol(char *string);
 
-void jam_ltoa(char *string, long value);
+void jam_ltoa(char *string, int32_t value);
 
 int jam_strcmp(char *left, char *right);
 

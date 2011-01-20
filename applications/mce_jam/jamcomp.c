@@ -55,7 +55,7 @@ short jam_bits_required(short n)
 /****************************************************************************/
 /*																			*/
 
-short jam_read_packed(char *buffer, long length, short bits)
+short jam_read_packed(char *buffer, int32_t length, short bits)
 
 /*																			*/
 /*	Description:	Read the next value from the input array "buffer".		*/
@@ -68,7 +68,7 @@ short jam_read_packed(char *buffer, long length, short bits)
 /****************************************************************************/
 {
 	short			result = -1;
-	static long		index = 0L;
+	static int32_t		index = 0L;
 	static short	bits_avail = 0;
 	short			shift = 0;
 
@@ -111,12 +111,12 @@ short jam_read_packed(char *buffer, long length, short bits)
 /****************************************************************************/
 /*																			*/
 
-long jam_uncompress
+int32_t jam_uncompress
 (
 	char *in, 
-	long in_length, 
+	int32_t in_length, 
 	char *out, 
-	long out_length,
+	int32_t out_length,
 	int version
 )
 
@@ -130,9 +130,9 @@ long jam_uncompress
 /*																			*/
 /****************************************************************************/
 {
-	long	i, j, data_length = 0L;
+	int32_t	i, j, data_length = 0L;
 	short	offset, length;
-	long	match_data_length = MATCH_DATA_LENGTH;
+	int32_t	match_data_length = MATCH_DATA_LENGTH;
 
 	if (version == 2) --match_data_length;
 	
@@ -140,9 +140,9 @@ long jam_uncompress
 	for (i = 0; i < out_length; ++i) out[i] = 0;
 
 	/* Read number of bytes in data. */
-	for (i = 0; i < sizeof (in_length); ++i) 
+	for (i = 0; i < sizeof(in_length); ++i) 
 	{
-		data_length = data_length | ((long) jam_read_packed(in, in_length, CHAR_BITS) << (long) (i * CHAR_BITS));
+		data_length = data_length | ((int32_t) jam_read_packed(in, in_length, CHAR_BITS) << (int32_t) (i * CHAR_BITS));
 	}
 
 	if (data_length > out_length) data_length = -1L;

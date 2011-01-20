@@ -219,9 +219,9 @@ JAM_RETURN_TYPE jam_pop_stack_record(void)
 JAM_RETURN_TYPE jam_push_fornext_record
 (
 	JAMS_SYMBOL_RECORD *iterator,
-	long for_position,
-	long stop_value,
-	long step_value
+	int32_t for_position,
+	int32_t stop_value,
+	int32_t step_value
 )
 
 /*																			*/
@@ -249,7 +249,7 @@ JAM_RETURN_TYPE jam_push_fornext_record
 
 JAM_RETURN_TYPE jam_push_pushpop_record
 (
-	long value
+	int32_t value
 )
 
 /*																			*/
@@ -277,7 +277,7 @@ JAM_RETURN_TYPE jam_push_pushpop_record
 
 JAM_RETURN_TYPE jam_push_callret_record
 (
-	long return_position
+	int32_t return_position
 )
 
 /*																			*/

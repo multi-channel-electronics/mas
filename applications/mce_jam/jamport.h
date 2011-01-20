@@ -29,6 +29,8 @@
 *			steps may be necessary. See readme file for more details.
 */
 
+#include <stdint.h>
+
 #define DOS      2
 #define WINDOWS  3
 #define UNIX     4

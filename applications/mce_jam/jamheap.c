@@ -30,7 +30,7 @@ JAMS_HEAP_RECORD *jam_heap = NULL;
 
 void *jam_heap_top = NULL;
 
-long jam_heap_records = 0L;
+int32_t jam_heap_records = 0L;
 
 /****************************************************************************/
 /*																			*/
@@ -49,7 +49,7 @@ JAM_RETURN_TYPE jam_init_heap(void)
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
 	void **symbol_table = NULL;
 	JAMS_STACK_RECORD *stack = NULL;
-	long *jtag_buffer = NULL;
+	int32_t *jtag_buffer = NULL;
 
 	jam_heap_records = 0L;
 
@@ -57,7 +57,7 @@ JAM_RETURN_TYPE jam_init_heap(void)
 	{
 		symbol_table = (void **) jam_workspace;
 		stack = (JAMS_STACK_RECORD *) &symbol_table[JAMC_MAX_SYMBOL_COUNT];
-		jtag_buffer = (long *) &stack[JAMC_MAX_NESTING_DEPTH];
+		jtag_buffer = (int32_t *) &stack[JAMC_MAX_NESTING_DEPTH];
 		jam_heap = (JAMS_HEAP_RECORD *)
 			(((char *) jtag_buffer) + JAMC_JTAG_BUFFER_SIZE);
 		jam_heap_top = (void *) jam_heap;
@@ -65,8 +65,7 @@ JAM_RETURN_TYPE jam_init_heap(void)
 		/*
 		*	Check that there is some memory available for the heap
 		*/
-		if (((long)jam_heap) > (((long)jam_workspace_size) +
-			((long)jam_workspace)))
+		if (((long)jam_heap) > (((long)jam_workspace_size) + ((long)jam_workspace)))
 		{
 			status = JAMC_OUT_OF_MEMORY;
 		}
@@ -108,7 +107,7 @@ JAM_RETURN_TYPE jam_add_heap_record
 (
 	JAMS_SYMBOL_RECORD *symbol_record,
 	JAMS_HEAP_RECORD **heap_record,
-	long dimension
+	int32_t dimension
 )
 
 /*																			*/
@@ -121,7 +120,7 @@ JAM_RETURN_TYPE jam_add_heap_record
 {
 	int count = 0;
 	int element = 0;
-	long space_needed = 0L;
+	int32_t space_needed = 0L;
 	BOOL cached = FALSE;
 	JAMS_HEAP_RECORD *heap_ptr = NULL;
 	JAM_RETURN_TYPE status = JAMC_SUCCESS;
@@ -133,16 +132,16 @@ JAM_RETURN_TYPE jam_add_heap_record
 	switch (symbol_record->type)
 	{
 	case JAM_INTEGER_ARRAY_WRITABLE:
-		space_needed = dimension * sizeof(long);
+		space_needed = dimension * sizeof(int32_t);
 		break;
 
 	case JAM_BOOLEAN_ARRAY_WRITABLE:
 		space_needed = ((dimension >> 5) + ((dimension & 0x1f) ? 1 : 0)) *
-			sizeof(long);
+			sizeof(int32_t);
 		break;
 
 	case JAM_INTEGER_ARRAY_INITIALIZED:
-		space_needed = dimension * sizeof(long);
+		space_needed = dimension * sizeof(int32_t);
 /*		if (space_needed > JAMC_ARRAY_CACHE_SIZE)	*/
 /*		{											*/
 /*			space_needed = JAMC_ARRAY_CACHE_SIZE;	*/
@@ -152,7 +151,7 @@ JAM_RETURN_TYPE jam_add_heap_record
 
 	case JAM_BOOLEAN_ARRAY_INITIALIZED:
 		space_needed = ((dimension >> 5) + ((dimension & 0x1f) ? 1 : 0)) *
-			sizeof(long);
+			sizeof(int32_t);
 /*		if (space_needed > JAMC_ARRAY_CACHE_SIZE)	*/
 /*		{											*/
 /*			space_needed = JAMC_ARRAY_CACHE_SIZE;	*/
@@ -161,7 +160,7 @@ JAM_RETURN_TYPE jam_add_heap_record
 		break;
 
 	case JAM_PROCEDURE_BLOCK:
-		space_needed = ((dimension >> 2) + 1) * sizeof(long);
+		space_needed = ((dimension >> 2) + 1) * sizeof(int32_t);
 		break;
 
 	default:
@@ -234,7 +233,7 @@ JAM_RETURN_TYPE jam_add_heap_record
 		}
 
 		/* initialize data area to zero */
-		count = (int) (space_needed / sizeof(long));
+		count = (int) (space_needed / sizeof(int32_t));
 		for (element = 0; element < count; ++element)
 		{
 			heap_ptr->data[element] = 0L;
@@ -253,7 +252,7 @@ JAM_RETURN_TYPE jam_add_heap_record
 
 void *jam_get_temp_workspace
 (
-	long size
+	int32_t size
 )
 
 /*																			*/

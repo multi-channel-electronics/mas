@@ -12,12 +12,12 @@
 #ifndef INC_JAMCOMP_H
 #define INC_JAMCOMP_H
 
-long jam_uncompress
+int32_t jam_uncompress
 (
 	char *in, 
-	long in_length, 
+	int32_t in_length, 
 	char *out, 
-	long out_length,
+	int32_t out_length,
 	int version
 );
 
