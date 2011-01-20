@@ -3482,7 +3482,7 @@ JAM_RETURN_TYPE jam_process_drscan_compare
 	*/
 	if (status == JAMC_SUCCESS)
 	{
-		temp_array = jam_get_temp_workspace((count_value >> 3) + 4);
+	        temp_array = jam_get_temp_workspace((count_value >> 5)*sizeof(long) + 4);
 
 		if (temp_array == NULL)
 		{
@@ -4999,7 +4999,7 @@ JAM_RETURN_TYPE jam_process_irscan_compare
 	*/
 	if (status == JAMC_SUCCESS)
 	{
-		temp_array = jam_get_temp_workspace((count_value >> 3) + 4);
+	        temp_array = jam_get_temp_workspace((count_value >> 5)*sizeof(long) + 4);
 
 		if (temp_array == NULL)
 		{
@@ -7729,7 +7729,7 @@ JAM_RETURN_TYPE jam_process_vector_compare
 	*/
 	if (status == JAMC_SUCCESS)
 	{
-		temp_array = jam_get_temp_workspace((signal_count >> 3) + 4);
+	        temp_array = jam_get_temp_workspace((signal_count >> 5)*sizeof(long) + 4);
 
 		if (temp_array == NULL)
 		{
