@@ -1275,6 +1275,7 @@ JAM_RETURN_TYPE jam_convert_literal_aca
 
 		if (value == -1)
 		{
+			fprintf(stderr, "bad character encountered in jam_convert_literal_aca.\n");
 			status = JAMC_SYNTAX_ERROR;
 		}
 		else
@@ -1300,6 +1301,7 @@ JAM_RETURN_TYPE jam_convert_literal_aca
 	if ((status == JAMC_SUCCESS) &&
 		(statement_buffer[index] != JAMC_NULL_CHAR))
 	{
+		fprintf(stderr, "final NULL missing in jam_convert_literal_aca.\n");
 		status = JAMC_SYNTAX_ERROR;
 	}
 
@@ -1324,7 +1326,7 @@ JAM_RETURN_TYPE jam_convert_literal_aca
 		}
 #else
 		buffer = jam_malloc(uncompressed_length + 4);
-		long_ptr = (long *) jam_malloc(uncompressed_length + 4);
+		long_ptr = (long *) jam_malloc((uncompressed_length + 4)*sizeof(long)/4);
 #endif
 
 		if ((buffer == NULL) || (long_ptr == NULL))
@@ -1343,6 +1345,7 @@ JAM_RETURN_TYPE jam_convert_literal_aca
 
 	if (out_size != uncompressed_length)
 	{
+		fprintf(stderr, "out_size != uncompressed_length in jam_convert_literal_aca.\n");
 		status = JAMC_SYNTAX_ERROR;
 	}
 
@@ -8562,6 +8565,7 @@ JAM_RETURN_TYPE jam_execute_statement
 		}
 		else
 		{
+			fprintf(stderr, "Syntax: jam_check_assignment fail.\n");
 			status = JAMC_SYNTAX_ERROR;
 		}
 		break;
