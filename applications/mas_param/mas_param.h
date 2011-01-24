@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MAS_PARAM_H_
 #define _MAS_PARAM_H_
 
@@ -48,6 +51,7 @@ typedef struct {
 
 } options_t;
 
+void usage(void);
 int process_options(options_t *options, int argc, char **argv);
 
 enum { CFG_INT, CFG_STR, CFG_DBL };
@@ -60,10 +64,10 @@ typedef struct {
 	int count;
 	int type;
 
-	int        *data_i;
-	double     *data_d;
-	const char *data_s;
-	const char *data_name;
+    int         *data_i;
+    double      *data_d;
+    const char **data_s;
+    const char  *data_name;
 	char *name;
 	
 	config_setting_t* cfg;

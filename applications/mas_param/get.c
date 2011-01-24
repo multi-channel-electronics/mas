@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -67,7 +70,8 @@ int print_data(char *text, const mas_param_t *m)
 
 	switch (m->type) {
 	case CFG_STR:
-		s += sprintf(s, "\"%s\"", m->data_s);
+        for (int i=0; i<m->count; i++)
+            s += sprintf(s, "\"%s\" ", m->data_s[i]);
 		break;
 
 	case CFG_INT:
@@ -141,12 +145,12 @@ int param_get(config_setting_t *cfg, mas_param_t *m)
 
 	case CONFIG_TYPE_STRING:
 		m->type = CFG_STR;
+        m->data_s = malloc(m->count * sizeof(const char *));
 		if (m->array) {
-			fprintf(stderr, "Key '%s': arrays of strings "
-				"are not supported.\n", m->data_name);
-			return 1;
-		}
-		m->data_s = config_setting_get_string(cfg);
+            for (i=0; i<m->count; i++)
+                m->data_s[i] = config_setting_get_string_elem(cfg, i);
+        } else
+            *m->data_s = config_setting_get_string(cfg);
 		break;
 			
 	case CONFIG_TYPE_INT:

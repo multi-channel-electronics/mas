@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <string.h>
 #include "mas_param.h"
@@ -92,7 +95,15 @@ int  csh_item(unsigned long user_data, const mas_param_t *p)
 		break;
 
 	case CFG_STR:
-		fprintf(csh->out, "set %s = \"%s\"\n", p->data_name, (p->data_s));
+        if (p->array) {
+            fprintf(csh->out, "set %s = (", p->data_name);
+            for (i=0; i<p->count; i++) {
+                fprintf(csh->out, " \"%s\"", p->data_s[i]);
+            }
+            fprintf(csh->out, " )\n");
+        } else {
+            fprintf(csh->out, "set %s = \"%s\"\n", p->data_name, (*p->data_s));
+        }
 		break;
 
 	default:

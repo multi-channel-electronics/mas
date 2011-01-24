@@ -44,27 +44,35 @@ int st_index(const string_table_t *st, const char *name);
 #endif
 
 #define USAGE_MESSAGE \
-"Usage:\n\t%s [options] [command]\n\n"\
+"Usage:\n\tmas_param [options] <command>\n\n"\
 "Commands:\n"\
-"  bash [<prefix>]         output data as bash variable declarations\n"\
-"  csh [<prefix>]          output data as csh variable declarations\n"\
+"  bash [prefix]           output data as bash variable declarations\n"\
+"  csh [prefix]            output data as csh variable declarations\n"\
 "  idl_template <suffix>   output idl code for the target format\n"\
-"  info [<param>]          print type info for param (or all params)\n"\
+"  info [param]            print type info for param (or all params)\n"\
 "  get <param>             output value of the variable <param>\n"\
-"  set <param> [ data...]  set the value of variable <param>\n\n"\
+"  set <param> [datum]...  set the value of variable <param>\n"\
 "  full                    output full type and data for all params\n"\
-"Options:\n"\
+"\nOptions:\n"\
 USAGE_OPTION_N \
 "  -s <source file>       config file to parse\n"\
-"  -m <mas config>        choose a particular mas config file\n"\
+"  -m <mas config>        choose a particular mas config file.  Default:\n"\
+"                           %s\n"\
 "  -f <output filename>   filename for output (stdout/source file by default)\n"\
 "\n"\
 "  -v                     print version string and exit\n"\
 ""
 
+void usage(void)
+{
+  const char * dflt_exp_cfg =
+    mcelib_default_experimentfile(-1);
+  printf(USAGE_MESSAGE, dflt_exp_cfg);
+  exit(1);
+}
+
 int process_options(options_t* options, int argc, char **argv)
 {
-	int i;
 	int option;
 #if MULTICARD
 	char *s;
@@ -75,8 +83,7 @@ int process_options(options_t* options, int argc, char **argv)
 		switch(option) {
 		case '?':
 		case 'h':
-			printf(USAGE_MESSAGE, argv[0]);
-			return -1;
+            usage(); /* doesn't return */
 
 		case 'm':
 			if (options->config_file)
@@ -118,11 +125,7 @@ int process_options(options_t* options, int argc, char **argv)
 	// Process command words
 	int cmd_idx = -1;
 	if (optind >= argc || (cmd_idx=st_index(commands, argv[optind])) < 0 ) {
-		fprintf(stderr, "Specify one of:");
-		for (i=0; commands[i].name != NULL; i++)
-			fprintf(stderr, " %s", commands[i].name);
-		fprintf(stderr, "\n");
-		return 1;
+        usage();
 	}	
 	switch (commands[cmd_idx].id) {
 	case BASH:
