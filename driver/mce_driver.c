@@ -174,6 +174,7 @@ int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 		} else {
 			mce_command_do_callback(-MCE_ERR_INT_UNKNOWN, NULL, card);
 		}
+                dsp_unreserve(card);
 		MDAT_UNLOCK;
 		return 0;
 	}
@@ -188,6 +189,7 @@ int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 	if (msg->reply != DSP_ACK) {
                 PRINT_ERR(card, "dsp reply was not ACK!\n");
 		mce_command_do_callback(-MCE_ERR_INT_FAILURE, NULL, card);
+                dsp_unreserve(card);
 		MDAT_UNLOCK;
 		return 0;
 	}
