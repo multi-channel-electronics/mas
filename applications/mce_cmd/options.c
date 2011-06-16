@@ -43,7 +43,7 @@ int process_options(options_t *options, int argc, char **argv)
 {
 	char *s = NULL;
 	int option;
-	while ( (option = getopt(argc, argv, "?X:c:d:ef:hin:o:pqrvx")) >=0)
+	while ( (option = getopt(argc, argv, "?X:c:ef:hin:o:pqrvx")) >=0)
 	{
 
 		switch(option) {
