@@ -636,36 +636,10 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case COMMAND_GO:
 
-			/* This is a bit busted; in das_compatible
-			 * mode it does an acquisition using the card
-			 * you specify (regardless of whether you use
-			 * the correct parameter id or not).  When not
-			 * das_compatible, the data (if any) will
-			 * accumulate in the device driver buffer, it
-			 * is not handled by mce_cmd.                  */
-
-			if (options.das_compatible) {
-				cmdtree_token_word( s, tokens+1 );
-				options.acq_cards = translate_card_string(s, errmsg);
-				if (options.acq_cards<0) {
-					ret_val = -1;
-					break;
-				}
-
-				ret_val = prepare_outfile(errmsg, SPECIAL_ACQ_CONFIG);
-				if (ret_val) break;
-				
-				ret_val = mcedata_acq_go(acq, -1);
-				if (ret_val != 0) {
-					sprintf(errmsg, "Acquisition failed.\n");
-				}
-			
-			} else {
-				// If you get here, your data just accumulates
-				//  in the driver's buffer, /dev/mce_data0, assuming that
-				//  the frame size has been set correctly.
-				err = mcecmd_start_application(mce, &mcep);
-			}
+      // If you get here, your data just accumulates
+      //  in the driver's buffer, /dev/mce_data0, assuming that
+      //  the frame size has been set correctly.
+      err = mcecmd_start_application(mce, &mcep);
 			break;
 
 		case COMMAND_ST:

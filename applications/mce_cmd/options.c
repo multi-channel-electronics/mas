@@ -29,7 +29,6 @@ USAGE_OPTION_N \
 "  -c <config file>       choose a particular mce config file\n"\
 "  -f <batch file>        run commands from file instead of stdin\n"\
 "  -X \"cmd string\"        execute this command and exit (these can be stacked)\n"\
-"  -C <data file>         DAS compatibility mode\n"\
 "  -o <directory>         data file path\n"\
 "\n"\
 "  -x <command>           execute remainder of line as an mce_cmd command\n"\
@@ -83,11 +82,6 @@ int process_options(options_t *options, int argc, char **argv)
 
 		case 'o':
 			strcpy(options->acq_path, optarg);
-			break;
-
-		case 'C':
-			options->das_compatible = 1;
-			strcpy(options->acq_filename, optarg);
 			break;
 
 		case 'r':

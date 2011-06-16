@@ -16,8 +16,6 @@ typedef struct {
 	int acq_now;
 	int fibre_card;
 
-	int das_compatible; // horror
-
 	char batch_file[LINE_LEN];
 	int  batch_now;
 
