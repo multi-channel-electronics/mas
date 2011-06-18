@@ -96,6 +96,12 @@ else
     MCE_CIN_LIST="$MCE_CIN_LIST mce$n.cin"
   done
 fi
+
+if test "x${CLIENT_ONLY}" != "xno"; then
+  MCE_CFG_LIST=
+  MCE_CIN_LIST=
+fi
+
 AC_SUBST(MCE_CIN_LIST)
 AC_SUBST(MCE_CFG_LIST)
 AC_SUBST(FIRST_MCE_CIN)
@@ -420,7 +426,7 @@ fi
 echo "  build mce.cfg/mas.cfg:   ${DO_CONFIG2}"
 echo "  MAS user/group:          ${MAS_USER}/${MAS_GROUP}"
 
-if test ! -f config2/$FIRST_MCE_CIN; then
+if test "x${CLIENT_ONLY}" = "xno" && test ! -f config2/$FIRST_MCE_CIN; then
   echo
   if test $MAX_FIBRE_CARD -eq 1; then
     echo "

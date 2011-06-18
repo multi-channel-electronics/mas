@@ -1,9 +1,9 @@
 
 sub-dirs:
 	make -C misc
+	make -C mce_library
 	make -C log_library
 	make -C dsp_library
-	make -C mce_library
 
 clean:
 	make -C misc        clean

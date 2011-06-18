@@ -7,11 +7,14 @@ SOURCE = @MCE_CIN_LIST@
 TARGET = @MCE_CFG_LIST@ mas.cfg
 FIRST_MCE_CIN = @FIRST_MCE_CIN@
 MULTICARD = @MULTICARD@
+CLIENT_ONLY ?= @CLIENT_ONLY@
 
+ifeq ($(CLIENT_ONLY),no)
 ifeq ($(MULTICARD),1)
 	INSTALL_MCE=install-multimce
 else
 	INSTALL_MCE=install-mce
+endif
 endif
 
 all: Makefile $(TARGET)
