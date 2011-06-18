@@ -1,0 +1,7 @@
+/* Configuration information for mcenetd server */
+
+mcenetd_server:
+{
+  daemon = 1;
+};
+

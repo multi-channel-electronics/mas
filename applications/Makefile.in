@@ -1,7 +1,12 @@
+CLIENT_ONLY ?= @CLIENT_ONLY@
+
+ifeq ($(CLIENT_ONLY),no)
+	MCENETD=mcenetd
+endif
 
 # Don't make example dir by default, it's not really in our build system
-SUB_DIRS = dsp_cmd mas_config mas_mon mas_param maslog mce_cmd mce_jam \
-					 mce_ramp mce_status mux_lock psc_status raw_acq testing
+SUB_DIRS = dsp_cmd mas_config mas_mon mas_param maslog mce_cmd $(MCENETD) \
+					 mce_jam mce_ramp mce_status mux_lock psc_status raw_acq testing
 
 sub-dirs:
 	@for d in ${SUB_DIRS}; do		\
@@ -23,3 +28,7 @@ clean:
 	done
 
 .PHONY: sub-dirs clean
+
+.PRECIOUS: Makefile
+Makefile: ../config.status Makefile.in
+	cd .. && $(MAKE) applications/Makefile

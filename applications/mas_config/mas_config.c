@@ -374,9 +374,18 @@ int main(int argc, char **argv)
         puts(ptr);
         free(ptr);
         break;
+      case OPT_MAS_DATA:
+        /* set data root, if necessary */
+        ptr = mcelib_shell_expand("${MASDEFAULT_DATA_ROOT}", fibre_card);
+        setenv("MAS_DATA_ROOT", ptr, 0);
+        free(ptr);
+
+        ptr = mcelib_shell_expand("${MASDEFAULT_DATA}", fibre_card);
+        puts(ptr);
+        free(ptr);
+        break;
 
         OPT_DEFAULT(BIN);
-        OPT_DEFAULT(DATA);
         OPT_DEFAULT(DATA_ROOT);
         OPT_DEFAULT(IDL);
         OPT_DEFAULT(PYTHON);

@@ -1,0 +1,30 @@
+/* Configuration information for MAS logging server */
+
+log_server:
+{
+
+  log_address = "<?=$log_address?>";
+
+  log_file = "<?=$log_file?>";
+
+  daemon = 1;
+
+  level = <?=$log_level?>;
+
+<? /* extra loggers for multicard MAS */
+  if ($n_card > 0) {
+?>
+
+  log_list = (
+<?  for ($i = 0; $i < $n_card; ++$i) { ?>
+    {
+      card = <?=$i?>;
+      log_file = "<?=$mas_data?>/log"
+    }<?=($i == 0) ? ",\n" : ";\n"?>
+<?  } ?>
+  );
+<?
+  }
+?>
+
+};

@@ -1,0 +1,10 @@
+/* Configuration information for mcenetd client */
+
+mcenetd_client:
+{
+
+  mcenetd_address = "<?=$mcenetd_address?>";
+
+};
+
+

@@ -15,10 +15,10 @@
 #endif
 
 #define USAGE_MESSAGE \
-"Usage:\n\t%s [options]\n"\
+"Usage:\n  %s [options]\n\n"\
 USAGE_OPTION_N \
 "  -c <hardware config>   choose a particular mce config file\n"\
-"  -m <mas config>        choose a particular mce config file\n"\
+"  -m <mas config>        choose a particular mas config file\n"\
 "  -o <output directory>  destination folder for output\n"\
 "  -f <output filename>   filename for output (stdout by default)\n"\
 "  -s                     snapshot style, civilized output\n"\

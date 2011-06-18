@@ -24,17 +24,16 @@ AC_SUBST(DO_CONFIG2)
 
 
 # Shared libraries
-AC_ARG_ENABLE([shared], [AS_HELP_STRING([--enable-shared],
-              [build shared libraries instead of static ones])],
+AC_ARG_ENABLE([shared], [AS_HELP_STRING([--disable-shared],
+              [build static libraries instead of shared ones])],
               [if test "$enableval" = "no"; then SHARED="no"; else SHARED="yes";
-               fi], [SHARED="no"])
+               fi], [SHARED="yes"])
 AC_SUBST(SHARED)
 if test "x$SHARED" = "xyes"; then
   AC_DEFINE([SHARED],, [ Define if building shared libraries ])
 fi
 
 # Allow the user to suppress driver compile / install.
-
 AC_ARG_ENABLE([driver],
 			[AS_HELP_STRING([--disable-driver],
 			[disable driver compilation and installation])],
@@ -45,6 +44,25 @@ AC_ARG_WITH([driver],
       [AC_MSG_WARN([--with-driver and --without-driver are deprecated, ]
       [use --enable-driver or --disable-driver instead.])
       DO_MAS_DRIVER=$withval], [])
+
+
+# Client only build
+AC_ARG_ENABLE([client],
+      [AS_HELP_STRING([--enable-cline],
+                      [build MAS for a client system ]
+                      [(one that talks to an MCE Control Computer over the ]
+                      [network).  Implies --disable-driver.])],
+                      [CLIENT_ONLY=$enableval], [CLIENT_ONLY=no])
+
+if test "x$CLIENT_ONLY" == "xno"; then
+  MCENETD_SERVER=1
+else
+  MCENETD_SERVER=0
+  DO_MAS_DRIVER=no
+fi
+
+AC_SUBST(CLIENT_ONLY)
+AC_SUBST(MCENETD_SERVER)
 AC_SUBST(DO_MAS_DRIVER)
 
 dnl Multicard MAS
@@ -82,6 +100,7 @@ AC_SUBST(MCE_CIN_LIST)
 AC_SUBST(MCE_CFG_LIST)
 AC_SUBST(FIRST_MCE_CIN)
 AC_SUBST(MULTICARD)
+AC_SUBST(MAX_FIBRE_CARD)
 AC_DEFINE_UNQUOTED(MULTICARD, [$MULTICARD],
                    [ Define to 1 to enable multicard MAS ])
 
@@ -370,8 +389,10 @@ dnl Write.
 
 AC_CONFIG_HEADERS([defaults/config.h])
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([applications/Makefile])
 AC_CONFIG_FILES([applications/mas_config/Makefile])
 AC_CONFIG_FILES([config2/Makefile])
+AC_CONFIG_FILES([config2/mas.cin])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
 AC_CONFIG_FILES([scripts/mas scripts/mas_mknodes],
@@ -381,6 +402,7 @@ AC_OUTPUT
 dnl Handy configure summary
 echo
 echo "Configure summary:"
+echo "  client only:             ${CLIENT_ONLY}"
 echo "  kernel driver:           ${DO_MAS_DRIVER}"
 if test "$DO_MAS_DRIVER" != "no"; then
   echo "    ... bigphysarea:       ${DRIVER_BIGPHYS}"

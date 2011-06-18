@@ -4,7 +4,7 @@ BASE := ../
 include $(BASE)Makefile.children
 
 SOURCE = @MCE_CIN_LIST@
-TARGET = @MCE_CFG_LIST@
+TARGET = @MCE_CFG_LIST@ mas.cfg
 FIRST_MCE_CIN = @FIRST_MCE_CIN@
 MULTICARD = @MULTICARD@
 
@@ -15,6 +15,9 @@ else
 endif
 
 all: Makefile $(TARGET)
+
+mas.cin: mas.cin.in ../config.status
+	cd .. && $(MAKE) config2/mas.cin
 
 # General rule...
 %.cfg : %.cin components/
@@ -109,7 +112,7 @@ install-multimce: /etc/mce mce0.cfg
 		fi; \
 	done
 
-.PHONY: install install-mas install-mce clean all default
+.PHONY: install install-mas install-mce clean all default install-multimce
 
 clean:
 	rm -f $(TARGET)

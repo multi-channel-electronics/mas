@@ -54,10 +54,16 @@ install: $(install_deps)
 Makefile: config.status Makefile.in
 	$(SHELL) ./config.status $@
 
+applications/Makefile: config.status applications/Makefile.in
+	$(SHELL) ./config.status $@
+
 applications/mas_config/Makefile: config.status applications/mas_config/Makefile.in
 	$(SHELL) ./config.status $@
 
 config2/Makefile: config.status config2/Makefile.in
+	$(SHELL) ./config.status $@
+
+config2/mas.cin: config.status config2/mas.cin.in
 	$(SHELL) ./config.status $@
 
 driver/Makefile: config.status driver/Makefile.in

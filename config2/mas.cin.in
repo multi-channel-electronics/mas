@@ -1,0 +1,25 @@
+<?php
+
+/* The network host and port for the logger daemon */
+$log_address = "localhost:7884";
+
+/* The location of the logfile on the logger host */
+$log_file    = "/data/cryo/current_data/log";
+
+/* The log level */
+$log_level   = 1;
+
+/* The number of fibre cards in the system */
+$n_card      = @MAX_FIBRE_CARD@;
+
+$mas_data    = "\${MAS_DATA}";
+
+$mcenetd_server = @MCENETD_SERVER@;
+
+$mcenetd_address = "localhost";
+
+/* And execute. */
+
+include 'components/mas';
+
+?>

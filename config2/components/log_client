@@ -1,0 +1,9 @@
+/* Configuration information for MAS logging client */
+
+log_client:
+{
+
+  log_address = "<?=$log_address?>";
+
+};
+
