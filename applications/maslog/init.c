@@ -119,7 +119,7 @@ int init(params_t *p, int argc, char **argv)
 	if (process_options(p, argc, argv)!=0)
 		return 3;
 
-	if (listener_init(&p->listener, MAX_CLIENTS, MAX_MSG, MAX_MSG)!=0)
+    if (massock_listener_init(&p->listener, MAX_CLIENTS, MAX_MSG, MAX_MSG)!=0)
 		return 4;
 
 	if (log_openfile(p)) {
@@ -127,7 +127,7 @@ int init(params_t *p, int argc, char **argv)
 		return 5;
 	}
 
-	if (listener_listen(&p->listener, p->serve_address)!=0)
+    if (massock_listener_listen(&p->listener, p->serve_address)!=0)
 		return 6;
 
 	return 0;

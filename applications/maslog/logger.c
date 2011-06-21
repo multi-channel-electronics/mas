@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -239,7 +242,7 @@ int log_client_process(params_t *p, int client_idx)
 {
 	CHECKPTR;
 
-	client_t *l_client = p->listener.clients + client_idx;
+    massock_client_t *l_client = p->listener.clients + client_idx;
 
 	//Check for complete commands;
 	char *buf   = l_client->recv_buf;

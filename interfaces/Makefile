@@ -1,19 +1,16 @@
 
 sub-dirs:
-	make -C misc
-	make -C mce_library
-	make -C log_library
-	make -C dsp_library
+	cd misc && ${MAKE}
+	cd mce_library && ${MAKE}
+	cd dsp_library && ${MAKE}
 
 clean:
-	make -C misc        clean
-	make -C log_library clean
-	make -C dsp_library clean
-	make -C mce_library clean
+	cd misc && ${MAKE}        clean
+	cd dsp_library && ${MAKE} clean
+	cd mce_library && ${MAKE} clean
 
 install:
-	make -C log_library install
-	make -C dsp_library install
-	make -C mce_library install
+	cd dsp_library && ${MAKE} install
+	cd mce_library && ${MAKE} install
 
 .PHONY: sub-dirs

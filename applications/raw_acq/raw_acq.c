@@ -73,7 +73,7 @@ mce_context_t* mce_connect(int fibre_card)
     char *ptr;
 
 	// Get a library context structure (cheap)
-	mce_context_t *mce = mcelib_create(fibre_card);
+    mce_context_t *mce = mcelib_create(fibre_card, NULL);
 
 	// Load MCE config information ("xml")
     ptr = mcelib_default_hardwarefile(fibre_card);

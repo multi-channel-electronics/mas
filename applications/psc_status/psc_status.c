@@ -38,7 +38,7 @@ int main (int argc, char **argv){
 
    if (!options.read_stdin) {
      // Create MCE context 
-     mce_context_t *mce = mcelib_create(options.fibre_card);
+     mce_context_t *mce = mcelib_create(options.fibre_card, NULL);
 
      // Load MCE hardware inforamtion
      if (mceconfig_open(mce, options.hardware_file, NULL) != 0) {

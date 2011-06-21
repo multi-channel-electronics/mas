@@ -9,13 +9,13 @@ SUB_DIRS = dsp_cmd mas_config mas_mon mas_param maslog mce_cmd $(MCENETD) \
 					 mce_jam mce_ramp mce_status mux_lock psc_status raw_acq testing
 
 sub-dirs:
-	@for d in ${SUB_DIRS}; do		\
-		make -C $$d || exit 1;		\
+	@for d in ${SUB_DIRS}; do	\
+		( cd $$d && ${MAKE}; ) || exit 1;\
 	done
 
 install:
-	@for d in ${SUB_DIRS}; do		\
-		make -C $$d install || exit 1;	\
+	@for d in ${SUB_DIRS}; do \
+		( cd $$d && ${MAKE} install; ) || exit 1;\
 	done
 	@echo
 	@echo "Make sure you stop maslog_server before re-installing, or"\
@@ -23,8 +23,8 @@ install:
 	@echo
 
 clean:
-	@for d in ${SUB_DIRS}; do		\
-		make -C $$d clean || exit 1;	\
+	@for d in ${SUB_DIRS}; do \
+		( cd $$d && ${MAKE} clean; ) || exit 1;\
 	done
 
 .PHONY: sub-dirs clean

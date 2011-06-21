@@ -27,6 +27,7 @@
 "\n"\
 USAGE_OPTION_N \
 "  -c <config file>       choose a particular mce config file\n"\
+"  -m <config file>       choose a particular mas config file\n"\
 "  -f <batch file>        run commands from file instead of stdin\n"\
 "  -X \"cmd string\"        execute this command and exit (these can be stacked)\n"\
 "  -o <directory>         data file path\n"\
@@ -43,7 +44,7 @@ int process_options(options_t *options, int argc, char **argv)
 {
 	char *s = NULL;
 	int option;
-	while ( (option = getopt(argc, argv, "?X:c:ef:hin:o:pqrvx")) >=0)
+    while ( (option = getopt(argc, argv, "?X:c:m:ef:hin:o:pqrvx")) >=0)
 	{
 
 		switch(option) {
@@ -74,6 +75,12 @@ int process_options(options_t *options, int argc, char **argv)
 			options->batch_now = 1;
 			break;
 
+        case 'm':
+            if (options->mas_file)
+                free(options->mas_file);
+            options->mas_file = strdup(optarg);
+            break;
+
 		case 'c':
             if (options->hardware_file)
                 free(options->hardware_file);
@@ -90,7 +97,7 @@ int process_options(options_t *options, int argc, char **argv)
 
 		case 'X':
 			options->cmd_set[options->cmds_now++] = optarg;
-			break;			
+            break;
 
 		case 'x':
 			s = (char*)malloc(LINE_LEN);
@@ -121,16 +128,27 @@ int process_options(options_t *options, int argc, char **argv)
 	}
 
 	/* set fibre card defaults */
-    if ((options->data_device = mcelib_data_device(options->fibre_card)) == NULL) {
+    if ((options->data_device = mcelib_data_device(options->fibre_card)) ==
+            NULL)
+    {
         fprintf(stderr, "Unable to obtain path to default data device!\n");
         return -1;
     }
-    if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL) {
+    if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL)
+    {
         fprintf(stderr, "Unable to obtain path to default command device!\n");
         return -1;
     }
+    if (options->mas_file == NULL) {
+        options->mas_file = mcelib_default_masfile();
+        if (options->mas_file == NULL) {
+            fprintf(stderr, "Unable to obtain path to default mas.cfg!\n");
+            return -1;
+        }
+    }
     if (options->hardware_file == NULL) {
-        options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
+        options->hardware_file =
+            mcelib_default_hardwarefile(options->fibre_card);
         if (options->hardware_file == NULL) {
             fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
             return -1;

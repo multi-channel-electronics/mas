@@ -38,13 +38,19 @@ endif
 default: all
 
 all: $(all_deps)
-	for d in $(all_dirs); do make -C $$d || exit 1; done
+	for d in $(all_dirs); do \
+	  ( cd $$d && ${MAKE}; ) || exit 1;\
+	done
 
 clean: $(clean_deps)
-	for d in $(clean_dirs); do make -C $$d clean || exit 1; done
+	+for d in $(clean_dirs); do \
+		( cd $$d && ${MAKE} clean; ) || exit 1; \
+	done
 
 install: $(install_deps)
-	for d in $(install_dirs); do make -C $$d install || exit 1; done
+	+for d in $(clean_dirs); do \
+		( cd $$d && ${MAKE} install; ) || exit 1; \
+	done
 
 .PHONY: default all clean install
 

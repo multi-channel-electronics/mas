@@ -1,24 +1,25 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
+#include "mce_library.h"
 #include "libmaslog.h"
-
 
 #define LINE 1024
 
 int main(int argc, char **argv) {
+    mce_context_t *mce;
+    maslog_t maslog;
 
-	logger_t logger;
+    mce = mcelib_create(0, (argc > 1) ? argv[1] : NULL);
+    if (mce == NULL)
+        exit(1);
 
-	int ret = 0;
-	if (argc>1)
-		ret = logger_connect(&logger, argv[1], "notes");
-	else 
-		ret = logger_connect(&logger, NULL, "notes");
-
-	if (ret<0)
+    if ((maslog = maslog_connect(mce, "notes")) == NULL)
 		exit(1);
 
 	char *line = (char*)malloc(LINE);
@@ -30,11 +31,11 @@ int main(int argc, char **argv) {
 			if (line[nout]!=0) line[nout]=0;
 			if (line[nout-1]=='\n')
 				line[--nout]=0;
-			logger_print(&logger, line);
+            maslog_print(maslog, line);
 		}
 	}
 
-	logger_close(&logger);
+    maslog_close(maslog);
 
 	return 0;
 }

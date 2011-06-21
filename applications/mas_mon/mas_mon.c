@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _XOPEN_SOURCE 500
 
 #include <stdlib.h>
@@ -45,11 +48,15 @@ int main(int argc, char **argv)
   }
 #endif
 
-	if ((mce=mcelib_create(fibre_card))==NULL || (mcedata_open(mce, dev)!=0)) {
-    if (dev == NULL)
-      fprintf(stderr, "%s: failed to connect default data device\n", argv[0]);
-    else
-      fprintf(stderr, "%s: failed to connect data device %s\n", argv[0], dev);
+    if ((mce = mcelib_create(fibre_card, NULL)) == NULL ||
+            (mcedata_open(mce, dev) != 0))
+    {
+        if (dev == NULL)
+            fprintf(stderr, "%s: failed to connect default data device\n",
+                    argv[0]);
+        else
+            fprintf(stderr, "%s: failed to connect data device %s\n", argv[0],
+                    dev);
 		exit(1);
 	}
 

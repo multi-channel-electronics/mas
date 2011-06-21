@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /*! \file mce_status.c
  *
  *  \brief Program to read and record the status of the MCE.
@@ -25,41 +28,42 @@ options_t options = {
 };
 
 
-void error_log_exit(logger_t* logger, const char *msg, int error);
+void error_log_exit(maslog_t maslog, const char *msg, int error);
 
 int crawl_festival(crawler_t *crawler);
 
 int main(int argc, char **argv)
 {
-	logger_t logger;
+    maslog_t maslog;
 	char msg[MCE_LONG];
 
-	if (process_options(&options, argc, argv))
-		error_log_exit(&logger, "invalid arguments", 2);
+    if (process_options(&options, argc, argv)) {
+        fprintf(stderr, "invalid arguments.");
+        return 2;
+    }
 
-	logger_connect( &logger, options.config_file, "mce_status" );
-	sprintf(msg, "initiated with hardware config '%s'", options.hardware_file);
-	logger_print( &logger, msg );
-	
 	// Connect to MCE
-	if ((options.context = mcelib_create(options.fibre_card))==NULL) {
-		error_log_exit(&logger,
-			       "failed to create mce library structure", 3);
+    if ((options.context = mcelib_create(options.fibre_card,
+          options.config_file))==NULL)
+    {
+        error_log_exit(&maslog, "failed to create mce library structure", 3);
 	}
 
+    maslog = maslog_connect(options.context, "mce_status");
+    sprintf(msg, "initiated with hardware config '%s'", options.hardware_file);
+    maslog_print(maslog, msg);
 
 	if (mcecmd_open(options.context, options.device_file) != 0) {
 		sprintf(msg, "Could not open mce device '%s'\n",
 			options.device_file);
-		error_log_exit(&logger, msg, 3);
+        error_log_exit(maslog, msg, 3);
 	}
 
 	// Load configuration
-	if (mceconfig_open(options.context, 
-			   options.hardware_file, "hardware")!=0) {
+    if (mceconfig_open(options.context, options.hardware_file, "hardware")!=0) {
 		sprintf(msg, "Could not load MCE config file '%s'.\n",
 			options.hardware_file);
-		error_log_exit(&logger, msg, 3);
+        error_log_exit(maslog, msg, 3);
 	}
 
 
@@ -87,9 +91,9 @@ int main(int argc, char **argv)
 
 	// Loop through cards and parameters
 	if (crawl_festival(&crawler) != 0)
-		error_log_exit(&logger, "failed commands", 3);
-	
-	logger_print(&logger, "successful");
+        error_log_exit(maslog, "failed commands", 3);
+
+    maslog_print(maslog, "successful");
 	return 0;
 }
 
@@ -98,7 +102,7 @@ int crawl_festival(crawler_t *crawler)
 	int i,j;
 	int n_cards = mceconfig_card_count(options.context);
 
-	if (options.output_path[0] != 0 && 
+    if (options.output_path[0] != 0 &&
 	    chdir(options.output_path)!=0) {
 		fprintf(stderr, "Failed to move to working directory '%s'\n",
 			options.output_path);
@@ -134,9 +138,9 @@ int crawl_festival(crawler_t *crawler)
 	return 0;
 }
 
-void error_log_exit(logger_t* logger, const char *msg, int error)
+void error_log_exit(maslog_t maslog, const char *msg, int error)
 {
-	logger_print(logger, msg);
+    maslog_print(maslog, msg);
 	fprintf(stderr, "%s", msg);
 	exit(error);
 }

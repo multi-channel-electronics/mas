@@ -1,7 +1,6 @@
 #ifndef _MCE_LIBRARY_H_
 #define _MCE_LIBRARY_H_
 
-#include <libmaslog.h>
 #include <mce/types.h>
 #include <mce/mce_errors.h>
 
@@ -15,6 +14,7 @@
 struct mce_context;
 typedef struct mce_context mce_context_t;
 
+#include <libmaslog.h>
 #include <mceconfig.h>
 #include <mcecmd.h>
 #include <mcedata.h>
@@ -28,14 +28,15 @@ struct mce_context {
 	mcecmd_t    cmd;
 	mcedata_t   data;
 	mceconfig_t config;
-	logger_t logger;
+	maslog_t    maslog;
+  struct config_t *mas_cfg;
 
 };
 
 
 /* Creation / destruction of context structure */
 #define MCE_DEFAULT_CARD (-1)
-mce_context_t* mcelib_create(int fibre_card);
+mce_context_t* mcelib_create(int fibre_card, const char *mas_config);
 void mcelib_destroy(mce_context_t* context);
 
 
@@ -51,12 +52,12 @@ char* mcelib_version();
 #define  C_cmd          context->cmd
 #define  C_data         context->data
 #define  C_config       context->config
-#define  C_logger       (context->logger)
+#define  C_maslog       (context->maslog)
 
 #define  C_cmd_check    if (!C_cmd.connected)    return -MCE_ERR_NEED_CMD
 #define  C_data_check   if (!C_data.connected)   return -MCE_ERR_NEED_DATA
 #define  C_config_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
-#define  C_logger_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
+#define  C_maslog_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
 
 
 #endif

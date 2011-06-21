@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /* main.c - entry point and initialization for mce logger */
 
 #include <stdio.h>
@@ -71,7 +74,7 @@ int main(int argc, char **argv)
 
 	while (! (p.flags & FLAG_QUIT) && !kill_switch) {
 
-		listener_flags ret = listener_select(list);
+        massock_listen_flags ret = massock_listener_select(list);
 
 		//We only care about data
 		if ( (ret & LISTENER_ERR) ) {
@@ -85,7 +88,7 @@ int main(int argc, char **argv)
 		int i;
 		for (i=0; i<MAX_CLIENTS; i++) {
 
-			listener_flags flags = list->clients[i].flags;
+            massock_listen_flags flags = list->clients[i].flags;
 
 			if (flags & LISTENER_CONNECT) {
 				printf("Client[%i]: connected.\n", i);
@@ -94,7 +97,7 @@ int main(int argc, char **argv)
 
 			if (flags & LISTENER_ERR) {
 				printf("Client[%i]: error! Closing.\n", i);
-				client_delete( list->clients + i );
+                massock_client_delete( list->clients + i );
 			}
 			else if (flags & LISTENER_DATA) {
 
@@ -103,7 +106,7 @@ int main(int argc, char **argv)
 			}
 			if (flags & LISTENER_CLOSE) {
 				printf("Client[%i]: closed.\n", i);
-				client_delete( list->clients + i );
+                massock_client_delete( list->clients + i );
 			}			       
 		}		
 	}
@@ -112,8 +115,8 @@ int main(int argc, char **argv)
 
 	log_closefile(&p);
 
-	listener_close(list);
-	listener_cleanup(list);
+    massock_listener_close(list);
+    massock_listener_cleanup(list);
 
 	if (p.daemon) undaemonize();
 

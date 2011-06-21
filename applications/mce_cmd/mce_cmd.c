@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /*! \file mce_cmd.c
  *
  *  \brief Program to send commands to the MCE.
@@ -171,7 +174,7 @@ char *line_buffer = NULL;
 
 options_t options = {
 	.hardware_file =  NULL,
-	.masconfig_file = NULL,
+    .mas_file = NULL,
 	.display =        SPECIAL_DEF,
 	.acq_path =       "./",
 	.use_readline =   1,
@@ -230,7 +233,7 @@ int  main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	if ((mce = mcelib_create(options.fibre_card)) == NULL) {
+    if ((mce = mcelib_create(options.fibre_card, options.mas_file)) == NULL) {
 		fprintf(ferr, "Could not create mce library context.\n");
 		err = ERR_MEM;
 		goto exit_now;
@@ -260,7 +263,7 @@ int  main(int argc, char **argv)
 	}
 
 	// Log!
-	logger_connect( &options.logger, options.masconfig_file, "mce_cmd" );
+    options.maslog = maslog_connect(mce, "mce_cmd");
 
 	menuify_mceconfig(root_opts);
 
@@ -271,12 +274,12 @@ int  main(int argc, char **argv)
 			fprintf(ferr, "could not open batch file '%s'\n",
 				options.batch_file);
 			sprintf(msg, "failed to read script '%s'\n", options.batch_file);
-			logger_print( &options.logger, msg );
+            maslog_print(options.maslog, msg);
 			err = ERR_MCE;
 			goto exit_now;
 		}
 		sprintf(msg, "reading commands from '%s'\n", options.batch_file);
-		logger_print( &options.logger, msg );
+        maslog_print(options.maslog, msg);
 	}
 				
 	// Install signal handler for Ctrl-C and normal kill
@@ -366,9 +369,10 @@ int  main(int argc, char **argv)
 		} else if (err < 0) {
 			printf("%serror : %s\n", premsg, errmsg);
 			if (!options.interactive) {
-				sprintf(msg, "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
-					line_count, line, -err, errmsg);
-				logger_print(&options.logger, msg);
+                sprintf(msg,
+                        "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
+                        line_count, line, -err, errmsg);
+                maslog_print(options.maslog, msg);
 				done = 1;
 			}
 		}

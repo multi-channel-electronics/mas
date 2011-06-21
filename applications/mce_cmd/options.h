@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _OPTIONS_H_
 #define _OPTIONS_H_
 
@@ -28,7 +31,7 @@ typedef struct {
 	char *data_device;
 	char *cmd_device;
 	char *hardware_file;
-	char *masconfig_file;
+    char *mas_file;
 
 	char acq_path[LINE_LEN];
 	char acq_filename[LINE_LEN];
@@ -37,7 +40,7 @@ typedef struct {
 	int acq_frames;
 	int acq_interval;
 
-	logger_t logger;
+    maslog_t maslog;
 
 } options_t;
 

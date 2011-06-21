@@ -5,7 +5,7 @@
 
 #define SOCKS_STR 1024
 
-typedef unsigned int listener_flags;
+typedef unsigned int massock_listen_flags;
 
 #define	LISTENER_ERR       0x8000
 #define	LISTENER_OK        0x0001
@@ -13,7 +13,7 @@ typedef unsigned int listener_flags;
 #define	LISTENER_DATA      0x0004
 #define	LISTENER_CLOSE     0x0008
 
-struct listener_struct;
+struct massock_listener_t;
 
 typedef struct {
 
@@ -27,23 +27,23 @@ typedef struct {
 	int  send_idx;
 	int  send_max;
 
-	listener_flags flags;
+	massock_listen_flags flags;
 
 	int  new_connection;
 
-	struct listener_struct *owner;
+	struct massock_listener_t *owner;
 
-} client_t;
+} massock_client_t;
 
 
-typedef struct listener_struct {
+typedef struct massock_listener_t {
 
 	char address[SOCKS_STR];
 	int  sock;
 
 	int  quit;
 
-	client_t *clients;
+	massock_client_t *clients;
 	int clients_count;
 	int clients_max;
 
@@ -51,29 +51,25 @@ typedef struct listener_struct {
 
 } listener_t;
 
-//FIX?
-extern char default_addr[SOCKS_STR];
-extern int  default_port;
-
-int fill_sockaddr(struct sockaddr_in *sa, const char *addr);
-int connect_to_addr(const char *addr);
-int listen_on_addr(const char *addr);
+int massock_connect(const char *addr);
+int massock_listen(const char *addr);
 
 /* Client management functionality */
 
-int listener_init( listener_t *list, int clients_max,
+int massock_listener_init( listener_t *list, int clients_max,
 		   int recv_max, int send_max);
-int listener_cleanup( listener_t *list);
+int massock_listener_cleanup( listener_t *list);
 
-int listener_close( listener_t *list );
+int massock_listener_close( listener_t *list );
 
-int listener_listen( listener_t *list, const char *addr );
-listener_flags listener_select( listener_t *list );
+int massock_listener_listen( listener_t *list, const char *addr );
+massock_listen_flags massock_listener_select( listener_t *list );
 
-client_t *client_add( listener_t *list, int fd );
-int client_delete( client_t *client );
+massock_client_t *massock_client_add( listener_t *list, int fd );
+int massock_client_delete( massock_client_t *client );
 
-listener_flags client_recv( client_t *client );
-listener_flags client_send( client_t *client, char *buf, int count );
+massock_listen_flags massock_client_recv( massock_client_t *client );
+massock_listen_flags massock_client_send( massock_client_t *client, char *buf,
+    int count );
 
 #endif

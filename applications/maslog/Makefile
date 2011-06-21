@@ -3,7 +3,6 @@ default: all
 include ../Makefile.children
 
 LIBRARY = $(LOG_LIBS) $(MCE_LIBS)
-SOCK = $(MASMISC_F)/socks.o
 
 SOURCE = logger.c main.c init.c
 HEADER = logger.h init.h
@@ -18,8 +17,8 @@ SCRIPT := maslog
 
 all: $(LOGAPP) $(CLIENT)
 
-$(LOGAPP): $(SOURCE) $(HEADER) $(SOCK)
-	$(CC) $(CFLAGS) $(SOURCE) -o$@ $(SOCK) $(LIBRARY)
+$(LOGAPP): $(SOURCE) $(HEADER)
+	$(CC) $(CFLAGS) $(SOURCE) -o$@ $(LIBRARY)
 
 $(CLIENT): client.c
 	$(CC) $(CFLAGS) $< -o$@ $(LIBRARY)

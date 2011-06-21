@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
+ *      vim: sw=2 ts=2 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -88,7 +91,7 @@ mce_context_t* connect_mce_or_exit(option_t* options)
 {
   char errmsg[1024];
 
-  mce_context_t* mce = mcelib_create(options->fibre_card);
+  mce_context_t* mce = mcelib_create(options->fibre_card, NULL);
   
   // Load MCE hardware information ("xml")
   if (mceconfig_open(mce, options->hardware_file, NULL) != 0) {

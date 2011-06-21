@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
@@ -80,7 +83,7 @@ void initialize_mce(int frequency)
 
 	if (verbose) {
 		printf("init MCE\n");
-    fflush(stdout);
+        fflush(stdout);
 	}
 
 	// Initialize the array for compression statistics
@@ -92,14 +95,14 @@ void initialize_mce(int frequency)
 
 	// Get context and load hardware config
 	if (mce == NULL) {
-		mce = mcelib_create(fibre_card);
-    ptr = mcelib_default_hardwarefile(fibre_card);
+        mce = mcelib_create(fibre_card, NULL);
+        ptr = mcelib_default_hardwarefile(fibre_card);
 		if (mceconfig_open(mce, ptr, NULL) != 0) {
 			fprintf(stderr, "Failed to load MCE configuration file %s.\n", ptr);
 			exit(1);
 		}
-    free(ptr);
-    ptr = mcelib_cmd_device(fibre_card);
+        free(ptr);
+        ptr = mcelib_cmd_device(fibre_card);
 		if (mcecmd_open(mce, ptr) != 0) {
 			fprintf(stderr, "Failed to open %s.\n", ptr);
 			exit(1);
@@ -111,7 +114,7 @@ void initialize_mce(int frequency)
 	for (int i=0; i<N_PARAM; i++) {
 		if (verbose) {
 			printf("MCE look-up %s\n", par_names[i]);
-      fflush(stdout);
+            fflush(stdout);
 		}
 		if (mcecmd_load_param(mce, par_addrs + i, "cc", par_names[i]) != 0) {
 			fprintf(stderr, "Failed to lookup cc %s\n", par_names[i]);

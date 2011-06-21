@@ -8,7 +8,7 @@ LIBNAME = lib$(MCELIB)
 OBJECTS = context.o errors.o defaults.o \
 	cmd.o packet.o virtual.o \
 	data.o acq.o data_thread.o files.o frame_manip.o \
-	dirfile.o config.o data_mode.o
+	dirfile.o config.o data_mode.o libmaslog.o socks.o
 
 HEADERS = data_thread.h virtual.h ../../defaults/config.h
 
@@ -22,7 +22,7 @@ include $(MAKERULES)Makefile.install_rule_lib
 install: install__$(LIBNAME)
 
 $(LIBNAME).so : $(OBJECTS) version.h
-	$(LD) -shared -o $@ $(OBJECTS) -lc -lpthread $(LOG_LIBS) $(CONFIG_LIBS)
+	$(LD) -shared -o $@ $(OBJECTS) -lc -lpthread $(CONFIG_LIBS)
 
 $(LIBNAME).a : $(OBJECTS) version.h
 	$(AR) rs $@ $(OBJECTS)
