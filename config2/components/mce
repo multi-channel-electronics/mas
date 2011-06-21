@@ -7,7 +7,7 @@
 	- 16 TES bias line configuration for small sub-racks
  */
 
-<?  include 'header';  ?>
+<?php  include 'header';  ?>
 
 
 hardware:
@@ -39,7 +39,7 @@ if ($hw_bac)
 
     mappings = (
 
-<?
+<?php
 include "squids";
 include "tes";
 ?>
@@ -50,7 +50,7 @@ include "tes";
         }
     );
 
-<?
+<?php
 include "card-types";
 
 include "subrack";

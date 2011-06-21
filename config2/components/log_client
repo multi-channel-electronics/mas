@@ -3,7 +3,7 @@
 log_client:
 {
 
-  log_address = "<?=$log_address?>";
+  log_address = "<?php echo $log_address?>";
 
 };
 

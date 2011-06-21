@@ -3,7 +3,7 @@
 mcenetd_client:
 {
 
-  mcenetd_address = "<?=$mcenetd_address?>";
+  mcenetd_address = "<?php echo $mcenetd_address?>";
 
 };
 

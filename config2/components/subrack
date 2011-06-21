@@ -14,7 +14,7 @@
 
         components = (
 
-<? /* Physical cards */
+<?php /* Physical cards */
    function dump_card_block($card, $text, $test=False, $comma=True) {
       global $CARD_ADDRESS, $CARD_ERRBITS, $card_list;
       if ($test && !in_array($card, $card_list))
@@ -25,13 +25,13 @@
       $ebits = sprintf("0x%08x", $ebits);
 ?>
             {
-                name = "<?=$card?>";
+                name = "<?php echo $card?>";
                 nature = "physical";
-                card_type = "<?=$text?>";
-                id = ( <?=$id?> );
-                error_bits = <?=$ebits?>;
+                card_type = "<?php echo $text?>";
+                id = ( <?php echo $id?> );
+                error_bits = <?php echo $ebits?>;
             }
-<?    if ($comma)
+<?php    if ($comma)
           echo ",\n";
    }
 
@@ -48,7 +48,7 @@
     dump_card_block("ac",  "address card", True);
  ?>
 
-<? if (in_array("rcs", $virt_list)) { ?>
+<?php if (in_array("rcs", $virt_list)) { ?>
             {
                 name = "rcs";
                 nature = "physical";
@@ -56,52 +56,52 @@
                 id = ( 0x0B );
                 status = 0;
             },
-<? } ?>
-<? if (in_array("sys", $virt_list)) { ?>
+<?php } ?>
+<?php if (in_array("sys", $virt_list)) { ?>
             {
                 name = "sys";
                 nature = "physical";
                 card_type = "system alias";
-                id = ( <?=join(", ", $sys_id_list)?> );
+                id = ( <?php echo join(", ", $sys_id_list)?> );
             },
-<? } ?>
-<? if (in_array("rca", $virt_list)) { ?>
+<?php } ?>
+<?php if (in_array("rca", $virt_list)) { ?>
             {
                 name = "rca";
                 nature = "physical";
                 card_type = "readout-all alias";
-                id = ( <?=join(", ", $rca_id_list)?> );
+                id = ( <?php echo join(", ", $rca_id_list)?> );
                 status = 0;
             },
-<? } ?>
-<? if (in_array("sq2", $virt_list)) { ?>
+<?php } ?>
+<?php if (in_array("sq2", $virt_list)) { ?>
             {
                 name = "sq2";
                 nature = "virtual";
                 mapping = "sq2_mapping";
             },
-<? } ?>
-<? if (in_array("sq1", $virt_list)) { ?>
+<?php } ?>
+<?php if (in_array("sq1", $virt_list)) { ?>
             {
                 name = "sq1";
                 nature = "virtual";
                 mapping = "sq1_mapping";
             },
-<? } ?>
-<? if (in_array("sa", $virt_list)) { ?>
+<?php } ?>
+<?php if (in_array("sa", $virt_list)) { ?>
             {
                 name = "sa";
                 nature = "virtual";
                 mapping = "sa_mapping";
             },
-<? } ?>
-<? if (in_array("tes", $virt_list)) { ?>
+<?php } ?>
+<?php if (in_array("tes", $virt_list)) { ?>
             {
                 name = "tes";
                 nature = "virtual";
                 mapping = "tes_mapping";
             },
-<? } ?>
+<?php } ?>
             /* Terminator */
 	    {
 	        name = "dummy";

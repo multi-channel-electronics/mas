@@ -134,12 +134,12 @@
                     id = 0xAC;
                     type = "rst";
                 },
-<? if (fw_range("cc", $min=0x5000000)) { ?>
+<?php if (fw_range("cc", $min=0x5000000)) { ?>
                 {
                     name = "num_cols_reported";
                     id = 0xAD;
                 },
-<? } ?>
+<?php } ?>
                 {
                     name = "internal_cmd_mode";
                     id = 0xB0;
@@ -184,7 +184,7 @@
                     name = "stop_dly";
                     id = 0xB8;
                 }
-<? if ($fw_rev_cc_awg) { ?>
+<?php if ($fw_rev_cc_awg) { ?>
                 ,
                 {
                     name = "awg_sequence_length";
@@ -201,8 +201,8 @@
                     name = "awg_addr";
                     id = 0xBC;
                 }
-<? } ?>
-<? if ($fw_rev_cc_jtag) { ?>
+<?php } ?>
+<?php if ($fw_rev_cc_jtag) { ?>
                 ,
                 {
                     name = "jtag0";
@@ -221,8 +221,8 @@
                     id = 0xBF;
 		    write_only = 1;
                 }
-<? } ?>
-<? if ($fw_rev_cc_jtag) { ?>
+<?php } ?>
+<?php if ($fw_rev_cc_jtag) { ?>
                 ,
                 {
                     name = "tms_tdi";
@@ -245,6 +245,6 @@
                     name = "tck_half_period";
                     id = 0xAF;
                 }
-<? } ?>
+<?php } ?>
             );
         }, // clock commands

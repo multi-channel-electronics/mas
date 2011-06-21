@@ -59,12 +59,12 @@
                     default_set = 0;
                     write_only = 1;
                 },
-<? if (fw_range("rc", $min=0x400000e)) { ?>
+<?php if (fw_range("rc", $min=0x400000e)) { ?>
                 {
 		    name = "readout_col_index";
                     id = 0x19;
                 },
-<? } ?>
+<?php } ?>
 /*
                 {
                     name = "filt_coef";
@@ -123,7 +123,7 @@
                     default_set = 3;
                 },
 
-<? if (fw_range("rc", $min=0x5000000)) { ?>
+<?php if (fw_range("rc", $min=0x5000000)) { ?>
                 {
                     name = "num_rows_reported";
                     id = 0x55;
@@ -133,27 +133,27 @@
                     name = "num_cols_reported";
                     id = 0xAD;
                 },
-<? } ?>
-<? if (fw_range("rc", $min=0x500000a)) { ?>
+<?php } ?>
+<?php if (fw_range("rc", $min=0x500000a)) { ?>
 		{
 		    name = "fltr_type";
 		    id = 0x65;
 		},
-<? } ?>
-<? if (fw_range("rc", $min=0x500000d)) { ?>
+<?php } ?>
+<?php if (fw_range("rc", $min=0x500000d)) { ?>
                 {
 		    name = "integral_clamp";
                     id = 0x66;
                     default_set = 0;
 		},
-<? } ?>
-<? if (fw_range("rc", $min=0x5010000)) { ?>
+<?php } ?>
+<?php if (fw_range("rc", $min=0x5010000)) { ?>
                 {
                     name = "fltr_coeff";
                     id = 0x1A;
                     count = 6;
                 },
-<? } ?>
+<?php } ?>
                 {
                     name = "flx_lp_init";
                     id = 0x37;
