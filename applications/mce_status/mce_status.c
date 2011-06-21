@@ -46,7 +46,8 @@ int main(int argc, char **argv)
     if ((options.context = mcelib_create(options.fibre_card,
           options.config_file))==NULL)
     {
-        error_log_exit(&maslog, "failed to create mce library structure", 3);
+        fprintf(stderr, "failed to create mce library structure");
+        return 3;
 	}
 
     maslog = maslog_connect(options.context, "mce_status");
