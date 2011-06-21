@@ -55,8 +55,7 @@ int st_index(const string_table_t *st, const char *name);
 "  full                    output full type and data for all params\n"\
 "\nOptions:\n"\
 USAGE_OPTION_N \
-"  -s <source file>       config file to parse\n"\
-"  -m <mas config>        choose a particular mas config file.  Default:\n"\
+"  -s <source file>       config file to parse.  Default:\n"\
 "                           %s\n"\
 "  -f <output filename>   filename for output (stdout/source file by default)\n"\
 "\n"\
