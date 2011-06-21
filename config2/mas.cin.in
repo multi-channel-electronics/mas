@@ -14,9 +14,13 @@ $n_card      = @MAX_FIBRE_CARD@;
 
 $mas_data    = "\${MAS_DATA}";
 
+/* Is this a mcenetd client? */
+$mcenetd_client = @MCENETD_CLIENT@;
+
+/* Is this a mcenetd server? */
 $mcenetd_server = @MCENETD_SERVER@;
 
-$mcenetd_address = "localhost";
+$mcenetd_address = "@CLIENT_HOST@";
 
 /* And execute. */
 

@@ -1,6 +1,6 @@
-CLIENT_ONLY ?= @CLIENT_ONLY@
+MCENETD_SERVER ?= @MCENETD_SERVER@
 
-ifeq ($(CLIENT_ONLY),no)
+ifeq ($(MCENETD_SERVER),1)
 	MCENETD=mcenetd
 endif
 
