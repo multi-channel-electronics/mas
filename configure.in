@@ -88,7 +88,6 @@ AC_ARG_ENABLE([multicard],
               [2 is assumed.  N=0 and N=1 are eqivalent to --disable-multicard ]
               [ (ie. the default behaviour: multicard support disabled).])],
               [
-               echo "enableval=${enableval}";
                case "${enableval}" in
                  (0|1|no) MAX_FIBRE_CARD=1 ;;
                  (@<:@2-9@:>@|@<:@1-9@:>@@<:@0-9@:>@) MAX_FIBRE_CARD="${enableval}" ;;
