@@ -14,13 +14,19 @@ $n_card      = @MAX_FIBRE_CARD@;
 
 $mas_data    = "\${MAS_DATA}";
 
-/* Is this a mcenetd client? */
-$mcenetd_client = @MCENETD_CLIENT@;
+/* The list of MCEs we're prepared to deal with, in order.
+ * This is a comma separated list of elements, each of which is:
+ * (1) a number, N, indicating the local MCE talking to logical
+ *     fibre card #N;
+ * (2) "HOST:N", indicating MCE device #N on remote computer HOST,
+ *     which is running mcenetd.  (Note: this is not necessarily the
+ *     MCE talking to logical card #N on HOST, but depends on how the
+ *     remote host enumerates it's devices.)
+ */
+$mce_device_list = "@MCE_LIST@";
 
 /* Is this a mcenetd server? */
 $mcenetd_server = @MCENETD_SERVER@;
-
-$mcenetd_address = "@CLIENT_HOST@";
 
 /* And execute. */
 

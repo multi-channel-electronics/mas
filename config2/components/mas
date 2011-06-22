@@ -1,10 +1,7 @@
-/* Configuration file for MAS
- *
- * There are separate top-levels for logging clients and servers.
- */
+/* Configuration file for MAS */
 
 <?php
-include "mcenetd_client";
+include "mas_mce_list";
 
 if ($mcenetd_server) {
   include "mcenetd_server";

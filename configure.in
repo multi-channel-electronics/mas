@@ -47,27 +47,6 @@ AC_ARG_WITH([driver],
 
 AC_SUBST(DO_MAS_DRIVER)
 
-dnl Client build
-AC_ARG_ENABLE([client],
-      [AS_HELP_STRING([--enable-client=HOST],
-                      [build MAS for a client system ]
-                      [(one that talks to an MCE Control Computer over the ]
-                      [network), with HOST (default: localhost) as the ]
-                      [default mcenetd host. ])],
-                      [CLIENT_HOST=$enableval], [CLIENT_HOST=no])
-
-if test "x$CLIENT_HOST" == "xno"; then
-  MCENETD_CLIENT=0
-else
-  if test "x$CLIENT_HOST" == "xyes"; then
-    CLIENT_HOST=localhost
-  fi
-  MCENETD_CLIENT=1
-fi
-
-AC_SUBST(CLIENT_HOST)
-AC_SUBST(MCENETD_CLIENT)
-
 dnl Server build
 AC_ARG_ENABLE([server],
       [AS_HELP_STRING([--enable-server],
@@ -95,6 +74,33 @@ AC_ARG_ENABLE([multicard],
                esac
                ], [MAX_FIBRE_CARD=1])
                    
+dnl MCE device list
+AC_ARG_WITH([mces],
+      [AS_HELP_STRING([--with-mces=LIST],
+                      [control the MCEs given in LIST.  LIST consists of a ]
+                      [number of elements separated by commas, specifying MCE ]
+                      [locations in order.  An element is: ]
+                      [(1) N -- control local MCE#N; ]
+                      [(2) HOST:N -- control MCE#N on remote computer HOST; ]
+                      [or, (3) M@HOST -- control the first M MCEs on remote ]
+                      [computer HOST, i.e. "2@some.host" is equivalent to ]
+                      ["some.host:0,some.host:1".  If this parameter is ]
+                      [omitted, enough local MCEs are assumed to satisfy the ]
+                      [number given by --enable-multicard above.])],
+                      [MCE_LIST_IN=$withval], [MCE_LIST_IN="!auto"])
+
+dnl expand the MCE list
+if test "$MCE_LIST_IN" = "!auto"; then
+  # expand !auto
+  last_mce=`expr $MAX_FIBRE_CARD - 1`;
+  MCE_LIST=`seq -s, 0 $last_mce`
+else
+  # the following awk-y goodness simply expands the N@host elements and discards
+  # everything that doesn't fit the syntax.
+  MCE_LIST=`echo $MCE_LIST_IN | awk ' BEGIN {FS="@";RS="@<:@\n,@:>@";list=""} /^(@<:@0-9a-zA-Z._-@:>@*:)?@<:@0-9@:>@+$/ { list=list "," $0; next } /^(@<:@0-9@:>@+)@(.*)/ { for (i=0;i<$1;++i) list=list "," $2 ":" i; next } END { print substr(list,2) } '`;
+fi
+AC_SUBST(MCE_LIST)
+
 AC_DEFINE_UNQUOTED(MAX_FIBRE_CARD, [$MAX_FIBRE_CARD],
           [ Define to the total allowable number of fibre cards. ])
 if test $MAX_FIBRE_CARD -eq 1; then
@@ -430,12 +436,11 @@ if test "$DO_MAS_DRIVER" != "no"; then
   echo "    ... fakemce:           ${DRIVER_FAKEMCE}"
   echo "    ... verbose debugging: ${DRIVER_VERBOSE}"
   echo "    ... disable error msg: ${DRIVER_QUIET}"
-fi
-if test $MCENETD_CLIENT -eq 1; then
-  echo "  mcenetd client:          yes"
-  echo "    ... default host:      ${CLIENT_HOST}"
+if test $MAX_FIBRE_CARD -eq 1; then
+  echo "    ... multicard support: no"
 else
-  echo "  mcenetd client:          no"
+  echo "    ... multicard support: yes (max ${MAX_FIBRE_CARD} cards)"
+fi
 fi
 if test $MCENETD_SERVER -eq 1; then
   echo "  mcenetd server:          yes"
@@ -444,13 +449,11 @@ else
 fi
 echo
 echo "  shared libraries:        ${SHARED}"
-if test $MAX_FIBRE_CARD -eq 1; then
-  echo "  Multicard support:       no"
-else
-  echo "  Multicard support:       yes (max ${MAX_FIBRE_CARD} cards)"
-fi
 echo "  build mce.cfg/mas.cfg:   ${DO_CONFIG2}"
 echo "  MAS user/group:          ${MAS_USER}/${MAS_GROUP}"
+echo
+echo "  MCE List:"
+echo "    ${MCE_LIST}"
 
 if test "x${CLIENT_ONLY}" = "xno" && test ! -f config2/$FIRST_MCE_CIN; then
   echo
