@@ -72,19 +72,14 @@ mce_context_t* mce_connect(int fibre_card)
 {
     char *ptr;
 
-	// Get a library context structure (cheap)
+    // Get a library context structure
     mce_context_t *mce = mcelib_create(fibre_card, NULL);
 
-	// Load MCE config information ("xml")
-    ptr = mcelib_default_hardwarefile(fibre_card);
-    if (ptr == NULL) {
-        fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
-        return NULL;
-    } else if (mceconfig_open(mce, ptr, NULL) != 0) {
-		fprintf(stderr, "Failed to load MCE configuration file %s.\n", ptr);
+    // Load MCE config information
+    if (mceconfig_open(mce, NULL, NULL) != 0) {
+        fprintf(stderr, "Failed to load MCE default configuration file.\n");
 		return NULL;
 	}
-    free(ptr);
 
 	// Connect to an mce_cmd device.
     ptr = mcelib_cmd_device(fibre_card);

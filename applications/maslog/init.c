@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <libconfig.h>
+#include <mce_library.h>
 
 #include "init.h"
 
@@ -26,9 +27,9 @@ static char *get_config_file(int argc, char **argv)
 	return NULL;
 }
 
-static int destroy_exit(struct config_t *cfg, int error)
+static int destroy_exit(mce_context_t *mce, int error)
 {
-	config_destroy(cfg);
+    mcelib_destroy(mce);
 	return error;
 }
 
@@ -65,35 +66,40 @@ static int get_string(char *dest,
 
 static int load_config(params_t *p, char *config_file)
 {
-	struct config_t cfg;
-	config_init(&cfg);
+    mce_context_t *mce;
+    struct config_t *cfg;
 
-	if (!config_read_file(&cfg, config_file)) {
-		fprintf(stderr, "%s: Could not read config file '%s'\n", __func__,
-				config_file);
+    /* laziness: get libmce to parse the config file.  This magically
+     * takes care of figuring out the default mas.cfg if none was specified.
+     */
+
+    mce = mcelib_create(-1, config_file);
+    if (mce == NULL) {
+        fprintf(stderr, "%s: Could not initialise the MCE\n", __func__);
 		return -1;
 	}
+    cfg = mce->mas_cfg;
 
-	config_setting_t *server = config_lookup(&cfg, CONFIG_SERVER);
+    config_setting_t *server = config_lookup(cfg, CONFIG_SERVER);
 	if (server==NULL) {
 		fprintf(stderr, "%s: could not find '%s' section "
 				"in config file\n", __func__, CONFIG_SERVER);
-		return destroy_exit(&cfg, -1);
+        return destroy_exit(mce, -1);
 	}
 
 	//Now load the server settings
 	if (get_string(p->serve_address, server, CONFIG_LOGADDR)!=0)
-		return destroy_exit(&cfg, -1);
+        return destroy_exit(mce, -1);
 
 	if (get_string(p->filename, server, CONFIG_LOGFILE)!=0)
-		return destroy_exit(&cfg, -1);
+        return destroy_exit(mce, -1);
 
 	//Non-fatal
 	get_integer(&p->daemon, server, CONFIG_DAEMON);
 	get_integer(&p->level, server, CONFIG_LEVEL);
 
 
-	return destroy_exit(&cfg, 0);
+    return destroy_exit(mce, 0);
 }
 
 
@@ -105,13 +111,7 @@ int init(params_t *p, int argc, char **argv)
 		return 1;
 
 	char *config_file;
-	if ((config_file = get_config_file(argc, argv)) == NULL) {
-		config_file = mcelib_default_masfile();
-		if (config_file == NULL) {
-			fprintf(stderr, "Unable to obtain path to default mas.cfg.\n");
-			return 2; 
-		}
-	}
+    config_file = get_config_file(argc, argv);
 
 	if (load_config(p, config_file))
 		return 2;

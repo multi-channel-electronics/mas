@@ -38,7 +38,7 @@ endif
 default: all
 
 all: $(all_deps)
-	for d in $(all_dirs); do \
+	+for d in $(all_dirs); do \
 	  ( cd $$d && ${MAKE}; ) || exit 1;\
 	done
 

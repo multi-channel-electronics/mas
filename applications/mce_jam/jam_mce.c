@@ -79,7 +79,7 @@ static int verbose = 1;
 
 void initialize_mce(int frequency)
 {
-  char *ptr;
+    char *ptr;
 
 	if (verbose) {
 		printf("init MCE\n");
@@ -96,18 +96,16 @@ void initialize_mce(int frequency)
 	// Get context and load hardware config
 	if (mce == NULL) {
         mce = mcelib_create(fibre_card, NULL);
-        ptr = mcelib_default_hardwarefile(fibre_card);
-		if (mceconfig_open(mce, ptr, NULL) != 0) {
-			fprintf(stderr, "Failed to load MCE configuration file %s.\n", ptr);
+        if (mceconfig_open(mce, NULL, NULL) != 0) {
+            fprintf(stderr, "Failed to load default MCE configuration file.\n");
 			exit(1);
 		}
-        free(ptr);
         ptr = mcelib_cmd_device(fibre_card);
 		if (mcecmd_open(mce, ptr) != 0) {
 			fprintf(stderr, "Failed to open %s.\n", ptr);
 			exit(1);
 		}
-    free(ptr);
+        free(ptr);
 	}
 
 	// Look up parameters

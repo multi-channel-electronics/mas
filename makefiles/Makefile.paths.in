@@ -29,9 +29,10 @@ PYTHON_INC = @PYTHON_DIR@
 
 # Linking arguments, including libconfig
 ifeq ($(SHARED), yes)
-DSP_EXTRA = -Wl,--rpath-link=$(MCELIB_F) $(MCE_EXTRA)
+MCE_EXTRA = -Wl,--rpath=$(MCELIB_F)
+DSP_EXTRA = -Wl,--rpath=$(DSPLIB_F) $(MCE_EXTRA)
 else
-MCE_EXTRA = $(CONFIG_LIBS) $(LOG_LIBS)
+MCE_EXTRA = $(CONFIG_LIBS)
 DSP_EXTRA =
 endif
 MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) $(LIBS)

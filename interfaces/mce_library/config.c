@@ -1,8 +1,12 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 #include <mce_library.h>
+#include <mce/defaults.h>
    
 
 /* Local prototypes... */
@@ -89,15 +93,30 @@ int try_get_child(config_setting_t *parent, const char* name,
 int mceconfig_open(mce_context_t* context,
 		   const char *filename, const char *keyname)
 {
+    int need_file_free = 0;
+    int retval = 0;
+    char *file = (char*)filename;
 	const char* key = MCECFG_HARDWARE;
 	struct config_t *cfg = &C_config.cfg;
 
+    /* load the default hardware file if none is specified. */
+    if (file == NULL) {
+        file = mcelib_default_hardwarefile(context->fibre_card);
+        if (file == NULL) {
+            fprintf(stderr, "%s: unable to obtain path to default hardware "
+                    "file!\n", __func__); 
+            retval = -1;
+            goto CLEANUP;
+        }
+        need_file_free = 1;
+    }
+
 	config_init(cfg);
-	if (!config_read_file(cfg, filename)) {
+    if (!config_read_file(cfg, file)) {
 		fprintf(stderr, "config_read_file '%s': line %i: %s\n",
-			filename, config_error_line(cfg),
-			config_error_text(cfg));
-		return -1;
+                file, config_error_line(cfg), config_error_text(cfg));
+        retval = -1;
+        goto CLEANUP;
 	}
 		
 	//Find hardware group
@@ -105,8 +124,9 @@ int mceconfig_open(mce_context_t* context,
 	config_setting_t *hardware = config_lookup(cfg, key);
 	if (hardware == NULL) {
 		fprintf(stderr, "Could not find key '%s' in file '%s'.\n",
-			key, filename);
-		return 1;
+                key, file);
+        retval = 1;
+        goto CLEANUP;
 	}
 
 	config_setting_t *system;
@@ -115,12 +135,14 @@ int mceconfig_open(mce_context_t* context,
 	    try_get_child(hardware, MCECFG_CARDTYPES, &C_config.card_types) ||
 	    try_get_child(hardware, MCECFG_MAPPINGS , &C_config.mappings) ||
 	    try_get_child(hardware, MCECFG_SYSTEM, &system)) {
-		return 1;
+        retval = 1;
+        goto CLEANUP;
 	}
 
 	if (try_get_child(system, MCECFG_COMPONENTS, &C_config.components)) {
 		printf("System has no components!\n");
-		return 1;
+        retval = 1;
+        goto CLEANUP;
 	}
 
 	C_config.paramset_count = count_elem(hardware, MCECFG_PARAMSETS);
@@ -129,7 +151,11 @@ int mceconfig_open(mce_context_t* context,
 	C_config.card_count = count_elem(system, MCECFG_COMPONENTS);
 
 	C_config.connected = 1;
-	return 0;
+
+CLEANUP:
+    if (need_file_free)
+        free(file);
+    return retval;
 }
 
 int mceconfig_close(mce_context_t* context)

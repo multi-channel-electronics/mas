@@ -91,20 +91,6 @@ int process_options(option_t *options, int argc, char **argv)
       fprintf(stderr, "Unable to obtain path to default command device!\n");
       return -1;
   }
-  if (options->hardware_file == NULL) {
-      options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
-      if (options->hardware_file == NULL) {
-          fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
-          return -1;
-      }
-  }
-  if (options->config_file == NULL) {
-      options->config_file = mcelib_default_masfile();
-      if (options->config_file == NULL) {
-          fprintf(stderr, "Unable to obtain path to default mas.cfg!\n");
-          return -1;
-      }
-  }
 
   return optind;
 }

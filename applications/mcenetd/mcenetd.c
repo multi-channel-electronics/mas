@@ -144,7 +144,7 @@ static void MCEInit(void)
     pci[i].mas_ok = pci[i].dsp_ok = pci[i].cmd_ok = pci[i].dat_ok = 0;
 
     /* get a context, if this fails, we disable the card completely */
-    if ((pci[i].mce = mcelib_create(i)) == NULL)
+    if ((pci[i].mce = mcelib_create(i, options.mas_file)) == NULL)
       lprintf(LOG_ERR, "Unable to get MCE context #%i.\n", i);
     else {
       pci[i].mas_ok = 1;
