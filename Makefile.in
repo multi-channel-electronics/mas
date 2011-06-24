@@ -3,13 +3,12 @@ CC= @CC@
 
 # Compilation options from configure script
 MAKE_DRIVER=@DO_MAS_DRIVER@
-MAKE_CONFIG2=@DO_CONFIG2@
 MAKE_SWIG=@DO_MAS_SWIG@
 
 # Set up the sets of folders to recurse into for each target
-all_dirs = interfaces applications
+all_dirs = interfaces applications config2
 clean_dirs = interfaces applications scripts swig config2
-install_dirs = include interfaces applications scripts
+install_dirs = include interfaces applications scripts config2
 
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h makefiles/Makefile.install \
@@ -26,11 +25,6 @@ endif
 ifeq ($(MAKE_DRIVER),yes)
 all_deps += make_driver
 install_deps += install_driver
-endif
-
-ifeq ($(MAKE_CONFIG2),yes)
-all_dirs += config2
-install_dirs += config2
 endif
 
 # Target definitions.  This should be a loop or something...

@@ -17,8 +17,8 @@ AC_PROG_CC
 AC_PROG_LN_S
 
 dnl Allow the user to suppress doing the config2 stuff
-AC_ARG_ENABLE([config2], [AS_HELP_STRING([--disable-config2],
-              [disable building or installing mce.cfg and mas.cfg])],
+AC_ARG_ENABLE([mce-cfg], [AS_HELP_STRING([--disable-mce-cfg],
+              [disable building or installing the (various) mce.cfg files])],
               [DO_CONFIG2=$enableval], [DO_CONFIG2=yes])
 AC_SUBST(DO_CONFIG2)
 
@@ -422,28 +422,20 @@ else
 fi
 echo
 echo "  shared libraries:        ${SHARED}"
-echo "  build mce.cfg/mas.cfg:   ${DO_CONFIG2}"
+echo "  build mce.cfg files:     ${DO_CONFIG2}"
 echo "  MAS user/group:          ${MAS_USER}/${MAS_GROUP}"
 echo
 echo "  MCE List:"
 echo "    ${MCE_LIST}"
 
-if test "x${CLIENT_ONLY}" = "xno" && test ! -f config2/$FIRST_MCE_CIN; then
+if test "x$DO_CONFIG2" = "xyes" -a ! -f config2/$FIRST_MCE_CIN; then
   echo
-  if test $MAX_FIBRE_CARD -eq 1; then
-    echo "
-  Before building MAS, you must first select the mce.cin file to use as your
-  hardware configuration file.  To do this, copy an appropriate template file
-  from config2/templates to config2/mce.cin.  Then modify this file to
-  match the configuration of your subrack.
-"
-  else
-    echo "
-  Before building MAS, you must first select the mce.cin files to use as your
-  hardware configuration files.  For each fibre card in your system, copy an
-  appropriate template files from config2/templates to config2/mce#.cin,
+  echo "
+  Before building MAS, you must first select the mce.cin file(s) to use as your
+  hardware configuration file(s).  For each device listed in the MCE List above,
+  copy an appropriate template files from config2/templates to config2/mce#.cin,
   (where # is the fibre card number).  Then modify each of these files to match
-  the configuration of the subrack attached to the given fibre card.
+  the configuration of the subrack attached to the given fibre card.  To skip
+  building these files, you can pass --disable-mce-cfg to this script.
 "
-  fi
 fi
