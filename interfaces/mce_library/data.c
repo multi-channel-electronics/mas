@@ -142,6 +142,34 @@ int mcedata_close(mce_context_t context)
 	return 0;
 }
 
+/* read hooks */
+static ssize_t mcedata_net_read(mce_context_t context, void *buf, size_t count)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+static ssize_t mcedata_eth_read(mce_context_t context, void *buf, size_t count)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+ssize_t mcedata_read(mce_context_t context, void *buf, size_t count)
+{
+    switch (context->dev_route)
+    {
+        case sdsu:
+            return read(context->data.fd, buf, count);
+        case eth:
+            return mcedata_eth_read(context, buf, count);
+        case net:
+            return mcedata_net_read(context, buf, count);
+    }
+}
+
 /* ioctl on data device */
 
 int mcedata_ioctl_generic(mce_context_t context, int key, void *arg)

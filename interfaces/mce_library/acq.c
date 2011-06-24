@@ -465,7 +465,7 @@ int copy_frames_read(mce_acq_t *acq)
 				fprintf(stderr, "pre_frame action failed\n");
 		}
 
-		ret_val = read(acq->context->data.fd, (void*)data + index,
+        ret_val = mcedata_read(acq->context, (void*)data + index,
 			       acq->frame_size*sizeof(*data) - index);
 
 		if (ret_val<0) {

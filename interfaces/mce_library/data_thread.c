@@ -73,7 +73,6 @@ void *data_thread(void *p_void)
 	int ret_val;
 	data_thread_t *d =(data_thread_t*) p_void;
 	int size = d->acq->frame_size*sizeof(u32);
-	int fd = d->acq->context->data.fd;
 	mcedata_storage_t *acts = d->acq->storage;
 	u32 *data = malloc(size);
 	int done = 0;
@@ -99,7 +98,8 @@ void *data_thread(void *p_void)
 				fprintf(stderr, "pre_frame action failed\n");
 		}
 	
-		ret_val = read(fd, (void*)data + index, size - index);
+        ret_val = mcedata_read(d->acq->context, (void*)data + index,
+                size - index);
 
 		if (ret_val<0) {
 			if (errno==EAGAIN) {
