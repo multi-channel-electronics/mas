@@ -61,7 +61,7 @@ typedef struct {
 	char *name;
 } frame_item;
 
-frame_item header_items[] = {
+static frame_item header_items[] = {
 	// ACT naming scheme
 	{  0,  "status" },
 	{  1,  "frame_ctr" },
@@ -109,7 +109,7 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 	ALLOC_N(base_data, n*bufsize, err);
 	ALLOC_N(base_files, n*fieldsize, err);
 	ALLOC_N(base_names, n*fieldsize, err);
-	
+
 	if (err) {
 		fprintf(stderr, "Second stage alloc failed in dirfile_alloc!\n");
 		return -1;
@@ -122,7 +122,7 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 		d->channels[i].filename = base_files + fieldsize*i;
 		d->channels[i].free_on_destroy = (i==0);
 	}
-	
+
 	return 0;
 }
 
@@ -141,7 +141,7 @@ static int dirfile_free(dirfile_t *d)
 	}
 
 	FREE_NOT_NULL(d->channels);
-			     
+
 	return 0;
 }
 
@@ -176,7 +176,7 @@ static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
 
 /* Write the format file into the dirfile folder */
 
-int write_format_file(dirfile_t* f)
+static int write_format_file(dirfile_t* f)
 {
 	char filename[MCE_LONG];
 	FILE* format;
@@ -203,14 +203,14 @@ int write_format_file(dirfile_t* f)
 		struct mce_data_field** m;
 		channel_t *c = f->channels + i;
 		if (c->data_mode < 0) continue;
-		
+
 		for (m = mce_data_fields; *m != NULL; m++) {
 			double scalar = 1.;
 			if ((*m)->data_mode != c->data_mode) continue;
 			/* Final field name can now be determined */
 			sprintf(final_field, OUTPUT_FORMAT,
 				(*m)->name, c->basename);
-			
+
 			switch((*m)->type) {
 			case DATA_MODE_SCALE:
 				scalar = (*m)->scalar;
@@ -225,7 +225,7 @@ int write_format_file(dirfile_t* f)
 					final_field, c->filename,
 					(*m)->bit_start, (*m)->bit_count);
 				break;
-				
+
 			case DATA_MODE_EXTRACT_SCALE:
 				sprintf(inter_field, EXT_FORMAT,
 					(*m)->name, c->basename);
@@ -237,7 +237,7 @@ int write_format_file(dirfile_t* f)
 					final_field, inter_field, (*m)->scalar);
 				break;
 			}
-				
+
 		}
 
 	}
@@ -264,7 +264,7 @@ static int add_column_info(dirfile_t *dirfile, int data_start,
 			   int data_mode)
 {
 	int c, r;
-	for (c=0; c<col_count; c++) 
+    for (c=0; c<col_count; c++)
 		for (r=0; r<n_rows; r++) {
 			channel_t *ch = dirfile->channels + dirfile->channel_count;
 			sprintf(ch->basename, TES_BASE_FORMAT, r + row_id, c + col_id);
@@ -342,7 +342,7 @@ static int dirfile_init(mce_acq_t *acq)
 	cards[3] = (acq->cards & MCEDATA_RC4) ? 1 : 0;
 
 	// Setup data description
-	for (i=0; i<MCEDATA_CARDS; i++) 
+    for (i=0; i<MCEDATA_CARDS; i++)
 		n_cols += acq->cols*cards[i];
 	n_data += n_cols*acq->rows;
 
@@ -352,13 +352,13 @@ static int dirfile_init(mce_acq_t *acq)
 	// Allocate buffer memory.  Size target 1 / 2 frames
 	f->data_size = n_fields * 2;
 	dirfile_alloc(f, n_fields, MCE_SHORT, f->data_size);
-	
+
 	// How often should we call the write routines?
 	f->write_period = f->data_size / 2;
 
 	// Header data
 	add_items(f, header_items);
-		
+
 	// Set up tesdata fields; assumes cards requested are exactly
         // the cards in the data stream
 	ofs = 0;
@@ -400,7 +400,7 @@ static int dirfile_cleanup(mce_acq_t *acq)
 {
 	int i;
 	dirfile_t *f = (dirfile_t*)acq->storage->action_data;
-	
+
 	// Force all channels to write out.
 	f->flush = 1;
 	dirfile_write(acq, f);
@@ -446,7 +446,7 @@ static int dirfile_post(mce_acq_t *acq, int frame_index, u32 *data)
 static int dirfile_flush(mce_acq_t *acq)
 {
 	dirfile_t *f = (dirfile_t*)acq->storage->action_data;
-	
+
 	f->flush = 1;
 	dirfile_write(acq, f);
 	f->flush = 0;
@@ -470,7 +470,7 @@ static int dirfile_destructor(mcedata_storage_t *storage)
 	return 0;
 }
 
-mcedata_storage_t dirfile_actions = {
+static const mcedata_storage_t dirfile_actions = {
 	.init = dirfile_init,
 	.cleanup = dirfile_cleanup,
 	.post_frame = dirfile_post,

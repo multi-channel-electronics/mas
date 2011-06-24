@@ -9,7 +9,7 @@
 
 /* Define frame header for header version 6 */
 
-struct frame_header_abstraction frame_header_v6 = {
+struct frame_header_abstraction mcelib_frame_header_v6 = {
 	_size:             43,
 
 	status_v6:          0 | FRAME_OFFSET_PRESENT,
@@ -44,7 +44,7 @@ static int count_bits( int bits )
 }
 
 
-int sort_columns( mce_acq_t *acq, u32 *data )
+int mcelib_sort_columns( mce_acq_t *acq, u32 *data )
 {
 	u32 temp[MCEDATA_PACKET_MAX];
 
@@ -74,20 +74,20 @@ int sort_columns( mce_acq_t *acq, u32 *data )
 	memcpy(temp + header_size + data_size_out,
 	       data + header_size + data_size_in,
 	       footer_size*sizeof(*temp));
-	       
+
 	for (c=0; c<cards_out; c++) {
-		if ( (acq->cards & (1 << c)) == 0 ) 
+        if ( (acq->cards & (1 << c)) == 0 )
 			continue;
 		for (r=0; r<rows; r++) {
 			memcpy(temp+header_size + (r*cards_out + c)*columns,
 			       data+header_size + (rows*c_in + r)*columns,
 			       columns*sizeof(*temp));
 		}
-		c_in++;				
+        c_in++;
 	}
-	
+
 	memcpy(data, temp,
 	       (header_size+footer_size+data_size_out)*sizeof(*data));
 
-	return 0;	       
+    return 0;
 }

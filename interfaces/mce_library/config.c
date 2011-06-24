@@ -15,7 +15,7 @@
 static config_setting_t*
 get_setting_by_name(const config_setting_t *parent, const char *name);
 
-inline config_setting_t*
+static inline config_setting_t*
 get_setting(const config_setting_t *parent, const char *name);
 
 static int
@@ -54,7 +54,7 @@ int st_index(const string_table_t *st, const char *name);
 
 /* String tables */
 
-string_table_t param_types_st[] = {
+static const string_table_t param_types_st[] = {
 	{ MCE_CMD_MEM, "mem" },
 	{ MCE_CMD_CMD, "cmd" },
 	{ MCE_CMD_RST, "rst" },
@@ -62,7 +62,7 @@ string_table_t param_types_st[] = {
 };
 
 
-string_table_t card_natures_st[] = {
+static const string_table_t card_natures_st[] = {
 	{ MCE_NATURE_PHYSICAL, "physical" },
 	{ MCE_NATURE_VIRTUAL , "virtual" },
 	{ -1, NULL }
@@ -773,7 +773,7 @@ config_setting_t *get_setting_by_name(const config_setting_t *parent,
 	return NULL;
 }
 
-inline config_setting_t *get_setting(const config_setting_t *parent,
+static inline config_setting_t *get_setting(const config_setting_t *parent,
 				     const char *name)
 {
 	return config_setting_get_member(parent, name);

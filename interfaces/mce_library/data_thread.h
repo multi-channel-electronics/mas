@@ -9,7 +9,7 @@
 #include <mce_library.h>
 
 typedef struct data_thread_struct {
-	
+
 	pthread_t thread;
 
 	mce_acq_t *acq;
@@ -18,7 +18,7 @@ typedef struct data_thread_struct {
 	int count;
 	int chksum;
 	int drop;
-	
+
 	char errstr[MCE_LONG];
 
 } data_thread_t;
@@ -32,8 +32,6 @@ enum { MCETHREAD_IDLE = 0,
        MCETHREAD_ERROR
 };
 
-int  data_thread_launcher();
-int  data_thread_stop();
-int  data_thread_go();
+int  mcedata_thread_launcher();
 
 #endif

@@ -87,7 +87,7 @@ static int fileseq_cleanup(mce_acq_t *acq)
 		fclose(f->fout);
 		f->fout = NULL;
 	}
-	
+
 	return 0;
 }
 static int fileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
@@ -100,8 +100,8 @@ static int fileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
 		if (fileseq_cycle(acq, f, f->frame_count)) {
 			return -1;
 		}
-	}	
-	
+    }
+
 	if (f->fout == NULL) return -1;
 	fwrite(data, acq->frame_size*sizeof(*data), 1, f->fout);
 
@@ -116,7 +116,7 @@ static int fileseq_flush(mce_acq_t *acq)
 	return 0;
 }
 
-mcedata_storage_t fileseq_actions = {
+static const mcedata_storage_t fileseq_actions = {
 	.init = fileseq_init,
 	.cleanup = fileseq_cleanup,
 	.post_frame = fileseq_post,
@@ -182,7 +182,7 @@ static int flatfile_flush(mce_acq_t *acq)
 	return 0;
 }
 
-mcedata_storage_t flatfile_actions = {
+static const mcedata_storage_t flatfile_actions = {
 	.init = flatfile_init,
 	.cleanup = flatfile_cleanup,
 	.pre_frame = NULL,
@@ -198,7 +198,7 @@ typedef struct rambuff_struct {
 
 	int frame_size;
 	u32 *buffer;
-	
+
 	unsigned long user_data;
 	rambuff_callback_t callback;
 
@@ -238,7 +238,7 @@ static int rambuff_post(mce_acq_t *acq, int frame_index, u32 *data)
 	return 0;
 }
 
-mcedata_storage_t rambuff_actions = {
+static const mcedata_storage_t rambuff_actions = {
 	.init = rambuff_init,
 	.cleanup = rambuff_cleanup,
 	.pre_frame = NULL,
@@ -324,11 +324,11 @@ mcedata_storage_t* mcedata_fileseq_create(const char *basename, int interval,
 	sprintf(f->format, "%s.%%0%ii", f->basename, f->digits);
 
 	f->interval = interval;
-	
+
 	return storage;
 }
 
-/*      
+/*
 void mcedata_fileseq_destroy(mce_acq_t *acq)
 {
 	fileseq_t *f = (fileseq_t*)acq->storage->action_data;
@@ -363,7 +363,7 @@ mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
 	return storage;
 }
 
-/*      
+/*
 void mcedata_rambuff_destroy(mce_acq_t *acq)
 {
 	rambuff_t *f = (rambuff_t*)acq->storage->action_data;

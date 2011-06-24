@@ -44,8 +44,8 @@ static inline int get_last_error(mce_context_t context)
     return mcecmd_ioctl(context, MCEDEV_IOCT_LAST_ERROR, NULL);
 }
 
-int log_data(maslog_t maslog, u32 *buffer, int count, int min_raw, char *msg,
-	      int level)
+static int log_data(maslog_t maslog, u32 *buffer, int count, int min_raw,
+        char *msg, int level)
 {
 	char out[2048];
 	char *s = out + sprintf(out, "%s", msg);
@@ -241,7 +241,7 @@ static ssize_t mcecmd_read(mce_context_t context, void *buf, size_t count)
 }
 
 /* write hooks */
-static ssize_t mcecmd_net_write(mce_context_t context, const void *buf, 
+static ssize_t mcecmd_net_write(mce_context_t context, const void *buf,
         size_t count)
 {
     fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
@@ -249,7 +249,7 @@ static ssize_t mcecmd_net_write(mce_context_t context, const void *buf,
     abort();
 }
 
-static ssize_t mcecmd_eth_write(mce_context_t context, const void *buf, 
+static ssize_t mcecmd_eth_write(mce_context_t context, const void *buf,
         size_t count)
 {
     fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,

@@ -62,13 +62,12 @@ int data_reset(params_t *p)
  * data_thread is launched just prior to the initiation of the GO.
  */
 
-inline int stop_bit(char *packet) {
+static inline int stop_bit(char *packet) {
 	//Stop flag is bit 0 of first word
 	return *( (u32*)packet + 0) & 1;
 }
 
- 
-void *data_thread(void *p_void)
+static void *data_thread(void *p_void)
 {
 	int ret_val;
 	data_thread_t *d =(data_thread_t*) p_void;
@@ -81,7 +80,7 @@ void *data_thread(void *p_void)
 		sprintf(d->errstr, "Could not allocate data buffer memory\n");
 		d->state = MCETHREAD_ERROR;
 		return (void*)d;
-	}		
+    }
 
 	printf("data_thread: entry\n");
 	//logger_print(&p->logger, "Data thread starting\n");
@@ -97,7 +96,7 @@ void *data_thread(void *p_void)
 		if (acts->pre_frame != NULL && acts->pre_frame(d->acq)) {
 				fprintf(stderr, "pre_frame action failed\n");
 		}
-	
+
         ret_val = mcedata_read(d->acq->context, (void*)data + index,
                 size - index);
 
@@ -119,13 +118,13 @@ void *data_thread(void *p_void)
 
 		if (d->state == MCETHREAD_STOP)
 			done = EXIT_STOP;
-		
+
 		// Only dump complete frames to disk
 		if (index < size)
 			continue;
 
 		// Logical formatting
-		sort_columns( d->acq, data );
+        mcelib_sort_columns( d->acq, data );
 
 		if ( (acts->post_frame != NULL) && acts->post_frame( d->acq, count, data ) ) {
 			fprintf(stderr, "post_frame action failed\n");
@@ -143,7 +142,7 @@ void *data_thread(void *p_void)
 		p->frame_setup.seq_last - p->frame_setup.seq_first + 1);
 
 	switch (done) {
-		
+
 	case EXIT_STOP:
 		strcat(errstr, "user STOP received.\n");
 		break;
@@ -176,7 +175,7 @@ void *data_thread(void *p_void)
 			p->datafile.filename);
 		printf("data_thread: %s\n", errstr);
 		logger_print(&p->logger, errstr);
-	}	
+    }
 
 	data_clearflag(d, FLAG_STOP);
 	data_setflag(d, FLAG_DONE);
@@ -186,11 +185,11 @@ void *data_thread(void *p_void)
 	return (void*)d;
 }
 
-int data_thread_launcher(data_thread_t *d)
+int mcedata_thread_launcher(data_thread_t *d)
 {
 	d->state = MCETHREAD_LAUNCH;
 	int err = pthread_create(&d->thread, NULL, data_thread, (void*)d);
-	
+
 	return err;
 }
 

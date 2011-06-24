@@ -58,13 +58,13 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t context, int options,
 	// Load frame size parameters from MCE
 	ret_val = load_frame_params(context, acq, cards);
 	if (ret_val != 0) return ret_val;
-	
+
 	// Load data description stuff
 	ret_val = load_data_params(context, acq, cards);
 	if (ret_val != 0) return ret_val;
 
 	// Save frame size and other options
-	acq->frame_size = acq->rows * acq->cols * acq->n_cards + 
+    acq->frame_size = acq->rows * acq->cols * acq->n_cards +
 		MCEDATA_HEADER + MCEDATA_FOOTER;
 	acq->options = options;
 	acq->context = context;
@@ -73,14 +73,14 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t context, int options,
 	// Lookup "rc# ret_dat" (go address) location or fail.
 	if (load_ret_dat(acq, cards) != 0)
 		return -MCE_ERR_FRAME_CARD;
-	
+
 	// Lookup "cc ret_dat_s" (frame count) or fail
 	if ((ret_val=mcecmd_load_param(
 		     acq->context, &acq->ret_dat_s, "cc", "ret_dat_s")) != 0) {
 /* 		fprintf(stderr, "Could not load 'cc ret_dat_s'\n"); */
 		return ret_val;
 	}
-	
+
 	// Set frame size in driver.
 	ret_val = mcedata_set_datasize(acq->context,
 				       acq->frame_size * sizeof(u32));
@@ -118,7 +118,7 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 	if (acq==NULL || !acq->ready) {
 		fprintf(stderr, "mcedata_acq_go: acq structure null or not ready!\n");
 		return -MCE_ERR_FRAME_UNKNOWN;
-	}			
+    }
 
 	// Does checking / setting ret_dat_s really slow us down?
 	if (n_frames < 0) {
@@ -144,7 +144,7 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 		data_thread_t d;
 		d.state = MCETHREAD_IDLE;
 		d.acq = acq;
-		if ((ret_val=data_thread_launcher(&d)) != 0)
+        if ((ret_val=mcedata_thread_launcher(&d)) != 0)
 			return ret_val;
 
 		while (d.state != MCETHREAD_IDLE) {
@@ -231,7 +231,7 @@ static int load_frame_params(mce_context_t context, mce_acq_t *acq, int cards)
 	int fw_rcsflags = 0;          //firmware supports rcs_to_report_data
 	int ret_val = 0;
 	int i;
-	
+
 	/* Load MCE parameters to determine fw_* supported by this firmware */
 	if (mcecmd_load_param(context, &para_nrow, "cc",
 			      "num_rows_reported") != 0) {
@@ -268,11 +268,11 @@ static int load_frame_params(mce_context_t context, mce_acq_t *acq, int cards)
 	if (mcecmd_read_block(context, &para_nrow, 1, data) != 0)
 		return -MCE_ERR_FRAME_ROWS;
 	acq->rows = (int)data[0];
-	
+
 	// Load the row and column starting indices (for, e.g. dirfile field naming)
 	for (i=0; i<MCEDATA_CARDS; i++) {
 		char rc[4];
-		if (!(acq->cards & (1<<i))) 
+        if (!(acq->cards & (1<<i)))
 			continue;
 		sprintf(rc, "rc%i", i+1);
 		acq->row0[i] = 0;
@@ -298,22 +298,22 @@ static int load_data_params(mce_context_t context, mce_acq_t *acq, int cards)
 	      acq->data_mode  per-card data_mode settings
 	      (eventually, full rectangle mode support will go here)
 
-	   If cards < 0 then acq->cards is used instead.  i.e. call 
+       If cards < 0 then acq->cards is used instead.  i.e. call
 	   load_frame_params first if you want guessing to happen.
 	*/
 	mce_param_t para;
 	u32 data[64];
 	int i;
-	
+
 	/* Determine cards that will be returning data */
 	if (cards <= 0) {
 		cards = acq->cards;
 	}
-	
+
 	// Load data_modes from each card.
 	for (i=0; i<MCEDATA_CARDS; i++) {
 		char rc[4];
-		if (!(acq->cards & (1<<i))) 
+        if (!(acq->cards & (1<<i)))
 			continue;
 		sprintf(rc, "rc%i", 1+i);
 		acq->data_mode[i] = 0;
@@ -335,7 +335,7 @@ int load_ret_dat(mce_acq_t *acq, int cards)
 	if (cards <=0 || acq->cards==MCEDATA_RCS) {
 		return mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
 	}
-	
+
 	// Lookup the go command location for the specified card set.
 	switch (acq->cards) {
 	case MCEDATA_RC1:
@@ -364,7 +364,7 @@ int copy_frames_mmap(mce_acq_t *acq)
 
 	int waits = 0;
 	int max_waits = 1000;
-	
+
 	acq->n_frames_complete = 0;
 
 	/* memmap loop */
@@ -388,7 +388,7 @@ int copy_frames_mmap(mce_acq_t *acq)
 		data = acq->context->data.map + ret_val;
 
 		// Logical formatting
-		sort_columns( acq, data );
+        mcelib_sort_columns( acq, data );
 
 		if ( (acq->storage->post_frame != NULL) &&
 		     acq->storage->post_frame( acq, count, data ) ) {
@@ -399,11 +399,11 @@ int copy_frames_mmap(mce_acq_t *acq)
 		if (++count >= acq->n_frames)
 			done = EXIT_COUNT;
 
-		if (frame_property(data, &frame_header_v6, status_v6)
+        if (frame_property(data, &mcelib_frame_header_v6, status_v6)
 		    & FRAME_STATUS_V6_STOP)
 			done = EXIT_STOP;
 
-		if (frame_property(data, &frame_header_v6, status_v6)
+        if (frame_property(data, &mcelib_frame_header_v6, status_v6)
 		    & FRAME_STATUS_V6_LAST)
 			done = EXIT_LAST;
 
@@ -424,7 +424,7 @@ int copy_frames_mmap(mce_acq_t *acq)
 	case EXIT_STOP:
 		acq->status = MCEDATA_STOP;
 		break;
-		
+
 	case EXIT_READ:
 	case EXIT_WRITE:
 	case EXIT_EOF:
@@ -448,7 +448,7 @@ int copy_frames_read(mce_acq_t *acq)
 
 	int waits = 0;
 	int max_waits = 1000;
-	
+
 	acq->n_frames_complete = 0;
 
 	if (data==NULL) {
@@ -495,7 +495,7 @@ int copy_frames_read(mce_acq_t *acq)
 			continue;
 
 		// Logical formatting
-		sort_columns( acq, data );
+        mcelib_sort_columns( acq, data );
 
 		if ( (acq->storage->post_frame != NULL) &&
 		     acq->storage->post_frame( acq, count, data ) ) {
@@ -506,11 +506,11 @@ int copy_frames_read(mce_acq_t *acq)
 		if (++count >= acq->n_frames)
 			done = EXIT_COUNT;
 
-		if (frame_property(data, &frame_header_v6, status_v6)
+        if (frame_property(data, &mcelib_frame_header_v6, status_v6)
 		    & FRAME_STATUS_V6_STOP)
 			done = EXIT_STOP;
 
-		if (frame_property(data, &frame_header_v6, status_v6)
+        if (frame_property(data, &mcelib_frame_header_v6, status_v6)
 		    & FRAME_STATUS_V6_LAST)
 			done = EXIT_LAST;
 	}
@@ -528,7 +528,7 @@ int copy_frames_read(mce_acq_t *acq)
 	case EXIT_STOP:
 		acq->status = MCEDATA_STOP;
 		break;
-		
+
 	case EXIT_READ:
 	case EXIT_WRITE:
 	case EXIT_EOF:

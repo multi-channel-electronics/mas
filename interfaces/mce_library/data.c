@@ -100,6 +100,7 @@ static int mcedata_sdsu_disconnect(mce_context_t context)
 	if (close(C_data.fd) < 0)
 		return -MCE_ERR_DEVICE;
 
+    return 0;
 }
 
 /* ethernet specific stuff */
@@ -125,11 +126,11 @@ int mcedata_close(mce_context_t context)
 
     switch(context->dev_route) {
         case sdsu:
-            err = mcedata_sdsu_connect(context);
+            err = mcedata_sdsu_disconnect(context);
         case eth:
-            err = mcedata_eth_connect(context);
+            err = mcedata_eth_disconnect(context);
         case net:
-            err = mcedata_net_connect(context);
+            err = mcedata_net_disconnect(context);
         default:
             fprintf(stderr, "mcedata: Unhandled route.\n");
             return -MCE_ERR_DEVICE;
@@ -167,6 +168,9 @@ ssize_t mcedata_read(mce_context_t context, void *buf, size_t count)
             return mcedata_eth_read(context, buf, count);
         case net:
             return mcedata_net_read(context, buf, count);
+        default:
+            fprintf(stderr, "mcedata: Unhandled route.\n");
+            return -MCE_ERR_DEVICE;
     }
 }
 

@@ -21,7 +21,7 @@
 #include <mce/dsp_errors.h>
 #include <mce/dsp_ioctl.h>
 
-inline int mem_type_valid(dsp_memory_code mem) {
+static inline int mem_type_valid(dsp_memory_code mem) {
     return (mem==DSP_MEMX) || (mem==DSP_MEMY) || (mem==DSP_MEMP);
 }
 
@@ -159,7 +159,7 @@ static ssize_t mcedsp_read(mce_context_t context, void *buf, size_t count)
 }
 
 /* write hooks */
-static ssize_t mcedsp_net_write(mce_context_t context, const void *buf, 
+static ssize_t mcedsp_net_write(mce_context_t context, const void *buf,
         size_t count)
 {
     fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
