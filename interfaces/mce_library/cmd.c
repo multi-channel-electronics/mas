@@ -178,12 +178,74 @@ int mcecmd_lock_replies(mce_context_t context, int lock)
 	return err;
 }
 
+/* read hooks */
+static ssize_t mcecmd_net_read(mce_context_t context, void *buf, size_t count)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+static ssize_t mcecmd_eth_read(mce_context_t context, void *buf, size_t count)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+static ssize_t mcecmd_read(mce_context_t context, void *buf, size_t count)
+{
+    switch(context->dev_route) {
+        case sdsu:
+            return read(context->cmd.fd, buf, count);
+        case eth:
+            return mcecmd_eth_read(context, buf, count);
+        case net:
+            return mcecmd_net_read(context, buf, count);
+        default:
+            fprintf(stderr, "mcecmd: Unhandled device type.\n");
+            return -MCE_ERR_DEVICE;
+    }
+}
+
+/* write hooks */
+static ssize_t mcecmd_net_write(mce_context_t context, const void *buf, 
+        size_t count)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+static ssize_t mcecmd_eth_write(mce_context_t context, const void *buf, 
+        size_t count)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+static ssize_t mcecmd_write(mce_context_t context, const void *buf,
+        size_t count)
+{
+    switch(context->dev_route) {
+        case sdsu:
+            return write(context->cmd.fd, buf, count);
+        case eth:
+            return mcecmd_eth_write(context, buf, count);
+        case net:
+            return mcecmd_net_write(context, buf, count);
+        default:
+            fprintf(stderr, "mcecmd: Unhandled device type.\n");
+            return -MCE_ERR_DEVICE;
+    }
+}
 
 /* Basic device write/read routines */
 
 int mcecmd_send_command_now(mce_context_t context, mce_command *cmd)
 {
-	int error = write(C_cmd.fd, cmd, sizeof(*cmd));
+	int error = mcecmd_write(context, cmd, sizeof(*cmd));
 	if (error < 0) {
 		return -MCE_ERR_DEVICE;
 	} else if (error != sizeof(*cmd)) {
@@ -194,7 +256,7 @@ int mcecmd_send_command_now(mce_context_t context, mce_command *cmd)
 
 int mcecmd_read_reply_now(mce_context_t context, mce_reply *rep)
 {
-	int error = read(C_cmd.fd, rep, sizeof(*rep));
+	int error = mcecmd_read(context, rep, sizeof(*rep));
 	if (error < 0) {
 		return -MCE_ERR_DEVICE;
 	} else if (error != sizeof(*rep)) {
