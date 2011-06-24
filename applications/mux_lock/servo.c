@@ -11,7 +11,7 @@
 
 /******************************************************************
  * servo.c contains subroutines called by sq1servo.c and sq2servo.c
- * 
+ *
  * Contains subroutines used by sq1servo and sq2servo, especially
  * generic utility calls for generating runfiles and connecting to
  * the MCE library.
@@ -20,11 +20,11 @@
 
 int error_action(char *msg, int code){
   char temp[1024];
-  
+
   sprintf (temp, "%s with code %d", msg, code);
   ERRPRINT(temp);
-  exit (code);  
-}  
+  exit (code);
+}
 /***********************************************************
  * genrunfile - creates a runfile
  ***********************************************************/
@@ -34,8 +34,8 @@ char *datafile,          /* datafilename */
 int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
 int  which_rc,
 int  bias, int bstep, int nbias, int feed, int fstep, int nfeed,
-char *servo_init1,       /* a line of servo_init var_name and values to be included in <servo_init>*/     
-char *servo_init2        /* a line of servo_init var_name and values to be included in <servo_init>*/     
+char *servo_init1,       /* a line of servo_init var_name and values to be included in <servo_init>*/
+char *servo_init2        /* a line of servo_init var_name and values to be included in <servo_init>*/
 ){
 /* Method: spawns mcestatus to create <header> section
  *         generates <par_ramp> section
@@ -64,9 +64,9 @@ FILE *runfile;
     fprintf (runfile,"<servo_init>\n  %s\n", servo_init1);
     if (servo_init2 != NULL)
        fprintf (runfile,"  %s\n", servo_init2);
-    fprintf (runfile, "</servo_init>\n\n");    
+    fprintf (runfile, "</servo_init>\n\n");
   }
-  /*<par_ramp> section*/  
+  /*<par_ramp> section*/
   fprintf (runfile,"<par_ramp>\n  <loop_list> loop1 loop2\n");
   fprintf (runfile,"    <par_list loop1> par1\n      <par_title loop1 par1> sq%dbias\n      <par_step loop1 par1> %d %d %d\n",
                         which_servo, bias, bstep, nbias);
@@ -74,7 +74,7 @@ FILE *runfile;
                         which_servo, feed, fstep, nfeed);
   fprintf (runfile, "</par_ramp>\n\n");
   fclose(runfile);
-  
+
   /* frameacq_stamp */
   char rc_code = (which_rc > 0) ? '0'+which_rc : 's';
   sprintf(command, "frameacq_stamp %c %s %d >> %s.run", rc_code, datafile, nbias*nfeed, full_datafilename);
@@ -87,29 +87,29 @@ FILE *runfile;
 }
 
 
-mce_context_t* connect_mce_or_exit(option_t* options)
+mce_context_t connect_mce_or_exit(option_t* options)
 {
   char errmsg[1024];
 
-  mce_context_t* mce = mcelib_create(options->fibre_card, NULL);
-  
+  mce_context_t mce = mcelib_create(options->dev_index, options->config_file);
+
   // Load MCE hardware information ("xml")
   if (mceconfig_open(mce, options->hardware_file, NULL) != 0) {
     sprintf(errmsg, "Failed to open %s as hardware configuration file.", options->config_file);
     ERRPRINT(errmsg);
     exit(ERR_MCE_LCFG);
   }
-  
+
   // Connect to an mce_cmd device.
-  if (mcecmd_open(mce, options->cmd_device)) {
-    sprintf(errmsg, "Failed to open %s as command device.", options->cmd_device);
+  if (mcecmd_open(mce)) {
+    sprintf(errmsg, "Failed to open CMD device for %s.", mcelib_dev(mce));
     ERRPRINT(errmsg);
     exit(ERR_MCE_OPEN);
   }
 
    // Open data device
-   if (mcedata_open(mce, options->data_device) != 0) {
-     sprintf(errmsg, "Failed to open %s as data device.", options->data_device);
+   if (mcedata_open(mce)) {
+     sprintf(errmsg, "Failed to open DATA device for %s.", mcelib_dev(mce));
      ERRPRINT(errmsg);
      exit(ERR_MCE_DATA);
    }
@@ -118,8 +118,8 @@ mce_context_t* connect_mce_or_exit(option_t* options)
 }
 
 
-int load_param_or_exit(mce_context_t* mce, mce_param_t* p,
-			const char *card, const char *para, int no_exit)
+int load_param_or_exit(mce_context_t mce, mce_param_t* p, const char *card,
+    const char *para, int no_exit)
 {
   char errmsg[1024];
   int error = mcecmd_load_param(mce, p, card, para);
@@ -128,7 +128,7 @@ int load_param_or_exit(mce_context_t* mce, mce_param_t* p,
       return error;
 
     sprintf(errmsg, "lookup of %s %s failed with %d (%s)",
-	    card, para, error, mcelib_error_string(error)); 
+	    card, para, error, mcelib_error_string(error));
     ERRPRINT(errmsg);
     exit(ERR_MCE_PARA);
   }
@@ -136,9 +136,8 @@ int load_param_or_exit(mce_context_t* mce, mce_param_t* p,
 }
 
 
-void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
-			 int start, i32* data, int count,
-			 const char *opmsg)
+void write_range_or_exit(mce_context_t mce, mce_param_t* p, int start,
+    i32* data, int count, const char *opmsg)
 {
   char temp[1024];
   int error = mcecmd_write_range(mce, p, start, (u32*)data, count);
@@ -146,7 +145,7 @@ void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
 
     sprintf (temp, "mcecmd_write_range %s with code %d", opmsg, error);
     ERRPRINT(temp);
-    exit (error);  
+    exit (error);
   }
 }
 
@@ -157,7 +156,7 @@ void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
    depending on whether fast_sq1 is active or not.
  */
 
-int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
+int check_fast_sq2(mce_context_t mce, mce_param_t* sq2fb,
 		   mce_param_t* sq2fb_col, int col0, int n_col)
 {
   char errmsg[MAXLINE];
@@ -171,7 +170,7 @@ int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
 
   if (fb_err != 0 && fb0_err != 0) {
     sprintf(errmsg, "Neither %s %s nor %s %s could be loaded!",
-	    SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0"); 
+	    SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0");
     ERRPRINT(errmsg);
     exit(ERR_MCE_PARA);
   } else if (fb0_err == 0 && fb_err != 0) {
@@ -231,7 +230,7 @@ int load_initfile(const char *datadir, const char *filename, int start, int coun
   char line[MAXLINE];
   if (datadir != NULL) strcat(fullname, datadir);
   strcat(fullname, filename);
-  
+
   if ( (fd=fopen(fullname, "r")) == NULL) {
     ERRPRINT("failed to open init values file:\n");
     ERRPRINT(fullname);

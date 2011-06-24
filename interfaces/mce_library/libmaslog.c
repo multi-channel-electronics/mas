@@ -12,6 +12,7 @@
 #include <libconfig.h>
 
 #include "libmaslog.h"
+#include "context.h"
 
 #define CONFIG_CLIENT "log_client"
 #define CONFIG_LOGADDR "log_address"
@@ -37,46 +38,53 @@ int get_string(char *dest, config_setting_t *parent, const char *name)
 	return 0;
 }
 
-
-maslog_t maslog_connect(const mce_context_t *mce, const char *name)
+maslog_t maslog_connect(const mce_context_t mce, const char *name)
 {
+    char *address;
 	struct config_t *cfg;
-    maslog_t maslog = (maslog_t)malloc(sizeof(struct maslog_struct));
 
-    maslog->fd = 0;
     cfg = mce->mas_cfg;
 
-	config_setting_t *client = config_lookup(cfg, CONFIG_CLIENT);
-	
-	char address[SOCKS_STR];
-	if (get_string(address, client, CONFIG_LOGADDR)!=0)
-		return NULL;
+    /* if MCE_MASLOG_ADDR is set in the environment, we use that
+     * instead of looking as mas.cfg */
+    address = getenv("MCE_MASLOG_ADDR");
+    if (address == NULL) {
+        /* if mas.cfg hasn't been loaded, don't start logging. */
+        if (cfg == NULL)
+            return NULL;
 
-	int sock = massock_connect(address);
-	if (sock<0) {
-		fprintf(stderr, "%s: could not connect to maslog at %s\n", __func__,
-			address);
-		return NULL;
-	}
+        config_setting_t *client = config_lookup(cfg, CONFIG_CLIENT);
 
-	// Ignore pipe signals, we'll handle the errors (right?)
-	signal(SIGPIPE, SIG_IGN);
+        if (get_string(address, client, CONFIG_LOGADDR)!=0)
+            return NULL;
+    }
 
-	char cmd[SOCKS_STR];
-	sprintf(cmd, "%c%s%s", '0'+MASLOG_ALWAYS, CLIENT_NAME, name);
-	int sent = send(sock, cmd, strlen(cmd)+1, 0);
-	if (sent != strlen(cmd)+1) {
-		fprintf(stderr, "%s: failed to send client name\n", __func__);
-	}
+    int sock = massock_connect(address);
+    if (sock < 0) {
+        fprintf(stderr, "maslog: could not connect to maslog at %s:\n  %s\n",
+                address, massock_error(sock, errno));
+        return NULL;
+    }
 
-	maslog->fd = sock;
+    // Ignore pipe signals, we'll handle the errors (right?)
+    signal(SIGPIPE, SIG_IGN);
 
-	return maslog;
+    char cmd[SOCKS_STR];
+    sprintf(cmd, "%c%s%s", '0'+MASLOG_ALWAYS, CLIENT_NAME, name);
+    int sent = send(sock, cmd, strlen(cmd)+1, 0);
+    if (sent != strlen(cmd)+1) {
+        fprintf(stderr, "%s: failed to send client name\n", __func__);
+    }
+
+    maslog_t maslog = (maslog_t)malloc(sizeof(struct maslog_struct));
+    maslog->fd = sock;
+
+    return maslog;
 }
 
 int maslog_print(maslog_t maslog, const char *str)
 {
-	return maslog_print_level(maslog, str, MASLOG_ALWAYS);
+    return maslog_print_level(maslog, str, MASLOG_ALWAYS);
 }
 
 int maslog_print_level(maslog_t maslog, const char *str, int level)
@@ -84,63 +92,63 @@ int maslog_print_level(maslog_t maslog, const char *str, int level)
     if (maslog == NULL || maslog->fd <= 0)
         return -1;
 
-	char packet[2048];
-	int idx = 0;
+    char packet[2048];
+    int idx = 0;
 
-	while (*str != 0) {
-		packet[idx++] = '0' + level;
-		while (*str != 0 && *str != '\n') {
-			packet[idx++] = *str++;
-		}
-		if (*str == '\n') str++;
-		packet[idx++] = 0;
-	}
+    while (*str != 0) {
+        packet[idx++] = '0' + level;
+        while (*str != 0 && *str != '\n') {
+            packet[idx++] = *str++;
+        }
+        if (*str == '\n') str++;
+        packet[idx++] = 0;
+    }
 
     int sent = send(maslog->fd, packet, idx, 0);
-	if (sent != idx) {
-		if (sent==0) {
-			fprintf(stderr, "%s: connection closed, no further logging.\n",
+    if (sent != idx) {
+        if (sent==0) {
+            fprintf(stderr, "%s: connection closed, no further logging.\n",
                     __func__);
             maslog_close(maslog);
-		} else if (sent<0) {
-			fprintf(stderr, "%s: pipe error: %s, no further logging.\n",
+        } else if (sent<0) {
+            fprintf(stderr, "%s: pipe error: %s, no further logging.\n",
                     __func__, strerror(errno));
             maslog_close(maslog);
-		} else {
-			fprintf(stderr, "%s: partial send, logging will continue.\n",
+        } else {
+            fprintf(stderr, "%s: partial send, logging will continue.\n",
                     __func__);
-		}
-	}
-	return (maslog->fd > 0) ? 0 : -1;
+        }
+    }
+    return (maslog->fd > 0) ? 0 : -1;
 }
 
 int maslog_write(maslog_t maslog, const char *buf, int size)
 {
-	if (maslog==NULL || maslog->fd<=0) return -1;
-	
-	int sent = send(maslog->fd, buf, size, 0);
-	if (sent != size) {
-		fprintf(stderr, "%s: logging failed, (send error %i/%i)\n", __func__,
-			sent, size);
-		maslog_close(maslog);
-		return -1;
-	}
-	return 0;
+    if (maslog==NULL || maslog->fd<=0) return -1;
+
+    int sent = send(maslog->fd, buf, size, 0);
+    if (sent != size) {
+        fprintf(stderr, "%s: logging failed, (send error %i/%i)\n", __func__,
+                sent, size);
+        maslog_close(maslog);
+        return -1;
+    }
+    return 0;
 }
 
 int maslog_close(maslog_t maslog)
 {
-	if (maslog==NULL || maslog->fd <= 0)
+    if (maslog==NULL || maslog->fd <= 0)
         return -1;
 
-	int fd = maslog->fd;
-	maslog->fd = 0;
+    int fd = maslog->fd;
+    maslog->fd = 0;
 
-	int ret = close(fd);
-	if (ret != 0) {
-		fprintf(stderr, "%s: close error, errno=%i\n", __func__, ret);
+    int ret = close(fd);
+    if (ret != 0) {
+        fprintf(stderr, "%s: close error, errno=%i\n", __func__, ret);
     } else
         free(maslog);
 
-	return ret;
+    return ret;
 }

@@ -10,4 +10,4 @@ int scan_mce(int count, char *tdi, char *tdo);
 
 extern int specified_mce;
 extern int optimized_mce;
-extern int fibre_card;
+extern int dev_index;

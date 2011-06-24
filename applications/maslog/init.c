@@ -27,7 +27,7 @@ static char *get_config_file(int argc, char **argv)
 	return NULL;
 }
 
-static int destroy_exit(mce_context_t *mce, int error)
+static int destroy_exit(mce_context_t mce, int error)
 {
     mcelib_destroy(mce);
 	return error;
@@ -66,7 +66,7 @@ static int get_string(char *dest,
 
 static int load_config(params_t *p, char *config_file)
 {
-    mce_context_t *mce;
+    mce_context_t mce;
     struct config_t *cfg;
 
     /* laziness: get libmce to parse the config file.  This magically
@@ -78,7 +78,7 @@ static int load_config(params_t *p, char *config_file)
         fprintf(stderr, "%s: Could not initialise the MCE\n", __func__);
 		return -1;
 	}
-    cfg = mce->mas_cfg;
+    cfg = mcelib_mascfg(mce);
 
     config_setting_t *server = config_lookup(cfg, CONFIG_SERVER);
 	if (server==NULL) {

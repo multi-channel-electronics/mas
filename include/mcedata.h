@@ -30,7 +30,7 @@ typedef struct mcedata {
 	int connected;
 	int fd;
 
-	char dev_name[MCE_LONG];
+  char *dev_name;
 	char errstr[MCE_LONG];
 
 	void *map;
@@ -45,26 +45,27 @@ typedef struct mcedata {
 
 /* Data connection */
 
-int mcedata_open(mce_context_t *context, const char *dev_name);
-int mcedata_close(mce_context_t *context);
+int mcedata_open(mce_context_t context);
+int mcedata_close(mce_context_t context);
 
 
 /* ioctl access to driver */
 
-int mcedata_ioctl(mce_context_t* context, int key, unsigned long arg);
-int mcedata_set_datasize(mce_context_t* context, int datasize);
-int mcedata_empty_data(mce_context_t* context);
-int mcedata_fake_stopframe(mce_context_t* context);
-int mcedata_qt_enable(mce_context_t* context, int on);
-int mcedata_qt_setup(mce_context_t* context, int frame_index);
-void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
+#define mcedata_ioctl(c,k,a) mcedata_ioctl_generic((c),(k),(void *)(a))
+int mcedata_ioctl_generic(mce_context_t context, int key, void *arg);
+int mcedata_set_datasize(mce_context_t context, int datasize);
+int mcedata_empty_data(mce_context_t context);
+int mcedata_fake_stopframe(mce_context_t context);
+int mcedata_qt_enable(mce_context_t context, int on);
+int mcedata_qt_setup(mce_context_t context, int frame_index);
+void mcedata_buffer_query(mce_context_t context, int *head, int *tail,
 			  int *count);
-int mcedata_poll_offset(mce_context_t* context, int *offset);
-int mcedata_consume_frame(mce_context_t* context);
-int mcedata_lock_query(mce_context_t* context);
-int mcedata_lock_reset(mce_context_t* context);
-int mcedata_lock_down(mce_context_t* context);
-int mcedata_lock_up(mce_context_t* context);
+int mcedata_poll_offset(mce_context_t context, int *offset);
+int mcedata_consume_frame(mce_context_t context);
+int mcedata_lock_query(mce_context_t context);
+int mcedata_lock_reset(mce_context_t context);
+int mcedata_lock_down(mce_context_t context);
+int mcedata_lock_up(mce_context_t context);
 
 
 /* Frame data handlers */
@@ -103,8 +104,8 @@ mcedata_storage_t* mcedata_storage_destroy(mcedata_storage_t *storage);
 
 mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options);
 
-int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
-		       int options, int cards, int rows_reported, 
+int mcedata_acq_create(mce_acq_t* acq, mce_context_t context,
+		       int options, int cards, int rows_reported,
 		       mcedata_storage_t* storage);
 
 int mcedata_acq_destroy(mce_acq_t *acq);

@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -9,38 +12,25 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-#include "mce_library.h"
-#include "mce/defaults.h"
 #include <mce/data_ioctl.h>
 
 /* Local header files */
 
+#include "mce_library.h"
+#include "context.h"
 #include "data_thread.h"
 
-/* #define LOG_LEVEL_CMD     LOGGER_DETAIL */
-/* #define LOG_LEVEL_REP_OK  LOGGER_DETAIL */
-/* #define LOG_LEVEL_REP_ER  LOGGER_INFO */
-
-
-/* Data connection */
-
-int mcedata_open(mce_context_t *context, const char *dev_name)
+/* SDSU specific stuff */
+static int mcedata_sdsu_connect(mce_context_t context)
 {
 	void *map;
 	int map_size;
-
-	if (C_data.connected)
-    mcedata_close(context);
-
-  /* use default data device */
-  if (dev_name == NULL)
-    dev_name = mcelib_data_device(-1);
-
-	if (strlen(dev_name)>=MCE_LONG-1)
-		return -MCE_ERR_BOUNDS;
+    char dev_name[20] = "/dev/mce_data";
+    sprintf(dev_name + 13, "%u", (unsigned)context->dev_num);
 
 	C_data.fd = open(dev_name, O_RDWR);
-	if (C_data.fd<0) return -MCE_ERR_DEVICE;
+    if (C_data.fd < 0)
+        return -MCE_ERR_DEVICE;
 
 	// Non-blocking reads allow us to timeout
 	/* Hey!  This makes single go (and thus ramp) very slow!! */
@@ -59,16 +49,51 @@ int mcedata_open(mce_context_t *context, const char *dev_name)
 	}
 
 	C_data.connected = 1;
-	strcpy(C_data.dev_name, dev_name);
+    C_data.dev_name = dev_name;
 
 	return 0;
 }
 
-int mcedata_close(mce_context_t *context)
+/* ethernet specific stuff */
+static int mcedata_eth_connect(mce_context_t context)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+/* mcenetd specific stuff */
+static int mcedata_net_connect(mce_context_t context)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+/* Data connection */
+int mcedata_open(mce_context_t context)
+{
+    if (C_data.connected)
+        mcedata_close(context);
+
+    switch(context->dev_route) {
+        case sdsu:
+            return mcedata_sdsu_connect(context);
+        case eth:
+            return mcedata_eth_connect(context);
+        case net:
+            return mcedata_net_connect(context);
+        default:
+            fprintf(stderr, "mcedata: Unhandled device type.\n");
+            return -MCE_ERR_DEVICE;
+    }
+}
+
+int mcedata_close(mce_context_t context)
 {
 	C_data_check;
 
-	if (C_data.map != NULL) 
+    if (C_data.map != NULL)
 		munmap(C_data.map, C_data.map_size);
 
 	C_data.map_size = 0;
@@ -84,71 +109,76 @@ int mcedata_close(mce_context_t *context)
 
 /* ioctl on data device */
 
-int mcedata_ioctl(mce_context_t* context, int key, unsigned long arg)
+int mcedata_ioctl_generic(mce_context_t context, int key, void *arg)
 {
-	return ioctl(C_data.fd, key, arg);
+    if (context->dev_route == sdsu)
+        return ioctl(C_data.fd, key, arg);
+    else {
+        fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+                __FILE__);
+        abort();
+    }
 }
 
-int mcedata_set_datasize(mce_context_t* context, int datasize)
+int mcedata_set_datasize(mce_context_t context, int datasize)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_SET_DATASIZE, datasize);
+    return mcedata_ioctl(context, DATADEV_IOCT_SET_DATASIZE, datasize);
 }
 
-int mcedata_empty_data(mce_context_t* context)
+int mcedata_empty_data(mce_context_t context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_EMPTY);
+    return mcedata_ioctl(context, DATADEV_IOCT_EMPTY, NULL);
 }
 
-int mcedata_fake_stopframe(mce_context_t* context)
+int mcedata_fake_stopframe(mce_context_t context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_FAKE_STOPFRAME);
+    return mcedata_ioctl(context, DATADEV_IOCT_FAKE_STOPFRAME, NULL);
 }
 
-int mcedata_qt_enable(mce_context_t* context, int on)
+int mcedata_qt_enable(mce_context_t context, int on)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_QT_ENABLE, on);
+    return mcedata_ioctl(context, DATADEV_IOCT_QT_ENABLE, on);
 }
 
-int mcedata_qt_setup(mce_context_t* context, int frame_count)
+int mcedata_qt_setup(mce_context_t context, int frame_count)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_QT_CONFIG, frame_count);
+    return mcedata_ioctl(context, DATADEV_IOCT_QT_CONFIG, frame_count);
 }
 
-void mcedata_buffer_query(mce_context_t* context, int *head, int *tail, int *count)
+void mcedata_buffer_query(mce_context_t context, int *head, int *tail, int *count)
 {
-	*head = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_HEAD);
-	*tail = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_TAIL);
-	*count = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_MAX);
+    *head = mcedata_ioctl(context, DATADEV_IOCT_QUERY, QUERY_HEAD);
+    *tail = mcedata_ioctl(context, DATADEV_IOCT_QUERY, QUERY_TAIL);
+    *count = mcedata_ioctl(context, DATADEV_IOCT_QUERY, QUERY_MAX);
 }
 
-int mcedata_poll_offset(mce_context_t* context, int *offset)
+int mcedata_poll_offset(mce_context_t context, int *offset)
 {
-	*offset = ioctl(C_data.fd, DATADEV_IOCT_FRAME_POLL);
-	return (*offset >= 0);
+    *offset = mcedata_ioctl(context, DATADEV_IOCT_FRAME_POLL, NULL);
+    return (*offset >= 0);
 }
 
-int mcedata_consume_frame(mce_context_t* context)
+int mcedata_consume_frame(mce_context_t context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_FRAME_CONSUME);
+    return mcedata_ioctl(context, DATADEV_IOCT_FRAME_CONSUME, NULL);
 }
 
-int mcedata_lock_query(mce_context_t* context)
+int mcedata_lock_query(mce_context_t context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_QUERY);
+    return mcedata_ioctl(context, DATADEV_IOCT_LOCK, LOCK_QUERY);
 }
 
-int mcedata_lock_reset(mce_context_t* context)
+int mcedata_lock_reset(mce_context_t context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_RESET);
+    return mcedata_ioctl(context, DATADEV_IOCT_LOCK, LOCK_RESET);
 }
 
-int mcedata_lock_down(mce_context_t* context)
+int mcedata_lock_down(mce_context_t context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_DOWN);
+    return mcedata_ioctl(context, DATADEV_IOCT_LOCK, LOCK_DOWN);
 }
 
-int mcedata_lock_up(mce_context_t* context)
+int mcedata_lock_up(mce_context_t context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_UP);
+    return mcedata_ioctl(context, DATADEV_IOCT_LOCK, LOCK_UP);
 }
-

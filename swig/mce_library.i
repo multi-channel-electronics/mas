@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /* mce_library.i */
 
 /* This is just to get the mce_library functions into python; we
@@ -35,8 +38,6 @@ functionality. */
 %inline %{
 	/* Expose the default config/device files */
 
-  const int multicard_mas = MULTICARD;
-
 	typedef struct {
 		int index;
 		u32 *buf;
@@ -66,7 +67,7 @@ functionality. */
 		return 0;
 	}
 
-	int read_frames(mce_context_t *context, u32 *buf, int cards, int count) {
+    int read_frames(mce_context_t context, u32 *buf, int cards, int count) {
 		frame_handler_t f;
 		f.buf = buf;
 		f.index = 0;
@@ -80,7 +81,7 @@ functionality. */
 		return 0;
 	}
 
-	int read_channels(mce_context_t *context, u32 *buf, int cards, int count,
+    int read_channels(mce_context_t context, u32 *buf, int cards, int count,
 			  u32 *channels, int n_channels) {
 		frame_handler_t f;
 		f.buf = buf;
@@ -112,9 +113,9 @@ functionality. */
 
 %}
 
-int read_frames(mce_context_t *context, u32 *buf, int cards, int count);
+int read_frames(mce_context_t context, u32 *buf, int cards, int count);
 
-int read_channels(mce_context_t *context, u32 *buf, int cards, int count,
+int read_channels(mce_context_t context, u32 *buf, int cards, int count,
 		  u32 *channels, int n_channels);
 
 int u32_to_i32(i32 *dst, u32 *src, int n);

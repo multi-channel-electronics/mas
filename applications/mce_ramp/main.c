@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,6 +16,7 @@ int main(int argc, char** argv)
 	char ambles[MAX_AMBLES][LINE_LEN];
 
 	// If we don't zero these, it's segfault city.
+  options.mas_file = NULL;
 	options.ambles = ambles;
 	options.loops = calloc(MAX_LOOPS, sizeof(*options.loops));
 	options.values = calloc(MAX_VALUES, sizeof(*options.values));

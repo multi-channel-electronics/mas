@@ -16,16 +16,9 @@
   must return the offset of the first unprocessed argument.
 */
 
-#if MAX_FIBRE_CARD == 1
-#  define USAGE_OPTION_N "        -n <card number>       ignored\n"
-#else
-#  define USAGE_OPTION_N \
-  "        -n <card number>       use the specified fibre card\n"
-#endif
-
 #define USAGE_MESSAGE "" \
 "  Initial options (MAS config):\n" \
-USAGE_OPTION_N \
+"        -n <device index>       use the specified MCE device\n"\
 "        -w <hardware file>      override default hardware configuration file\n"\
 "        -m <MAS config file>    override default MAS configuration file\n"\
 "        -s <experiment file>    override default experiment configuration file\n"\
@@ -40,9 +33,7 @@ void usage()
 
 int process_options(option_t *options, int argc, char **argv)
 {
-#if MULTICARD
   char *s;
-#endif
   int option;
   // Note the "+" at the beginning of the options string forces the
   // first non-option string to return a -1, which is what we want.
@@ -61,13 +52,11 @@ int process_options(option_t *options, int argc, char **argv)
       break;
 
     case 'n':
-#if MULTICARD
-      options->fibre_card = (int)strtol(optarg, &s, 10);
-      if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
-          fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+      options->dev_index = (int)strtol(optarg, &s, 10);
+      if (*optarg == '\0' || *s != '\0' || options->dev_index < 0) {
+          fprintf(stderr, "%s: invalid device index number\n", argv[0]);
           return -1;
       }
-#endif
     break;
 
   case 'w':
@@ -100,17 +89,9 @@ int process_options(option_t *options, int argc, char **argv)
     }
   }
 
-    /* set file defaults */
-  if ((options->data_device = mcelib_data_device(options->fibre_card)) == NULL) {
-      fprintf(stderr, "Unable to obtain path to default data device!\n");
-      return -1;
-  }
-  if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL) {
-      fprintf(stderr, "Unable to obtain path to default command device!\n");
-      return -1;
-  }
   if (options->experiment_file == NULL) {
-      options->experiment_file = mcelib_default_experimentfile(options->fibre_card);
+      options->experiment_file =
+          mcelib_default_experimentfile(options->dev_index);
       if (options->experiment_file == NULL) {
           fprintf(stderr, "Unable to obtain path to default experiment.cfg!\n");
           return -1;

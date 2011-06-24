@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,340 +18,360 @@
 
 static int fill_sockaddr(struct sockaddr_in *sa, const char *addr)
 {
-	char *hostname;
-	char addr_copy[1024];
+    char *hostname, *addr_copy;
 
-	if (addr == NULL) {
-    fprintf(stderr, "No address specified\n");
-    return -1;
-	}
+    if (addr == NULL)
+        return MASSOCK_BAD_ADDR;
 
+    addr_copy = strdup(addr);
 	hostname = strtok(addr_copy, ":");
 	if (hostname==NULL) {
-		fprintf(stderr, "No host specified!\n");
-		return -1;
+        free(addr_copy);
+        return MASSOCK_BAD_ADDR;
 	}
 
 	struct hostent *host = gethostbyname(hostname);
 	if (host==NULL) {
-		fprintf(stderr, "Could not get host '%s'; error %i\n", hostname, h_errno);
-		return -1;
+        free(addr_copy);
+        return MASSOCK_NSLOOKUP;
 	}
-	
+
 	memcpy(&sa->sin_addr.s_addr, host->h_addr, host->h_length);
-	sa->sin_family = AF_INET;
+    sa->sin_family = AF_INET;
 
-	char *portname = strtok(NULL, ":");
-	if (portname == NULL) {
-    fprintf(stderr, "No port specified\n");
-    return -1;
-  }
+    char *portname = strtok(NULL, ":");
+    if (portname == NULL) {
+        free(addr_copy);
+        return MASSOCK_BAD_ADDR;
+    }
 
-  char *ender = portname;		
-  int port = strtol(portname, &ender, 0);
-  if (ender[0]!=0) {
-    fprintf(stderr, "Expected integer port '%s'\n", portname);
-    return -1;
-  }
-  sa->sin_port   = htons(port); 
+    char *ender = portname;
+    int port = strtol(portname, &ender, 0);
+    if (ender[0]!=0) {
+        free(addr_copy);
+        return MASSOCK_BAD_ADDR;
+    }
+    sa->sin_port = htons(port);
+    free(addr_copy);
 
-  return 0;
+    return 0;
+}
+
+/* this is non-re-entrant! */
+#define strcpypos(d,s) do { strcpy(d,s); pos = sizeof(s) - 1; } while (0)
+static char err_buff[4096];
+const char *massock_error(int err, int syserr)
+{
+    int pos = 0;
+    switch(err) {
+        case MASSOCK_BAD_ADDR:
+            return "bad address";
+        case MASSOCK_NSLOOKUP:
+            return "name resolution failed";
+        case MASSOCK_SOCKET:
+            strcpypos(err_buff, "socket creation error");
+            break;
+        case MASSOCK_CONNECT:
+            strcpypos(err_buff, "connect() error");
+            break;
+        case MASSOCK_BIND:
+            strcpypos(err_buff, "bind() error");
+            break;
+        case MASSOCK_LISTEN:
+            strcpypos(err_buff, "listen() error");
+            break;
+        case MASSOCK_ACCEPT:
+            strcpypos(err_buff, "accept() error");
+            break;
+        case MASSOCK_SELECT:
+            strcpypos(err_buff, "select() error");
+            break;
+    }
+
+    if (syserr)
+        sprintf(err_buff + pos, ": %s", strerror(syserr));
+
+    return err_buff;
 }
 
 int massock_connect(const char *addr)
 {
-  struct sockaddr_in sa;
+    struct sockaddr_in sa;
+    int err = fill_sockaddr(&sa, addr);
 
-  if (fill_sockaddr(&sa, addr)) return -1;
+    if (err)
+        return err;
 
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0)
+        return MASSOCK_SOCKET;
 
-  int err =  connect(sock, (struct sockaddr*)&sa, sizeof(sa)); 
+    if (connect(sock, (struct sockaddr*)&sa, sizeof(sa)))
+        return MASSOCK_CONNECT;
 
-  if (err!=0) {
-    fprintf(stderr, "%s: connect failed\n", __func__);
-    return err;
-  }
-
-  return sock;
+    return sock;
 }
 
 
 int massock_listen(const char *addr)
 {
-  struct sockaddr_in sa;
+    struct sockaddr_in sa;
 
-  if (fill_sockaddr(&sa, addr)) return -1;
+    int err = fill_sockaddr(&sa, addr);
 
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (err)
+        return err;
 
-  //Bind and listen
-  int yes = 1;
-  if (setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int))\
-      == -1) {
-    fprintf(stderr, "%s: Could not set socket options.\n", __func__);
-    return -1;
-  }
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0)
+        return MASSOCK_SOCKET;
 
-  int bind_err = bind(sock, (struct sockaddr *)&sa,
-      sizeof(struct sockaddr));
+    //Bind and listen
+    int yes = 1;
+    if (setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int))\
+            == -1) {
+        return MASSOCK_SOCKET;
+    }
 
-  if (bind_err!=0) {
-    fprintf(stderr, "%s: failed to bind: %s\n", __func__, strerror(errno));
-    return -2;
-  }
+    if (bind(sock, (struct sockaddr *)&sa, sizeof(struct sockaddr)))
+        return MASSOCK_BIND;
 
-  int list_err = listen(sock, 5); // 5 is backlog size
+    if(listen(sock, 5)) { // 5 is backlog size
+        return MASSOCK_LISTEN;
+    }
 
-  if (list_err!=0) {
-    fprintf(stderr, "%s: failed to listen: %s\n", __func__, strerror(errno));
-    return -3;
-  }
-
-  return sock;
+    return sock;
 }
-
 
 /* Client management functionality */
 
 int massock_listener_init( listener_t *list, int clients_max,
-    int recv_max, int send_max)
+        int recv_max, int send_max)
 {
-  if (list==NULL) return -1;
+    if (list==NULL) return -1;
 
-  memset((void*)list, 0, sizeof(*list));
+    memset((void*)list, 0, sizeof(*list));
 
-  int mem = clients_max * ( sizeof(massock_client_t) + recv_max + send_max);
+    int mem = clients_max * ( sizeof(massock_client_t) + recv_max + send_max);
 
-  list->clients = (massock_client_t*) malloc(mem);
-  if (list->clients==NULL) {
-    list->clients_max = 0;
-    return -1;
-  }
-  list->clients_max = clients_max;
-  memset((void*)list->clients, 0, mem);
-
-
-  char *startr = (char*) (list->clients + clients_max);
-  char *starts = startr + recv_max;
-  int delta = recv_max + send_max;
-
-  int i;
-  for (i=0; i<clients_max; i++) {
-    massock_client_t *c = list->clients + i;
-    c->recv_buf = startr + i*delta;
-    c->send_buf = starts + i*delta;
-    c->recv_max = recv_max;
-    c->send_max = send_max;
-  }
+    list->clients = (massock_client_t*) malloc(mem);
+    if (list->clients==NULL) {
+        list->clients_max = 0;
+        return -1;
+    }
+    list->clients_max = clients_max;
+    memset((void*)list->clients, 0, mem);
 
 
-  return 0;
+    char *startr = (char*) (list->clients + clients_max);
+    char *starts = startr + recv_max;
+    int delta = recv_max + send_max;
+
+    int i;
+    for (i=0; i<clients_max; i++) {
+        massock_client_t *c = list->clients + i;
+        c->recv_buf = startr + i*delta;
+        c->send_buf = starts + i*delta;
+        c->recv_max = recv_max;
+        c->send_max = send_max;
+    }
+
+    return 0;
 }
 
 int massock_listener_cleanup( listener_t *list) {
-  if (list==NULL) return -1;
-  if (list->clients != NULL)
-    free (list->clients);
+    if (list==NULL) return -1;
+    if (list->clients != NULL)
+        free (list->clients);
 
-  list->clients_max = 0;
-  list->clients_count = 0;
-  return 0;
+    list->clients_max = 0;
+    list->clients_count = 0;
+    return 0;
 }
 
 
 int massock_listener_listen( listener_t *list, const char *addr )
 {
-  int sock = massock_listen(addr);
-  if (sock<0) {
-    fprintf(stderr, "%s: could not listen on address '%s'\n",
-        __func__, addr);
-    return sock;
-  }
-  list->sock = sock;
-  strcpy(list->address, addr);
+    int sock = massock_listen(addr);
+    if (sock < 0)
+        return sock;
+    list->sock = sock;
+    strcpy(list->address, addr);
 
-  FD_ZERO(&list->rfd_master);
-  FD_SET(list->sock, &list->rfd_master);
+    FD_ZERO(&list->rfd_master);
+    FD_SET(list->sock, &list->rfd_master);
 
-  return 0;
+    return 0;
 }
 
 int massock_listener_close( listener_t *list )
 {
-  if (list->sock > 0) {
-    shutdown(list->sock, SHUT_RDWR);
-  }
+    if (list->sock > 0) {
+        shutdown(list->sock, SHUT_RDWR);
+    }
 
-  return 0;
+    return 0;
 }
 
 
-#define SUBNAME "listener_select: "
-
 static int accept_now( int sock )
 {
-  struct sockaddr_in client;
-  socklen_t sin_size = sizeof(struct sockaddr);
+    struct sockaddr_in client;
+    socklen_t sin_size = sizeof(struct sockaddr);
 
-  int fd = accept(sock, (struct sockaddr*)&client, &sin_size);
-  if (fd<0)
-    fprintf(stderr, SUBNAME
-        "could not accept connection [%i]\n", errno);
-  return fd;
+    int fd = accept(sock, (struct sockaddr*)&client, &sin_size);
+    if (fd < 0)
+        return MASSOCK_ACCEPT;
+    return fd;
 }
 
 massock_listen_flags massock_listener_select( listener_t *list )
 {
-  struct timeval tv = {
-    .tv_sec  = 1,
-    .tv_usec = 0,
-  };
+    struct timeval tv = {
+        .tv_sec  = 1,
+        .tv_usec = 0,
+    };
 
-  fd_set rfd = list->rfd_master;
+    fd_set rfd = list->rfd_master;
 
-  int n = select(FD_SETSIZE, &rfd, NULL, NULL, &tv);
+    int n = select(FD_SETSIZE, &rfd, NULL, NULL, &tv);
 
-  if (n < 0) {
-    fprintf(stderr, SUBNAME "select error [%i]\n", errno);
-    return -1;
-  }
+    if (n < 0)
+        return MASSOCK_SELECT;
 
-  if (n==0) return 0;
+    if (n==0) return 0;
 
-  // Check for new connections
-  massock_listen_flags ret_flags = 0;
+    // Check for new connections
+    massock_listen_flags ret_flags = 0;
 
-  if (FD_ISSET(list->sock, &rfd)) {
-    int fd;
-    massock_client_t *client;
+    if (FD_ISSET(list->sock, &rfd)) {
+        int fd;
+        massock_client_t *client;
 
-    if ( (fd = accept_now(list->sock)) <= 0)
-      return LISTENER_ERR;
+        if ( (fd = accept_now(list->sock)) <= 0)
+            return LISTENER_ERR;
 
-    if ( (client = massock_client_add(list, fd)) == NULL) {
-      close(fd);
-      return LISTENER_ERR;
+        if ( (client = massock_client_add(list, fd)) == NULL) {
+            close(fd);
+            return LISTENER_ERR;
+        }
+
+        // New client accepted, add to polling list
+        FD_SET(client->fd, &list->rfd_master);
+
+        ret_flags |= LISTENER_CONNECT;
     }
 
-    // New client accepted, add to polling list
-    FD_SET(client->fd, &list->rfd_master);
+    int i;
+    for (i=0; i<list->clients_max; i++) {
+        massock_client_t *cl = &list->clients[i];
+        if (FD_ISSET(cl->fd, &rfd)) {
+            cl->flags = massock_client_recv(cl);
+            ret_flags |= LISTENER_DATA;
+        } else
+            cl->flags &= ~LISTENER_DATA;
+    }
 
-    ret_flags |= LISTENER_CONNECT;
-  }
-
-  int i;
-  for (i=0; i<list->clients_max; i++) {
-    massock_client_t *cl = &list->clients[i];
-    if (FD_ISSET(cl->fd, &rfd)) {
-      cl->flags = massock_client_recv(cl);
-      ret_flags |= LISTENER_DATA;
-    } else
-      cl->flags &= ~LISTENER_DATA;
-  }
-
-  return ret_flags;
+    return ret_flags;
 }
 
 
 massock_client_t* massock_client_add( listener_t *list, int fd )
 {
-  if (list==NULL) return NULL;
-  if (fd<=0) return NULL;
+    if (list==NULL) return NULL;
+    if (fd<=0) return NULL;
 
-  int i;
-  for (i=0; i<list->clients_max; i++) {
-    massock_client_t *cl = &list->clients[i];
-    if (cl->fd <=0) {
-      cl->fd = fd;
-      cl->owner = list;
-      cl->flags |= LISTENER_CONNECT;
-      return cl;
+    int i;
+    for (i=0; i<list->clients_max; i++) {
+        massock_client_t *cl = &list->clients[i];
+        if (cl->fd <=0) {
+            cl->fd = fd;
+            cl->owner = list;
+            cl->flags |= LISTENER_CONNECT;
+            return cl;
+        }
     }
-  }
-  return NULL;
+    return NULL;
 }
 
 int massock_client_delete( massock_client_t *client )
 {
-  listener_t *list = client->owner;
+    listener_t *list = client->owner;
 
-  if (list==NULL || client->fd <= 0)
-    return -1;
+    if (list==NULL || client->fd <= 0)
+        return -1;
 
-  //Remove client's fd from poll list, close
-  FD_CLR(client->fd, &list->rfd_master);
-  close(client->fd);
+    //Remove client's fd from poll list, close
+    FD_CLR(client->fd, &list->rfd_master);
+    close(client->fd);
 
-  client->flags = 0;
-  client->fd = 0;
+    client->flags = 0;
+    client->fd = 0;
 
-  return 0;
+    return 0;
 }
 
 
 massock_listen_flags massock_client_send( massock_client_t *client, char *buf, int count )
 {
-  if (client==NULL || client->recv_buf==NULL)
-    return LISTENER_ERR;
+    if (client==NULL || client->recv_buf==NULL)
+        return LISTENER_ERR;
 
-  massock_listen_flags retf = 0;
+    massock_listen_flags retf = 0;
 
-  /* 	if (count > client->send_max - client->send_idx) */
-  /* 		return LISTENER_ERR; */
+    /* 	if (count > client->send_max - client->send_idx) */
+    /* 		return LISTENER_ERR; */
 
-  /* 	memcpy(client->send_buf + client_send_idx, buf, count); */
+    /* 	memcpy(client->send_buf + client_send_idx, buf, count); */
 
-  /* 	int count = client->recv_max - client->recv_idx; */
+    /* 	int count = client->recv_max - client->recv_idx; */
 
-  ssize_t err = send(client->fd,
-      buf,
-      count, 0);
+    ssize_t err = send(client->fd,
+            buf,
+            count, 0);
 
-  if (err<0) {
-    if (errno != EAGAIN) {
-      fprintf(stderr, "send: errno=%i\n", errno);
-      retf |= LISTENER_ERR;
+    if (err<0) {
+        if (errno != EAGAIN) {
+            retf |= LISTENER_ERR;
+        }
+    } else if (err==0) {
+        retf |= LISTENER_CLOSE;
+        count = err;
+    } else {
+        retf |= LISTENER_DATA;
+        count = err;
     }
-  } else if (err==0) {
-    retf |= LISTENER_CLOSE;
-    count = err;
-  } else {
-    retf |= LISTENER_DATA;
-    count = err;
-  }
 
-  return retf;	
+    return retf;
 }
 
 
 massock_listen_flags massock_client_recv( massock_client_t *client )
 {
-  if (client==NULL || client->recv_buf==NULL)
-    return LISTENER_ERR;
+    if (client==NULL || client->recv_buf==NULL)
+        return LISTENER_ERR;
 
-  massock_listen_flags retf = 0;
+    massock_listen_flags retf = 0;
 
-  int count = client->recv_max - client->recv_idx;
+    int count = client->recv_max - client->recv_idx;
 
-  ssize_t err = recv(client->fd,
-      client->recv_buf + client->recv_idx,
-      count, 0);
+    ssize_t err = recv(client->fd,
+            client->recv_buf + client->recv_idx,
+            count, 0);
 
-  if (err<0) {
-    if (errno != EAGAIN) {
-      fprintf(stderr, "recv: errno=%i\n", errno);
-      retf |= LISTENER_ERR;
+    if (err<0) {
+        if (errno != EAGAIN) {
+            retf |= LISTENER_ERR;
+        }
+    } else if (err==0) {
+        retf |= LISTENER_CLOSE;
+        count = err;
+    } else {
+        retf |= LISTENER_DATA;
+        count = err;
     }
-  } else if (err==0) {
-    retf |= LISTENER_CLOSE;
-    count = err;
-  } else {
-    retf |= LISTENER_DATA;
-    count = err;
-  }
 
-  client->recv_idx += count;
+    client->recv_idx += count;
 
-  return retf;	
+    return retf;
 }

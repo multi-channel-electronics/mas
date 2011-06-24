@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _ACQ_H_
 #define _ACQ_H_
 
@@ -64,7 +67,7 @@ struct mcedata_storage {
 
 struct mce_acq_struct {
 
-	mce_context_t *context;
+    mce_context_t context;
 
 	int n_frames;
 	int n_frames_complete;

@@ -8,17 +8,11 @@
 
 #include "mce_status.h"
 
-#if !MULTICARD
-#  define USAGE_OPTION_N "  -n <card number>       ignored\n"
-#else
-#  define USAGE_OPTION_N "  -n <card number>       use the specified fibre card\n"
-#endif
-
 #define USAGE_MESSAGE \
 "Usage:\n  %s [options]\n\n"\
-USAGE_OPTION_N \
 "  -c <hardware config>   choose a particular mce config file\n"\
 "  -m <mas config>        choose a particular mas config file\n"\
+"  -n <dev index>         use the specified MCE device\n"\
 "  -o <output directory>  destination folder for output\n"\
 "  -f <output filename>   filename for output (stdout by default)\n"\
 "  -s                     snapshot style, civilized output\n"\
@@ -29,9 +23,7 @@ USAGE_OPTION_N \
 
 int process_options(options_t* options, int argc, char **argv)
 {
-#if MULTICARD
 	char *s;
-#endif
 	int option;
 	while ( (option = getopt(argc, argv, "?hn:c:m:o:f:gvs")) >=0) {
 
@@ -48,13 +40,11 @@ int process_options(options_t* options, int argc, char **argv)
 			break;
 
 		case 'n':
-#if MULTICARD
-			options->fibre_card = (int)strtol(optarg, &s, 10);
-			if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
-				fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+            options->dev_idx = (int)strtol(optarg, &s, 10);
+            if (*optarg == '\0' || *s != '\0' || options->dev_idx < 0) {
+                fprintf(stderr, "%s: invalid device index\n", argv[0]);
 				return -1;
 			}
-#endif
 			break;
 
 		case 'm':
@@ -89,12 +79,6 @@ int process_options(options_t* options, int argc, char **argv)
 			printf("Unimplemented option '-%c'!\n", option);
 		}
 	}
-
-    /* set defaults, if necessary */
-    if ((options->device_file = mcelib_cmd_device(options->fibre_card)) == NULL) {
-        fprintf(stderr, "Unable to obtain path to default command device!\n");
-        return -1;
-    }
 
 	return 0;
 }

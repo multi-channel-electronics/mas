@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MCEDSP_H_
 #define _MCEDSP_H_
 
@@ -11,6 +14,7 @@
 /* dsp.h defines the structures used by the dsp driver */
 
 #include <mce/dsp.h>
+#include <mce_library.h>
 
 
 /* Maximum number of handles available */
@@ -21,65 +25,66 @@
 /*
    API: all functions return a negative error value on failure.  On
    success, the return value is 0 with the exception of the 4
-   dsp_read_word* commands, which return the 24 bit data found at the
+   mcedsp_read_word* commands, which return the 24 bit data found at the
    specified address.
 
-   Begin a session by calling dsp_open.  The return value is the
+   Begin a session by calling mcedsp_open.  The return value is the
    handle that must be used in subsequent calls.  Connections should
    be closed when a session is finished.
 */
 
-int dsp_open(char *dev_name);
-int dsp_close(int handle);
+int mcedsp_open(mce_context_t mce);
+int mcedsp_close(mce_context_t mce);
 
 
 /*
-   The user may construct commands and issue them using dsp_command.
+   The user may construct commands and issue them using mcedsp_command.
    Shortcuts for existing command are available.
 
    The memory type (dsp_memory_code) is defined in dsp.h.
 */
 
-int dsp_send_command(int handle, dsp_command *cmd);
+int mcedsp_send_command(mce_context_t mce, dsp_command *cmd);
 
 
-int dsp_read_word(int handle, dsp_memory_code mem, int address);
-int dsp_read_word_X(int handle, int address);
-int dsp_read_word_Y(int handle, int address);
-int dsp_read_word_P(int handle, int address);
+int mcedsp_read_word(mce_context_t mce, dsp_memory_code mem, int address);
+int mcedsp_read_word_X(mce_context_t mce, int address);
+int mcedsp_read_word_Y(mce_context_t mce, int address);
+int mcedsp_read_word_P(mce_context_t mce, int address);
 
-int dsp_write_word(int handle, dsp_memory_code mem, int address, u32 value);
-int dsp_write_word_X(int handle, int address, u32 value);
-int dsp_write_word_Y(int handle, int address, u32 value);
-int dsp_write_word_P(int handle, int address, u32 value);
+int mcedsp_write_word(mce_context_t mce, dsp_memory_code mem, int address,
+        u32 value);
+int mcedsp_write_word_X(mce_context_t mce, int address, u32 value);
+int mcedsp_write_word_Y(mce_context_t mce, int address, u32 value);
+int mcedsp_write_word_P(mce_context_t mce, int address, u32 value);
 
-int dsp_version(int handle);
+int mcedsp_version(mce_context_t mce);
 
-int dsp_reset(int handle);
+int mcedsp_reset(mce_context_t mce);
 
-int dsp_start_application(int handle, int data);
+int mcedsp_start_application(mce_context_t mce, int data);
 
-int dsp_stop_application(int handle);
+int mcedsp_stop_application(mce_context_t mce);
 
-int dsp_reset_mce(int handle);
+int mcedsp_reset_mce(mce_context_t mce);
 
-int dsp_qt_set(int handle, int var, int arg1, int arg2);
+int mcedsp_qt_set(mce_context_t mce, int var, int arg1, int arg2);
 
-int dsp_ioctl(int handle, unsigned int iocmd, unsigned long arg);
+int mcedsp_ioctl(mce_context_t mce, unsigned int iocmd, unsigned long arg);
 
-int dsp_reset_flags(int handle);
+int mcedsp_reset_flags(mce_context_t mce);
 
-int dsp_error(int handle);
+int mcedsp_error(mce_context_t mce);
 
-int dsp_speak(int handle, unsigned long arg);
-
-
-int dsp_atomem(char *mem_type);
-
-char *dsp_memtoa(int mem);
+int mcedsp_speak(mce_context_t mce, unsigned long arg);
 
 
-char *dsp_error_string(int error);
+int mcedsp_atomem(char *mem_type);
+
+char *mcedsp_memtoa(int mem);
+
+
+char *mcedsp_error_string(int error);
 
 
 #endif

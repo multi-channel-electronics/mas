@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -15,7 +18,7 @@
 #define LINE_LEN 1024
 #define NARGS 64
 
-int handle;
+mce_context_t mce;
 
 enum {
 	ENUM_COMMAND_LOW,
@@ -85,7 +88,7 @@ typedef struct option_struct {
 	int interactive;
 	int nonzero_only;
 	int no_prefix;
-  int fibre_card;
+    int dev_num;
 
 	char batch_file[LINE_LEN];
 	int  batch_now;
@@ -93,8 +96,7 @@ typedef struct option_struct {
 	char cmd_command[LINE_LEN];
 	int  cmd_now;
 
-	char device_file[LINE_LEN];
-
+    char *mas_file;
 } option_t;
 
 int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
@@ -114,25 +116,27 @@ int main(int argc, char **argv)
 	FILE *fin = stdin;
 	char *line = (char*) malloc(LINE_LEN);
 
-  option_t options = {
-    .fibre_card = -1,
-    .device_file = ""
-  };
+    option_t options = {
+        .dev_num = -1,
+    };
 
-	if (process_options(argc, argv, &options)) return 1;
+    if (process_options(argc, argv, &options))
+        return 1;
 
-	if (!options.nonzero_only) {
-		printf("This is %s version %s\n",
-		       PROGRAM_NAME, VERSION_STRING);
-	}
+    if (!options.nonzero_only)
+        printf("This is %s version %s\n", PROGRAM_NAME, VERSION_STRING);
 
-	handle = dsp_open(options.device_file);
-	if (handle<0) {
-		fprintf(stderr, "Could not open device %s\n", options.device_file);
+    /* create a mce context, which will figure out the device URL */
+    mce = mcelib_create(options.dev_num, options.mas_file);
+    if (mce == NULL) {
+        fprintf(stderr, "Unable to create MCE library context.\n");
+        return 1;
+    }
+
+    if (mcedsp_open(mce)) {
+        fprintf(stderr, "Could not open dsp\n");
 		exit(1);
 	}
-
-	
 
 	while (!done) {
 
@@ -170,20 +174,20 @@ int main(int argc, char **argv)
 
 		if (!err) {
 			int count = cmdtree_select( args, root_opts, errmsg);
-			
+
 			if (count < 0) {
 				err = -1;
 			} else if (count == 0) {
 				if (options.interactive || args->n > 0) {
 					cmdtree_list(errmsg, root_opts,
-						     "dsp_cmd expects argument from [ ", " ", "]");
+                            "dsp_cmd expects argument from [ ", " ", "]");
 					err = -1;
-				}					
+        }
 			} else {
- 				err = process_command(root_opts, args, errmsg);
+                err = process_command(root_opts, args, errmsg);
 				if (err==0) err = 1;
 			}
-		}				
+        }
 
 		if (err > 0) {
 			if (*errmsg == 0) {
@@ -203,7 +207,7 @@ int main(int argc, char **argv)
 	if (!options.cmd_now)
 		printf("EOF after %i lines\n", line_count);
 
-	dsp_close(handle);
+    mcedsp_close(mce);
 
 	return err;
 }
@@ -218,7 +222,7 @@ int  process_options(int argc, char **argv, option_t *options)
 		switch(option) {
 		case '?':
 		case 'h':
-			printf("Usage:\n\t%s [-i] [-q] [-p] [-n card] [-d devfile] "
+            printf("Usage:\n\t%s [-i] [-q] [-p] [-n devnum] [-m masfile] "
 			       "[-f <batch file> | -x <command>]\n",
 			       argv[0]);
 			return -1;
@@ -240,12 +244,14 @@ int  process_options(int argc, char **argv, option_t *options)
 			options->batch_now = 1;
 			break;
 
-    case 'n':
-      options->fibre_card = atoi(optarg);
-      break;
+        case 'n':
+            options->dev_num = atoi(optarg);
+            break;
 
-		case 'd':
-			strcpy(options->device_file, optarg);
+        case 'm':
+            if (options->mas_file)
+                free(options->mas_file);
+            options->mas_file = strdup(optarg);
 			break;
 
 		case 'x':
@@ -261,26 +267,15 @@ int  process_options(int argc, char **argv, option_t *options)
 		}
 	}
 
-  /* fix up defaults */
-  if (options->device_file[0] == '\0') {
-    char *ptr = mcelib_dsp_device(options->fibre_card);
-    if (ptr == NULL) {
-      fprintf(stderr, "ERROR: can't obtain default DSP device!");
-      return -1;
-    }
-    strcpy(options->device_file, ptr);
-    free(ptr);
-  }
-
 	return 0;
 }
-	
+
 void uppify(char *s) {
 	if (s==NULL || *(s--)==0) return;
 	while (*(++s)!=0) {
 		if (*s<'a' || *s>'z') continue;
 		*s += 'A' - 'a';
-	}	
+    }
 }
 
 
@@ -289,59 +284,58 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	int ret_val = 0;
 	int err;
 
-	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW && 
+    int is_command = (tokens[0].value >= ENUM_COMMAND_LOW &&
 			  tokens[0].value < ENUM_COMMAND_HIGH);
-	
+
 	if (is_command) {
 
 		switch( tokens[0].value ) {
-		
+
 		case COMMAND_VER:
-			err = dsp_version(handle);
+            err = mcedsp_version(mce);
 			if (err >= 0) {
 				sprintf(errmsg, "version = %#x", err);
 				err = 0;
 			}
 			break;
-    
+
 		case COMMAND_RDM:
-			err = dsp_read_word(handle, tokens[1].value, tokens[2].value);
+            err = mcedsp_read_word(mce, tokens[1].value, tokens[2].value);
 			if (err >= 0) {
 				sprintf(errmsg, "%s[%#x] = %#x",
-					dsp_memtoa(tokens[1].value),
-					tokens[2].value, err);
+                        mcedsp_memtoa(tokens[1].value), tokens[2].value, err);
 				err = 0;
 			}
 			break;
-    
+
 		case COMMAND_WRM:
-			err = dsp_write_word(handle, tokens[1].value,
+            err = mcedsp_write_word(mce, tokens[1].value,
 						 tokens[2].value, tokens[3].value);
 			if (err >= 0) err = 0;
 			break;
 
 		case COMMAND_GOA:
-			err = dsp_start_application(handle, tokens[1].value);
+            err = mcedsp_start_application(mce, tokens[1].value);
 			if (err >= 0) err = 0;
 			break;
-    
+
 		case COMMAND_STP:
-			err = dsp_stop_application(handle);
+            err = mcedsp_stop_application(mce);
 			if (err >= 0) err = 0;
 			break;
 
 		case COMMAND_RST:
-			err = dsp_reset(handle);
+            err = mcedsp_reset(mce);
 			if (err >= 0) err = 0;
 			break;
 
 		case COMMAND_RCO:
-			err = dsp_reset_mce(handle);
+            err = mcedsp_reset_mce(mce);
 			if (err >= 0) err = 0;
 			break;
-    
+
 		case COMMAND_QTS:
-			err = dsp_qt_set(handle,
+            err = mcedsp_qt_set(mce,
 					 tokens[1].value,
 					 tokens[2].value,
 					 tokens[3].value);
@@ -354,9 +348,9 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		if (err!=0 && errmsg[0] == 0) {
 			sprintf(errmsg, "dsp library error -%#08x : %s", -err,
-				dsp_error_string(err));
+                    mcedsp_error_string(err));
 			ret_val = -1;
-		} 
+    }
 
 	} else {
 
@@ -370,7 +364,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case SPECIAL_RESETFLAGS:
-			ret_val = dsp_reset_flags(handle);
+            ret_val = mcedsp_reset_flags(mce);
 			if (ret_val < 0) break;
 			break;
 

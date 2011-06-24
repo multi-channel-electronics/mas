@@ -3,26 +3,17 @@
 /* Define to 1 to use bigphysarea in the kernel driver. */
 #undef BIGPHYS
 
-/* Define to the default command device. */
-#undef DEFAULT_CMD_DEVICE
-
-/* Define to the default data device format. */
-#undef DEFAULT_DATA_DEVICE
-
-/* Define to the default dsp device format. */
-#undef DEFAULT_DSP_DEVICE
-
 /* Define to the default experiment configuration file. */
 #undef DEFAULT_EXPERIMENTFILE
-
-/* Define to the number of the default fibre card. */
-#undef DEFAULT_FIBRE_CARD
 
 /* Define to the default hardware configuration file. */
 #undef DEFAULT_HARDWAREFILE
 
 /* Define to the default MAS configuration file. */
 #undef DEFAULT_MASFILE
+
+/* Define to the number of the default MCE device. */
+#undef DEFAULT_MCE
 
 /* Define to 1 to remove most messages from the kernel driver. */
 #undef DRIVER_QUIET
@@ -96,11 +87,8 @@
 /* The MAS user */
 #undef MAS_USER
 
-/* Define to the total allowable number of fibre cards. */
+/* Define to the total allowable number of fibre cards in the kernel. */
 #undef MAX_FIBRE_CARD
-
-/* Define to 1 to enable multicard MAS */
-#undef MULTICARD
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT

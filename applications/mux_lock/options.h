@@ -2,14 +2,11 @@
 #define _OPTIONS_H_
 
 typedef struct {
-
   char *config_file;
-  char *cmd_device;
-  char *data_device;
   char *hardware_file;
   char *experiment_file;
 
-  int fibre_card;
+  int dev_index;
   int argument_opts;
   int preservo;
 

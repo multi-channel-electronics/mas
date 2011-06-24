@@ -28,8 +28,6 @@ typedef struct {
 	int  cmds_now;
 	int  cmds_idx;
 
-	char *data_device;
-	char *cmd_device;
 	char *hardware_file;
     char *mas_file;
 

@@ -116,7 +116,7 @@ typedef struct {
 
 
 typedef struct {
-	
+
 	const config_setting_t *cfg;
 
 	char name[MCE_SHORT];
@@ -136,7 +136,7 @@ typedef struct {
 } maprange_t;
 
 typedef struct {
-	
+
 	const config_setting_t *cfg;
 
 	int id;
@@ -168,36 +168,35 @@ typedef struct {
 
 	int flags;
 	int card_count;
-	
+
 } card_t;
 
 
 /* Container for param/card pairs */
 
 typedef struct {
-	
+
 	card_t card;
 	param_t param;
-	
+
 } mce_param_t;
 
 
 
 /* Open and close of configuration file */
 
-int mceconfig_open(mce_context_t* context, 
-		   const char *filename, const char *keyname);
+int mceconfig_open(mce_context_t context, const char *filename,
+    const char *keyname);
 
-int mceconfig_close(mce_context_t* context);
-		    
-		    
+int mceconfig_close(mce_context_t context);
+
+
 /* Lookup routine, for decoding "cc fw_rev" type string-pairs */
-		    
-int mceconfig_lookup(const mce_context_t *mce,
+
+int mceconfig_lookup(const mce_context_t mce,
 		     const char *card_name, const char *para_name,
 		     card_t *c, param_t *p);
 
-		    
 /* Static function for verifying that data obeys parameter constraints */
 
 int mceconfig_check_data(const card_t *c, const param_t *p, int count,
@@ -207,56 +206,48 @@ int mceconfig_check_data(const card_t *c, const param_t *p, int count,
 
 /* Loading of root data from configuration */
 
-int mceconfig_cardtype_count(const mce_context_t* context);
+int mceconfig_cardtype_count(const mce_context_t context);
 
-int mceconfig_paramset_count(const mce_context_t* context);
+int mceconfig_paramset_count(const mce_context_t context);
 
-int mceconfig_card_count    (const mce_context_t* context);
-		    
-int mceconfig_cardtype(const mce_context_t *context, int index,
+int mceconfig_card_count    (const mce_context_t context);
+
+int mceconfig_cardtype(const mce_context_t context, int index,
 		       cardtype_t *ct);
 
-int mceconfig_paramset(const mce_context_t *context, int index,
+int mceconfig_paramset(const mce_context_t context, int index,
 		       paramset_t *ps);
 
-int mceconfig_card    (const mce_context_t *context, int index,
+int mceconfig_card    (const mce_context_t context, int index,
 		       card_t *c);
-		    
 
 /* Loading of children from parents */
 
-int mceconfig_card_mapping     (const mce_context_t *context,
-			        const card_t *c,
+int mceconfig_card_mapping     (const mce_context_t context, const card_t *c,
 				mapping_t *m);
 
-int mceconfig_mapping_param    (const mce_context_t* context, 
-			        const mapping_t *m,
+int mceconfig_mapping_param    (const mce_context_t context, const mapping_t *m,
 				int index,
 				param_t *p);
 
-int mceconfig_param_maprange   (const mce_context_t* context, 
-			        const param_t *p,
+int mceconfig_param_maprange   (const mce_context_t context, const param_t *p,
 				int index,
 				maprange_t *mr);
 
-int mceconfig_card_cardtype    (const mce_context_t *context,
-			        const card_t *c,
+int mceconfig_card_cardtype    (const mce_context_t context, const card_t *c,
 				cardtype_t *ct);
 
-int mceconfig_cardtype_paramset(const mce_context_t *context, 
-				const cardtype_t *ct, int index,
-				paramset_t *ps);
+int mceconfig_cardtype_paramset(const mce_context_t context,
+    const cardtype_t *ct, int index, paramset_t *ps);
 
-int mceconfig_paramset_param   (const mce_context_t *context, 
-				const paramset_t *ps, int index,
-				param_t *p);
+int mceconfig_paramset_param   (const mce_context_t context,
+    const paramset_t *ps, int index, param_t *p);
 
-int mceconfig_card_param       (const mce_context_t *context,
+int mceconfig_card_param       (const mce_context_t context,
 				const card_t *c, int index,
 				param_t *p);
-				
-int mceconfig_card_paramcount(const mce_context_t *context,
-			      const card_t *c);
+
+int mceconfig_card_paramcount(const mce_context_t context, const card_t *c);
 
 
 /* mceconfig_cfg_<T> - attempt to load data into <T> from a config_setting_t */

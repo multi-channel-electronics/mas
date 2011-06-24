@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -11,6 +14,7 @@
 #include <mce_library.h>
 #include <mce/data_ioctl.h>
 
+#include "context.h"
 #include "data_thread.h"
 #include "frame_manip.h"
 
@@ -31,21 +35,20 @@ static int get_n_frames(mce_acq_t *acq);
 
 static int card_count(int cards);
 
-static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
-			     int cards);
+static int load_frame_params(mce_context_t context, mce_acq_t *acq, int cards);
 
-static int load_data_params(mce_context_t *context, mce_acq_t *acq,
-			    int cards);
+static int load_data_params(mce_context_t context, mce_acq_t *acq, int cards);
 
 static int load_ret_dat(mce_acq_t *acq, int cards);
 
+#if 0
 static int cards_to_rcsflags(int c);
+#endif
 
 static int rcsflags_to_cards(int c);
 
-int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
-		       int options, int cards, int rows_reported,
-		       mcedata_storage_t *storage)
+int mcedata_acq_create(mce_acq_t *acq, mce_context_t context, int options,
+        int cards, int rows_reported, mcedata_storage_t *storage)
 {
 	int ret_val = 0;
 
@@ -204,8 +207,7 @@ static int get_n_frames(mce_acq_t *acq)
 }
 
 
-static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
-			     int cards)
+static int load_frame_params(mce_context_t context, mce_acq_t *acq, int cards)
 {
 	/* Determine frame size parameters
 	      acq->rows     number of rows returning data
@@ -290,8 +292,7 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 }
 
 
-static int load_data_params(mce_context_t *context, mce_acq_t *acq,
-			    int cards)
+static int load_data_params(mce_context_t context, mce_acq_t *acq, int cards)
 {
 	/* Determine data content parameters
 	      acq->data_mode  per-card data_mode settings
@@ -553,6 +554,7 @@ int card_count(int cards)
 	return n;
 }
 
+#if 0
 static int cards_to_rcsflags(int c)
 {
 	//Sure, there are cuter ways.
@@ -563,6 +565,7 @@ static int cards_to_rcsflags(int c)
 	if (c & MCEDATA_RC4) out |= MCEDATA_RCSFLAG_RC4;
 	return out;
 }
+#endif
 
 static int rcsflags_to_cards(int c)
 {

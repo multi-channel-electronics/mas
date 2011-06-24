@@ -37,12 +37,6 @@ int st_get_id(const string_table_t *st, const char *name, int *id);
 static
 int st_index(const string_table_t *st, const char *name);
 
-#if !MULTICARD
-# define USAGE_OPTION_N "  -n <card>              ignored\n"
-#else
-# define USAGE_OPTION_N "  -n <card>              fibre card number\n"
-#endif
-
 #define USAGE_MESSAGE \
 "Usage:\n\tmas_param [options] <command>\n\n"\
 "Commands:\n"\
@@ -54,7 +48,7 @@ int st_index(const string_table_t *st, const char *name);
 "  set <param> [datum]...  set the value of variable <param>\n"\
 "  full                    output full type and data for all params\n"\
 "\nOptions:\n"\
-USAGE_OPTION_N \
+"  -n <dev index>         the index of the MCE device to use\n"\
 "  -s <source file>       config file to parse.  Default:\n"\
 "                           %s\n"\
 "  -m <mas config>        choose a particular mas config file.\n"\
@@ -74,9 +68,7 @@ void usage(void)
 int process_options(options_t* options, int argc, char **argv)
 {
 	int option;
-#if MULTICARD
 	char *s;
-#endif
 
 	while ( (option = getopt(argc, argv, "+?hm:n:f:s:v")) >=0) {
 
@@ -92,13 +84,11 @@ int process_options(options_t* options, int argc, char **argv)
 			break;
 
 		case 'n':
-#if MULTICARD
 			options->fibre_card = (int)strtol(optarg, &s, 10);
 			if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
 				fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
 				return -1;
 			}
-#endif
 			break;
 
 		case 'f':

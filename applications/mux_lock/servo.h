@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <mce_library.h>
 
@@ -46,13 +49,13 @@ int error_action(char *msg, int errcode);
 
 int load_initfile(const char *datadir, const char *filename, int start, int count, int *dest);
 
-mce_context_t* connect_mce_or_exit(option_t* options);
-int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
+mce_context_t connect_mce_or_exit(option_t* options);
+int  load_param_or_exit(mce_context_t mce, mce_param_t* p,
 			const char *card, const char *para, int no_exit);
-void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
+void write_range_or_exit(mce_context_t mce, mce_param_t* p,
 			 int start, i32 *data, int count,
 			 const char *opmsg);
-int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
+int check_fast_sq2(mce_context_t mce, mce_param_t* sq2fb,
 		   mce_param_t* sq2fb_col, int col0, int n_col);
 void duplicate_fill(i32 value, i32 *data, int count);
 

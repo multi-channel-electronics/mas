@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MCE_STATUS_H_
 #define _MCE_STATUS_H_
 
@@ -15,8 +18,7 @@ enum { CRAWLER_DAS = 0,
 /* options structure and processor */
 
 typedef struct {
-	int fibre_card;
-	char *device_file;
+    int dev_idx;
 	char *config_file;
 	char *hardware_file;
 	char output_path[MCE_LONG];
@@ -26,7 +28,7 @@ typedef struct {
 
 	int mode;
 
-	mce_context_t* context;
+    mce_context_t context;
 
 } options_t;
 

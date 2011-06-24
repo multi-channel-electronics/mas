@@ -41,59 +41,59 @@ typedef struct mcecmd {
 
 /* Connection management */
 
-int mcecmd_open (mce_context_t *context, char *dev_name);
+int mcecmd_open (mce_context_t context);
 
-int mcecmd_close(mce_context_t *context);
+int mcecmd_close(mce_context_t context);
 
-int mcecmd_lock_replies(mce_context_t *context, int lock);
+int mcecmd_lock_replies(mce_context_t context, int lock);
 
 
 /* MCE user commands - these are as simple as they look */
 
-int mcecmd_start_application(mce_context_t* context, const mce_param_t *param);
+int mcecmd_start_application(mce_context_t context, const mce_param_t *param);
 
-int mcecmd_stop_application (mce_context_t* context, const mce_param_t *param);
+int mcecmd_stop_application (mce_context_t context, const mce_param_t *param);
 
-int mcecmd_reset            (mce_context_t* context, const mce_param_t *param);
+int mcecmd_reset            (mce_context_t context, const mce_param_t *param);
 
-int mcecmd_write_block      (mce_context_t* context, const mce_param_t *param,
+int mcecmd_write_block      (mce_context_t context, const mce_param_t *param,
 			     int count, const u32 *data);
 
-int mcecmd_read_block       (mce_context_t* context, const mce_param_t *param,
+int mcecmd_read_block       (mce_context_t context, const mce_param_t *param,
 			     int count, u32 *data);
 
 
 /* MCE special commands - these provide additional logical support */
 
-int mcecmd_write_element    (mce_context_t* context, const mce_param_t *param,
+int mcecmd_write_element    (mce_context_t context, const mce_param_t *param,
 			     int data_index, u32 datum);
 
-int mcecmd_read_element     (mce_context_t* context, const mce_param_t *param,
+int mcecmd_read_element     (mce_context_t context, const mce_param_t *param,
 			     int data_index, u32 *datum);
 
-int mcecmd_write_range      (mce_context_t* context, const mce_param_t *param,
+int mcecmd_write_range      (mce_context_t context, const mce_param_t *param,
 			     int data_index, const u32 *data, int count);
 
-int mcecmd_read_range       (mce_context_t* context, const mce_param_t *param,
+int mcecmd_read_range       (mce_context_t context, const mce_param_t *param,
 			     int data_index, u32 *data, int count);
 
-int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
+int mcecmd_write_block_check(mce_context_t context, const mce_param_t *param,
 			     int count, const u32 *data, int checks);
 
 
 /* Raw i/o routines; roll your own packets */
 
-int mcecmd_send_command_now (mce_context_t* context, mce_command *cmd);
+int mcecmd_send_command_now (mce_context_t context, mce_command *cmd);
 
-int mcecmd_read_reply_now   (mce_context_t* context, mce_reply *rep);
+int mcecmd_read_reply_now   (mce_context_t context, mce_reply *rep);
 
-int mcecmd_send_command     (mce_context_t* context,
+int mcecmd_send_command     (mce_context_t context,
 			     mce_command *cmd, mce_reply *rep);
 
 
 /* MCE parameter lookup */
 
-int mcecmd_load_param       (mce_context_t* context, mce_param_t *param,
+int mcecmd_load_param       (mce_context_t context, mce_param_t *param,
 			  const char *card_str, const char *param_str);
 
 int mcecmd_read_size        (const mce_param_t *p, int count);
@@ -101,8 +101,8 @@ int mcecmd_read_size        (const mce_param_t *p, int count);
 
 /* Interface (PCI card) control */
 
-int mcecmd_interface_reset  (mce_context_t* context);   // reset PCI card
-int mcecmd_hardware_reset   (mce_context_t* context);    // reset MCE
+int mcecmd_interface_reset  (mce_context_t context);   // reset PCI card
+int mcecmd_hardware_reset   (mce_context_t context);   // reset MCE
 
 
 /*

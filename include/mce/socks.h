@@ -7,6 +7,19 @@
 
 typedef unsigned int massock_listen_flags;
 
+/* massock error values */
+#define MASSOCK_BAD_ADDR -1 /* invalid address specified */
+#define MASSOCK_NSLOOKUP -2 /* host lookup failed */
+
+/* in the case of the following errors, consulting errno might
+ * be informative */
+#define MASSOCK_SOCKET   -13 /* unable to create socket */
+#define MASSOCK_CONNECT  -14 /* unable to connect to port */
+#define MASSOCK_BIND     -15 /* unable to bind to port */
+#define MASSOCK_LISTEN   -16 /* unable to listen on port */
+#define MASSOCK_ACCEPT   -17 /* unable to accept inbound connection */
+#define MASSOCK_SELECT   -18 /* select() error */
+
 #define	LISTENER_ERR       0x8000
 #define	LISTENER_OK        0x0001
 #define	LISTENER_CONNECT   0x0002
@@ -18,7 +31,7 @@ struct massock_listener_t;
 typedef struct {
 
 	int  fd;
-	
+
 	char *recv_buf;
 	int  recv_idx;
 	int  recv_max;
@@ -51,6 +64,7 @@ typedef struct massock_listener_t {
 
 } listener_t;
 
+const char *massock_error(int err, int syserr);
 int massock_connect(const char *addr);
 int massock_listen(const char *addr);
 

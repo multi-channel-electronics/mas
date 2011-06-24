@@ -21,7 +21,7 @@
 #include "cfg_dump.h"
 
 options_t options = {
-	.fibre_card = -1,
+    .dev_idx = -1,
 	.config_file = NULL,
 	.hardware_file = NULL,
 	.mode = CRAWLER_DAS,
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     }
 
 	// Connect to MCE
-    if ((options.context = mcelib_create(options.fibre_card,
+    if ((options.context = mcelib_create(options.dev_idx,
           options.config_file))==NULL)
     {
         fprintf(stderr, "failed to create mce library structure");
@@ -54,9 +54,9 @@ int main(int argc, char **argv)
     sprintf(msg, "initiated with hardware config '%s'", options.hardware_file);
     maslog_print(maslog, msg);
 
-	if (mcecmd_open(options.context, options.device_file) != 0) {
-		sprintf(msg, "Could not open mce device '%s'\n",
-			options.device_file);
+    if (mcecmd_open(options.context) != 0) {
+        sprintf(msg, "Could not open MCE command device for %s\n",
+                mcelib_dev(options.context));
         error_log_exit(maslog, msg, 3);
 	}
 

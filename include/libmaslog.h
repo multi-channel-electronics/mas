@@ -16,6 +16,6 @@ int maslog_close(maslog_t maslog);
 int maslog_print(maslog_t maslog, const char *str);
 int maslog_print_level(maslog_t maslog, const char *str, int level);
 int maslog_write(maslog_t maslog, const char *buf, int size);
-maslog_t maslog_connect(const mce_context_t *mce, const char *name);
+maslog_t maslog_connect(const mce_context_t mce, const char *name);
 
 #endif

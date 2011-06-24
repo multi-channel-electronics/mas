@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -38,7 +41,7 @@ int main()
 	*/
 
 	// Get a library context structure (cheap)
-	mce_context_t *mce = mcelib_create();
+  mce_context_t mce = mcelib_create();
 
 	// Load MCE config information ("xml")
 	if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {

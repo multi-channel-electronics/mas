@@ -16,20 +16,17 @@
 
 int  main(int argc, char **argv)
 {
-  mce_context_t *mce1 = mcelib_create(MCE_DEFAULT_CARD, NULL);
-  mce_context_t *mce2 = mcelib_create(MCE_DEFAULT_CARD, NULL);
+    mce_context_t mce1 = mcelib_create(MCE_DEFAULT_MCE, NULL);
+    mce_context_t mce2 = mcelib_create(MCE_DEFAULT_MCE, NULL);
 
 	// Connect command module.
-	char device[] = "/dev/mce_cmd0";
-	char hardware[] = "/etc/mce/mce.cfg";
-	if (mcecmd_open(mce1, device) || mcecmd_open(mce2, device)) {
-		fprintf(stderr, "Could not open mce device '%s'\n",
-			device);
+    if (mcecmd_open(mce1) || mcecmd_open(mce2)) {
+        fprintf(stderr, "Could not open MCE command device for %s\n",
+                mcelib_dev(mce1));
 		exit(1);
 	}
-	if (mceconfig_open(mce1, hardware, NULL) || mceconfig_open(mce2, hardware, NULL)) {
-		fprintf(stderr, "Could not load MCE config file '%s'.\n",
-			hardware);
+    if (mceconfig_open(mce1, NULL, NULL) || mceconfig_open(mce2, NULL, NULL)) {
+        fprintf(stderr, "Could not load MCE config file.\n");
 		exit(1);
 	}
 

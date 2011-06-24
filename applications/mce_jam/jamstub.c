@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /****************************************************************************/
 /*																			*/
 /*	Module:			jamstub.c												*/
@@ -1002,8 +1005,8 @@ int main(int argc, char **argv)
 	struct stat sbuf;
 	int32_t workspace_size = 0;
 	char *exit_string = NULL;
+    char *ptr;
 	int reset_jtag = 1;
-	char *ptr;
 	long tmplong;
 
 	verbose = FALSE;
@@ -1115,14 +1118,13 @@ int main(int argc, char **argv)
 				specified_com_port = TRUE;
 				break;
 
-      case 'N':
-#ifdef MULTICARD
-        fibre_card = (int)strtol(&argv[arg][2], &ptr, 10);
-        if (argv[arg][2] == '\0' || *ptr != '\0' || fibre_card < 0) {
-          fprintf(stderr, "%s: invalid fibre card number\n", &argv[arg][2]);
-          error = TRUE;
-        }
-#endif
+            case 'N':
+                dev_index = (int)strtol(&argv[arg][2], &ptr, 10);
+                if (argv[arg][2] == '\0' || *ptr != '\0' || dev_index < 0) {
+                    fprintf(stderr, "%s: invalid fibre card number\n",
+                            &argv[arg][2]);
+                    error = TRUE;
+                }
 
 			case 'M':				/* set memory size */
 				if (sscanf(&argv[arg][2], "%ld", &tmplong) != 1)
@@ -1198,11 +1200,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "    -f<freq>    : TCK frequency in Hz\n");
 		fprintf(stderr, "    -p<port>    : parallel port number or device (/dev/parport*) (for ByteBlaster: 0x378)\n");
 		fprintf(stderr, "    -c<cable>   : alternative download cable compatibility: -cl or -cx\n");
-#if MULTICARD
-    fprintf(stderr, "    -n<card>    : use the specified MCE fibre card\n");
-#else
-    fprintf(stderr, "    -n<card>    : ignored\n");
-#endif
+        fprintf(stderr, "    -n<dev#>    : use the specified MCE device\n");
 		fprintf(stderr, "    -u          : MCE interface\n");
 #endif
 

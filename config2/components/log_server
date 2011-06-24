@@ -19,8 +19,8 @@ log_server:
 <?php  for ($i = 0; $i < $n_card; ++$i) { ?>
     {
       card = <?php echo $i?>;
-      log_file = "<?php echo $mas_data?>/log"
-    }<?php echo ($i == 0) ? ",\n" : ";\n"?>
+      log_file = "<?php echo $mas_data?>/log";
+    }<?php echo ($i < $n_card - 1) ? ",\n" : "\n"?>
 <?php  } ?>
   );
 <?php

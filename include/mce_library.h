@@ -4,7 +4,6 @@
 #include <mce/types.h>
 #include <mce/mce_errors.h>
 
-
 /*
   - First define mce_context_t, since some modules need to point to it.
   - Config module must preceed command module, which uses its types
@@ -12,52 +11,26 @@
 */
 
 struct mce_context;
-typedef struct mce_context mce_context_t;
+typedef struct mce_context *mce_context_t;
 
 #include <libmaslog.h>
 #include <mceconfig.h>
 #include <mcecmd.h>
 #include <mcedata.h>
 
-
-/* Context structure associates connections on the three modules. */
-
-struct mce_context {
-
-  int fibre_card;
-	mcecmd_t    cmd;
-	mcedata_t   data;
-	mceconfig_t config;
-	maslog_t    maslog;
-  struct config_t *mas_cfg;
-
-};
-
-
+#define MCE_DEFAULT_MCE (-1)
 /* Creation / destruction of context structure */
-#define MCE_DEFAULT_CARD (-1)
-mce_context_t* mcelib_create(int fibre_card, const char *mas_config);
-void mcelib_destroy(mce_context_t* context);
+mce_context_t mcelib_create(int dev_num, const char *mas_config);
+void mcelib_destroy(mce_context_t context);
 
+/* context data */
+const char *mcelib_dev(mce_context_t context);
+int mcelib_ndev(mce_context_t context);
+struct config_t *mcelib_mascfg(mce_context_t context);
 
 /* Error look-up, versioning */
 
 char* mcelib_error_string(int error);
 char* mcelib_version();
-
-/* Macros for easy dereferencing of mce_context_t* context into cmd,
-   data, and config members, and to check for connections of each
-   type. */
-
-#define  C_cmd          context->cmd
-#define  C_data         context->data
-#define  C_config       context->config
-#define  C_maslog       (context->maslog)
-
-#define  C_cmd_check    if (!C_cmd.connected)    return -MCE_ERR_NEED_CMD
-#define  C_data_check   if (!C_data.connected)   return -MCE_ERR_NEED_DATA
-#define  C_config_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
-#define  C_maslog_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
-
 
 #endif

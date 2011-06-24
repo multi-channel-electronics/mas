@@ -44,7 +44,7 @@ const char *par_names[N_PARAM] = {
 
 /* Globals! */
 
-static mce_context_t *mce = NULL;
+static mce_context_t mce = NULL;
 //static int freq = 0;
 static int delay_per_bit = 0;
 static int tck_half_period = 0;
@@ -61,7 +61,7 @@ static int total_txs = 0;
 static int reads = 0;
 static int writes = 0;
 mce_param_t par_addrs[N_PARAM];
-int fibre_card = -1;
+int dev_index = -1;
 
 /* For smart packing of bits */
 
@@ -79,8 +79,6 @@ static int verbose = 1;
 
 void initialize_mce(int frequency)
 {
-    char *ptr;
-
 	if (verbose) {
 		printf("init MCE\n");
         fflush(stdout);
@@ -95,17 +93,16 @@ void initialize_mce(int frequency)
 
 	// Get context and load hardware config
 	if (mce == NULL) {
-        mce = mcelib_create(fibre_card, NULL);
+        mce = mcelib_create(dev_index, NULL);
         if (mceconfig_open(mce, NULL, NULL) != 0) {
-            fprintf(stderr, "Failed to load default MCE configuration file.\n");
+            fprintf(stderr, "Failed to load MCE configuration file.\n");
 			exit(1);
 		}
-        ptr = mcelib_cmd_device(fibre_card);
-		if (mcecmd_open(mce, ptr) != 0) {
-			fprintf(stderr, "Failed to open %s.\n", ptr);
+        if (mcecmd_open(mce) != 0) {
+            fprintf(stderr, "Failed to open command device for %s.\n",
+                    mcelib_dev(mce));
 			exit(1);
 		}
-        free(ptr);
 	}
 
 	// Look up parameters

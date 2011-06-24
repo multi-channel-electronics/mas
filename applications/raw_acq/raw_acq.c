@@ -68,40 +68,30 @@ void print_u32(u32 *data, int count)
 	printf("\n");
 }
 
-mce_context_t* mce_connect(int fibre_card)
+mce_context_t mce_connect(int fibre_card)
 {
-    char *ptr;
-
     // Get a library context structure
-    mce_context_t *mce = mcelib_create(fibre_card, NULL);
+    mce_context_t mce = mcelib_create(fibre_card, NULL);
 
-    // Load MCE config information
+	// Load MCE config information ("xml")
     if (mceconfig_open(mce, NULL, NULL) != 0) {
-        fprintf(stderr, "Failed to load MCE default configuration file.\n");
+        fprintf(stderr, "Failed to load MCE configuration file.\n");
 		return NULL;
 	}
 
 	// Connect to an mce_cmd device.
-    ptr = mcelib_cmd_device(fibre_card);
-    if (ptr == NULL) {
-        fprintf(stderr, "Unable to obtain path to default command device!\n");
-        return NULL;
-    } else if (mcecmd_open(mce, ptr) != 0) {
-		fprintf(stderr, "Failed to open %s.\n", ptr);
+    if (mcecmd_open(mce) != 0) {
+        fprintf(stderr, "Failed to open command device for %s.\n",
+                mcelib_dev(mce));
 		return NULL;
 	}
-    free(ptr);
 
 	// Open data device
-    ptr = mcelib_data_device(fibre_card);
-    if (ptr == NULL) {
-        fprintf(stderr, "Unable to obtain path to default data device!\n");
-        return NULL;
-    } else if (mcedata_open(mce, ptr) != 0) {
-		fprintf(stderr, "Could not open '%s'\n", ptr);
+    if (mcedata_open(mce) != 0) {
+        fprintf(stderr, "Could not open data device for '%s'\n",
+                mcelib_dev(mce));
 		return NULL;
 	}
-    free(ptr);
 
 	return mce;
 }
@@ -114,7 +104,7 @@ int main(int argc, char **argv)
 	int card = 0;
     int fibre_card = -1;
 	int store_scheme = SINGLE_ROW;
-	mce_context_t *mce;
+    mce_context_t mce;
 
 	if (argc >= 3 && strlen(argv[2])==1)
 		card_str[2] = argv[2][0];
@@ -138,14 +128,9 @@ int main(int argc, char **argv)
 	}
 
 	if (card == 0) {
-		printf("Usage: %s <filename> <readout-card>"
-#if MULTICARD
-                " [fibre-card]"
-#endif
+        printf("Usage: %s <filename> <readout-card> [dev-number]"
                 "\n\nwhere readout-card is 1 2 3 or 4"
-#if MULTICARD
-                " and fibre-card is your fibre card of choice"
-#endif
+                " and dev-number is your MCE device of choice"
                 ".\n", argv[0]);
 		printf("You should probably be running this from some kind of script...\n");
 		exit(1);

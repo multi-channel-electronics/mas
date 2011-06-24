@@ -27,7 +27,7 @@
 #include "options.h"
 
 enum {
-	ENUM_COMMAND_LOW,	
+    ENUM_COMMAND_LOW,
 	COMMAND_RB,
 	COMMAND_WB,
 	COMMAND_REL,
@@ -68,7 +68,7 @@ enum {
 	SPECIAL_HEX,
 	SPECIAL_ECHO,
 	ENUM_SPECIAL_HIGH,
-};   
+};
 
 
 #define SEL_NO   (CMDTREE_SELECT | CMDTREE_NOCASE)
@@ -154,7 +154,7 @@ cmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "##"      , 0,-1, SPECIAL_COMMENT , anything_opts},
 	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
-	
+
 /* Table for decoding RC strings into bit sets */
 cmdtree_opt_t rc_list[] = {
 	{ SEL_NO, "rc1", 0, 0, MCEDATA_RC1, NULL },
@@ -167,7 +167,7 @@ cmdtree_opt_t rc_list[] = {
 
 // Lazy old globals...
 
-mce_context_t* mce;
+mce_context_t mce;
 
 char *line = NULL;
 char *line_buffer = NULL;
@@ -241,20 +241,20 @@ int  main(int argc, char **argv)
 
 	// Connect command, data, and configuration modules.
 
-	if (mcecmd_open(mce, options.cmd_device) != 0) {
-		fprintf(ferr, "Could not open mce device '%s'\n",
-			options.cmd_device);
+    if (mcecmd_open(mce) != 0) {
+        fprintf(ferr, "Could not open MCE command device for %s.\n",
+                mcelib_dev(mce));
 		err = ERR_MCE;
 		goto exit_now;
 	}
 
-	if (mcedata_open(mce, options.data_device) != 0) {
-		fprintf(ferr, "Could not open data device '%s'.\n",
-			options.data_device);
+    if (mcedata_open(mce) != 0) {
+        fprintf(ferr, "Could not open MCE data device for %s.\n",
+                mcelib_dev(mce));
 		err = ERR_MCE;
 		goto exit_now;
 	}
-	
+
 	if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
 			options.hardware_file);
@@ -281,7 +281,7 @@ int  main(int argc, char **argv)
 		sprintf(msg, "reading commands from '%s'\n", options.batch_file);
         maslog_print(options.maslog, msg);
 	}
-				
+
 	// Install signal handler for Ctrl-C and normal kill
 	signal(SIGTERM, die);
 	signal(SIGINT, die);
@@ -324,7 +324,7 @@ int  main(int argc, char **argv)
 
 		// Clear input semaphore; SIGs now will just set kill_switch
 		input_switch = 0;
-		
+
 		if (options.no_prefix)
 			premsg[0] = 0;
 		else
@@ -345,7 +345,7 @@ int  main(int argc, char **argv)
 
 		if (!err) {
 			int count = cmdtree_select( args, root_opts, errmsg);
-			
+
 			if (count < 0) {
 				err = -1;
 			} else if (count == 0) {
@@ -353,18 +353,18 @@ int  main(int argc, char **argv)
 					cmdtree_list(errmsg, root_opts,
 						     "mce_cmd expects argument from [ ", " ", "]");
 					err = -1;
-				}					
+                }
 			} else {
- 				err = process_command(root_opts, args, errmsg);
+                err = process_command(root_opts, args, errmsg);
 				if (err==0) err = 1;
 			}
-		}				
+        }
 
 		if (err > 0) {
 			if (*errmsg == 0) {
 				if (!options.nonzero_only)
 					printf("%sok\n", premsg);
-			} else 
+            } else
 				printf("%sok : %s\n", premsg, errmsg);
 		} else if (err < 0) {
 			printf("%serror : %s\n", premsg, errmsg);
@@ -410,7 +410,7 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 	int i,j, error;
 	int n_cards = mceconfig_card_count(mce);
 	int n_params = 0;
-	
+
 	// Count parameters
 	for (i=0; i<n_cards; i++) {
 		card_t card;
@@ -426,7 +426,7 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 		}
 		n_params += error;
 	}
-	
+
 	string_table = malloc((n_params+n_cards)*MCE_SHORT);
 	card_opts = malloc((n_params + 3 * n_cards + 2)*sizeof(*card_opts));
 	para_opts = card_opts + n_cards + 2;
@@ -445,7 +445,7 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 		FILL_MENU( card_opts[i], string_table, 1, -1, card.cfg, para_opts );
 		strcpy(string_table, card.name);
 		string_table += strlen(string_table) + 1;
-		
+
 		count = mceconfig_card_paramcount(mce, &card);
 		for (j=0; j<count; j++) {
 			mceconfig_card_param(mce, &card, j, &p);
@@ -460,7 +460,7 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 	}
 
 	memcpy(card_opts+n_cards, integer_opts, sizeof(integer_opts));
-		
+
 	for (i=0; (opts[i].flags & CMDTREE_TYPE_MASK) != CMDTREE_TERMINATOR; i++) {
 		if (opts[i].sub_opts == command_placeholder_opts)
 			opts[i].sub_opts = card_opts;
@@ -476,7 +476,7 @@ int translate_card_string(char *s, char *errmsg)
 		sprintf(errmsg, "invalid readout specification string\n");
 		return -1;
 	}
-			
+
 	if (cmdtree_select(&rc_token, rc_list, errmsg) <= 0)
 		return -1;
 
@@ -518,7 +518,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 		storage = mcedata_flatfile_create(options.acq_filename);
 		if (storage == NULL) {
 			sprintf(errmsg, "Could not create flatfile");
-			return -1; 
+            return -1;
 		}
 		break;
 
@@ -536,7 +536,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 		storage = mcedata_dirfile_create(options.acq_filename, 0);
 		if (storage == NULL) {
 			sprintf(errmsg, "Could not create flatfile");
-			return -1; 
+            return -1;
 		}
 		break;
 
@@ -544,7 +544,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 		sprintf(errmsg, "Unimplemented storage type.");
 		return -1;
 	}
-	
+
 	// Initialize the acquisition system
 	if ((error=mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage)) != 0) {
 		sprintf(errmsg, "Could not configure acquisition: %s",
@@ -559,7 +559,7 @@ int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
 {
 	int i;
 	int offset = 0;
-	int hex = (options.display == SPECIAL_HEX || 
+    int hex = (options.display == SPECIAL_HEX ||
 		   ( options.display == SPECIAL_DEF &&
 		     p->param.flags & MCE_PARAM_HEX ) );
 
@@ -584,9 +584,9 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 	errmsg[0] = 0;
 
-	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW && 
+    int is_command = (tokens[0].value >= ENUM_COMMAND_LOW &&
 			  tokens[0].value < ENUM_COMMAND_HIGH);
-	
+
 	if (is_command) {
 
 		// Token[0] is the command (RB, WB, etc.)
@@ -633,7 +633,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		}
 
 		switch( tokens[0].value ) {
-		
+
 		case COMMAND_RS:
 			err = mcecmd_reset(mce, &mcep);
 			break;
@@ -689,13 +689,13 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 			err = mcecmd_write_block(mce, &mcep, to_write, buf);
 			break;
-			
+
 		case COMMAND_WEL:
 			err = mcecmd_write_element(mce, &mcep,
 						tokens[3].value,
 						tokens[4].value);
 			break;
-			
+
 		case COMMAND_WRA:
 			index = tokens[3].value;
 			to_write = tokens[4].n;
@@ -704,17 +704,17 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 			err = mcecmd_write_range(mce, &mcep, index, buf, to_write);
 			break;
-			
+
 		default:
 			sprintf(errmsg, "command not implemented");
 			return -1;
 		}
-		
+
 		if (err!=0 && errmsg[0] == 0) {
 			sprintf(errmsg, "mce library error -%#08x : %s", -err,
 				mcelib_error_string(err));
 			ret_val = -1;
-		} 
+        }
 	} else {
 
 		switch(tokens[0].value) {
@@ -797,7 +797,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 
 		case SPECIAL_ACQ_PATH:
 			cmdtree_token_word( options.acq_path, tokens+1 );
-			if (options.acq_path[0] != 0 && 
+            if (options.acq_path[0] != 0 &&
 			    options.acq_path[strlen(options.acq_path)-1] != '/') {
 				strcat(options.acq_path, "/");
 			}
@@ -806,7 +806,7 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		case SPECIAL_LOCK_QUERY:
 			errmsg += sprintf(errmsg, "%i", mcedata_lock_query(mce));
 			break;
-			
+
 		case SPECIAL_LOCK_RESET:
 			ret_val = mcedata_lock_reset(mce);
 			break;
@@ -911,7 +911,7 @@ int pathify_filename(char *dest, const char *src)
 
 	// Otherwise, concat.
 	strcpy(dest, options.acq_path);
-	
+
 	if (dest[len-1] != '/')
 		strcat(dest, "/");
 	strcat(dest, src);

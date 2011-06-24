@@ -16,15 +16,9 @@
   must return the offset of the first unprocessed argument.
 */
 
-#if !MULTICARD
-#  define USAGE_OPTION_N "        -n <card number>       ignored\n"
-#else
-#  define USAGE_OPTION_N "        -n <card number>       use the specified fibre card\n"
-#endif
-
 #define USAGE_MESSAGE "" \
 "  Initial options (MAS config):\n" \
-USAGE_OPTION_N \
+"        -n <device index>       override default MCE device\n"\
 "        -w <hardware file>      override default hardware configuration file\n"\
 "        -m <MAS config file>    override default MAS configuration file\n"\
 "        -i                      read psc_status as ascii from stdin (no MCE)\n"\
@@ -32,65 +26,51 @@ USAGE_OPTION_N \
 
 int process_options(option_t *options, int argc, char **argv)
 {
-#if MULTICARD
-  char *s;
-#endif
-  int option;
-  // Note the "+" at the beginning of the options string forces the
-  // first non-option string to return a -1, which is what we want.
-  while ( (option = getopt(argc, argv, "+?hm:n:w:i0123456789")) >=0) {
+    char *s;
+    int option;
+    // Note the "+" at the beginning of the options string forces the
+    // first non-option string to return a -1, which is what we want.
+    while ( (option = getopt(argc, argv, "+?hm:n:w:i0123456789")) >=0) {
 
-    switch(option) {
-    case '?':
-    case 'h':
-      printf(USAGE_MESSAGE);
-      return -1;
+        switch(option) {
+            case '?':
+            case 'h':
+                printf(USAGE_MESSAGE);
+                return -1;
 
-    case 'n':
-#if MULTICARD
-      options->fibre_card = (int)strtol(optarg, &s, 10);
-      if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
-          fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
-          return -1;
-      }
-#endif
-      break;
+            case 'n':
+                options->dev_index = (int)strtol(optarg, &s, 10);
+                if (*optarg == '\0' || *s != '\0' || options->dev_index < 0) {
+                    fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+                    return -1;
+                }
+                break;
 
-    case 'm':
-      if (options->config_file)
-        free(options->config_file);
-      options->config_file = strdup(optarg);
-      break;
+            case 'm':
+                if (options->config_file)
+                    free(options->config_file);
+                options->config_file = strdup(optarg);
+                break;
 
-    case 'w':
-      if (options->hardware_file)
-        free(options->hardware_file);
-      options->hardware_file = strdup(optarg);
-      break;
+            case 'w':
+                if (options->hardware_file)
+                    free(options->hardware_file);
+                options->hardware_file = strdup(optarg);
+                break;
 
-    case 'i':
-      options->read_stdin = 1;
-      break;
+            case 'i':
+                options->read_stdin = 1;
+                break;
 
-    case '0' ... '9':
-      //It's a number! Get out of here!
-      optind--;
-      break;
+            case '0' ... '9':
+                //It's a number! Get out of here!
+                optind--;
+                break;
 
-    default:
-      printf("Unimplemented option '-%c'!\n", option);
+            default:
+                printf("Unimplemented option '-%c'!\n", option);
+        }
     }
-  }
 
-  /* set file defaults */
-  if ((options->data_device = mcelib_data_device(options->fibre_card)) == NULL) {
-      fprintf(stderr, "Unable to obtain path to default data device!\n");
-      return -1;
-  }
-  if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL) {
-      fprintf(stderr, "Unable to obtain path to default command device!\n");
-      return -1;
-  }
-
-  return optind;
+    return optind;
 }

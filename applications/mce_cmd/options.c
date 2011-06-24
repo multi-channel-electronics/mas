@@ -10,12 +10,6 @@
 
 #include "options.h"
 
-#if MAX_FIBRE_CARD == 1
-#  define USAGE_OPTION_N "  -n <card number>       ignored\n"
-#else
-#  define USAGE_OPTION_N "  -n <card number>       use the specified fibre card\n"
-#endif
-
 #define USAGE_MESSAGE \
 "Usage:\n"\
 "\t%s [options] [-x cmd...]\n"\
@@ -25,9 +19,9 @@
 "  -e                     echo mode, print each command as well as response\n"\
 "  -r                     don't use readline on stdin (faster input in scripts)\n"\
 "\n"\
-USAGE_OPTION_N \
 "  -c <config file>       choose a particular mce config file\n"\
 "  -m <config file>       choose a particular mas config file\n"\
+"  -n <dev index>         choose a specific MCE device to use\n"\
 "  -f <batch file>        run commands from file instead of stdin\n"\
 "  -X \"cmd string\"        execute this command and exit (these can be stacked)\n"\
 "  -o <directory>         data file path\n"\
@@ -113,13 +107,11 @@ int process_options(options_t *options, int argc, char **argv)
 			break;
 
 		case 'n':
-#if MULTICARD
 			options->fibre_card = (int)strtol(optarg, &s, 10);
 			if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
 				fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
 				return -1;
 			}
-#endif
 			break;
 
 		default:
@@ -127,22 +119,11 @@ int process_options(options_t *options, int argc, char **argv)
 		}
 	}
 
-	/* set fibre card defaults */
-    if ((options->data_device = mcelib_data_device(options->fibre_card)) ==
-            NULL)
-    {
-        fprintf(stderr, "Unable to obtain path to default data device!\n");
-        return -1;
-    }
-    if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL)
-    {
-        fprintf(stderr, "Unable to obtain path to default command device!\n");
-        return -1;
-    }
-
 	// Check for stragglers (these are files we should be reading...)
 	if (optind < argc) {
-		fprintf(stderr, "Stray arguments!  Use '%s -f <file>' to execute a script.\n", argv[0]);
+        fprintf(stderr,
+                "Stray arguments!  Use '%s -f <file>' to execute a script.\n",
+                argv[0]);
 		return -1;
 	}
 

@@ -5,12 +5,27 @@ include $(BASE)Makefile.children
 
 LIBNAME = lib$(MCELIB)
 
-OBJECTS = context.o errors.o defaults.o \
-	cmd.o packet.o virtual.o \
-	data.o acq.o data_thread.o files.o frame_manip.o \
-	dirfile.o config.o data_mode.o libmaslog.o socks.o
+OBJECTS = \
+					acq.o \
+					cmd.o \
+					config.o \
+					context.o \
+					data.o \
+					data_mode.o \
+					data_thread.o \
+					defaults.o \
+					dirfile.o \
+					dsp_errors.o \
+					dsp_library.o \
+					errors.o \
+					files.o \
+					frame_manip.o \
+					libmaslog.o \
+					packet.o \
+					socks.o \
+					virtual.o
 
-HEADERS = data_thread.h virtual.h ../../defaults/config.h
+HEADERS = data_thread.h virtual.h context.h ../../defaults/config.h
 
 REPO_VERSION=$(shell svnversion)
 
