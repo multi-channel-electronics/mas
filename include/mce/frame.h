@@ -65,7 +65,7 @@ typedef struct frame_header_abstraction frame_header_abstraction_t;
 
 /* Frame descriptions are in frame.c; bit breakouts are defined here */
 
-extern struct frame_header_abstraction frame_header_v6;
+extern struct frame_header_abstraction mcelib_frame_header_v6;
 
 
 /* Bit defines for status_v6 word */

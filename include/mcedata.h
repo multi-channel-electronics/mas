@@ -49,6 +49,8 @@ int mcedata_open(mce_context_t context);
 int mcedata_close(mce_context_t context);
 
 
+ssize_t mcedata_read(mce_context_t context, void *buf, size_t count);
+
 /* ioctl access to driver */
 
 #define mcedata_ioctl(c,k,a) mcedata_ioctl_generic((c),(k),(void *)(a))
