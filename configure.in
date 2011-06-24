@@ -95,7 +95,7 @@ AC_ARG_WITH([mces],
 dnl expand the MCE list
 if test "$MCE_LIST_IN" = "!auto"; then
   # expand !auto
-  MCE_LIST=$(seq -s, $(expr $MAX_FIBRE_CARD - 1))
+  MCE_LIST=$(seq -s, 0 $(expr $MAX_FIBRE_CARD - 1))
 else
   # the following awk-y goodness simply expands the N@host elements and discards
   # everything that doesn't fit the syntax.
@@ -428,7 +428,7 @@ echo
 echo "  MCE List:"
 echo "    ${MCE_LIST}"
 
-if test "x$DO_CONFIG2" = "xyes" -a ! -f config2/$FIRST_MCE_CIN; then
+if test "x${DO_CONFIG2}" = "xyes" -a ! -f config2/$FIRST_MCE_CIN; then
   echo
   echo "
   Before building MAS, you must first select the mce.cin file(s) to use as your
