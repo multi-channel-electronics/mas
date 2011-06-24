@@ -10,9 +10,9 @@ MAKE_CONFIG2=@DO_CONFIG2@
 all: Makefile $(TARGET)
 
 ifeq ($(MAKE_CONFIG2),yes)
-	INSTALL_MCE=install_multimce
-	SOURCE = @MCE_CIN_LIST@
-	MCE_LIST = @MCE_CFG_LIST@
+INSTALL_MCE=install_multimce
+SOURCE = @MCE_CIN_LIST@
+MCE_LIST = @MCE_CFG_LIST@
 endif
 
 mas.cin: mas.cin.in ../config.status
