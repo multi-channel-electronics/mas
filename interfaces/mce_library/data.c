@@ -84,15 +84,13 @@ int mcedata_open(mce_context_t context)
         case net:
             return mcedata_net_connect(context);
         default:
-            fprintf(stderr, "mcedata: Unhandled device type.\n");
+            fprintf(stderr, "mcedata: Unhandled route.\n");
             return -MCE_ERR_DEVICE;
     }
 }
 
-int mcedata_close(mce_context_t context)
+static int mcedata_sdsu_disconnect(mce_context_t context)
 {
-	C_data_check;
-
     if (C_data.map != NULL)
 		munmap(C_data.map, C_data.map_size);
 
@@ -101,6 +99,43 @@ int mcedata_close(mce_context_t context)
 
 	if (close(C_data.fd) < 0)
 		return -MCE_ERR_DEVICE;
+
+}
+
+/* ethernet specific stuff */
+static int mcedata_eth_disconnect(mce_context_t context)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+/* mcenetd specific stuff */
+static int mcedata_net_disconnect(mce_context_t context)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+int mcedata_close(mce_context_t context)
+{
+    int err;
+	C_data_check;
+
+    switch(context->dev_route) {
+        case sdsu:
+            err = mcedata_sdsu_connect(context);
+        case eth:
+            err = mcedata_eth_connect(context);
+        case net:
+            err = mcedata_net_connect(context);
+        default:
+            fprintf(stderr, "mcedata: Unhandled route.\n");
+            return -MCE_ERR_DEVICE;
+    }
+    if (err)
+        return err;
 
 	C_data.connected = 0;
 

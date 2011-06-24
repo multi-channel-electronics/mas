@@ -49,13 +49,6 @@ static int mcedsp_sdsu_connect(mce_context_t context)
     return 0;
 }
 
-static int mcedsp_eth_connect(mce_context_t context)
-{
-    fprintf(stderr,
-            "mcedsp: Ethernet routing does not support DSP operations.");
-    return -DSP_ERR_DEVICE;
-}
-
 static int mcedsp_net_connect(mce_context_t context)
 {
     fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
@@ -69,23 +62,45 @@ int mcedsp_open(mce_context_t context)
         case sdsu:
             return mcedsp_sdsu_connect(context);
         case eth:
-            return mcedsp_eth_connect(context);
+            fprintf(stderr,
+                    "mcedsp: Ethernet routing does not support DSP operations.");
+            return -DSP_ERR_DEVICE;
         case net:
             return mcedsp_net_connect(context);
         default:
-            fprintf(stderr, "mcedsp: Unhandled device type.\n");
+            fprintf(stderr, "mcedsp: Unhandled route.\n");
             return -DSP_ERR_DEVICE;
     }
 }
 
+static int mcedsp_net_disconnect(mce_context_t context)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
 int mcedsp_close(mce_context_t context)
 {
+    int err = 0;
     CHECK_OPEN(context);
 
-    if (close(context->dsp.fd) < 0)
-        return -DSP_ERR_DEVICE;
+    switch(context->dev_route) {
+        case sdsu:
+            if (close(context->dsp.fd) < 0)
+                return -DSP_ERR_DEVICE;
+            context->dsp.fd = -1;
+            break;
+        case net:
+            err = mcedsp_net_disconnect(context);
+        default:
+            fprintf(stderr, "mcedsp: Unhandled route.\n");
+            return -DSP_ERR_DEVICE;
+    }
+    if (err)
+        return err;
+
     context->dsp.opened = 0;
-    context->dsp.fd = -1;
 
     return 0;
 }
@@ -130,24 +145,15 @@ static ssize_t mcedsp_net_read(mce_context_t context, void *buf, size_t count)
     abort();
 }
 
-static ssize_t mcedsp_eth_read(mce_context_t context, void *buf, size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
 static ssize_t mcedsp_read(mce_context_t context, void *buf, size_t count)
 {
     switch(context->dev_route) {
         case sdsu:
             return read(context->dsp.fd, buf, count);
-        case eth:
-            return mcedsp_eth_read(context, buf, count);
         case net:
             return mcedsp_net_read(context, buf, count);
         default:
-            fprintf(stderr, "mcedsp: Unhandled device type.\n");
+            fprintf(stderr, "mcedsp: Unhandled route.\n");
             return -DSP_ERR_DEVICE;
     }
 }
@@ -161,26 +167,16 @@ static ssize_t mcedsp_net_write(mce_context_t context, const void *buf,
     abort();
 }
 
-static ssize_t mcedsp_eth_write(mce_context_t context, const void *buf, 
-        size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
 static ssize_t mcedsp_write(mce_context_t context, const void *buf,
         size_t count)
 {
     switch(context->dev_route) {
         case sdsu:
             return write(context->dsp.fd, buf, count);
-        case eth:
-            return mcedsp_eth_write(context, buf, count);
         case net:
             return mcedsp_net_write(context, buf, count);
         default:
-            fprintf(stderr, "mcedsp: Unhandled device type.\n");
+            fprintf(stderr, "mcedsp: Unhandled route.\n");
             return -DSP_ERR_DEVICE;
     }
 }

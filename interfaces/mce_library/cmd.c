@@ -129,7 +129,7 @@ int mcecmd_open(mce_context_t context)
             err = mcecmd_net_connect(context);
             break;
         default:
-            fprintf(stderr, "mcecmd: Unhandled device type.\n");
+            fprintf(stderr, "mcecmd: Unhandled route.\n");
             return -MCE_ERR_DEVICE;
     }
     if (err)
@@ -149,12 +149,44 @@ int mcecmd_open(mce_context_t context)
 }
 
 
+/* ethernet specific stuff */
+static int mcecmd_eth_disconnect(mce_context_t context)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
+/* mcenetd specific stuff */
+static int mcecmd_net_disconnect(mce_context_t context)
+{
+    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
+            __FILE__);
+    abort();
+}
+
 int mcecmd_close(mce_context_t context)
 {
+    int err = 0;
 	C_cmd_check;
 
-	if (close(C_cmd.fd) < 0)
-		return -MCE_ERR_DEVICE;
+    switch(context->dev_route) {
+        case sdsu:
+            if (close(C_cmd.fd) < 0)
+                return -MCE_ERR_DEVICE;
+            break;
+        case eth:
+            err = mcecmd_eth_disconnect(context);
+            break;
+        case net:
+            err = mcecmd_net_disconnect(context);
+            break;
+        default:
+            fprintf(stderr, "mcecmd: Unhandled route.\n");
+            return -MCE_ERR_DEVICE;
+    }
+    if (err)
+        return err;
 
 	C_cmd.connected = 0;
 
@@ -203,7 +235,7 @@ static ssize_t mcecmd_read(mce_context_t context, void *buf, size_t count)
         case net:
             return mcecmd_net_read(context, buf, count);
         default:
-            fprintf(stderr, "mcecmd: Unhandled device type.\n");
+            fprintf(stderr, "mcecmd: Unhandled route.\n");
             return -MCE_ERR_DEVICE;
     }
 }
@@ -236,7 +268,7 @@ static ssize_t mcecmd_write(mce_context_t context, const void *buf,
         case net:
             return mcecmd_net_write(context, buf, count);
         default:
-            fprintf(stderr, "mcecmd: Unhandled device type.\n");
+            fprintf(stderr, "mcecmd: Unhandled route.\n");
             return -MCE_ERR_DEVICE;
     }
 }
