@@ -24,22 +24,21 @@ struct maslog_struct {
 	int fd;       // ha ha, it's just an int.
 };
 
-static
-int get_string(char *dest, config_setting_t *parent, const char *name)
+static char *get_string(config_setting_t *parent, const char *name)
 {
 	config_setting_t *set =
 		config_setting_get_member(parent, name);
 	if (set==NULL) {
 		fprintf(stderr, "%s: key '%s' not found in config file\n", __func__,
                 name);
-		return -1;
+        return NULL;
 	}
-	strcpy(dest, config_setting_get_string(set));
-	return 0;
+    return strdup(config_setting_get_string(set));
 }
 
 maslog_t maslog_connect(const mce_context_t mce, const char *name)
 {
+    int free_address = 0;
     char *address;
 	struct config_t *cfg;
 
@@ -55,16 +54,21 @@ maslog_t maslog_connect(const mce_context_t mce, const char *name)
 
         config_setting_t *client = config_lookup(cfg, CONFIG_CLIENT);
 
-        if (get_string(address, client, CONFIG_LOGADDR)!=0)
+        if ((address = get_string(client, CONFIG_LOGADDR)))
             return NULL;
+        free_address = 1;
     }
 
     int sock = massock_connect(address);
     if (sock < 0) {
         fprintf(stderr, "maslog: could not connect to maslog at %s:\n  %s\n",
                 address, massock_error(sock, errno));
+        if (free_address)
+            free(address);
         return NULL;
     }
+    if (free_address)
+        free(address);
 
     // Ignore pipe signals, we'll handle the errors (right?)
     signal(SIGPIPE, SIG_IGN);

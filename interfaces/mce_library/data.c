@@ -127,10 +127,13 @@ int mcedata_close(mce_context_t context)
     switch(context->dev_route) {
         case sdsu:
             err = mcedata_sdsu_disconnect(context);
+            break;
         case eth:
             err = mcedata_eth_disconnect(context);
+            break;
         case net:
             err = mcedata_net_disconnect(context);
+            break;
         default:
             fprintf(stderr, "mcedata: Unhandled route.\n");
             return -MCE_ERR_DEVICE;

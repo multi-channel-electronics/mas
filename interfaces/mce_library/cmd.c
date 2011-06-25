@@ -79,8 +79,8 @@ static int log_data(maslog_t maslog, u32 *buffer, int count, int min_raw,
 
 static int mcecmd_sdsu_connect(mce_context_t context)
 {
-    char dev_name[20] = "/dev/mce_data";
-    sprintf(dev_name + 13, "%u", (unsigned)context->dev_num);
+    char dev_name[20] = "/dev/mce_cmd";
+    sprintf(dev_name + 12, "%u", (unsigned)context->dev_num);
 
     C_cmd.fd = open(dev_name, O_RDWR);
     if (C_cmd.fd < 0)
