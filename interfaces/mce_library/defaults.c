@@ -26,7 +26,6 @@ static void check_env(int dev)
         return;
     }
 
-    setenv("MAS_MCE_DEV", "0", 1);
     /* MAS_MCE_DEV is overridden if dev is set */
     char buffer[10];
     if (dev == -1) {
