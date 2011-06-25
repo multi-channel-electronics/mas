@@ -99,15 +99,20 @@ int mceconfig_open(mce_context_t context, const char *filename,
 
     if (filename == NULL) {
         char *ptr = mcelib_default_hardwarefile(context->dev_index);
+        if (ptr == NULL) {
+            fprintf(stderr, "mceconfig: Unable to determine hardware config "
+                    "file for MCE device #%i\n", context->dev_index);
+            return -1;
+        }
         if (!config_read_file(cfg, ptr)) {
-            fprintf(stderr, "config_read_file '%s': line %i: %s\n",
+            fprintf(stderr, "mceconfig: config_read_file '%s': line %i: %s\n",
                     ptr, config_error_line(cfg), config_error_text(cfg));
             free(ptr);
             return -1;
         }
         free(ptr);
     } else if (!config_read_file(cfg, filename)) {
-		fprintf(stderr, "config_read_file '%s': line %i: %s\n",
+        fprintf(stderr, "mceconfig: config_read_file '%s': line %i: %s\n",
                 filename, config_error_line(cfg), config_error_text(cfg));
 		return -1;
 	}
@@ -116,7 +121,8 @@ int mceconfig_open(mce_context_t context, const char *filename,
 	if (keyname != NULL) key = keyname;
 	config_setting_t *hardware = config_lookup(cfg, key);
 	if (hardware == NULL) {
-        fprintf(stderr, "Could not find key '%s' in hardware file.\n", key);
+        fprintf(stderr,
+                "mceconfig: Could not find key '%s' in hardware file.\n", key);
         return 1;
 	}
 
@@ -130,7 +136,7 @@ int mceconfig_open(mce_context_t context, const char *filename,
 	}
 
 	if (try_get_child(system, MCECFG_COMPONENTS, &C_config.components)) {
-		printf("System has no components!\n");
+        printf("mceconfig: System has no components!\n");
         return 1;
 	}
 

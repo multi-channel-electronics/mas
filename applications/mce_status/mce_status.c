@@ -62,8 +62,7 @@ int main(int argc, char **argv)
 
 	// Load configuration
     if (mceconfig_open(options.context, options.hardware_file, "hardware")!=0) {
-		sprintf(msg, "Could not load MCE config file '%s'.\n",
-			options.hardware_file);
+        sprintf(msg, "Could not load MCE config file.\n");
         error_log_exit(maslog, msg, 3);
 	}
 

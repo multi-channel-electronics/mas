@@ -143,12 +143,12 @@ AC_DEFINE_UNQUOTED([DEFAULT_EXPERIMENTFILE], ["$DEFAULT_EXPERIMENTFILE"],
 AC_ARG_VAR([DEFAULT_HARDWAREFILE],
                   [the default hardware configuration filename format specifier used by ]
        [single card MAS.  (/etc/mce/mce.cfg is used if not specified, or ]
-       [/etc/mce/mce${MAS_CARD}.cfg, in the case of Multicard MAS)])
+       [/etc/mce/mce${MAS_MCE_DEV}.cfg, in the case of Multicard MAS)])
 if test -z "$DEFAULT_HARDWAREFILE"; then
   if test $MAX_FIBRE_CARD -eq 1; then
     DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
   else
-    DEFAULT_HARDWAREFILE="/etc/mce/mce\${MAS_CARD}.cfg"
+    DEFAULT_HARDWAREFILE="/etc/mce/mce\${MAS_MCE_DEV}.cfg"
   fi
 fi
 AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFILE], ["$DEFAULT_HARDWAREFILE"],
@@ -378,7 +378,7 @@ by mce_script itself.
 
 MAS_DEFAULT_VAR([BIN], [${MAS_PREFIX}/bin])
 MAS_DEFAULT_VAR([DATA], [${MAS_DATA_ROOT}/current_data])
-MAS_DEFAULT_VAR([DATA_ROOT], [/data/cryo], [/data/cryo${MAS_CARD}])
+MAS_DEFAULT_VAR([DATA_ROOT], [/data/cryo], [/data/cryo${MAS_MCE_DEV}])
 MAS_DEFAULT_VAR([IDL], [${MAS_ROOT}/idl])
 MAS_DEFAULT_VAR([PYTHON], [${MAS_ROOT}/python])
 MAS_DEFAULT_VAR([SCRIPT], [${MAS_ROOT}/script])

@@ -112,7 +112,7 @@ int mcecmd_open(mce_context_t context)
         mcecmd_close(context);
 
     if (context->maslog == NULL) {
-        char *ptr = mcelib_shell_expand("mcelib[${MAS_CARD}]",
+        char *ptr = mcelib_shell_expand("mcelib[${MAS_MCE_DEV}]",
                 context->dev_index);
         context->maslog = maslog_connect(context, ptr);
         free(ptr);
