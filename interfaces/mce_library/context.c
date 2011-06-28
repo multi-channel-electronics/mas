@@ -171,7 +171,7 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
     c->cmd.connected = 0;
     c->data.connected = 0;
     c->config.connected = 0;
-    c->net.udepth = udepth;
+    c->udepth = udepth;
 
     /* if MCE_DEVICE_URL is set in the environment, we use that as our MCE
      * device, and ignore mas.cfg completely.  This has implications for the
@@ -285,6 +285,11 @@ struct config_t *mcelib_mascfg(mce_context_t context)
 int mcelib_ndev(mce_context_t context)
 {
     return context->ndev;
+}
+
+int mcelib_ddepth(mce_context_t context)
+{
+    return context->ddepth;
 }
 
 void mcelib_destroy(mce_context_t context)

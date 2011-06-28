@@ -31,6 +31,7 @@ void mcelib_destroy(mce_context_t context);
 const char *mcelib_dev(mce_context_t context);
 int mcelib_ndev(mce_context_t context);
 struct config_t *mcelib_mascfg(mce_context_t context);
+int mcelib_ddepth(mce_context_t context);
 
 /* Error look-up, versioning */
 

@@ -78,8 +78,6 @@ struct mcenet_client {
     int           cmd_ok;         /* target CMD device works */
     int           dat_ok;         /* target DAT device works */
     int           sock;           /* network control socket */
-    unsigned char udepth;         /* upstream depth */
-    unsigned char ddepth;         /* downstream depth */
 };
 
 struct mcedsp_context {
@@ -112,6 +110,8 @@ struct mce_context {
                                          purposes for the user. */
 
     struct mcenet_client net;         /* mcenet client data */
+    unsigned char        udepth;      /* upstream depth */
+    unsigned char        ddepth;      /* downstream depth */
 
     enum {
         none = 0, sdsu, net, eth

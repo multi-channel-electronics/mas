@@ -5,10 +5,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <mcenetd.h>
 #include <mce_library.h>
 #include "context.h"
 
 #include "net.h"
+
+/* mcenetd generic functions */
+
+/* read a message from descriptor d */
+ssize_t mcenet_readmsg(int d, unsigned char *msg)
+{
+    ssize_t n, extra = 0;
+    size_t l;
+
+    /* read the opcode */
+    if ((n = read(d, msg, 1)) <= 0)
+        return n;
+
+    /* corresponding length */
+    l = MCENETD_MSGLEN(msg[0]) - 1;
+
+    if (l == -1) { /* variable length message, the next byte tells us the
+                      length */
+        if ((n = read(d, ++msg, 1)) <= 0)
+            return n;
+        l = msg[1];
+        extra = 1;
+    }
+
+    if (l == 0) /* no more to read */
+        n = 0;
+    else if ((n = read(d, msg + 1, l)) <= 0)
+        return n;
+
+    return 1 + extra + n;
+}
 
 /* mcenetd server side */
 

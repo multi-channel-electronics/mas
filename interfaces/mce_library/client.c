@@ -34,6 +34,14 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
 {
     ssize_t n;
 
+#if 1
+    size_t i;
+    fprintf(stderr, "mcenet: req -> %s:", context->dev_name);
+    for (i = 0; i < len; ++i)
+        fprintf(stderr, " %02x ", message[i]);
+    fprintf(stderr, "\n");
+#endif
+
     /* wait for the net.socket to become ready */
     if (mcenet_poll(context->net.sock, POLLOUT, context->dev_name))
         return -1;
@@ -52,6 +60,13 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
     /* read the response */
     n = read(context->net.sock, message, 256);
 
+#if 1
+    fprintf(stderr, "mcenet: rsp <- %s:", context->dev_name);
+    for (i = 0; i < (size_t)n; ++i)
+        fprintf(stderr, " %02x ", message[i]);
+    fprintf(stderr, "\n");
+#endif
+
     return n;
 }
 
@@ -65,7 +80,7 @@ int mcenet_hello(mce_context_t context)
     message[1] = MCENETD_MAGIC1;
     message[2] = MCENETD_MAGIC2;
     message[3] = MCENETD_MAGIC3;
-    message[4] = context->net.udepth;
+    message[4] = context->udepth;
     message[5] = context->dev_num;
     
     l = mcenet_req(context, message, MCENETD_HELLO_L);
@@ -87,12 +102,11 @@ int mcenet_hello(mce_context_t context)
     }
 
     /* otherwise we should be good to go; record the data */
-    context->dev_endpoint = message[10];
-    context->net.ddepth = message[1];
-    context->net.token = *(uint64_t*)(message + 2);
-    context->net.dsp_ok = message[11];
-    context->net.cmd_ok = message[12];
-    context->net.dat_ok = message[13];
+    context->ddepth = message[1];
+    context->dev_endpoint = message[2];
+    context->net.dsp_ok = message[3];
+    context->net.cmd_ok = message[4];
+    context->net.dat_ok = message[5];
 
     return 0;
 }
