@@ -65,7 +65,7 @@ typedef struct massock_listener_t {
 } listener_t;
 
 const char *massock_error(int err, int syserr);
-int massock_connect(const char *addr);
+int massock_connect(const char *addr, int port);
 int massock_listen(const char *addr);
 
 /* Client management functionality */

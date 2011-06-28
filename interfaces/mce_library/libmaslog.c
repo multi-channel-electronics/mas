@@ -59,7 +59,7 @@ maslog_t maslog_connect(const mce_context_t mce, const char *name)
         free_address = 1;
     }
 
-    int sock = massock_connect(address);
+    int sock = massock_connect(address, -1);
     if (sock < 0) {
         fprintf(stderr, "maslog: could not connect to maslog at %s:\n  %s\n",
                 address, massock_error(sock, errno));

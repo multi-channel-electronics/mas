@@ -73,7 +73,7 @@ static int load_config(params_t *p, char *config_file)
      * takes care of figuring out the default mas.cfg if none was specified.
      */
 
-    mce = mcelib_create(-1, config_file);
+    mce = mcelib_create(-1, config_file, 0);
     if (mce == NULL) {
         fprintf(stderr, "%s: Could not initialise the MCE\n", __func__);
 		return -1;

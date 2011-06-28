@@ -21,27 +21,18 @@
 #include <mce/defaults.h>
 
 #include "context.h"
+#include "eth.h"
+#include "net.h"
+#include "sdsu.h"
 #include "virtual.h"
 
 #define LOG_LEVEL_CMD     MASLOG_DETAIL
 #define LOG_LEVEL_REP_OK  MASLOG_DETAIL
 #define LOG_LEVEL_REP_ER  MASLOG_INFO
 
-#define mcecmd_ioctl(a,b,c) mcecmd_ioctl_generic((a),(b),(void*)(c))
-static int mcecmd_ioctl_generic(mce_context_t context, int key, void *arg)
-{
-    if (context->dev_route == sdsu)
-        return ioctl(C_cmd.fd, key, arg);
-    else {
-        fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-                __FILE__);
-        abort();
-    }
-}
-
 static inline int get_last_error(mce_context_t context)
 {
-    return mcecmd_ioctl(context, MCEDEV_IOCT_LAST_ERROR, NULL);
+    return C_cmd.ioctl(context, MCEDEV_IOCT_LAST_ERROR);
 }
 
 static int log_data(maslog_t maslog, u32 *buffer, int count, int min_raw,
@@ -77,34 +68,6 @@ static int log_data(maslog_t maslog, u32 *buffer, int count, int min_raw,
     return maslog_print_level(maslog, out, level);
 }
 
-static int mcecmd_sdsu_connect(mce_context_t context)
-{
-    char dev_name[20] = "/dev/mce_cmd";
-    sprintf(dev_name + 12, "%u", (unsigned)context->dev_num);
-
-    C_cmd.fd = open(dev_name, O_RDWR);
-    if (C_cmd.fd < 0)
-        return -MCE_ERR_DEVICE;
-
-    return 0;
-}
-
-/* ethernet specific stuff */
-static int mcecmd_eth_connect(mce_context_t context)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
-/* mcenetd specific stuff */
-static int mcecmd_net_connect(mce_context_t context)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
 int mcecmd_open(mce_context_t context)
 {
     int err;
@@ -118,27 +81,27 @@ int mcecmd_open(mce_context_t context)
         free(ptr);
     }
 
+    /* set I/O handlers */
     switch(context->dev_route) {
         case sdsu:
-            err = mcecmd_sdsu_connect(context);
+            SET_IO_METHODS(context, cmd, sdsu);
             break;
         case eth:
-            err = mcecmd_eth_connect(context);
+            SET_IO_METHODS(context, cmd, eth);
             break;
         case net:
-            err = mcecmd_net_connect(context);
+            SET_IO_METHODS(context, cmd, net);
             break;
         default:
             fprintf(stderr, "mcecmd: Unhandled route.\n");
             return -MCE_ERR_DEVICE;
     }
-    if (err)
+    if ((err = C_cmd.connect(context)))
         return err;
 
 	// Set up connection to prevent outstanding replies after release
-    mcecmd_ioctl(context, MCEDEV_IOCT_SET,
-            mcecmd_ioctl(context, MCEDEV_IOCT_GET, NULL) |
-            MCEDEV_CLOSE_CLEANLY);
+    C_cmd.ioctl(context, MCEDEV_IOCT_SET,
+            C_cmd.ioctl(context, MCEDEV_IOCT_GET) | MCEDEV_CLOSE_CLEANLY);
 
     // Most applications using this library will want to read their own replies.
 	mcecmd_lock_replies(context, 1);
@@ -148,44 +111,12 @@ int mcecmd_open(mce_context_t context)
 	return 0;
 }
 
-
-/* ethernet specific stuff */
-static int mcecmd_eth_disconnect(mce_context_t context)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
-/* mcenetd specific stuff */
-static int mcecmd_net_disconnect(mce_context_t context)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
 int mcecmd_close(mce_context_t context)
 {
     int err = 0;
 	C_cmd_check;
 
-    switch(context->dev_route) {
-        case sdsu:
-            if (close(C_cmd.fd) < 0)
-                return -MCE_ERR_DEVICE;
-            break;
-        case eth:
-            err = mcecmd_eth_disconnect(context);
-            break;
-        case net:
-            err = mcecmd_net_disconnect(context);
-            break;
-        default:
-            fprintf(stderr, "mcecmd: Unhandled route.\n");
-            return -MCE_ERR_DEVICE;
-    }
-    if (err)
+    if ((err = C_cmd.disconnect(context)))
         return err;
 
 	C_cmd.connected = 0;
@@ -196,88 +127,24 @@ int mcecmd_close(mce_context_t context)
 
 int mcecmd_lock_replies(mce_context_t context, int lock)
 {
-    int flags = mcecmd_ioctl(context, MCEDEV_IOCT_GET, NULL);
+    int flags = C_cmd.ioctl(context, MCEDEV_IOCT_GET);
 	int err;
 	if (lock) {
 		// Set up connection to prevent outstanding replies after release
-        err = mcecmd_ioctl(context, MCEDEV_IOCT_SET,
+        err = C_cmd.ioctl(context, MCEDEV_IOCT_SET,
                 flags | MCEDEV_CLOSED_CHANNEL);
 	} else {
 		// Don't do that.
-        err = mcecmd_ioctl(context, MCEDEV_IOCT_SET,
+        err = C_cmd.ioctl(context, MCEDEV_IOCT_SET,
                 flags & ~MCEDEV_CLOSED_CHANNEL);
     }
 	return err;
 }
 
-/* read hooks */
-static ssize_t mcecmd_net_read(mce_context_t context, void *buf, size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
-static ssize_t mcecmd_eth_read(mce_context_t context, void *buf, size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
-static ssize_t mcecmd_read(mce_context_t context, void *buf, size_t count)
-{
-    switch(context->dev_route) {
-        case sdsu:
-            return read(context->cmd.fd, buf, count);
-        case eth:
-            return mcecmd_eth_read(context, buf, count);
-        case net:
-            return mcecmd_net_read(context, buf, count);
-        default:
-            fprintf(stderr, "mcecmd: Unhandled route.\n");
-            return -MCE_ERR_DEVICE;
-    }
-}
-
-/* write hooks */
-static ssize_t mcecmd_net_write(mce_context_t context, const void *buf,
-        size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
-static ssize_t mcecmd_eth_write(mce_context_t context, const void *buf,
-        size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
-static ssize_t mcecmd_write(mce_context_t context, const void *buf,
-        size_t count)
-{
-    switch(context->dev_route) {
-        case sdsu:
-            return write(context->cmd.fd, buf, count);
-        case eth:
-            return mcecmd_eth_write(context, buf, count);
-        case net:
-            return mcecmd_net_write(context, buf, count);
-        default:
-            fprintf(stderr, "mcecmd: Unhandled route.\n");
-            return -MCE_ERR_DEVICE;
-    }
-}
-
 /* Basic device write/read routines */
-
 int mcecmd_send_command_now(mce_context_t context, mce_command *cmd)
 {
-	int error = mcecmd_write(context, cmd, sizeof(*cmd));
+	int error = C_cmd.write(context, cmd, sizeof(*cmd));
 	if (error < 0) {
 		return -MCE_ERR_DEVICE;
 	} else if (error != sizeof(*cmd)) {
@@ -288,7 +155,7 @@ int mcecmd_send_command_now(mce_context_t context, mce_command *cmd)
 
 int mcecmd_read_reply_now(mce_context_t context, mce_reply *rep)
 {
-	int error = mcecmd_read(context, rep, sizeof(*rep));
+	int error = C_cmd.read(context, rep, sizeof(*rep));
 	if (error < 0) {
 		return -MCE_ERR_DEVICE;
 	} else if (error != sizeof(*rep)) {
@@ -593,10 +460,10 @@ int mcecmd_write_block_check(mce_context_t context, const mce_param_t *param,
 
 int mcecmd_interface_reset(mce_context_t context)
 {
-    return mcecmd_ioctl(context, MCEDEV_IOCT_INTERFACE_RESET, NULL);
+    return C_cmd.ioctl(context, MCEDEV_IOCT_INTERFACE_RESET);
 }
 
 int mcecmd_hardware_reset(mce_context_t context)
 {
-    return mcecmd_ioctl(context, MCEDEV_IOCT_HARDWARE_RESET, NULL);
+    return C_cmd.ioctl(context, MCEDEV_IOCT_HARDWARE_RESET);
 }

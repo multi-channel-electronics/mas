@@ -8,6 +8,7 @@ LIBNAME = lib$(MCELIB)
 OBJECTS = \
 					acq.o \
 					cmd.o \
+					client.o \
 					config.o \
 					context.o \
 					data.o \
@@ -18,14 +19,18 @@ OBJECTS = \
 					dsp_errors.o \
 					dsp_library.o \
 					errors.o \
+					eth.o \
 					files.o \
 					frame_manip.o \
 					libmaslog.o \
+					net.o \
 					packet.o \
+					sdsu.o \
 					socks.o \
 					virtual.o
 
-HEADERS = data_thread.h virtual.h context.h ../../defaults/config.h
+HEADERS = data_thread.h virtual.h context.h sdsu.h net.h eth.h \
+					../../defaults/config.h
 
 REPO_VERSION=$(shell svnversion)
 

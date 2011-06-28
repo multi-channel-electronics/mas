@@ -91,7 +91,8 @@ mce_context_t connect_mce_or_exit(option_t* options)
 {
   char errmsg[1024];
 
-  mce_context_t mce = mcelib_create(options->dev_index, options->config_file);
+  mce_context_t mce = mcelib_create(options->dev_index, options->config_file,
+      0);
 
   // Load MCE hardware information ("xml")
   if (mceconfig_open(mce, options->hardware_file, NULL) != 0) {

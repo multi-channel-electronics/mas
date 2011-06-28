@@ -95,10 +95,10 @@ static void *data_thread(void *p_void)
 
 		if (acts->pre_frame != NULL && acts->pre_frame(d->acq)) {
 				fprintf(stderr, "pre_frame action failed\n");
-		}
+        }
 
-        ret_val = mcedata_read(d->acq->context, (void*)data + index,
-                size - index);
+        ret_val = d->acq->context->data.read(d->acq->context,
+                (void*)data + index, size - index);
 
 		if (ret_val<0) {
 			if (errno==EAGAIN) {

@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 
 	// Connect to MCE
     if ((options.context = mcelib_create(options.dev_idx,
-          options.config_file))==NULL)
+          options.config_file, 0))==NULL)
     {
         fprintf(stderr, "failed to create mce library structure");
         return 3;

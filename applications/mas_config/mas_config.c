@@ -260,7 +260,7 @@ int main(int argc, char **argv)
     }
 
     /* create a library context */
-    mce_context_t mce = mcelib_create(devnum, mas_cfg);
+    mce_context_t mce = mcelib_create(devnum, mas_cfg, 0);
     if (mce == NULL)
         return 1;
 

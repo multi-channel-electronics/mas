@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /******************************************************
   mcecmd.h - header file for MCE API, command module
 
@@ -19,20 +22,6 @@
  *  This module is intended to connect to an mce_cmd character driver
  *  device file.
  */
-
-
-/* Module information structure */
-
-typedef struct mcecmd {
-
-	int connected;
-	int fd;
-
-	char dev_name[MCE_LONG];
-	char errstr[MCE_LONG];
-
-} mcecmd_t;
-
 
 /*
   Function prototypes

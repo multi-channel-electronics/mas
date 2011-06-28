@@ -127,7 +127,7 @@ int main(int argc, char **argv)
         printf("This is %s version %s\n", PROGRAM_NAME, VERSION_STRING);
 
     /* create a mce context, which will figure out the device URL */
-    mce = mcelib_create(options.dev_num, options.mas_file);
+    mce = mcelib_create(options.dev_num, options.mas_file, 0);
     if (mce == NULL) {
         fprintf(stderr, "Unable to create MCE library context.\n");
         return 1;

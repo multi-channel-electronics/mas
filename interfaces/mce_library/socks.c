@@ -16,19 +16,36 @@
 
 //Address addr should be in host:port form
 
-static int fill_sockaddr(struct sockaddr_in *sa, const char *addr)
+static int fill_sockaddr(struct sockaddr_in *sa, const char *addr, int port)
 {
-    char *hostname, *addr_copy;
+    const char *hostname;
+    char *addr_copy = NULL;
 
     if (addr == NULL)
         return MASSOCK_BAD_ADDR;
 
-    addr_copy = strdup(addr);
-	hostname = strtok(addr_copy, ":");
-	if (hostname==NULL) {
-        free(addr_copy);
-        return MASSOCK_BAD_ADDR;
-	}
+    if (port == -1) {
+        addr_copy = strdup(addr);
+        hostname = strtok(addr_copy, ":");
+        if (hostname==NULL) {
+            free(addr_copy);
+            return MASSOCK_BAD_ADDR;
+        }
+
+        char *portname = strtok(NULL, ":");
+        if (portname == NULL) {
+            free(addr_copy);
+            return MASSOCK_BAD_ADDR;
+        }
+
+        char *ender = portname;
+        port = strtol(portname, &ender, 0);
+        if (ender[0]!=0) {
+            free(addr_copy);
+            return MASSOCK_BAD_ADDR;
+        }
+    } else
+        hostname = addr;
 
 	struct hostent *host = gethostbyname(hostname);
 	if (host==NULL) {
@@ -39,18 +56,6 @@ static int fill_sockaddr(struct sockaddr_in *sa, const char *addr)
 	memcpy(&sa->sin_addr.s_addr, host->h_addr, host->h_length);
     sa->sin_family = AF_INET;
 
-    char *portname = strtok(NULL, ":");
-    if (portname == NULL) {
-        free(addr_copy);
-        return MASSOCK_BAD_ADDR;
-    }
-
-    char *ender = portname;
-    int port = strtol(portname, &ender, 0);
-    if (ender[0]!=0) {
-        free(addr_copy);
-        return MASSOCK_BAD_ADDR;
-    }
     sa->sin_port = htons(port);
     free(addr_copy);
 
@@ -94,10 +99,10 @@ const char *massock_error(int err, int syserr)
     return err_buff;
 }
 
-int massock_connect(const char *addr)
+int massock_connect(const char *addr, int port)
 {
     struct sockaddr_in sa;
-    int err = fill_sockaddr(&sa, addr);
+    int err = fill_sockaddr(&sa, addr, port);
 
     if (err)
         return err;
@@ -117,7 +122,7 @@ int massock_listen(const char *addr)
 {
     struct sockaddr_in sa;
 
-    int err = fill_sockaddr(&sa, addr);
+    int err = fill_sockaddr(&sa, addr, -1);
 
     if (err)
         return err;

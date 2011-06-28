@@ -41,7 +41,7 @@ int main()
 	*/
 
 	// Get a library context structure (cheap)
-  mce_context_t mce = mcelib_create();
+  mce_context_t mce = mcelib_create(MCE_DEFAULT_MCE, NULL, 0);
 
 	// Load MCE config information ("xml")
 	if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {

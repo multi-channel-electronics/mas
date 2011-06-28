@@ -25,23 +25,6 @@
 #include <mce/acq.h>
 #include <mce/data_mode.h>
 
-/* Module information structure */
-
-typedef struct mcedata {
-
-	int connected;
-	int fd;
-
-  char *dev_name;
-	char errstr[MCE_LONG];
-
-	void *map;
-	int map_size;
-} mcedata_t;
-
-
-
-
 #define MCEDATA_PACKET_MAX 4096 /* Maximum frame size in dwords */
 
 
@@ -50,8 +33,6 @@ typedef struct mcedata {
 int mcedata_open(mce_context_t context);
 int mcedata_close(mce_context_t context);
 
-
-ssize_t mcedata_read(mce_context_t context, void *buf, size_t count);
 
 /* ioctl access to driver */
 

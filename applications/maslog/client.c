@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
     mce_context_t mce;
     maslog_t maslog;
 
-    mce = mcelib_create(0, (argc > 1) ? argv[1] : NULL);
+    mce = mcelib_create(0, (argc > 1) ? argv[1] : NULL, 0);
     if (mce == NULL)
         exit(1);
 

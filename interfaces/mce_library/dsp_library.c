@@ -16,10 +16,14 @@
 
 #include <stdio.h>
 
-#include "context.h"
 #include <mcedsp.h>
 #include <mce/dsp_errors.h>
 #include <mce/dsp_ioctl.h>
+
+#include "context.h"
+#include "eth.h"
+#include "net.h"
+#include "sdsu.h"
 
 static inline int mem_type_valid(dsp_memory_code mem) {
     return (mem==DSP_MEMX) || (mem==DSP_MEMY) || (mem==DSP_MEMP);
@@ -32,52 +36,25 @@ static inline int mem_type_valid(dsp_memory_code mem) {
 #define CHECK_WORD(w)      if (w & ~0xffffff) \
                                    return -DSP_ERR_BOUNDS;
 
-static int mcedsp_sdsu_connect(mce_context_t context)
-{
-    int fd;
-    char dev_name[18] = "/dev/mce_dsp";
-    sprintf(dev_name + 12, "%u", (unsigned)context->dev_num);
-
-    fd = open(dev_name, O_RDWR);
-    if (fd < 0) {
-        return -DSP_ERR_DEVICE;
-    }
-
-    context->dsp.fd = fd;
-    context->dsp.opened = 1;
-
-    return 0;
-}
-
-static int mcedsp_net_connect(mce_context_t context)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
 int mcedsp_open(mce_context_t context)
 {
     switch(context->dev_route) {
         case sdsu:
-            return mcedsp_sdsu_connect(context);
+            SET_IO_METHODS(context, dsp, sdsu);
+            break;
         case eth:
-            fprintf(stderr,
-                    "mcedsp: Ethernet routing does not support DSP operations.");
+            fprintf(stderr, "mcedsp: "
+                    "Ethernet routing does not support DSP operations.");
             return -DSP_ERR_DEVICE;
         case net:
-            return mcedsp_net_connect(context);
+            SET_IO_METHODS(context, dsp, net);
+            break;
         default:
             fprintf(stderr, "mcedsp: Unhandled route.\n");
             return -DSP_ERR_DEVICE;
     }
-}
 
-static int mcedsp_net_disconnect(mce_context_t context)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
+    return context->dsp.connect(context);
 }
 
 int mcedsp_close(mce_context_t context)
@@ -85,19 +62,7 @@ int mcedsp_close(mce_context_t context)
     int err = 0;
     CHECK_OPEN(context);
 
-    switch(context->dev_route) {
-        case sdsu:
-            if (close(context->dsp.fd) < 0)
-                return -DSP_ERR_DEVICE;
-            context->dsp.fd = -1;
-            break;
-        case net:
-            err = mcedsp_net_disconnect(context);
-        default:
-            fprintf(stderr, "mcedsp: Unhandled route.\n");
-            return -DSP_ERR_DEVICE;
-    }
-    if (err)
+    if ((err = context->dsp.disconnect(context)))
         return err;
 
     context->dsp.opened = 0;
@@ -107,91 +72,40 @@ int mcedsp_close(mce_context_t context)
 
 
 /* IOCTL wrappers */
-
 int mcedsp_ioctl(mce_context_t context, unsigned int iocmd, unsigned long arg)
 {
     CHECK_OPEN(context);
 
-    if (context->dev_route == sdsu)
-        return ioctl(context->dsp.fd, iocmd, arg);
-    else {
-        fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-                __FILE__);
-        abort();
-    }
+    return context->dsp.ioctl(context, iocmd, arg);
 }
 
 
 int mcedsp_reset_flags(mce_context_t context)
 {
-    return mcedsp_ioctl(context, DSPDEV_IOCT_RESET, 0);
+    return context->dsp.ioctl(context, DSPDEV_IOCT_RESET, 0);
 }
 
 int mcedsp_error(mce_context_t context)
 {
-    return mcedsp_ioctl(context, DSPDEV_IOCT_ERROR, 0);
+    return context->dsp.ioctl(context, DSPDEV_IOCT_ERROR, 0);
 }
 
 int mcedsp_speak(mce_context_t context, unsigned long arg)
 {
-    return mcedsp_ioctl(context, DSPDEV_IOCT_SPEAK, arg);
-}
-
-/* read hooks */
-static ssize_t mcedsp_net_read(mce_context_t context, void *buf, size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
-static ssize_t mcedsp_read(mce_context_t context, void *buf, size_t count)
-{
-    switch(context->dev_route) {
-        case sdsu:
-            return read(context->dsp.fd, buf, count);
-        case net:
-            return mcedsp_net_read(context, buf, count);
-        default:
-            fprintf(stderr, "mcedsp: Unhandled route.\n");
-            return -DSP_ERR_DEVICE;
-    }
-}
-
-/* write hooks */
-static ssize_t mcedsp_net_write(mce_context_t context, const void *buf,
-        size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
-
-static ssize_t mcedsp_write(mce_context_t context, const void *buf,
-        size_t count)
-{
-    switch(context->dev_route) {
-        case sdsu:
-            return write(context->dsp.fd, buf, count);
-        case net:
-            return mcedsp_net_write(context, buf, count);
-        default:
-            fprintf(stderr, "mcedsp: Unhandled route.\n");
-            return -DSP_ERR_DEVICE;
-    }
+    return context->dsp.ioctl(context, DSPDEV_IOCT_SPEAK, arg);
 }
 
 /* COMMAND FUNCTIONALITY (wraps write, read) */
 
 int mcedsp_send_command_now(mce_context_t context, dsp_command *cmd)
 {
-    if ( sizeof(*cmd) != mcedsp_write(context, cmd, sizeof(*cmd)) )
-        return mcedsp_ioctl(context, DSPDEV_IOCT_ERROR, 0);
+    if ( sizeof(*cmd) != context->dsp.write(context, cmd, sizeof(*cmd)) )
+        return context->dsp.ioctl(context, DSPDEV_IOCT_ERROR, 0);
 
     dsp_message msg;
 
-    if ( sizeof(msg) != mcedsp_read(context, &msg, sizeof(msg)) )
-        return mcedsp_ioctl(context, DSPDEV_IOCT_ERROR, 0);
+    if ( sizeof(msg) != context->dsp.read(context, &msg, sizeof(msg)) )
+        return context->dsp.ioctl(context, DSPDEV_IOCT_ERROR, 0);
 
     if ( msg.type != DSP_REP ) return -DSP_ERR_UNKNOWN;
     if ( msg.command != cmd->command ) return -DSP_ERR_REPLY;

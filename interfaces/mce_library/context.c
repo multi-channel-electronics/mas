@@ -3,13 +3,45 @@
  */
 #include <stdlib.h>
 #include <string.h>
+
 #include <mce_library.h>
 #include <mce/defaults.h>
+#include <mce/socks.h>
+#include <mcenetd.h>
 
 #include "context.h"
+#include "eth.h"
+#include "net.h"
+#include "sdsu.h"
 #include "version.h"
 #include "../defaults/config.h"
 
+/* determine the endpoint (type of the actual physical MCE communicating to
+ * this MAS.  Incidentally, this will also detect network loops, since a
+ * self-referential connection won't work here, given that we haven't started
+ * our server yet */
+static int find_endpoint(mce_context_t context)
+{
+    /* non-networked devices are easy */
+    if (context->dev_route != net) {
+        context->dev_endpoint = (context->dev_route == eth) ? 1 : 0;
+        return 0;
+    }
+
+    /* connect to the remote host */
+    context->net.sock = massock_connect(context->dev_name, MCENETD_CTLPORT);
+    if (context->net.sock < 0) {
+        fprintf(stderr, "mcelib: Unable to connect to mcenetd at %s\n",
+                context->dev_name);
+        return -1;
+    }
+
+    /* send the greeting, this will set the endpoint */
+    if (mcenet_hello(context))
+        return -1;
+
+    return 0;
+}
 
 /* parse the MCE URL */
 static int parse_url(mce_context_t context)
@@ -121,7 +153,8 @@ static int parse_url(mce_context_t context)
     return 0;
 }
 
-mce_context_t mcelib_create(int dev_num, const char *mas_config)
+mce_context_t mcelib_create(int dev_num, const char *mas_config,
+        unsigned char udepth)
 {
     char *envdev;
     config_setting_t *masconfig;
@@ -138,6 +171,7 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config)
     c->cmd.connected = 0;
     c->data.connected = 0;
     c->config.connected = 0;
+    c->net.udepth = udepth;
 
     /* if MCE_DEVICE_URL is set in the environment, we use that as our MCE
      * device, and ignore mas.cfg completely.  This has implications for the
@@ -149,6 +183,10 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config)
         c->dev_index = 0;
         c->url = strdup(envdev);
         if (parse_url(c)) {
+            mcelib_destroy(c);
+            return NULL;
+        }
+        if (find_endpoint(c)) {
             mcelib_destroy(c);
             return NULL;
         }

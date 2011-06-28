@@ -43,7 +43,8 @@ int main(int argc, char **argv)
     if (argc > 1)
         devnum = atoi(argv[1]);
 
-    if ((mce = mcelib_create(devnum, NULL)) == NULL || (mcedata_open(mce) != 0))
+    if ((mce = mcelib_create(devnum, NULL, 0)) == NULL ||
+            (mcedata_open(mce) != 0))
     {
         fprintf(stderr, "%s: failed to connect to data device\n", argv[0]);
 		exit(1);

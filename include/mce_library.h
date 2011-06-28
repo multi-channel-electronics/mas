@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MCE_LIBRARY_H_
 #define _MCE_LIBRARY_H_
 
@@ -20,7 +23,8 @@ typedef struct mce_context *mce_context_t;
 
 #define MCE_DEFAULT_MCE (-1)
 /* Creation / destruction of context structure */
-mce_context_t mcelib_create(int dev_num, const char *mas_config);
+mce_context_t mcelib_create(int dev_num, const char *mas_config,
+    unsigned char udepth);
 void mcelib_destroy(mce_context_t context);
 
 /* context data */
