@@ -19,6 +19,9 @@
 #define MCENETD_READY 0x02
 /* 02 <VERSION> <SER> <DDEPTH> <ENDPT> <FLAGS> */
 
+#define MCENETD_IOCTL 0x03
+/* 03 <MSGLEN> <32-bit REQ> <ARG ...> */
+
 /* fixed-length message lengths, this count includes the opcode */
 #define MCENETD_MSGLEN(op) ( \
     (op == MCENETD_HELLO) ? 6 : \
@@ -42,7 +45,7 @@
 #define MCENETD_F_ACQ    0x10 /* acquisition in progress */
 
 /* generic functions */
-ssize_t mcenet_readmsg(int d, unsigned char *msg);
+ssize_t mcenet_readmsg(int d, unsigned char *msg, size_t l);
 
 /* client functions */
 int mcenet_hello(mce_context_t context);

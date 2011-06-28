@@ -14,17 +14,17 @@
 /* mcenetd generic functions */
 
 /* read a message from descriptor d */
-ssize_t mcenet_readmsg(int d, unsigned char *msg)
+ssize_t mcenet_readmsg(int d, unsigned char *msg, size_t l)
 {
     ssize_t n, extra = 0;
-    size_t l;
 
     /* read the opcode */
     if ((n = read(d, msg, 1)) <= 0)
         return n;
 
     /* corresponding length */
-    l = MCENETD_MSGLEN(msg[0]) - 1;
+    if (l == -1)
+        l = MCENETD_MSGLEN(msg[0]) - 1;
 
     if (l == -1) { /* variable length message, the next byte tells us the
                       length */

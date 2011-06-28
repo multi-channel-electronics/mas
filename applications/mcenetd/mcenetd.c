@@ -27,11 +27,16 @@
 
 #define VERSION 1
 
+#define DEVID(p) ( ((confd[p].type & 3) == FDTYPE_DAT) ? "DAT" : \
+        ((confd[p].type & 3) == FDTYPE_CMD) ? "CMD" : \
+        ((confd[p].type & 3) == FDTYPE_DSP) ? "DSP" : "CTL")
+
 /* socket management */
 #define FDTYPE_CTL 0
 #define FDTYPE_DSP 1
 #define FDTYPE_CMD 2
 #define FDTYPE_DAT 3
+#define FDTYPE_HX  4
 struct pollfd *pfd = NULL;
 nfds_t npfd = 0;
 int pfd_s = 0;
@@ -39,28 +44,27 @@ int pfd_s = 0;
 struct confd_struct {
     int type;
     int con;
+    struct sockaddr_in addr;
+
+    unsigned char rsp[256];
+    size_t rsplen;
 } *confd;
 
 /* connection management */
+#define CON_DROP   0x01
 int ser[256];
 int serind = 0;
 struct con_struct {
     struct sockaddr_in addr;
 
-    int ctl_sock;
-    int dsp_sock;
-    int cmd_sock;
-    int dat_sock;
+    int sock[4];
 
     int dev_idx;
     int udepth;
     unsigned char ser;
 
-    int state;
+    int flags;
     int nerr;
-
-    unsigned char rsp[256];
-    size_t rsplen;
 } *con = NULL;
 int ncon = 0;
 int con_s = 0;
@@ -112,7 +116,7 @@ const char *SpitMessage(const unsigned char *m, ssize_t n)
     return spit_buffer;
 }
 
-int AddSocket(int fd, short events, int type, int c)
+int AddSocket(int fd, short events, int type, int c, struct sockaddr_in addr)
 {
     /* allocate, if necessary */
     if (pfd_s == npfd) {
@@ -133,7 +137,8 @@ int AddSocket(int fd, short events, int type, int c)
     }
 
     confd[npfd].con = c;
-    confd[npfd].type = type;
+    confd[npfd].type = type | FDTYPE_HX;
+    confd[npfd].addr.sin_addr = addr.sin_addr;
     pfd[npfd].fd = fd;
     pfd[npfd].events = events;
 
@@ -151,13 +156,16 @@ void DropSocket(int p)
 }
 
 void DropConnection(int c) {
+    lprintf(LOG_INFO, "Dropping connection to CLx%02hhX (%s).\n",
+            con[c].ser, inet_ntoa(con[c].addr.sin_addr));
     ser[con[c].ser] = 0;
-    DropSocket(con[c].dat_sock);
-    DropSocket(con[c].cmd_sock);
-    DropSocket(con[c].dsp_sock);
-    DropSocket(con[c].ctl_sock);
+    DropSocket(con[c].sock[3]);
+    DropSocket(con[c].sock[2]);
+    DropSocket(con[c].sock[1]);
+    DropSocket(con[c].sock[0]);
 
     con[c] = con[--ncon];
+    ser[con[c].ser] = ncon + 1;
 }
 
 /* listen on port */
@@ -198,6 +206,7 @@ static void NetInit(void)
 {
     pfd_s = npfd = 4;
     pfd = malloc(pfd_s * sizeof(struct pollfd));
+    confd = malloc(pfd_s * sizeof(struct confd_struct));
 
     /* try to open all our ports. */
     if ((pfd[0].fd = Listen(MCENETD_CTLPORT)) < 0)
@@ -214,6 +223,10 @@ static void NetInit(void)
 
     /* listening sockets need only read */
     pfd[0].events = pfd[1].events = pfd[2].events = pfd[3].events = POLLIN;
+    confd[0].type = FDTYPE_CTL;
+    confd[1].type = FDTYPE_DSP;
+    confd[2].type = FDTYPE_CMD;
+    confd[3].type = FDTYPE_DAT;
 }
 
 static void MCEInit(void)
@@ -285,7 +298,7 @@ void Hello(int p, int c, unsigned char *message, ssize_t n)
     {
         lprintf(LOG_INFO, "dropped spurious connection from %s (CLx%02hhX).\n",
                 inet_ntoa(con[c].addr.sin_addr), con[c].ser);
-        con[c].state = -1;
+        con[c].flags |= CON_DROP;
         return;
     }
 
@@ -297,23 +310,23 @@ void Hello(int p, int c, unsigned char *message, ssize_t n)
     /* send a response */
     if (con[c].dev_idx > ndev) {
         /* no such device */
-        con[c].rsp[0] = MCENETD_STOP;
-        con[c].rsp[1] = MCENETD_ERR_INDEX;
-        con[c].rsplen = 2;
+        confd[p].rsp[0] = MCENETD_STOP;
+        confd[p].rsp[1] = MCENETD_ERR_INDEX;
+        confd[p].rsplen = 2;
     } else if (con[c].udepth + d->ddepth > MAX_DEPTH) {
         /* too much recurstion */
-        con[c].rsp[0] = MCENETD_STOP;
-        con[c].rsp[1] = MCENETD_ERR_BALROG;
-        con[c].rsplen = 2;
+        confd[p].rsp[0] = MCENETD_STOP;
+        confd[p].rsp[1] = MCENETD_ERR_BALROG;
+        confd[p].rsplen = 2;
     } else {
         /* we're good to go */
-        con[c].rsp[0] = MCENETD_READY;
-        con[c].rsp[1] = VERSION;
-        con[c].rsp[2] = con[c].ser;
-        con[c].rsp[3] = d->ddepth;
-        con[c].rsp[4] = d->endpt;
-        con[c].rsp[5] = d->flags;
-        con[c].rsplen = 6;
+        confd[p].rsp[0] = MCENETD_READY;
+        confd[p].rsp[1] = VERSION;
+        confd[p].rsp[2] = con[c].ser;
+        confd[p].rsp[3] = d->ddepth;
+        confd[p].rsp[4] = d->endpt;
+        confd[p].rsp[5] = d->flags;
+        confd[p].rsplen = 6;
     }
 
     /* register the pending response */
@@ -321,25 +334,25 @@ void Hello(int p, int c, unsigned char *message, ssize_t n)
 }
 
 /* send a response on the control channel */
-void CtlWrite(int p, int c)
+void RspWrite(int p, int c)
 {
     ssize_t n;
 
-    lprintf(LOG_DEBUG, "ctl: s:%i <== %s\n", con[c].state,
-            SpitMessage(con[c].rsp, con[c].rsplen));
+    lprintf(LOG_DEBUG, "%s@CLx%02hhX: f:%x <== %s\n", DEVID(p), con[c].ser,
+            con[c].flags, SpitMessage(confd[p].rsp, confd[p].rsplen));
 
-    n = write(pfd[p].fd, con[c].rsp, con[c].rsplen);
+    n = write(pfd[p].fd, confd[p].rsp, confd[p].rsplen);
 
     if (n < 0) {
         lprintf(LOG_ERR, "write error: %s\n", strerror(errno));
-    } else if (n < con[c].rsplen) {
+    } else if (n < confd[p].rsplen) {
         lprintf(LOG_ERR, "short write on response to CLx%02hhX.\n", con[c].ser);
     }
 
     /* error check */
-    if (con[c].rsp[0] == MCENETD_STOP) {
+    if (confd[c].type == FDTYPE_CTL && confd[p].rsp[0] == MCENETD_STOP) {
         if (++con[c].nerr >= MAX_ERR)
-            con[c].state = -1;
+            con[c].flags |= CON_DROP;
     } else
         con[c].nerr = 0;
 
@@ -352,18 +365,27 @@ ssize_t NetRead(int d, int c, unsigned char *buf, const char *where,
 {
     ssize_t n;
 
-    n = mcenet_readmsg(d, buf);
+    n = mcenet_readmsg(d, buf, -1);
 
     if (n < 0) {
         lprintf(LOG_ERR, "read error from CLx%02hhX: %s\n", who,
                 strerror(errno));
     } else if (n == 0) {
         lprintf(LOG_INFO, "%s connection closed by CLx%02hhX.\n", where, who);
-        con[c].state = -1;
+        con[c].flags |= CON_DROP;
         return -1;
     }
 
     return n;
+}
+
+/* process a read on the command port */
+void CmdRead(int p, int c)
+{
+    ssize_t n;
+    unsigned char message[256];
+
+    /* read the requested operation */
 }
 
 /* process a request on the control channel */
@@ -378,15 +400,64 @@ void CtlRead(int p, int c)
     if (n < 0)
         return;
 
-    lprintf(LOG_DEBUG, "ctl: s:%i ==> %s\n", con[c].state,
+    lprintf(LOG_DEBUG, "CTL@CLx%02hhX: f:%x ==> %s\n", con[c].ser, con[c].flags,
             SpitMessage(message, n));
 
-    switch (con[c].state) {
-        case 0: /* trying to verify connection, expecting HELLO */
-            Hello(p, c, message, n);
-            break;
-        default:
-            lprintf(LOG_CRIT, "Unhandled state: CTL#%i\n", con->state);
+    if (confd[p].type & FDTYPE_HX) {
+        /* trying to verify connection, expecting HELLO */
+        Hello(p, c, message, n);
+        confd[p].type = FDTYPE_CTL;
+    } else {
+        lprintf(LOG_CRIT, "Unhandled state: CTL#%x\n", con->flags);
+    }
+}
+
+/* accept a new connection on one of the device ports */
+void AcceptDevice(int p)
+{
+    int fd;
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(struct sockaddr_in);
+    
+    /* provisionally accept the connection */
+    fd = accept(pfd[p].fd, (struct sockaddr*)&addr, &addrlen);
+
+    AddSocket(fd, POLLIN, p, ncon, addr);
+}
+
+/* finalise the handshaking for one of the device ports */
+void HandshakeDevice(int p)
+{
+    ssize_t n;
+    unsigned char message[256];
+
+    /* read the identification message */
+    n = mcenet_readmsg(pfd[p].fd, message, 4);
+
+    lprintf(LOG_DEBUG, "dev#%i ==> %s\n", p, SpitMessage(message, n));
+
+    if (n < 4 || message[1] != MCENETD_MAGIC1
+            || message[2] != MCENETD_MAGIC2 || message[3] != MCENETD_MAGIC3
+            || !ser[message[0]])
+    {
+        /* drop the connection */
+        lprintf(LOG_INFO, "Dropping spurious %s connection from %s.\n",
+                DEVID(p), inet_ntoa(confd[p].addr.sin_addr));
+        DropSocket(p);
+    } else {
+        int c = ser[message[0]] - 1;
+        lprintf(LOG_INFO, "CLx%02hhX connected to %s port.\n", c, DEVID(p));
+        confd[p].type -= FDTYPE_HX;
+        con[c].sock[confd[p].type] = p;
+
+        /* send confirmation */
+        confd[p].rsp[0] = con[c].ser;
+        confd[p].rsp[1] = 5;
+        confd[p].rsp[2] = MCENETD_MAGIC1;
+        confd[p].rsp[3] = MCENETD_MAGIC2;
+        confd[p].rsp[4] = MCENETD_MAGIC3;
+        confd[p].rsplen = 5;
+        pfd[p].events = POLLOUT;
     }
 }
 
@@ -424,14 +495,14 @@ void NewClient(void)
     }
 
     /* add it to the poll list */
-    con[ncon].ctl_sock = AddSocket(fd, POLLIN, FDTYPE_CTL, ncon);
-    con[ncon].dsp_sock = con[ncon].cmd_sock = con[ncon].dat_sock = -1;
+    con[ncon].sock[0] = AddSocket(fd, POLLIN, FDTYPE_CTL, ncon, con[ncon].addr);
+    con[ncon].sock[1] = con[ncon].sock[2] = con[ncon].sock[3] = -1;
 
     /* initialise */
-    con[ncon].state = 0;
+    con[ncon].flags = 0;
     con[ncon].nerr = 0;
     con[ncon].ser = serind;
-    ser[serind++] = 1;
+    ser[serind++] = ncon + 1;
 
     ncon++;
 
@@ -521,65 +592,54 @@ int main(int argc, char **argv)
         if (pfd[0].revents & POLLIN)
             NewClient();
 
-        if (pfd[1].revents & POLLIN) {
-            lprintf(LOG_CRIT, "can't handle read on socket#1\n");
-        }
-
-        if (pfd[2].revents & POLLIN) {
-            lprintf(LOG_CRIT, "can't handle read on socket#2\n");
-        }
-
-        if (pfd[3].revents & POLLIN) {
-            lprintf(LOG_CRIT, "can't handle read on socket#3\n");
-        }
+        /* look for new connections on the device ports */
+        for (i = 1; i <= 3; ++i)
+            if (pfd[i].revents & POLLIN)
+                AcceptDevice(i);
 
         for (i = 4; i < npfd; ++i) {
             /* skip connections about to be closed */
-            if (con[confd[i].con].state == -1)
+            if (con[confd[i].con].flags & CON_DROP)
                 continue;
 
             if (pfd[i].revents & POLLHUP) {
                 lprintf(LOG_INFO, "%s connection closed by CLx%02hhX.\n",
-                        (confd[i].type == FDTYPE_CTL) ? "CTL" :
-                        (confd[i].type == FDTYPE_DSP) ? "DSP" :
-                        (confd[i].type == FDTYPE_CMD) ? "CMD" : "DAT",
-                        con[confd[i].con].ser);
-                con[confd[i].con].state = -1;
+                        DEVID(i), con[confd[i].con].ser);
+                con[confd[i].con].flags = CON_DROP;
                 continue;
             }
 
-            if (pfd[i].revents & POLLOUT) {
-                switch (confd[i].type) {
-                    case FDTYPE_CTL:
-                        CtlWrite(i, confd[i].con);
-                        break;
-                    case FDTYPE_DSP:
-                        lprintf(LOG_CRIT, "can't handle write on dsp#%i\n", i);
-                    case FDTYPE_CMD:
-                        lprintf(LOG_CRIT, "can't handle write on cmd#%i\n", i);
-                    case FDTYPE_DAT:
-                        lprintf(LOG_CRIT, "can't handle write on dat#%i\n", i);
-                }
-            }
+            if (pfd[i].revents & POLLOUT)
+                RspWrite(i, confd[i].con);
 
             if (pfd[i].revents & POLLIN) {
                 switch (confd[i].type) {
                     case FDTYPE_CTL:
+                    case FDTYPE_CTL | FDTYPE_HX:
                         CtlRead(i, confd[i].con);
+                        break;
+                    case FDTYPE_DSP | FDTYPE_HX:
+                    case FDTYPE_CMD | FDTYPE_HX:
+                    case FDTYPE_DAT | FDTYPE_HX:
+                        HandshakeDevice(i);
                         break;
                     case FDTYPE_DSP:
                         lprintf(LOG_CRIT, "can't handle read on dsp#%i\n", i);
                     case FDTYPE_CMD:
-                        lprintf(LOG_CRIT, "can't handle read on cmd#%i\n", i);
+                        CmdRead(i, confd[i].con);
+                        break;
                     case FDTYPE_DAT:
                         lprintf(LOG_CRIT, "can't handle read on dat#%i\n", i);
+                    default:
+                        lprintf(LOG_CRIT,
+                                "unhandled read type: %i\n", confd[i].type);
                 }
             }
         }
 
         /* process pending closes */
         for (i = 0; i < ncon; ++i)
-            if (con[i].state == -1)
+            if (con[i].flags & CON_DROP)
                 DropConnection(i);
     }
 }

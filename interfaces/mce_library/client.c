@@ -30,7 +30,7 @@ int mcenet_poll(int fd, short event, const char *name)
 }
 
 /* send a request on the control channel, the response is stored in message */
-ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
+ssize_t mcenet_req(mce_context_t context, unsigned char *message, size_t len)
 {
     ssize_t n;
 
@@ -58,7 +58,7 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
         return -1;
 
     /* read the response */
-    n = mcenet_read(context->net.sock, message);
+    n = mcenet_readmsg(context->net.sock, message);
 
 #if 1
     fprintf(stderr, "mcenet: rsp <- %s:", context->dev_name);
@@ -74,7 +74,7 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
 int mcenet_hello(mce_context_t context)
 {
     int l;
-    char message[256];
+    unsigned char message[256];
 
     message[0] = MCENETD_HELLO;
     message[1] = MCENETD_MAGIC1;
