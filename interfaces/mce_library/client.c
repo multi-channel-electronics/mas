@@ -58,7 +58,7 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
         return -1;
 
     /* read the response */
-    n = read(context->net.sock, message, 256);
+    n = mcenet_read(context->net.sock, message);
 
 #if 1
     fprintf(stderr, "mcenet: rsp <- %s:", context->dev_name);
@@ -83,7 +83,7 @@ int mcenet_hello(mce_context_t context)
     message[4] = context->udepth;
     message[5] = context->dev_num;
     
-    l = mcenet_req(context, message, MCENETD_HELLO_L);
+    l = mcenet_req(context, message, 6);
 
     if (l < 0)
         return 1;
@@ -102,7 +102,7 @@ int mcenet_hello(mce_context_t context)
         fprintf(stderr, "mcenet: unexpected response (%02x) from server %s\n",
                 message[0], context->url);
         return 1;
-    } else if (l < MCENETD_READY_L) {
+    } else if (l < MCENETD_MSGLEN(MCENETD_READY)) {
         fprintf(stderr, "mcenet: short read from %s.\n", context->dev_name);
         return 1;
     }
