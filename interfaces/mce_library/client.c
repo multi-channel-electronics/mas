@@ -7,23 +7,22 @@
 #include "context.h"
 
 /* poll a socket for an event */
-int mcenet_poll(mce_context_t context, short event)
+int mcenet_poll(int fd, short event, const char *name)
 {
-    struct pollfd pfd = { context->net.sock, event, 0 };
+    struct pollfd pfd = { fd, event, 0 };
 
     int r = poll(&pfd, 1, 1000);
     if (r == -1) {
         perror("mcenet: poll");
         return 1;
     } else if (r == 0) {
-        fprintf(stderr, "mcenet: timout waiting for %s\n", context->dev_name);
+        fprintf(stderr, "mcenet: timout waiting for %s\n", name);
         return 1;
     } else if (pfd.revents & POLLERR) {
-        fprintf(stderr, "mcenet: error waiting for %s\n", context->dev_name);
+        fprintf(stderr, "mcenet: error waiting for %s\n", name);
         return 1;
     } else if (pfd.revents & POLLHUP) {
-        fprintf(stderr, "mcenet: connection dropped to %s\n",
-                context->dev_name);
+        fprintf(stderr, "mcenet: connection dropped to %s\n", name);
         return 1;
     }
 
@@ -36,7 +35,7 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
     ssize_t n;
 
     /* wait for the net.socket to become ready */
-    if (mcenet_poll(context, POLLOUT))
+    if (mcenet_poll(context->net.sock, POLLOUT, context->dev_name))
         return -1;
 
     /* write the request */
@@ -47,7 +46,7 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
     }
 
     /* wait for a response */
-    if (mcenet_poll(context, POLLIN))
+    if (mcenet_poll(context->net.sock, POLLIN, context->dev_name))
         return -1;
 
     /* read the response */
@@ -63,10 +62,13 @@ int mcenet_hello(mce_context_t context)
     char message[256];
 
     message[0] = MCENETD_HELLO;
-    message[1] = context->net.udepth;
-    message[2] = context->dev_num;
+    message[1] = MCENETD_MAGIC1;
+    message[2] = MCENETD_MAGIC2;
+    message[3] = MCENETD_MAGIC3;
+    message[4] = context->net.udepth;
+    message[5] = context->dev_num;
     
-    l = mcenet_req(context, message, 3);
+    l = mcenet_req(context, message, MCENETD_HELLO_L);
 
     if (l < 0)
         return 1;
@@ -79,7 +81,7 @@ int mcenet_hello(mce_context_t context)
         fprintf(stderr, "mcenet: unexpected response (%02x) from server %s\n",
                 message[0], context->url);
         return 1;
-    } else if (l < 14) {
+    } else if (l < MCENETD_READY_L) {
         fprintf(stderr, "mcenet: short read from %s.\n", context->dev_name);
         return 1;
     }
