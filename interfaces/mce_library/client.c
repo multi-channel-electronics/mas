@@ -38,7 +38,7 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
     size_t i;
     fprintf(stderr, "mcenet: req -> %s:", context->dev_name);
     for (i = 0; i < len; ++i)
-        fprintf(stderr, " %02x ", message[i]);
+        fprintf(stderr, " %02hhx", message[i]);
     fprintf(stderr, "\n");
 #endif
 
@@ -63,7 +63,7 @@ ssize_t mcenet_req(mce_context_t context, char *message, size_t len)
 #if 1
     fprintf(stderr, "mcenet: rsp <- %s:", context->dev_name);
     for (i = 0; i < (size_t)n; ++i)
-        fprintf(stderr, " %02x ", message[i]);
+        fprintf(stderr, " %02hhx", message[i]);
     fprintf(stderr, "\n");
 #endif
 
@@ -87,6 +87,12 @@ int mcenet_hello(mce_context_t context)
 
     if (l < 0)
         return 1;
+    else if (l == 0) {
+        fprintf(stderr, "mcenet: server %s unexpectedly dropped connection.\n",
+                context->url);
+        return 1;
+    }
+
 
     if (message[0] == MCENETD_STOP) {
         fprintf(stderr, "mcenet: server reports device %s not ready.\n",
@@ -102,11 +108,20 @@ int mcenet_hello(mce_context_t context)
     }
 
     /* otherwise we should be good to go; record the data */
-    context->ddepth = message[1];
-    context->dev_endpoint = message[2];
-    context->net.dsp_ok = message[3];
-    context->net.cmd_ok = message[4];
-    context->net.dat_ok = message[5];
+    context->net.proto = message[1];
+    if (context->net.proto > 1) {
+        fprintf(stderr, "mcenet: unknown protocol version (%i) reported by "
+                "server %s\n", context->net.proto, context->dev_name);
+    }
+    context->net.token = message[2];
+    context->net.ddepth = message[3];
+    context->dev_endpoint = message[4];
+    context->net.flags = message[5];
+    if (~context->net.flags & MCENETD_F_MAS_OK) {
+        fprintf(stderr, "mcenet: server reports device %s not ready.\n",
+                context->url);
+        return 1;
+    }
 
     return 0;
 }

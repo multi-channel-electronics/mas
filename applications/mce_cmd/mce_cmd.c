@@ -235,7 +235,7 @@ int  main(int argc, char **argv)
 
     if ((mce = mcelib_create(options.fibre_card, options.mas_file, 0)) == NULL)
     {
-		fprintf(ferr, "Could not create mce library context.\n");
+		fprintf(ferr, "Could not initialise MAS.\n");
 		err = ERR_MEM;
 		goto exit_now;
 	}

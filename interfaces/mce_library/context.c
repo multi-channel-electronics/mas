@@ -269,6 +269,10 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
         mcelib_destroy(c);
         return NULL;
     }
+    if (find_endpoint(c)) {
+        mcelib_destroy(c);
+        return NULL;
+    }
     return c;
 }
 

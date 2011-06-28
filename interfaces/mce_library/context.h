@@ -73,11 +73,12 @@ typedef struct mcecmd {
 } mcecmd_t;
 
 struct mcenet_client {
-    uint64_t      token;          /* handshake token */
-    int           dsp_ok;         /* target DSP device works */
-    int           cmd_ok;         /* target CMD device works */
-    int           dat_ok;         /* target DAT device works */
+    int           proto;          /* server protocol version */
     int           sock;           /* network control socket */
+    unsigned char token;          /* handshake token */
+    unsigned char flags;          /* server flags */
+    unsigned char udepth;         /* upstream depth */
+    unsigned char ddepth;         /* downstream depth */
 };
 
 struct mcedsp_context {
