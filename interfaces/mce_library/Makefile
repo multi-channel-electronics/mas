@@ -29,7 +29,18 @@ OBJECTS = \
 					virtual.o
 
 HEADERS = data_thread.h virtual.h context.h sdsu.h net.h eth.h \
-					../../defaults/config.h
+					../../defaults/config.h \
+					../../include/libmaslog.h ../../include/masconfig.h \
+					../../include/mce_library.h ../../include/mcecmd.h \
+					../../include/mceconfig.h ../../include/mcedata.h \
+					../../include/mcedsp.h ../../include/mcenetd.h \
+					../../include/mce/acq.h ../../include/mce/data_frame.h \
+					../../include/mce/data_ioctl.h ../../include/mce/data_mode.h \
+					../../include/mce/defaults.h ../../include/mce/dsp.h \
+					../../include/mce/dsp_errors.h ../../include/mce/dsp_ioctl.h \
+					../../include/mce/frame.h ../../include/mce/mce_errors.h \
+					../../include/mce/mce_ioctl.h ../../include/mce/socks.h \
+					../../include/mce/types.h
 
 REPO_VERSION=$(shell svnversion)
 

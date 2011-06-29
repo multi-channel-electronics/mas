@@ -14,7 +14,7 @@ char *mcelib_error_string(int error)
 		return "Bad mce_library handle.";
 
 	case MCE_ERR_DEVICE:
-		return "I/O error on driver device file.";
+		return "I/O error communicating with device.";
 
 	case MCE_ERR_FORMAT:
 		return "Bad packet structure.";

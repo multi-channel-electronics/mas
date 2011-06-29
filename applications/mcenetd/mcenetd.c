@@ -80,6 +80,12 @@ struct dev_struct {
     unsigned char endpt;
 
     unsigned char flags;
+
+    unsigned char *cmd_buf;
+    size_t cmd_len;
+
+    unsigned char *dat_buf;
+    size_t dat_len;
 } *dev;
 int ndev = 0;
 
@@ -241,7 +247,9 @@ static void MCEInit(void)
     dev = malloc(sizeof(struct dev_struct));
 
     for (i = 0; i < ndev; ++i) {
-        dev[i].flags = 0;
+        dev[i].flags = dev[i].cmd_len = dev[i].dat_len = 0;
+        dev[i].cmd_buf = NULL;
+        dev[i].dat_buf = NULL;
 
         /* get a context, if this fails, we disable the card completely */
         if ((dev[i].context = mcelib_create(i, options.mas_file, 0)) == NULL)
@@ -387,6 +395,7 @@ void CmdRead(int p, int c)
 {
     ssize_t n;
     unsigned char message[256];
+    struct dev_struct *d = dev + con[c].dev_idx;
 
     /* read the requested operation */
     n = NetRead(pfd[p].fd, c, message, "CMD", con[c].ser);
@@ -397,20 +406,7 @@ void CmdRead(int p, int c)
     lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser, con[c].flags,
             SpitMessage(message, n));
 
-    if (message[0] == MCENETD_IOCTL) {
-        /* ioctl time */
-        uint32_t *req = (uint32_t*)(message + 2);
-        int32_t *arg = (int32_t*)(message + 6);
-        int ret = mcecmd_ioctl(dev[con[c].dev_idx].context, *req, *arg);
-
-        /* send the result */
-        confd[p].rsp[0] = MCENETD_IOCTLRET;
-        confd[p].rsp[1] = 6;
-        arg = (int32_t*)(confd[p].rsp + 2);
-        *arg = (int32_t)ret;
-        confd[p].rsplen = 6;
-        pfd[p].events = POLLOUT;
-    } else if (message[0] == MCENETD_MORE) {
+    if (message[0] == MCENETD_MORE) {
         /* packetised data, accumulate it */
 
         /* resize */
@@ -427,8 +423,9 @@ void CmdRead(int p, int c)
         confd[p].buflen += 254;
     } else if (message[0] == MCENETD_CLOSURE) {
         /* end of a packetise write; send it; report the result */
-        size_t l = message[1];
+        size_t l = message[1] - 2;
         ssize_t *n = (ssize_t *)(confd[p].rsp + 1);
+        int32_t *err = (int32_t*)(confd[p].rsp + 5);
 
         /* resize */
         void *ptr = realloc(confd[p].buf, confd[p].buflen + l);
@@ -441,16 +438,50 @@ void CmdRead(int p, int c)
         memcpy(confd[p].buf + confd[p].buflen, message + 2, l);
 
         /* write it! */
-        *n = mcecmd_write(dev[con[c].dev_idx].context, confd[p].buf,
-                confd[p].buflen + l);
+        *n = mcecmd_write(d->context, confd[p].buf, confd[p].buflen + l);
 
         /* report the result */
-        confd[p].rsp[0] = MCENETD_SRECEIPT;
-        confd[p].rsplen = MCENETD_MSGLEN(MCENETD_SRECEIPT);
+        confd[p].rsp[0] = MCENETD_RECEIPT;
+        *err = (int32_t)errno;
+        confd[p].rsplen = MCENETD_MSGLEN(MCENETD_RECEIPT);
         pfd[p].events = POLLOUT;
+    } else if (message[0] == MCENETD_READ) {
+        uint32_t *count = (uint32_t*)message + 1;
+
+        /* try to read enough data to fill up the buffer */
+        if (*count < d->cmd_len) {
+            /* resize */
+            void *ptr = realloc(d->cmd_buf, *count);
+            if (ptr == NULL) 
+                lprintf(LOG_CRIT, "Memory error.\n");
+            d->cmd_buf = ptr;
+
+            ssize_t n = mcecmd_read(d->context, d->cmd_buf + d->cmd_len,
+                    *count - d->cmd_len);
+
+            if (n < 0) {
+                lprintf(LOG_ERR, "Read error from command device %i\n", 
+                        con[c].dev_idx);
+                
+                /* abort */
+                confd[p].rsp[0] = MCENETD_STOP;
+                confd[p].rsp[1] = 7;
+                confd[p].rsp[2] = MCENETD_ERR_READ;
+                int32_t *e = (int32_t*)(confd[p].rsp + 3);
+                *e = (int32_t)errno;
+                confd[p].rsplen = 7;
+                pfd[p].events = POLLOUT;
+                return;
+            }
+
+            d->cmd_len += n;
+        }
+
+        if (*count <= d->cmd_len)
+            abort();
     } else {
         lprintf(LOG_CRIT,
-                "Unknown message type on control connection: %02hhX\n",
+                "Unknown message type on command connection: %02hhX\n",
                 message[0]);
     }
 }
@@ -460,6 +491,7 @@ void CtlRead(int p, int c)
 {
     ssize_t n;
     unsigned char message[256];
+    struct dev_struct *d = dev + con[c].dev_idx;
 
     /* read the requested operation */
     n = NetRead(pfd[p].fd, c, message, "CTL", con[c].ser);
@@ -474,8 +506,22 @@ void CtlRead(int p, int c)
         /* trying to verify connection, expecting HELLO */
         Hello(p, c, message, n);
         confd[p].type = FDTYPE_CTL;
+    } else if (message[0] == MCENETD_CMDIOCTL) {
+        /* ioctl time */
+        uint32_t *req = (uint32_t*)(message + 1);
+        int32_t *arg = (int32_t*)(message + 5);
+        int ret = mcecmd_ioctl(d->context, *req, *arg);
+
+        /* send the result */
+        confd[p].rsp[0] = MCENETD_IOCTLRET;
+        confd[p].rsp[1] = 6;
+        arg = (int32_t*)(confd[p].rsp + 2);
+        *arg = (int32_t)ret;
+        confd[p].rsplen = 6;
+        pfd[p].events = POLLOUT;
     } else {
-        lprintf(LOG_CRIT, "Unhandled state: CTL#%x\n", con->flags);
+        lprintf(LOG_CRIT, "Unhandled communication (%x): CTL#%x\n", message[0],
+                con->flags);
     }
 }
 
@@ -489,8 +535,8 @@ void AcceptDevice(int p)
     /* provisionally accept the connection */
     fd = accept(pfd[p].fd, (struct sockaddr*)&addr, &addrlen);
 
-    lprintf(LOG_DEBUG, "connect on %s port from %s\n", DEVID(p),
-            inet_ntoa(addr.sin_addr));
+    lprintf(LOG_DEBUG, "connect on %s port from %s assigned %i\n", DEVID(p),
+            inet_ntoa(addr.sin_addr), (int)npfd);
 
     AddSocket(fd, POLLIN, p, ncon, addr);
 }
@@ -518,6 +564,7 @@ void HandshakeDevice(int p)
         int c = ser[message[0]] - 1;
         lprintf(LOG_INFO, "CLx%02hhX connected to %s port.\n", c, DEVID(p));
         confd[p].type -= FDTYPE_HX;
+        confd[p].con = c;
         confd[p].buf = NULL;
         confd[p].buflen = 0;
         con[c].sock[confd[p].type] = p;
@@ -658,11 +705,6 @@ int main(int argc, char **argv)
         /* wait for ever, or at least until something happens. */
         int n = poll(pfd, npfd, -1);
         
-        for (i = 0; i < npfd; ++i) {
-            fprintf(stderr, "polled(%i) %i as #%i/%i: %x -> %x\n", n, i,
-                    pfd[i].fd, confd[i].type, pfd[i].events, pfd[i].revents);
-        }
-
         if (n < 0)
             lprintf(LOG_CRIT, "poll error: %s\n", strerror(errno));
         else if (n == 0)
