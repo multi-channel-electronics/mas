@@ -46,6 +46,9 @@ struct confd_struct {
     int con;
     struct sockaddr_in addr;
 
+    unsigned char *buf;
+    size_t buflen;
+
     unsigned char rsp[256];
     size_t rsplen;
 } *confd;
@@ -399,7 +402,7 @@ void CmdRead(int p, int c)
         uint32_t *req = (uint32_t*)(message + 2);
         int32_t *arg = (int32_t*)(message + 6);
         int ret = mcecmd_ioctl(dev[con[c].dev_idx].context, *req, *arg);
-        
+
         /* send the result */
         confd[p].rsp[0] = MCENETD_IOCTLRET;
         confd[p].rsp[1] = 6;
@@ -407,8 +410,47 @@ void CmdRead(int p, int c)
         *arg = (int32_t)ret;
         confd[p].rsplen = 6;
         pfd[p].events = POLLOUT;
+    } else if (message[0] == MCENETD_MORE) {
+        /* packetised data, accumulate it */
+
+        /* resize */
+        void *ptr = realloc(confd[p].buf, confd[p].buflen + 254);
+        if (ptr == NULL)
+            lprintf(LOG_CRIT, "Memory error.\n");
+
+        confd[p].buf = ptr;
+
+        /* append data */
+        memcpy(confd[p].buf + confd[p].buflen, message + 1, 254);
+
+        /* update length */
+        confd[p].buflen += 254;
+    } else if (message[0] == MCENETD_CLOSURE) {
+        /* end of a packetise write; send it; report the result */
+        size_t l = message[1];
+        ssize_t *n = (ssize_t *)(confd[p].rsp + 1);
+
+        /* resize */
+        void *ptr = realloc(confd[p].buf, confd[p].buflen + l);
+        if (ptr == NULL)
+            lprintf(LOG_CRIT, "Memory error.\n");
+
+        confd[p].buf = ptr;
+
+        /* append data */
+        memcpy(confd[p].buf + confd[p].buflen, message + 2, l);
+
+        /* write it! */
+        *n = mcecmd_write(dev[con[c].dev_idx].context, confd[p].buf,
+                confd[p].buflen + l);
+
+        /* report the result */
+        confd[p].rsp[0] = MCENETD_SRECEIPT;
+        confd[p].rsplen = MCENETD_MSGLEN(MCENETD_SRECEIPT);
+        pfd[p].events = POLLOUT;
     } else {
-        lprintf(LOG_CRIT, "Unknown message type on control connection %i\n",
+        lprintf(LOG_CRIT,
+                "Unknown message type on control connection: %02hhX\n",
                 message[0]);
     }
 }
@@ -447,6 +489,9 @@ void AcceptDevice(int p)
     /* provisionally accept the connection */
     fd = accept(pfd[p].fd, (struct sockaddr*)&addr, &addrlen);
 
+    lprintf(LOG_DEBUG, "connect on %s port from %s\n", DEVID(p),
+            inet_ntoa(addr.sin_addr));
+
     AddSocket(fd, POLLIN, p, ncon, addr);
 }
 
@@ -473,6 +518,8 @@ void HandshakeDevice(int p)
         int c = ser[message[0]] - 1;
         lprintf(LOG_INFO, "CLx%02hhX connected to %s port.\n", c, DEVID(p));
         confd[p].type -= FDTYPE_HX;
+        confd[p].buf = NULL;
+        confd[p].buflen = 0;
         con[c].sock[confd[p].type] = p;
 
         /* send confirmation */
@@ -610,12 +657,25 @@ int main(int argc, char **argv)
     for (;;) {
         /* wait for ever, or at least until something happens. */
         int n = poll(pfd, npfd, -1);
+        
+        for (i = 0; i < npfd; ++i) {
+            fprintf(stderr, "polled(%i) %i as #%i/%i: %x -> %x\n", n, i,
+                    pfd[i].fd, confd[i].type, pfd[i].events, pfd[i].revents);
+        }
 
         if (n < 0)
             lprintf(LOG_CRIT, "poll error: %s\n", strerror(errno));
+        else if (n == 0)
+            lprintf(LOG_CRIT, "poll timed out!\n");
 
         if (pfd[0].revents & POLLIN)
             NewClient();
+
+        /* check for errors */
+        for (i = 0; i < npfd; ++i) {
+            if (pfd[i].revents & POLLERR)
+                lprintf(LOG_WARNING, "Error detected on socket %i\n", i);
+        }
 
         /* look for new connections on the device ports */
         for (i = 1; i <= 3; ++i)
@@ -624,8 +684,11 @@ int main(int argc, char **argv)
 
         for (i = 4; i < npfd; ++i) {
             /* skip connections about to be closed */
-            if (con[confd[i].con].flags & CON_DROP)
+            if (!(confd[i].type & FDTYPE_HX) &&
+                    con[confd[i].con].flags & CON_DROP)
+            {
                 continue;
+            }
 
             if (pfd[i].revents & POLLHUP) {
                 lprintf(LOG_INFO, "%s connection closed by CLx%02hhX.\n",

@@ -50,10 +50,10 @@
 #define MCENETD_MSGLEN(op) ( \
     (op == MCENETD_HELLO) ? 6 : \
     (op == MCENETD_READY) ? 6 : \
-    (op == MCENETD_MORE) ? 256 : \
+    (op == MCENETD_MORE) ? 255 : \
     (op == MCENETD_SMORE) ? 255 : \
-    (op == MCENETD_RECEIPT) ? 5 : \
-    (op == MCENETD_SRECEIPT) ? 5 : \
+    (op == MCENETD_RECEIPT) ? (1 + sizeof(ssize_t)) : \
+    (op == MCENETD_SRECEIPT) ? (1 + sizeof(ssize_t)) : \
     0 ) /* zero implies a variable length message */
 
 /* error responses */

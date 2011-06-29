@@ -142,6 +142,11 @@ int mcecmd_lock_replies(mce_context_t context, int lock)
 }
 
 /* Basic device write/read routines */
+int mcecmd_write(mce_context_t context, const void *buf, size_t count)
+{
+    return C_cmd.write(context, buf, count);
+}
+
 int mcecmd_send_command_now(mce_context_t context, mce_command *cmd)
 {
 	int error = C_cmd.write(context, cmd, sizeof(*cmd));
