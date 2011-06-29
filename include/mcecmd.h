@@ -72,6 +72,8 @@ int mcecmd_write_block_check(mce_context_t context, const mce_param_t *param,
 
 /* Raw i/o routines; roll your own packets */
 
+int mcecmd_ioctl(mce_context_t context, unsigned long int req, int arg);
+
 int mcecmd_send_command_now (mce_context_t context, mce_command *cmd);
 
 int mcecmd_read_reply_now   (mce_context_t context, mce_reply *rep);

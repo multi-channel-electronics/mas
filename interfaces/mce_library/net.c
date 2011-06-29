@@ -4,6 +4,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include <mcenetd.h>
 #include <mce_library.h>
@@ -25,18 +27,20 @@ ssize_t mcenet_readmsg(int d, unsigned char *msg, size_t l)
     /* corresponding length */
     if (l == -1)
         l = MCENETD_MSGLEN(msg[0]) - 1;
+    else
+        l--;
 
     if (l == -1) { /* variable length message, the next byte tells us the
                       length */
         if ((n = read(d, ++msg, 1)) <= 0)
             return n;
-        l = msg[1];
+        l = *msg - 2;
         extra = 1;
     }
 
     if (l == 0) /* no more to read */
         n = 0;
-    else if ((n = read(d, msg + 1, l)) <= 0)
+    else if ((n = recv(d, msg + 1, l, MSG_WAITALL)) <= 0)
         return n;
 
     return 1 + extra + n;

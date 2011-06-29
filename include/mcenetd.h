@@ -9,7 +9,10 @@
 #define MCENETD_CMDPORT 2112
 #define MCENETD_DATPORT 2222
 
-/* protocol operations */
+/* protocol operations
+ * note: for variable-length message, MSGLEN includes the opcode and MSGLEN
+ * itself in its count */
+
 #define MCENETD_STOP  0x00
 /* 00 <MSGLEN> <ERRCODE> ... */
 
@@ -22,10 +25,35 @@
 #define MCENETD_IOCTL 0x03
 /* 03 <MSGLEN> <32-bit REQ> <ARG ...> */
 
+#define MCENETD_IOCTLRET 0x04
+/* 04 <MSGLEN> <32-bit RET> ... */
+
+#define MCENETD_MORE 0x05
+/* 05 ... */
+
+#define MCENETD_SMORE 0x06
+/* 06 ... */
+
+#define MCENETD_CLOSURE 0x07
+/* 07 <MSGLEN> ... */
+
+#define MCENETD_SCLOSURE 0x08
+/* 07 <MSGLEN> ... */
+
+#define MCENETD_RECEIPT 0x09
+/* 09 <32-bit receipt> */
+
+#define MCENETD_SRECEIPT 0x0A
+/* 0A <32-bit receipt> */
+
 /* fixed-length message lengths, this count includes the opcode */
 #define MCENETD_MSGLEN(op) ( \
     (op == MCENETD_HELLO) ? 6 : \
     (op == MCENETD_READY) ? 6 : \
+    (op == MCENETD_MORE) ? 256 : \
+    (op == MCENETD_SMORE) ? 255 : \
+    (op == MCENETD_RECEIPT) ? 5 : \
+    (op == MCENETD_SRECEIPT) ? 5 : \
     0 ) /* zero implies a variable length message */
 
 /* error responses */

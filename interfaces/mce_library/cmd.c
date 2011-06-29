@@ -457,6 +457,10 @@ int mcecmd_write_block_check(mce_context_t context, const mce_param_t *param,
 	return (done ? 0 : -MCE_ERR_READBACK);
 }
 
+int mcecmd_ioctl(mce_context_t context, unsigned long int req, int arg)
+{
+    return C_cmd.ioctl(context, req, arg);
+}
 
 int mcecmd_interface_reset(mce_context_t context)
 {

@@ -71,7 +71,7 @@ int con_s = 0;
 
 /* mce stuff */
 struct dev_struct {
-    mce_context_t mce;
+    mce_context_t context;
     const char *url;
     unsigned char ddepth;
     unsigned char endpt;
@@ -241,12 +241,12 @@ static void MCEInit(void)
         dev[i].flags = 0;
 
         /* get a context, if this fails, we disable the card completely */
-        if ((dev[i].mce = mcelib_create(i, options.mas_file, 0)) == NULL)
+        if ((dev[i].context = mcelib_create(i, options.mas_file, 0)) == NULL)
             lprintf(LOG_ERR, "Unable to get MCE context #%i.\n", i);
         else {
             /* update the number of devices */
             if (i == 0) {
-                ndev = mcelib_ndev(dev[0].mce);
+                ndev = mcelib_ndev(dev[0].context);
                 struct dev_struct *ptr = realloc(dev,
                         ndev * sizeof(struct dev_struct));
 
@@ -256,22 +256,22 @@ static void MCEInit(void)
                 dev = ptr;
             }
 
-            dev[i].url = mcelib_dev(dev[i].mce);
-            dev[i].ddepth = (unsigned char)mcelib_ddepth(dev[i].mce) + 1;
+            dev[i].url = mcelib_dev(dev[i].context);
+            dev[i].ddepth = (unsigned char)mcelib_ddepth(dev[i].context) + 1;
             dev[i].flags |= MCENETD_F_MAS_OK;
 
             /* open the devices */
-            if (mcedsp_open(dev[i].mce))
+            if (mcedsp_open(dev[i].context))
                 lprintf(LOG_ERR, "Unable to open DSP for %s\n", dev[i].url);
             else
                 dev[i].flags |= MCENETD_F_DSP_OK;
 
-            if (mcecmd_open(dev[i].mce))
+            if (mcecmd_open(dev[i].context))
                 lprintf(LOG_ERR, "Unable to open CMD for %s\n", dev[i].url);
             else
                 dev[i].flags |= MCENETD_F_CMD_OK;
 
-            if (mcedata_open(dev[i].mce))
+            if (mcedata_open(dev[i].context))
                 lprintf(LOG_ERR, "Unable to open DAT for %s\n", dev[i].url);
             else
                 dev[i].flags |= MCENETD_F_DAT_OK;
@@ -386,6 +386,31 @@ void CmdRead(int p, int c)
     unsigned char message[256];
 
     /* read the requested operation */
+    n = NetRead(pfd[p].fd, c, message, "CMD", con[c].ser);
+
+    if (n < 0)
+        return;
+
+    lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser, con[c].flags,
+            SpitMessage(message, n));
+
+    if (message[0] == MCENETD_IOCTL) {
+        /* ioctl time */
+        uint32_t *req = (uint32_t*)(message + 2);
+        int32_t *arg = (int32_t*)(message + 6);
+        int ret = mcecmd_ioctl(dev[con[c].dev_idx].context, *req, *arg);
+        
+        /* send the result */
+        confd[p].rsp[0] = MCENETD_IOCTLRET;
+        confd[p].rsp[1] = 6;
+        arg = (int32_t*)(confd[p].rsp + 2);
+        *arg = (int32_t)ret;
+        confd[p].rsplen = 6;
+        pfd[p].events = POLLOUT;
+    } else {
+        lprintf(LOG_CRIT, "Unknown message type on control connection %i\n",
+                message[0]);
+    }
 }
 
 /* process a request on the control channel */
