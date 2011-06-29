@@ -1,7 +1,7 @@
 #ifndef MCENETD_H
 #define MCENETD_H
 
-#include<mce_library.h>
+#include <mce_library.h>
 
 /* ports */
 #define MCENETD_CTLPORT 1111
@@ -40,10 +40,10 @@
 #define MCENETD_SCLOSURE 0x08
 /* 07 <MSGLEN> ... */
 
-#define MCENETD_RECEIPT 0x09
-/* 09 <32-bit receipt> */
+#define MCENETD_READ 0x09
+/* 09 <32-bit count> */
 
-#define MCENETD_SRECEIPT 0x0A
+#define MCENETD_RECEIPT 0x0A
 /* 0A <32-bit receipt> */
 
 /* fixed-length message lengths, this count includes the opcode */
@@ -52,8 +52,8 @@
     (op == MCENETD_READY) ? 6 : \
     (op == MCENETD_MORE) ? 255 : \
     (op == MCENETD_SMORE) ? 255 : \
-    (op == MCENETD_RECEIPT) ? (1 + sizeof(ssize_t)) : \
-    (op == MCENETD_SRECEIPT) ? (1 + sizeof(ssize_t)) : \
+    (op == MCENETD_READ) ? 9 : \
+    (op == MCENETD_RECEIPT) ? 9 : \
     0 ) /* zero implies a variable length message */
 
 /* error responses */
@@ -74,5 +74,7 @@
 
 /* generic functions */
 ssize_t mcenet_readmsg(int d, unsigned char *msg, size_t l);
+ssize_t mcenet_packetised_write(mce_context_t context, int sock,
+        const unsigned char *buf, size_t count, int server);
 
 #endif
