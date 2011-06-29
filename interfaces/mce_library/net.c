@@ -177,65 +177,6 @@ int mcenet_hello(mce_context_t context)
 
 /* generic client stuff */
 
-/* write a bunch of stuff to a server port in small chunks */
-ssize_t mcenet_packetised_write(mce_context_t context, int sock,
-        const unsigned char *buf, size_t count, int server)
-{
-    ssize_t l, *n;
-
-    fprintf(stderr, "count = %i\n", count);
-
-    unsigned char message[256];
-    while (count > 254) {
-        /* write an intermediate packet */
-        message[0] = server ? MCENETD_SMORE : MCENETD_MORE;
-        memcpy(message + 1, buf, 254);
-
-        l = mcenet_req(context, sock, message, 255, MSG_DONTWAIT);
-
-        if (l < 0)
-            return -1;
-        else if (l == 0) {
-            fprintf(stderr,
-                    "mcenet: server %s unexpectedly dropped connection.\n",
-                    context->dev_name);
-            return -1;
-        }
-
-        /* update the input */
-        count -= 254;
-        buf += 254;
-    }
-
-    /* write the ending part */
-    message[0] = server ? MCENETD_SCLOSURE : MCENETD_CLOSURE;
-    message[1] = (unsigned char)count + 2;
-    memcpy(message + 2, buf, count);
-
-    /* send it and retrieve the confirmation */
-    l = mcenet_req(context, sock, message, count + 2, 0);
-
-    if (l < 0)
-        return -1;
-    else if (l == 0) {
-        fprintf(stderr,
-                "mcenet: server %s unexpectedly dropped connection.\n",
-                context->dev_name);
-        return -1;
-    } else if (message[0] != MCENETD_RECEIPT) {
-        fprintf(stderr, "mcenet: unexpected response (%i) from server after "
-                "request %i.\n",  message[0], MCENETD_CLOSURE);
-        return -1;
-    } else if (l < MCENETD_MSGLEN(MCENETD_RECEIPT)) {
-        fprintf(stderr, "mcenet: short read from server.\n");
-        return -1;
-    }
-
-    n = (ssize_t*)(message + 1);
-
-    return *n;
-}
-
 static int dev_connect(mce_context_t context, int port, const char *what)
 {
     int sock;
@@ -314,14 +255,14 @@ int mcecmd_net_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
     int l;
     unsigned char message[256];
-    void *ptr = message + 2;
+    void *ptr = message + 1;
 
     /* send the request, and get the response */
-    message[0] = MCENETD_IOCTL; /* ioctl request */
-    message[1] = 10; /* message length */
+    message[0] = MCENETD_CMDIOCTL; /* ioctl request */
     *(uint32_t*)ptr = (uint32_t)req;
     *(int32_t*)(ptr + 4) = (int32_t)arg;
-    l = mcenet_req(context, context->net.cmd_sock, message, 10, 0);
+    l = mcenet_req(context, context->net.ctl_sock, message,
+            MCENETD_MSGLEN(MCENETD_CMDIOCTL), 0);
 
     if (l < 0)
         return -1;
@@ -344,56 +285,15 @@ int mcecmd_net_ioctl(mce_context_t context, unsigned long int req, int arg)
 
 ssize_t mcecmd_net_read(mce_context_t context, void *buf, size_t count)
 {
-    unsigned char message[256];
-    uint32_t *u = (uint32_t*)(message + 1);
-    unsigned char *ptr = (unsigned char*)buf;
-    int i, done = 0;
-    ssize_t l;
-
-    /* send the request */
-    message[0] = MCENETD_READ;
-    *u = (uint32_t)count;
-
-    l = mcenet_req(context, context->net.cmd_sock, message, 5, MSG_DONTWAIT);
-
-    while (!done) {
-        /* read the response */
-        l = mcenet_readmsg(context->net.cmd_sock, message, -1);
-
-#if 1
-        fprintf(stderr, "mcenet: rsp@%i <- %s:", context->net.cmd_sock,
-                context->dev_name);
-        for (i = 0; i < l; ++i)
-            fprintf(stderr, " %02hhx", message[i]);
-        fprintf(stderr, "\n");
-#endif
-
-        if (l < 0)
-            return -1;
-        else if (l == 0) {
-            fprintf(stderr,
-                    "mcenet: server %s unexpectedly dropped connection.\n",
-                    context->dev_name);
-            return -1;
-        } else if (message[0] == MCENETD_SMORE) {
-            /* acquire data */
-            memcpy(ptr, message + 1, 254);
-            ptr += 254;
-        } else if (message[0] == MCENETD_SCLOSURE) {
-            memcpy(ptr, message + 1, l - 2);
-            ptr += l - 2;
-            done = 1;
-        }
-    }
-
-    return (ssize_t)(ptr - (unsigned char *)buf);
+    /* read some data ... yeah, just read it ... this will even check
+     * whether context->net.cmd_sock has been initialised or not. */
+    return read(context->net.cmd_sock, buf, count);
 }
 
 ssize_t mcecmd_net_write(mce_context_t context, const void *buf, size_t count)
 {
     /* writify! */
-    return mcenet_packetised_write(context, context->net.cmd_sock, buf, count,
-            0);
+    return write(context->net.cmd_sock, buf, count);
 }
 
 /* DSP subsystem */

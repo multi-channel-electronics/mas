@@ -35,6 +35,7 @@ static int find_endpoint(mce_context_t context)
                 context->dev_name);
         return -1;
     }
+    context->net.cmd_sock = context->net.dsp_sock = context->net.dat_sock = -1;
 
     /* send the greeting, this will set the endpoint */
     if (mcenet_hello(context))

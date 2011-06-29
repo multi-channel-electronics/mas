@@ -22,38 +22,17 @@
 #define MCENETD_READY 0x02
 /* 02 <VERSION> <SER> <DDEPTH> <ENDPT> <FLAGS> */
 
-#define MCENETD_IOCTL 0x03
-/* 03 <MSGLEN> <32-bit REQ> <ARG ...> */
+#define MCENETD_CMDIOCTL 0x03
+/* 03 <32-bit REQ> <32-bit ARG> */
 
 #define MCENETD_IOCTLRET 0x04
 /* 04 <MSGLEN> <32-bit RET> ... */
-
-#define MCENETD_MORE 0x05
-/* 05 ... */
-
-#define MCENETD_SMORE 0x06
-/* 06 ... */
-
-#define MCENETD_CLOSURE 0x07
-/* 07 <MSGLEN> ... */
-
-#define MCENETD_SCLOSURE 0x08
-/* 07 <MSGLEN> ... */
-
-#define MCENETD_READ 0x09
-/* 09 <32-bit count> */
-
-#define MCENETD_RECEIPT 0x0A
-/* 0A <32-bit receipt> */
 
 /* fixed-length message lengths, this count includes the opcode */
 #define MCENETD_MSGLEN(op) ( \
     (op == MCENETD_HELLO) ? 6 : \
     (op == MCENETD_READY) ? 6 : \
-    (op == MCENETD_MORE) ? 255 : \
-    (op == MCENETD_SMORE) ? 255 : \
-    (op == MCENETD_READ) ? 9 : \
-    (op == MCENETD_RECEIPT) ? 9 : \
+    (op == MCENETD_CMDIOCTL) ? 9 : \
     0 ) /* zero implies a variable length message */
 
 /* error responses */
@@ -74,7 +53,5 @@
 
 /* generic functions */
 ssize_t mcenet_readmsg(int d, unsigned char *msg, size_t l);
-ssize_t mcenet_packetised_write(mce_context_t context, int sock,
-        const unsigned char *buf, size_t count, int server);
 
 #endif
