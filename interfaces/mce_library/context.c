@@ -143,7 +143,7 @@ static int parse_url(mce_context_t context)
             fprintf(stderr, "mcelib: trailing data in URL: %s\n", context->url);
             return 1;
         }
-        context->dev_route = net;
+        context->dev_route = eth;
     } else {
         /* something else */
         fprintf(stderr, "mcelib: bad path in URL: %s\n", context->url);

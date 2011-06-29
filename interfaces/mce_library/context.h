@@ -124,6 +124,8 @@ struct mce_context {
                                          based (otherwise it's SDSU based) */
     char             *dev_name;       /* hostname or eth device in url */
     uint64_t          dev_num;        /* device number or mac address in url */
+
+    void             *transport_data; /* private configuration data for transport layer */
 };
 
 /* Macros for easy dereferencing of mce_context_t context into cmd,
