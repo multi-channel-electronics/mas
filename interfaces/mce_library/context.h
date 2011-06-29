@@ -67,14 +67,17 @@ typedef struct mcecmd {
     /* I/O methods */
     int (*connect)(mce_context_t);
     int (*disconnect)(mce_context_t);
-    int (*ioctl)(mce_context_t, unsigned long int, ...);
+    int (*ioctl)(mce_context_t, unsigned long int, int);
     ssize_t (*read)(mce_context_t, void*, size_t);
     ssize_t (*write)(mce_context_t, const void*, size_t);
 } mcecmd_t;
 
 struct mcenet_client {
     int           proto;          /* server protocol version */
-    int           sock;           /* network control socket */
+    int           ctl_sock;       /* network control socket */
+    int           dsp_sock;       /* network control socket */
+    int           cmd_sock;       /* network control socket */
+    int           dat_sock;       /* network control socket */
     unsigned char token;          /* handshake token */
     unsigned char flags;          /* server flags */
     unsigned char udepth;         /* upstream depth */

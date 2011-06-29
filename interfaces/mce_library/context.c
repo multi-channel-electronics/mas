@@ -29,8 +29,8 @@ static int find_endpoint(mce_context_t context)
     }
 
     /* connect to the remote host */
-    context->net.sock = massock_connect(context->dev_name, MCENETD_CTLPORT);
-    if (context->net.sock < 0) {
+    context->net.ctl_sock = massock_connect(context->dev_name, MCENETD_CTLPORT);
+    if (context->net.ctl_sock < 0) {
         fprintf(stderr, "mcelib: Unable to connect to mcenetd at %s\n",
                 context->dev_name);
         return -1;

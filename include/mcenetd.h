@@ -75,7 +75,4 @@
 /* generic functions */
 ssize_t mcenet_readmsg(int d, unsigned char *msg, size_t l);
 
-/* client functions */
-int mcenet_hello(mce_context_t context);
-
 #endif

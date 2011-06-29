@@ -40,16 +40,9 @@ int mcecmd_sdsu_disconnect(mce_context_t context)
     return 0;
 }
 
-int mcecmd_sdsu_ioctl(mce_context_t context, unsigned long int req, ...)
+int mcecmd_sdsu_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
-    int ret;
-    va_list ap;
-
-    va_start(ap, req);
-    ret = ioctl(context->cmd.fd, req, va_arg(ap, void*));
-    va_end(ap);
-
-    return ret;
+    return ioctl(context->cmd.fd, req, arg);
 }
 
 ssize_t mcecmd_sdsu_read(mce_context_t context, void *buf, size_t count)

@@ -9,7 +9,7 @@
 /* sdsu fibre card methods */
 extern int mcecmd_sdsu_connect(mce_context_t);
 extern int mcecmd_sdsu_disconnect(mce_context_t);
-extern int mcecmd_sdsu_ioctl(mce_context_t, unsigned long int, ...);
+extern int mcecmd_sdsu_ioctl(mce_context_t, unsigned long int, int);
 extern ssize_t mcecmd_sdsu_read(mce_context_t, void*, size_t);
 extern ssize_t mcecmd_sdsu_write(mce_context_t, const void*, size_t);
 

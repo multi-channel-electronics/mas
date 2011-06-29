@@ -25,7 +25,7 @@ int mcecmd_eth_disconnect(mce_context_t context)
     abort();
 }
 
-int mcecmd_eth_ioctl(mce_context_t context, unsigned long int req, ...)
+int mcecmd_eth_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
     fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
             __FILE__);

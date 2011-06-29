@@ -32,7 +32,7 @@
 
 static inline int get_last_error(mce_context_t context)
 {
-    return C_cmd.ioctl(context, MCEDEV_IOCT_LAST_ERROR);
+    return C_cmd.ioctl(context, MCEDEV_IOCT_LAST_ERROR, 0);
 }
 
 static int log_data(maslog_t maslog, u32 *buffer, int count, int min_raw,
@@ -101,7 +101,7 @@ int mcecmd_open(mce_context_t context)
 
 	// Set up connection to prevent outstanding replies after release
     C_cmd.ioctl(context, MCEDEV_IOCT_SET,
-            C_cmd.ioctl(context, MCEDEV_IOCT_GET) | MCEDEV_CLOSE_CLEANLY);
+            C_cmd.ioctl(context, MCEDEV_IOCT_GET, 0) | MCEDEV_CLOSE_CLEANLY);
 
     // Most applications using this library will want to read their own replies.
 	mcecmd_lock_replies(context, 1);
@@ -127,7 +127,7 @@ int mcecmd_close(mce_context_t context)
 
 int mcecmd_lock_replies(mce_context_t context, int lock)
 {
-    int flags = C_cmd.ioctl(context, MCEDEV_IOCT_GET);
+    int flags = C_cmd.ioctl(context, MCEDEV_IOCT_GET, 0);
 	int err;
 	if (lock) {
 		// Set up connection to prevent outstanding replies after release
@@ -469,10 +469,10 @@ int mcecmd_ioctl(mce_context_t context, unsigned long int req, int arg)
 
 int mcecmd_interface_reset(mce_context_t context)
 {
-    return C_cmd.ioctl(context, MCEDEV_IOCT_INTERFACE_RESET);
+    return C_cmd.ioctl(context, MCEDEV_IOCT_INTERFACE_RESET, 0);
 }
 
 int mcecmd_hardware_reset(mce_context_t context)
 {
-    return C_cmd.ioctl(context, MCEDEV_IOCT_HARDWARE_RESET);
+    return C_cmd.ioctl(context, MCEDEV_IOCT_HARDWARE_RESET, 0);
 }
