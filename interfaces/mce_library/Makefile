@@ -19,6 +19,7 @@ OBJECTS = \
 					dsp_library.o \
 					errors.o \
 					eth.o \
+					eth_filter.o \
 					files.o \
 					frame_manip.o \
 					libmaslog.o \

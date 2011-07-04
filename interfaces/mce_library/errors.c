@@ -109,6 +109,9 @@ char *mcelib_error_string(int error)
 	case MCE_ERR_FRAME_COLS:
 		return "Frame columns could not be determined or was invalid.";
 
+    case MCE_ERR_ETH_SIZE:
+        return "Data too large for ethernet frame.";
+
 	case 0:
 		return "Success.";
 	}

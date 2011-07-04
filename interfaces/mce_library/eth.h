@@ -25,4 +25,16 @@ extern int mcedsp_eth_ioctl(mce_context_t, unsigned long int, ...);
 extern ssize_t mcedsp_eth_read(mce_context_t, void*, size_t);
 extern ssize_t mcedsp_eth_write(mce_context_t, const void*, size_t);
 
+
+/* Ethernet packet filtering and service direction*/
+struct _eth_transport;
+typedef struct _eth_transport eth_transport;
+
+extern int eth_set_service(eth_transport *transport, int service);
+extern int eth_set_filter(int socket, int protocol, int type, int uid);
+extern ssize_t eth_write(eth_transport *transport, int socket,
+                  int proto, int type, int uid,
+                  const void *data, int count);
+extern ssize_t eth_read(int socket, void *data, int count);
+
 #endif
