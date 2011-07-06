@@ -112,6 +112,9 @@ char *mcelib_error_string(int error)
     case MCE_ERR_ETH_SIZE:
         return "Data too large for ethernet frame.";
 
+    case MCE_ERR_ATTACH:
+        return "Unable to connect device.";
+
 	case 0:
 		return "Success.";
 	}

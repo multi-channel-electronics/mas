@@ -72,6 +72,10 @@ typedef struct mcecmd {
     ssize_t (*write)(mce_context_t, const void*, size_t);
 } mcecmd_t;
 
+typedef enum {
+    none = 0, sdsu, net, eth
+} devtype_t;
+
 struct mcenet_client {
     int           proto;          /* server protocol version */
     int           ctl_sock;       /* network control socket */
@@ -117,11 +121,10 @@ struct mce_context {
     unsigned char        udepth;      /* upstream depth */
     unsigned char        ddepth;      /* downstream depth */
 
-    enum {
-        none = 0, sdsu, net, eth
-    }                 dev_route;      /* device routing */
-    int               dev_endpoint;   /* true if the physical MCE is eth
-                                         based (otherwise it's SDSU based) */
+    devtype_t          dev_route;     /* device routing (the type of the device
+                                         immediately below us) */
+    devtype_t          dev_endpoint;  /* the type of the physical MCE that
+                                         MAS ultimately controls */
     char             *dev_name;       /* hostname or eth device in url */
     uint64_t          dev_num;        /* device number or mac address in url */
 

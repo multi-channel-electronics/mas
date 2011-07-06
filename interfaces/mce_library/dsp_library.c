@@ -38,20 +38,21 @@ static inline int mem_type_valid(dsp_memory_code mem) {
 
 int mcedsp_open(mce_context_t context)
 {
+    if (context->dev_endpoint == eth) {
+        fprintf(stderr, "mcedsp: Cannot attach DSP: ethernet endpoint.");
+        return -DSP_ERR_ATTACH;
+    }
+
     switch(context->dev_route) {
         case sdsu:
             SET_IO_METHODS(context, dsp, sdsu);
             break;
-        case eth:
-            fprintf(stderr, "mcedsp: "
-                    "Ethernet routing does not support DSP operations.");
-            return -DSP_ERR_DEVICE;
         case net:
             SET_IO_METHODS(context, dsp, net);
             break;
         default:
-            fprintf(stderr, "mcedsp: Unhandled route.\n");
-            return -DSP_ERR_DEVICE;
+            fprintf(stderr, "mcedsp: Cannot attach DSP: Unhandled route.\n");
+            return -DSP_ERR_ATTACH;
     }
 
     return context->dsp.connect(context);

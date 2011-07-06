@@ -3,6 +3,9 @@
 
 #include <mce_library.h>
 
+/* protocol version */
+#define MCENETD_PROTO_VERSION 1
+
 /* ports */
 #define MCENETD_CTLPORT 1111
 #define MCENETD_DSPPORT 1221

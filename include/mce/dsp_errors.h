@@ -19,5 +19,6 @@
 #define DSP_ERR_ACTIVE          (DSP_ERR_BASE + 0x0018)
 #define DSP_ERR_NOT_ACTIVE      (DSP_ERR_BASE + 0x0019)
 #define DSP_ERR_UNKNOWN         (DSP_ERR_BASE + 0x001a)
+#define DSP_ERR_ATTACH          (DSP_ERR_BASE + 0x001b)
 
 #endif

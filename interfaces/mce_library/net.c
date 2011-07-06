@@ -158,8 +158,8 @@ int mcenet_hello(mce_context_t context)
 
     /* otherwise we should be good to go; record the data */
     context->net.proto = message[1];
-    if (context->net.proto > 1) {
-        fprintf(stderr, "mcenet: unknown protocol version (%i) reported by "
+    if (context->net.proto != MCENETD_PROTO_VERSION) {
+        fprintf(stderr, "mcenet: unsupported protocol version (%i) reported by "
                 "server %s\n", context->net.proto, context->dev_name);
     }
     context->net.token = message[2];
@@ -231,13 +231,13 @@ int mcecmd_net_connect(mce_context_t context)
         fprintf(stderr,
                 "mcelib: server reports command device of %s unavailable.\n",
                 context->url);
-        return -1;
+        return -MCE_ERR_ATTACH;
     }
 
     int sock = dev_connect(context, MCENETD_CMDPORT, "command");
 
     if (sock < 0)
-        return -1;
+        return -MCE_ERR_ATTACH;
 
     context->net.cmd_sock = sock;
 

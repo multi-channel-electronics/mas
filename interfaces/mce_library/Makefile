@@ -27,6 +27,7 @@ OBJECTS = \
 					packet.o \
 					sdsu.o \
 					socks.o \
+					version.o \
 					virtual.o
 
 HEADERS = data_thread.h virtual.h context.h sdsu.h net.h eth.h \
@@ -62,7 +63,7 @@ $(OBJECTS): $(HEADERS)
 
 data_mode.o: data_mode.c data_mode.def
 
-context.o: version.h
+version.o: version.h
 
 version.h: .version-stamp
 	if test ! -f $@; then \

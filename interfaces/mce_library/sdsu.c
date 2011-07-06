@@ -13,6 +13,7 @@
 
 #include <mce_library.h>
 #include <mcedsp.h>
+#include <mce/mce_ioctl.h>
 #include <mce/dsp_errors.h>
 #include <mce/data_ioctl.h>
 #include "context.h"
@@ -20,6 +21,11 @@
 #include "sdsu.h"
 
 /* CMD subsystem */
+static inline int get_last_error(mce_context_t context)
+{
+    return ioctl(context->cmd.fd, MCEDEV_IOCT_LAST_ERROR);
+}
+
 int mcecmd_sdsu_connect(mce_context_t context)
 {
     char dev_name[20] = "/dev/mce_cmd";
@@ -27,7 +33,7 @@ int mcecmd_sdsu_connect(mce_context_t context)
 
     C_cmd.fd = open(dev_name, O_RDWR);
     if (C_cmd.fd < 0)
-        return -MCE_ERR_DEVICE;
+        return -MCE_ERR_ATTACH;
 
     return 0;
 }
@@ -45,14 +51,28 @@ int mcecmd_sdsu_ioctl(mce_context_t context, unsigned long int req, int arg)
     return ioctl(context->cmd.fd, req, arg);
 }
 
-ssize_t mcecmd_sdsu_read(mce_context_t context, void *buf, size_t count)
+int mcecmd_sdsu_read(mce_context_t context, void *buf, size_t count)
 {
-    return read(context->cmd.fd, buf, count);
+    ssize_t error = read(context->cmd.fd, buf, count);
+    if (error < 0) {
+        return -MCE_ERR_DEVICE;
+    } else if (error != count) {
+        return get_last_error(context);
+    }
+
+    return 0;
 }
 
-ssize_t mcecmd_sdsu_write(mce_context_t context, const void *buf, size_t count)
+int mcecmd_sdsu_write(mce_context_t context, const void *buf, size_t count)
 {
-    return write(context->cmd.fd, buf, count);
+    ssize_t error = write(context->cmd.fd, buf, count);
+    if (error < 0) {
+        return -MCE_ERR_DEVICE;
+    } else if (error != count) {
+        return get_last_error(context);
+    }
+
+    return 0;
 }
 
 /* DSP subsystem */
@@ -107,46 +127,48 @@ ssize_t mcedsp_sdsu_write(mce_context_t context, const void *buf, size_t count)
 /* DATA subsystem */
 int mcedata_sdsu_connect(mce_context_t context)
 {
-	void *map;
-	int map_size;
+    void *map;
+    int map_size;
     char dev_name[20] = "/dev/mce_data";
     sprintf(dev_name + 13, "%u", (unsigned)context->dev_num);
 
-	C_data.fd = open(dev_name, O_RDWR);
+    C_data.fd = open(dev_name, O_RDWR);
     if (C_data.fd < 0)
         return -MCE_ERR_DEVICE;
 
-	// Non-blocking reads allow us to timeout
-	/* Hey!  This makes single go (and thus ramp) very slow!! */
-/* 	if (fcntl(C_data.fd, F_SETFL, fcntl(C_data.fd, F_GETFL) | O_NONBLOCK)) */
-/* 		return -MCE_ERR_DEVICE; */
+#if 0
+    // Non-blocking reads allow us to timeout
+    /* Hey!  This makes single go (and thus ramp) very slow!! */
+    if (fcntl(C_data.fd, F_SETFL, fcntl(C_data.fd, F_GETFL) | O_NONBLOCK)) 
+        return -MCE_ERR_DEVICE; 
+#endif
 
-	// Obtain buffer size for subsequent mmap
-	map_size = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_BUFSIZE);
-	if (map_size > 0) {
-		map = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
-			   MAP_SHARED, C_data.fd, 0);
-		if (map != NULL) {
-			C_data.map = map;
-			C_data.map_size = map_size;
-		}
-	}
+    // Obtain buffer size for subsequent mmap
+    map_size = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_BUFSIZE);
+    if (map_size > 0) {
+        map = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
+                MAP_SHARED, C_data.fd, 0);
+        if (map != NULL) {
+            C_data.map = map;
+            C_data.map_size = map_size;
+        }
+    }
 
     C_data.dev_name = dev_name;
 
-	return 0;
+    return 0;
 }
 
 int mcedata_sdsu_disconnect(mce_context_t context)
 {
     if (C_data.map != NULL)
-		munmap(C_data.map, C_data.map_size);
+        munmap(C_data.map, C_data.map_size);
 
-	C_data.map_size = 0;
-	C_data.map = NULL;
+    C_data.map_size = 0;
+    C_data.map = NULL;
 
-	if (close(C_data.fd) < 0)
-		return -MCE_ERR_DEVICE;
+    if (close(C_data.fd) < 0)
+        return -MCE_ERR_DEVICE;
 
     return 0;
 }

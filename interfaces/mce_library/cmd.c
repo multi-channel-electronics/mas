@@ -30,11 +30,6 @@
 #define LOG_LEVEL_REP_OK  MASLOG_DETAIL
 #define LOG_LEVEL_REP_ER  MASLOG_INFO
 
-static inline int get_last_error(mce_context_t context)
-{
-    return C_cmd.ioctl(context, MCEDEV_IOCT_LAST_ERROR, 0);
-}
-
 static int log_data(maslog_t maslog, u32 *buffer, int count, int min_raw,
         char *msg, int level)
 {
@@ -93,8 +88,8 @@ int mcecmd_open(mce_context_t context)
             SET_IO_METHODS(context, cmd, net);
             break;
         default:
-            fprintf(stderr, "mcecmd: Unhandled route.\n");
-            return -MCE_ERR_DEVICE;
+            fprintf(stderr, "mcecmd: Cannot attach CMD: Unhandled route.\n");
+            return -MCE_ERR_ATTACH;
     }
     if ((err = C_cmd.connect(context)))
         return err;
@@ -142,41 +137,17 @@ int mcecmd_lock_replies(mce_context_t context, int lock)
 }
 
 /* Basic device write/read routines */
-ssize_t mcecmd_read(mce_context_t context, void *buf, size_t count)
-{
-    return C_cmd.read(context, buf, count);
-}
-
-ssize_t mcecmd_write(mce_context_t context, const void *buf, size_t count)
-{
-    return C_cmd.write(context, buf, count);
-}
-
 int mcecmd_send_command_now(mce_context_t context, mce_command *cmd)
 {
-	int error = C_cmd.write(context, cmd, sizeof(*cmd));
-	if (error < 0) {
-		return -MCE_ERR_DEVICE;
-	} else if (error != sizeof(*cmd)) {
-		return get_last_error(context);
-	}
-	return 0;
+    return C_cmd.write(context, cmd, sizeof(*cmd));
 }
 
 int mcecmd_read_reply_now(mce_context_t context, mce_reply *rep)
 {
-	int error = C_cmd.read(context, rep, sizeof(*rep));
-	if (error < 0) {
-		return -MCE_ERR_DEVICE;
-	} else if (error != sizeof(*rep)) {
-		return get_last_error(context);
-	}
-	return 0;
+    return C_cmd.read(context, rep, sizeof(*rep));
 }
 
-
 #define MAX_SEND_ATTEMPTS 5
-
 int mcecmd_send_command(mce_context_t context, mce_command *cmd, mce_reply *rep)
 {
 	int err = 0;

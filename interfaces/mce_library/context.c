@@ -13,7 +13,6 @@
 #include "eth.h"
 #include "net.h"
 #include "sdsu.h"
-#include "version.h"
 #include "../defaults/config.h"
 
 /* determine the endpoint (type of the actual physical MCE communicating to
@@ -24,7 +23,7 @@ static int find_endpoint(mce_context_t context)
 {
     /* non-networked devices are easy */
     if (context->dev_route != net) {
-        context->dev_endpoint = (context->dev_route == eth) ? 1 : 0;
+        context->dev_endpoint = (context->dev_route == eth) ? eth : sdsu;
         return 0;
     }
 
@@ -312,10 +311,4 @@ void mcelib_destroy(mce_context_t context)
     free(context->dev_name);
 
     free(context);
-}
-
-
-char* mcelib_version()
-{
-    return VERSION_STRING;
 }

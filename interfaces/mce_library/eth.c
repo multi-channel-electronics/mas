@@ -262,7 +262,7 @@ int mcecmd_eth_ioctl(mce_context_t context, unsigned long int req, int arg)
     return -1;
 }
 
-ssize_t mcecmd_eth_read(mce_context_t context, void *buf, size_t count)
+int mcecmd_eth_read(mce_context_t context, void *buf, size_t count)
 {
     eth_transport* transport = (eth_transport*)context->transport_data;
     void* data = (void*)malloc(ETH_FRAME_LEN);
@@ -286,7 +286,7 @@ ssize_t mcecmd_eth_read(mce_context_t context, void *buf, size_t count)
     return count;
 }
 
-ssize_t mcecmd_eth_write(mce_context_t context, const void *buf, size_t count)
+int mcecmd_eth_write(mce_context_t context, const void *buf, size_t count)
 {
     eth_transport* transport = (eth_transport*)context->transport_data;
     return eth_write(transport, transport->cmd_socket, 0, 0, 0, buf, count);
@@ -310,14 +310,14 @@ int mcedata_eth_ioctl(mce_context_t context, unsigned long int req, ...)
     abort();
 }
 
-ssize_t mcedata_eth_read(mce_context_t context, void *buf, size_t count)
+int mcedata_eth_read(mce_context_t context, void *buf, size_t count)
 {
     fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
             __FILE__);
     abort();
 }
 
-ssize_t mcedata_eth_write(mce_context_t context, const void *buf, size_t count)
+int mcedata_eth_write(mce_context_t context, const void *buf, size_t count)
 {
     fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
             __FILE__);

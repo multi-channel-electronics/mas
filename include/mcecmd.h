@@ -76,10 +76,6 @@ int mcecmd_write_block_check(mce_context_t context, const mce_param_t *param,
 
 int mcecmd_ioctl(mce_context_t context, unsigned long int req, int arg);
 
-ssize_t mcecmd_read(mce_context_t context, void *buf, size_t count);
-
-ssize_t mcecmd_write(mce_context_t context, const void *buf, size_t count);
-
 int mcecmd_send_command_now (mce_context_t context, mce_command *cmd);
 
 int mcecmd_read_reply_now   (mce_context_t context, mce_reply *rep);

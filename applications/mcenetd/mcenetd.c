@@ -22,10 +22,8 @@
 /* maximum chain length */
 #define MAX_DEPTH 10
 
-/* number of consecutive request errors we're willing to tollerate. */
+/* number of consecutive request errors we're willing to tolerate. */
 #define MAX_ERR 3
-
-#define VERSION 1
 
 #define DEVID(p) ( ((confd[p].type & 3) == FDTYPE_DAT) ? "DAT" : \
         ((confd[p].type & 3) == FDTYPE_CMD) ? "CMD" : \
@@ -332,7 +330,7 @@ void Hello(int p, int c, unsigned char *message, ssize_t n)
     } else {
         /* we're good to go */
         confd[p].rsp[0] = MCENETD_READY;
-        confd[p].rsp[1] = VERSION;
+        confd[p].rsp[1] = MCENETD_PROTO_VERSION;
         confd[p].rsp[2] = con[c].ser;
         confd[p].rsp[3] = d->ddepth;
         confd[p].rsp[4] = d->endpt;
@@ -393,97 +391,7 @@ ssize_t NetRead(int d, int c, unsigned char *buf, const char *where,
 /* process a read on the command port */
 void CmdRead(int p, int c)
 {
-    ssize_t n;
-    unsigned char message[256];
-    struct dev_struct *d = dev + con[c].dev_idx;
-
-    /* read the requested operation */
-    n = NetRead(pfd[p].fd, c, message, "CMD", con[c].ser);
-
-    if (n < 0)
-        return;
-
-    lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser, con[c].flags,
-            SpitMessage(message, n));
-
-    if (message[0] == MCENETD_MORE) {
-        /* packetised data, accumulate it */
-
-        /* resize */
-        void *ptr = realloc(confd[p].buf, confd[p].buflen + 254);
-        if (ptr == NULL)
-            lprintf(LOG_CRIT, "Memory error.\n");
-
-        confd[p].buf = ptr;
-
-        /* append data */
-        memcpy(confd[p].buf + confd[p].buflen, message + 1, 254);
-
-        /* update length */
-        confd[p].buflen += 254;
-    } else if (message[0] == MCENETD_CLOSURE) {
-        /* end of a packetise write; send it; report the result */
-        size_t l = message[1] - 2;
-        ssize_t *n = (ssize_t *)(confd[p].rsp + 1);
-        int32_t *err = (int32_t*)(confd[p].rsp + 5);
-
-        /* resize */
-        void *ptr = realloc(confd[p].buf, confd[p].buflen + l);
-        if (ptr == NULL)
-            lprintf(LOG_CRIT, "Memory error.\n");
-
-        confd[p].buf = ptr;
-
-        /* append data */
-        memcpy(confd[p].buf + confd[p].buflen, message + 2, l);
-
-        /* write it! */
-        *n = mcecmd_write(d->context, confd[p].buf, confd[p].buflen + l);
-
-        /* report the result */
-        confd[p].rsp[0] = MCENETD_RECEIPT;
-        *err = (int32_t)errno;
-        confd[p].rsplen = MCENETD_MSGLEN(MCENETD_RECEIPT);
-        pfd[p].events = POLLOUT;
-    } else if (message[0] == MCENETD_READ) {
-        uint32_t *count = (uint32_t*)message + 1;
-
-        /* try to read enough data to fill up the buffer */
-        if (*count < d->cmd_len) {
-            /* resize */
-            void *ptr = realloc(d->cmd_buf, *count);
-            if (ptr == NULL) 
-                lprintf(LOG_CRIT, "Memory error.\n");
-            d->cmd_buf = ptr;
-
-            ssize_t n = mcecmd_read(d->context, d->cmd_buf + d->cmd_len,
-                    *count - d->cmd_len);
-
-            if (n < 0) {
-                lprintf(LOG_ERR, "Read error from command device %i\n", 
-                        con[c].dev_idx);
-                
-                /* abort */
-                confd[p].rsp[0] = MCENETD_STOP;
-                confd[p].rsp[1] = 7;
-                confd[p].rsp[2] = MCENETD_ERR_READ;
-                int32_t *e = (int32_t*)(confd[p].rsp + 3);
-                *e = (int32_t)errno;
-                confd[p].rsplen = 7;
-                pfd[p].events = POLLOUT;
-                return;
-            }
-
-            d->cmd_len += n;
-        }
-
-        if (*count <= d->cmd_len)
-            abort();
-    } else {
-        lprintf(LOG_CRIT,
-                "Unknown message type on command connection: %02hhX\n",
-                message[0]);
-    }
+    abort();
 }
 
 /* process a request on the control channel */
@@ -692,7 +600,8 @@ int main(int argc, char **argv)
 
     memset(ser, 0, 256 * sizeof(int));
 
-    lprintf(LOG_INFO, "mcenetd proto_vers#%i (C) 2011 D. V. Wiebe\n", VERSION);
+    lprintf(LOG_INFO, "mcenetd proto_vers#%i (C) 2011 D. V. Wiebe\n",
+           MCENETD_PROTO_VERSION);
 
     /* initialise MAS and open all the devices */
     MCEInit();

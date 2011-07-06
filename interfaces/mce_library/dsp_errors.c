@@ -6,6 +6,9 @@
 char *mcedsp_error_string(int error)
 {
 	switch (-error) {
+    case DSP_ERR_ATTACH:
+        return "Failed to connect to DSP.";
+
 	case DSP_ERR_FAILURE:
 		return "DSP replied with ERROR.";
 
@@ -13,7 +16,7 @@ char *mcedsp_error_string(int error)
 		return "Bad dsp_library handle.";
 
 	case DSP_ERR_DEVICE:
-		return "I/O error on driver device file.";
+		return "I/O error communicating with device.";
 
 	case DSP_ERR_FORMAT:
 		return "Bad packet structure.";
