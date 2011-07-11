@@ -39,8 +39,9 @@
     0 ) /* zero implies a variable length message */
 
 /* error responses */
-#define MCENETD_ERR_INDEX  0x00 /* dev index out of range */
-#define MCENETD_ERR_BALROG 0x01 /* too much recursion */
+#define MCENETD_ERR_INDEX   0x00 /* dev index out of range */
+#define MCENETD_ERR_BALROG  0x01 /* too much recursion */
+#define MCENETD_ERR_PENDING 0x02 /* an operation is already in progress */
 
 /* protocol magic */
 #define MCENETD_MAGIC1 0x3C

@@ -69,15 +69,11 @@ int mcecmd_open(mce_context_t context)
     if (C_cmd.connected)
         mcecmd_close(context);
 
-    if (context->maslog == NULL) {
-        char *ptr = mcelib_shell_expand("mcelib[${MAS_MCE_DEV}]",
-                context->dev_index);
-        context->maslog = maslog_connect(context, ptr);
-        free(ptr);
-    }
-
     /* set I/O handlers */
     switch(context->dev_route) {
+        case none:
+            fprintf(stderr, "mcecmd: Cannot attach CMD: Null device.\n");
+            return -MCE_ERR_ATTACH;
         case sdsu:
             SET_IO_METHODS(context, cmd, sdsu);
             break;
@@ -91,6 +87,14 @@ int mcecmd_open(mce_context_t context)
             fprintf(stderr, "mcecmd: Cannot attach CMD: Unhandled route.\n");
             return -MCE_ERR_ATTACH;
     }
+
+    if (context->maslog == NULL) {
+        char *ptr = mcelib_shell_expand("mcelib[${MAS_MCE_DEV}]",
+                context->dev_index);
+        context->maslog = maslog_connect(context, ptr);
+        free(ptr);
+    }
+
     if ((err = C_cmd.connect(context)))
         return err;
 

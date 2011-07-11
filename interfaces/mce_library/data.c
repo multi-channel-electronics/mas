@@ -31,6 +31,9 @@ int mcedata_open(mce_context_t context)
         mcedata_close(context);
 
     switch(context->dev_route) {
+        case none:
+            fprintf(stderr, "mcecmd: Cannot attach DATA: Null device.\n");
+            return -MCE_ERR_ATTACH;
         case sdsu:
             SET_IO_METHODS(context, data, sdsu);
             break;
@@ -41,7 +44,7 @@ int mcedata_open(mce_context_t context)
             SET_IO_METHODS(context, data, net);
             break;
         default:
-            fprintf(stderr, "mcedata: Unhandled route.\n");
+            fprintf(stderr, "mcedata: Cannot attach DATA: Unhandled route.\n");
             return -MCE_ERR_DEVICE;
     }
 

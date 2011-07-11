@@ -44,6 +44,9 @@ int mcedsp_open(mce_context_t context)
     }
 
     switch(context->dev_route) {
+        case none:
+            fprintf(stderr, "mcecmd: Cannot attach DSP: Null device.\n");
+            return -MCE_ERR_ATTACH;
         case sdsu:
             SET_IO_METHODS(context, dsp, sdsu);
             break;

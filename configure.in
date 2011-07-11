@@ -83,7 +83,7 @@ AC_ARG_WITH([mces],
                       [(1) N -- control local MCE on SDSU card #N; ]
                       [(2) IFACE?MAC -- control local ethernet MCE with mac ]
                       [address MAC attached to ethernet interface IFACE, (eg. ]
-                      [eth0@00:0D:88:B5:44:D6); ]
+                      [eth0?00:0D:88:B5:44:D6); ]
                       [(3) HOST/N -- control MCE#N on remote computer HOST; ]
                       [or, (4) M@HOST -- control the first M MCEs on remote ]
                       [computer HOST, i.e. "2@some.host" is equivalent to ]

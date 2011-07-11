@@ -97,6 +97,11 @@ int mceconfig_open(mce_context_t context, const char *filename,
 	struct config_t *cfg = &C_config.cfg;
     config_init(cfg);
 
+    if (context->dev_route == none) {
+        fprintf(stderr, "mceconfig: Unable to attach CONFIG: Null device.\n");
+        return -1;
+    }
+
     if (filename == NULL) {
         char *ptr = mcelib_default_hardwarefile(context->dev_index);
         if (ptr == NULL) {

@@ -193,7 +193,7 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
         return c;
     }
 
-    if (dev_num == MCE_DEFAULT_MCE || dev_num < 0)
+    if (dev_num == MCE_DEFAULT_MCE)
         c->dev_index = mcelib_default_mce();
     else
         c->dev_index = dev_num;
@@ -241,28 +241,39 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
             mcelist = NULL;
         } else {
             c->ndev = config_setting_length(mcelist);
-            if (c->dev_index >= c->ndev) {
-                fprintf(stderr, "mcelib: Device number out of range.\n");
-                mcelib_destroy(c);
-                return NULL;
+            if (c->dev_index != MCE_NULL_MCE) {
+                if (c->dev_index >= c->ndev) {
+                    fprintf(stderr, "mcelib: Device number out of range.\n");
+                    mcelib_destroy(c);
+                    return NULL;
+                }
+                c->url = strdup(config_setting_get_string_elem(mcelist,
+                            c->dev_index));
             }
-            c->url = strdup(config_setting_get_string_elem(mcelist,
-                        c->dev_index));
         }
     }
+
     if (mcelist == NULL) {
         fprintf(stderr, "mcelib: No MCE device list.  Assuming a naive "
                 "default.\n");
         c->ndev = MAX_FIBRE_CARD;
 
-        if (c->dev_index >= MAX_FIBRE_CARD) {
-            fprintf(stderr, "mcelib: Device number out of range.\n");
-            mcelib_destroy(c);
-            return NULL;
-        }
+        if (c->dev_index != MCE_NULL_MCE) {
+            if (c->dev_index >= MAX_FIBRE_CARD) {
+                fprintf(stderr, "mcelib: Device number out of range.\n");
+                mcelib_destroy(c);
+                return NULL;
+            }
 
-        c->url = (char *)malloc(8);
-        sprintf(c->url, "mce://%i", c->dev_index);
+            c->url = (char *)malloc(8);
+            sprintf(c->url, "mce://%i", c->dev_index);
+        }
+    }
+
+    if (c->dev_index == MCE_NULL_MCE) {
+        c->url = c->dev_name = NULL;
+        c->dev_route = c->dev_endpoint = none;
+        return c;
     }
 
     if (parse_url(c)) {

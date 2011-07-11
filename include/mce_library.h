@@ -21,7 +21,12 @@ typedef struct mce_context *mce_context_t;
 #include <mcecmd.h>
 #include <mcedata.h>
 
+/* connect to the "default" device */
 #define MCE_DEFAULT_MCE (-1)
+
+/* connect to a "null" device */
+#define MCE_NULL_MCE (-2)
+
 /* Creation / destruction of context structure */
 mce_context_t mcelib_create(int dev_num, const char *mas_config,
     unsigned char udepth);

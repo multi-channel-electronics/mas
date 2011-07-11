@@ -32,6 +32,7 @@ int mcecmd_sdsu_connect(mce_context_t context)
     sprintf(dev_name + 12, "%u", (unsigned)context->dev_num);
 
     C_cmd.fd = open(dev_name, O_RDWR);
+    fprintf(stderr, "%s = %i\n", dev_name, C_cmd.fd);
     if (C_cmd.fd < 0)
         return -MCE_ERR_ATTACH;
 
@@ -65,7 +66,9 @@ int mcecmd_sdsu_read(mce_context_t context, void *buf, size_t count)
 
 int mcecmd_sdsu_write(mce_context_t context, const void *buf, size_t count)
 {
+    fprintf(stderr, "%p[%i], %p, %zi\n", context, context->cmd.fd, buf, count);
     ssize_t error = write(context->cmd.fd, buf, count);
+    fprintf(stderr, "error = %i\n", error);
     if (error < 0) {
         return -MCE_ERR_DEVICE;
     } else if (error != count) {
