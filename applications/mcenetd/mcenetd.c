@@ -35,8 +35,9 @@ pthread_t *tid;
 int itc_ser = 1;
 
 #define ITC_ATTACH   1
-#define ITC_CMD      2
-#define ITC_CMDIOCTL 3
+#define ITC_CMDIOCTL 2
+#define ITC_CMDSEND  3
+#define ITC_CMDREPL  4
 static struct itc_t {
     int dev;
     int ser;
@@ -80,6 +81,8 @@ struct confd_struct {
 
 /* connection management */
 #define CON_DROP   0x01
+#define CON_CMDSNT 0x02
+#define CON_CMDREP 0x04
 int ser[256];
 unsigned char con_ser = 0;
 struct con_struct {
@@ -92,8 +95,11 @@ struct con_struct {
     int udepth;
     unsigned char ser;
 
-    char cmd_buf[sizeof(mce_command)];
-    size_t cmd_len;
+    char cmd_req[sizeof(mce_command)];
+    char cmd_rep[sizeof(mce_reply)];
+    size_t cmd_req_len;
+    int32_t cmd_sent;
+    int32_t cmd_replied;
 
     int flags;
     int nerr;
@@ -137,13 +143,10 @@ static const char *marker[] = {
     if (l == LOG_CRIT) exit(1); \
 } while (0)
 
-#if 0
+#if 1
 static char __thread debug_col[1000];
 static char __thread debug_col2[1000];
 static int __thread col_count;
-static const char* colnil(void) {
-    return debug_col;
-}
 
 static const char* coladd(void) {
     if (col_count < 999) {
@@ -173,13 +176,13 @@ static const char* colsub(void) {
 #define dreturnvoid()
 #endif
 
-static __thread char spit_buffer[1024];
-const char *SpitMessage(const unsigned char *m, ssize_t n)
+static __thread char spit_buffer[2048];
+const char *SpitMessage(const void *m, ssize_t n)
 {
     ssize_t i;
     char *ptr = spit_buffer;
     for (i = 0; i < n; ++i) {
-        sprintf(ptr, "%02hhx ", m[i]);
+        sprintf(ptr, "%02hhx ", ((unsigned char*)m)[i]);
         ptr += 3;
     }
     *ptr = '\0';
@@ -230,8 +233,7 @@ void DropSocket(int p)
 }
 
 void DropConnection(int c) {
-    lprintf(LOG_INFO, "Dropping CLx%02hhX (%s).\n", con[c].ser,
-            inet_ntoa(con[c].addr.sin_addr));
+    lprintf(LOG_INFO, "Dropping CLx%02hhX.\n", con[c].ser);
     ser[con[c].ser] = 0;
     DropSocket(con[c].sock[3]);
     DropSocket(con[c].sock[2]);
@@ -273,6 +275,8 @@ static void ITDiscard(struct itc_t *it)
 /* return a device interthread response */
 static void ITRes(int me, int ser, int res, void *data, size_t dlen)
 {
+    dtrace("%i, %i, %i, %p, %zi", me, ser, res, data, dlen);
+
     struct itc_t *ptr = itc[me];
 
     pthread_mutex_lock(mutex + me);
@@ -287,6 +291,7 @@ static void ITRes(int me, int ser, int res, void *data, size_t dlen)
     if (ptr == NULL) {
         lprintf(LOG_ERR, "Lost ITC request #%i with pending response!\n", ser);
         pthread_mutex_unlock(mutex + me);
+        dreturnvoid();
         return;
     }
 
@@ -306,11 +311,15 @@ static void ITRes(int me, int ser, int res, void *data, size_t dlen)
 
     lprintf(LOG_DEBUG, "ITC#%i: %i <- %i: %s\n", ptr->ser, ptr->res, me,
             SpitMessage(ptr->res_data, ptr->res_dlen));
+
+    dreturnvoid();
 }
 
 /* set up a device interthread request */
-static struct itc_t *ITReq(int who, int req, void *data, size_t dlen)
+static struct itc_t *ITReq(int who, int req, void *data, size_t dlen,
+        int nolock)
 {
+    dtrace("%i, %i, %p, %zi, %i", who, req, data, dlen, nolock);
     struct itc_t **ptr = itc + who;
 
     /* compose the itc */
@@ -337,19 +346,23 @@ static struct itc_t *ITReq(int who, int req, void *data, size_t dlen)
     next->next = NULL;
 
     /* find the end of the pending request queue */
-    while (*ptr != NULL)
+    while (*ptr != NULL) {
         ptr = &((*ptr)->next);
+    }
 
-    pthread_mutex_lock(mutex + who);
+    if (!nolock)
+        pthread_mutex_lock(mutex + who);
 
     /* store the request */
     *ptr = next;
 
-    pthread_mutex_unlock(mutex + who);
+    if (!nolock)
+        pthread_mutex_unlock(mutex + who);
 
     lprintf(LOG_DEBUG, "ITC#%i: %i -> %i: %s\n", next->ser, next->req, who,
             SpitMessage(next->req_data, next->req_dlen));
 
+    dreturn("%p", next);
     return next;
 }
 
@@ -461,6 +474,8 @@ static void MCEInit(int i)
 /* (DevThread) Respond to an ITC request */
 void DevRes(int me, struct itc_t *req)
 {
+    dtrace("%i, %p [%i]", me, req, req->req);
+
     int32_t ret;
     char buffer[5];
     mce_reply rep;
@@ -479,28 +494,6 @@ void DevRes(int me, struct itc_t *req)
             buffer[2] = dev[me].flags;
             ITRes(me, req->ser, ITC_ATTACH, buffer, 3);
             break;
-        case ITC_CMD:
-            /* send a command ... */
-            fprintf(stderr, "send...\n");
-            ret = (int32_t)mcecmd_send_command_now(dev[me].context,
-                    (mce_command*)req->req_data);
-            fprintf(stderr, "ret = %i\n", ret);
-            if (ret < 0) {
-                /* send error! */
-                buffer[0] = 1;
-                *(int32_t*)(buffer + 1) = ret;
-                ITRes(me, req->ser, ITC_CMD, buffer, 5);
-            } else if ((ret = (int32_t)mcecmd_read_reply_now(dev[me].context,
-                            &rep)) < 0)
-            {
-                /* reply error! */
-                buffer[0] = 2;
-                *(int32_t*)(buffer + 1) = ret;
-                ITRes(me, req->ser, ITC_CMD, buffer, 5);
-            } else {
-                /* good response, send it back to the master */
-                ITRes(me, req->ser, ITC_CMD, &rep, sizeof(mce_reply));
-            }
         case ITC_CMDIOCTL:
             /* ioctl time */
             ret = (int32_t)mcecmd_ioctl(dev[me].context,
@@ -509,17 +502,39 @@ void DevRes(int me, struct itc_t *req)
             memcpy(buffer, &ret, 4);
             ITRes(me, req->ser, ITC_CMDIOCTL, buffer, 4);
             break;
+        case ITC_CMDSEND:
+            /* send a command ... */
+            ret = (int32_t)mcecmd_send_command_now(dev[me].context,
+                    (mce_command*)req->req_data);
+
+            /* pass the return value up */
+            ITRes(me, req->ser, ITC_CMDSEND, &ret, 4);
+            break;
+        case ITC_CMDREPL:
+            ret = (int32_t)mcecmd_read_reply_now(dev[me].context, &rep);
+            if (ret < 0) {
+                /* reply error! */
+                ITRes(me, req->ser, ITC_CMDREPL, &ret, 4);
+            } else
+                /* good response, send it back to the master */
+                ITRes(me, req->ser, ITC_CMDREPL, &rep, sizeof(mce_reply));
+            break;
         default:
             lprintf(LOG_CRIT, "Unknown ITC request: %i\n", req->req);
     }
+
+    dreturnvoid();
 }
 
 /* this is the start routine for the device threads; the argument is a
  * pseudopointer cryptinteger. */
 void *RunDev(void *arg)
 {
-    int need_unlock;
     const int me = (int)arg;
+
+    dtrace("%i", me);
+
+    int need_unlock;
     struct itc_t *ptr;
     struct itc_t req;
 
@@ -552,13 +567,16 @@ void *RunDev(void *arg)
         usleep(1000);
     }
 
+    dreturn("%p", NULL);
     return NULL;
 }
 
 /* Returns true if the IT response was successfully "handled". */
 static int HandleITRes(struct itc_t *itc, int c, int d)
 {
-    const int ctlsock = con[c].sock[0];
+    dtrace("%p, %i, %i", itc, c, d);
+
+    const int ctlsock = con[c].sock[FDTYPE_CTL];
 
     switch(itc->res) {
         case ITC_ATTACH:
@@ -568,6 +586,29 @@ static int HandleITRes(struct itc_t *itc, int c, int d)
             memcpy(confd[ctlsock].rsp + 3, itc->res_data, 3);
             confd[ctlsock].rsplen = 6;
             pfd[ctlsock].events = POLLOUT;
+            con[c].pending = NULL;
+            break;
+        case ITC_CMDSEND:
+            /* report the result of the send, and immediately ask for a reply 
+             * to avoid getting confused */
+            con[c].cmd_sent = *(int32_t*)(itc->res_data);
+            con[c].pending = ITReq(con[c].dev_idx, ITC_CMDREPL, NULL, 0, 1);
+            con[c].flags |= CON_CMDSNT;
+            pfd[con[c].sock[FDTYPE_CMD]].events = POLLOUT;
+            break;
+        case ITC_CMDREPL:
+            /* store the response and signal we're ready to send it out to the
+             * client */
+            if (itc->res_dlen == 4) {
+                /* an error code */
+                con[c].cmd_replied = *(int32_t*)(itc->res_data);
+            } else {
+                /* no error, things went well */
+                con[c].cmd_replied = 0;
+                memcpy(con[c].cmd_rep, itc->res_data, itc->res_dlen);
+            }
+            con[c].flags |= CON_CMDREP;
+            pfd[con[c].sock[FDTYPE_CMD]].events = POLLOUT;
             con[c].pending = NULL;
             break;
         case ITC_CMDIOCTL:
@@ -585,6 +626,7 @@ static int HandleITRes(struct itc_t *itc, int c, int d)
 
     pthread_mutex_unlock(mutex + d);
 
+    dreturn("%i", 1);
     return 1;
 }
 
@@ -658,20 +700,21 @@ void Hello(int p, int c, unsigned char *message, ssize_t n)
     } else {
         /* we're good to go: signal the device thread to check it's context,
          * and then asyncrhonously wait for the response */
-        con[c].pending = ITReq(con[c].dev_idx, ITC_ATTACH, NULL, 0);
+        con[c].pending = ITReq(con[c].dev_idx, ITC_ATTACH, NULL, 0, 0);
     }
 }
 
-/* send a response on the control channel */
+/* send a response on the control channel, or do handshaking on a dev channel */
 void RspWrite(int p, int c)
 {
     ssize_t n;
     dtrace("%i, %i", p, c);
 
-    lprintf(LOG_DEBUG, "%s@CLx%02hhX: f:%x <== %s\n", DEVID(p), con[c].ser,
-            con[c].flags, SpitMessage(confd[p].rsp, confd[p].rsplen));
-
     n = write(pfd[p].fd, confd[p].rsp, confd[p].rsplen);
+
+    lprintf(LOG_DEBUG, "%s@CLx%02hhX,%i: f:%x <== %s (%zi)\n", DEVID(p),
+            con[c].ser, p, con[c].flags, SpitMessage(confd[p].rsp,
+                confd[p].rsplen), (size_t)n);
 
     if (n < 0) {
         char errbuf[2048];
@@ -686,6 +729,9 @@ void RspWrite(int p, int c)
             con[c].flags |= CON_DROP;
     } else
         con[c].nerr = 0;
+
+    if (confd[p].type & FDTYPE_HX)
+        confd[p].type -= FDTYPE_HX;
 
     /* done writing */
     pfd[p].events = POLLIN;
@@ -717,12 +763,12 @@ ssize_t NetRead(int d, int c, unsigned char *buf, const char *where,
 void CmdRead(int p, int c)
 {
     /* Read a command from the client... basically we're trying to fill up
-     * cmd_buf with a full mce command.  Once it's full, it's time to send it
+     * cmd_req with a full mce command.  Once it's full, it's time to send it
      * off downstream */
 
-    if (con[c].cmd_len < sizeof(mce_command)) {
-        size_t n = read(pfd[p].fd, con[c].cmd_buf + con[c].cmd_len,
-                sizeof(mce_command) - con[c].cmd_len);
+    if (con[c].cmd_req_len < sizeof(mce_command)) {
+        size_t n = read(pfd[p].fd, con[c].cmd_req + con[c].cmd_req_len,
+                sizeof(mce_command) - con[c].cmd_req_len);
 
         if (n < 0) {
             char errbuf[2048];
@@ -730,17 +776,86 @@ void CmdRead(int p, int c)
                 strerror_r(errno, errbuf, 2048));
             return;
         } else
-            con[c].cmd_len += n;
+            con[c].cmd_req_len += n;
+
+        lprintf(LOG_DEBUG, "CMD@CLx%02hhX: ==> %s\n", con[c].ser,
+                SpitMessage((const unsigned char*)con[c].cmd_req +
+                    con[c].cmd_req_len - n, n));
     }
 
     /* check for a full command */
-    if (con[c].cmd_len == sizeof(mce_command)) {
+    if (con[c].cmd_req_len == sizeof(mce_command)) {
         /* send an ITC signalling the availability of a command */
-        con[c].pending = ITReq(con[c].dev_idx, ITC_CMD, con[c].cmd_buf,
-                sizeof(mce_command));
+        con[c].pending = ITReq(con[c].dev_idx, ITC_CMDSEND, con[c].cmd_req,
+                sizeof(mce_command), 0);
         /* and then forget about the command completely */
-        con[c].cmd_len = 0;
+        con[c].cmd_req_len = 0;
     }
+}
+
+/* shove a reply all up into the command port */
+void CmdWrite(int p, int c)
+{
+    ssize_t n;
+
+    dtrace("%i, %i", p, c);
+
+    pfd[p].events = POLLIN;
+
+    if (con[c].flags & CON_CMDSNT) {
+        lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser,
+                con[c].flags, SpitMessage(&con[c].cmd_sent, 4));
+
+        n = write(pfd[p].fd, &con[c].cmd_sent, 4);
+        if (n < 0) {
+            char errbuf[2048];
+            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
+                        2048));
+        } else if (n == 0) {
+            /* dropped */
+            con[c].flags = CON_DROP;
+            dreturnvoid();
+            return;
+        }
+
+        con[c].flags &= ~CON_CMDSNT;
+    }
+
+    if (con[c].flags & CON_CMDREP) {
+        lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser,
+                con[c].flags, SpitMessage(&con[c].cmd_replied, 4));
+
+        n = write(pfd[p].fd, &con[c].cmd_replied, 4);
+        if (n < 0) {
+            char errbuf[2048];
+            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
+                        2048));
+        } else if (n == 0) {
+            /* dropped */
+            con[c].flags = CON_DROP;
+            dreturnvoid();
+            return;
+        }
+
+        lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser,
+                con[c].flags, SpitMessage(&con[c].cmd_rep, sizeof(mce_reply)));
+
+        n = write(pfd[p].fd, &con[c].cmd_rep, sizeof(mce_reply));
+        if (n < 0) {
+            char errbuf[2048];
+            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
+                        2048));
+        } else if (n == 0) {
+            /* dropped */
+            con[c].flags = CON_DROP;
+            dreturnvoid();
+            return;
+        }
+
+        con[c].flags &= ~CON_CMDREP;
+    }
+
+    dreturnvoid();
 }
 
 /* process a request on the control channel */
@@ -775,7 +890,7 @@ void CtlRead(int p, int c)
 
         /* copy ioctl reqeust # and argument and send it to the dev thread */
         memcpy(buffer, message + 1, 8);
-        con[c].pending = ITReq(con[c].dev_idx, ITC_CMDIOCTL, buffer, 8);
+        con[c].pending = ITReq(con[c].dev_idx, ITC_CMDIOCTL, buffer, 8, 0);
     } else {
         lprintf(LOG_CRIT, "Unhandled communication (%x): CTL#%x\n", message[0],
                 con->flags);
@@ -824,11 +939,10 @@ void HandshakeDevice(int p)
     } else {
         int c = ser[message[0]] - 1;
         lprintf(LOG_INFO, "CLx%02hhX connected to %s port.\n", c, DEVID(p));
-        confd[p].type -= FDTYPE_HX;
         confd[p].con = c;
         confd[p].buf = NULL;
         confd[p].buflen = 0;
-        con[c].sock[confd[p].type] = p;
+        con[c].sock[confd[p].type & 0x3] = p;
 
         /* send confirmation */
         confd[p].rsp[0] = con[c].ser;
@@ -876,8 +990,10 @@ void NewClient(void)
 
     /* add it to the poll list */
     memset(con + ncon, 0, sizeof(struct con_struct));
-    con[ncon].sock[0] = AddSocket(fd, POLLIN, FDTYPE_CTL, ncon, con[ncon].addr);
-    con[ncon].sock[1] = con[ncon].sock[2] = con[ncon].sock[3] = -1;
+    con[ncon].sock[FDTYPE_CTL] = AddSocket(fd, POLLIN, FDTYPE_CTL, ncon,
+            con[ncon].addr);
+    con[ncon].sock[FDTYPE_DSP] = con[ncon].sock[FDTYPE_CMD] =
+        con[ncon].sock[FDTYPE_DAT] = -1;
 
     /* initialise */
     con[ncon].ser = con_ser;
@@ -965,7 +1081,7 @@ int main(int argc, char **argv)
     /* poll loop */
     for (;;) {
         /* check for ITC responses */
-        for (i = 0; i < ncon; ++i)
+        for (i = 0; i < ncon; ++i) {
             if (con[i].pending != NULL) {
                 struct itc_t *pending = con[i].pending;
                 pthread_mutex_t *mu = mutex + pending->dev;
@@ -977,6 +1093,7 @@ int main(int argc, char **argv)
                 } else
                     pthread_mutex_unlock(mu);
             }
+        }
 
         /* check for pending client communication */
         int n = poll(pfd, npfd, 10);
@@ -1016,7 +1133,17 @@ int main(int argc, char **argv)
                 }
 
                 if (pfd[i].revents & POLLOUT) {
-                    RspWrite(i, confd[i].con);
+                    if (confd[i].type == FDTYPE_CTL ||
+                            confd[i].type & FDTYPE_HX)
+                    {
+                        RspWrite(i, confd[i].con);
+                    } else if (confd[i].type == FDTYPE_CMD) {
+                        CmdWrite(i, confd[i].con);
+                    } else {
+                        lprintf(LOG_CRIT,
+                                "Unexpected POLLOUT for fd#%i, type %x\n",
+                                pfd[i].fd, confd[i].type);
+                    }
                 }
 
                 if (pfd[i].revents & POLLIN) {
