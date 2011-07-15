@@ -24,7 +24,7 @@ extern ssize_t mcedata_net_write(mce_context_t, const void*, size_t);
 
 extern int mcedsp_net_connect(mce_context_t);
 extern int mcedsp_net_disconnect(mce_context_t);
-extern int mcedsp_net_ioctl(mce_context_t, unsigned long int, ...);
+extern int mcedsp_net_ioctl(mce_context_t, unsigned long int, int);
 extern int mcedsp_net_read(mce_context_t, void*, size_t);
 extern int mcedsp_net_write(mce_context_t, const void*, size_t);
 

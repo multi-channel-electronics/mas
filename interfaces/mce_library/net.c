@@ -224,6 +224,39 @@ static int dev_connect(mce_context_t context, int port, const char *what)
     return sock;
 }
 
+int dev_ioctl(mce_context_t context, unsigned char ioctl_type,
+        unsigned long int req, int arg)
+{
+    int l;
+    unsigned char message[256];
+    void *ptr = message + 1;
+
+    /* send the request, and get the response */
+    message[0] = ioctl_type; /* ioctl request */
+    *(uint32_t*)ptr = (uint32_t)req;
+    *(int32_t*)(ptr + 4) = (int32_t)arg;
+    l = mcenet_req(context, context->net.ctl_sock, message,
+            MCENETD_MSGLEN(ioctl_type), -1, 0);
+
+    if (l < 0)
+        return -1;
+    else if (l == 0) {
+        fprintf(stderr, "mcenet: server %s unexpectedly dropped connection.\n",
+                context->dev_name);
+        return -1;
+    } else if (l < 4) {
+        fprintf(stderr, "mcenet: short read on control port from %s.\n",
+                context->dev_name);
+        return -1;
+    } else if (message[0] != MCENETD_IOCTLRET || message[1] != 6) {
+        fprintf(stderr, "mcenet: unexpected ioctl response from %s.\n",
+                context->dev_name);
+        return -1;
+    }
+
+    return *(int*)ptr;
+}
+
 static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
 {
     ssize_t n, done;
@@ -379,34 +412,7 @@ int mcecmd_net_disconnect(mce_context_t context)
 
 int mcecmd_net_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
-    int l;
-    unsigned char message[256];
-    void *ptr = message + 1;
-
-    /* send the request, and get the response */
-    message[0] = MCENETD_CMDIOCTL; /* ioctl request */
-    *(uint32_t*)ptr = (uint32_t)req;
-    *(int32_t*)(ptr + 4) = (int32_t)arg;
-    l = mcenet_req(context, context->net.ctl_sock, message,
-            MCENETD_MSGLEN(MCENETD_CMDIOCTL), -1, 0);
-
-    if (l < 0)
-        return -1;
-    else if (l == 0) {
-        fprintf(stderr, "mcenet: server %s unexpectedly dropped connection.\n",
-                context->dev_name);
-        return -1;
-    } else if (l < 4) {
-        fprintf(stderr, "mcenet: short read on command port from %s.\n",
-                context->dev_name);
-        return -1;
-    } else if (message[0] != MCENETD_IOCTLRET || message[1] != 6) {
-        fprintf(stderr, "mcenet: unexpected ioctl response from %s.\n",
-                context->dev_name);
-        return -1;
-    }
-
-    return *(int*)ptr;
+    return dev_ioctl(context, MCENETD_CMDIOCTL, req, arg);
 }
 
 int mcecmd_net_read(mce_context_t context, void *buf, size_t count)
@@ -445,11 +451,9 @@ int mcedsp_net_disconnect(mce_context_t context)
     return dev_disconnect(context->net.dsp_sock);
 }
 
-int mcedsp_net_ioctl(mce_context_t context, unsigned long int req, ...)
+int mcedsp_net_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
+    return dev_ioctl(context, MCENETD_DSPIOCTL, req, arg);
 }
 
 ssize_t mcedsp_net_read(mce_context_t context, void *buf, size_t count)

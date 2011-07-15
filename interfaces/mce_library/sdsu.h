@@ -21,7 +21,7 @@ extern ssize_t mcedata_sdsu_write(mce_context_t, const void*, size_t);
 
 extern int mcedsp_sdsu_connect(mce_context_t);
 extern int mcedsp_sdsu_disconnect(mce_context_t);
-extern int mcedsp_sdsu_ioctl(mce_context_t, unsigned long int, ...);
+extern int mcedsp_sdsu_ioctl(mce_context_t, unsigned long int, int);
 extern int mcedsp_sdsu_read(mce_context_t, void*, size_t);
 extern int mcedsp_sdsu_write(mce_context_t, const void*, size_t);
 

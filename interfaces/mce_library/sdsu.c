@@ -102,14 +102,11 @@ int mcedsp_sdsu_disconnect(mce_context_t context)
     return 0;
 }
 
-int mcedsp_sdsu_ioctl(mce_context_t context, unsigned long int req, ...)
+int mcedsp_sdsu_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
     int ret;
-    va_list ap;
 
-    va_start(ap, req);
-    ret = ioctl(context->dsp.fd, req, va_arg(ap, void*));
-    va_end(ap);
+    ret = ioctl(context->dsp.fd, req, arg);
 
     return ret;
 }
