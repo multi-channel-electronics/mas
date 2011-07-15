@@ -95,7 +95,7 @@ struct mcedsp_context {
     /* I/O methods */
     int (*connect)(mce_context_t);
     int (*disconnect)(mce_context_t);
-    int (*ioctl)(mce_context_t, unsigned long int, ...);
+    int (*ioctl)(mce_context_t, unsigned long int, int);
     int (*read)(mce_context_t, void*, size_t);
     int (*write)(mce_context_t, const void*, size_t);
 };

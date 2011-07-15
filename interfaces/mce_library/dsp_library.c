@@ -109,20 +109,26 @@ int mcedsp_speak(mce_context_t context, unsigned long arg)
 
 /* COMMAND FUNCTIONALITY (wraps write, read) */
 
-int mcedsp_send_command_now(mce_context_t context, dsp_command *cmd)
+int mcedsp_write(mce_context_t context, const dsp_command *cmd)
+{   
+    return context->dsp.write(context, cmd, sizeof(dsp_message));
+}
+    
+int mcedsp_read(mce_context_t context, dsp_message *msg)
+{
+    return context->dsp.read(context, msg, sizeof(dsp_message));
+}
+
+static int mcedsp_send_command_now(mce_context_t context, dsp_command *cmd)
 {
     int ret;
     dsp_message msg;
  
-    if ((ret = context->dsp.write(context, cmd, sizeof(*cmd)))) {
-        fprintf(stderr, "write = %i\n", ret);
+    if ((ret = context->dsp.write(context, cmd, sizeof(*cmd))))
         return ret;
-    }
 
-    if ((ret = context->dsp.read(context, &msg, sizeof(msg)))) {
-        fprintf(stderr, "write = %i\n", ret);
+    if ((ret = context->dsp.read(context, &msg, sizeof(msg))))
         return ret;
-    }
 
     if ( msg.type != DSP_REP )
         return -DSP_ERR_UNKNOWN;

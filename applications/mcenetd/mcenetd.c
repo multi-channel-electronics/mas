@@ -38,6 +38,9 @@ int itc_ser = 1;
 #define ITC_CMDIOCTL 2
 #define ITC_CMDSEND  3
 #define ITC_CMDREPL  4
+#define ITC_DSPIOCTL 5
+#define ITC_DSPSEND  6
+#define ITC_DSPREPL  7
 static struct itc_t {
     int dev;
     int ser;
@@ -83,6 +86,8 @@ struct confd_struct {
 #define CON_DROP   0x01
 #define CON_CMDSNT 0x02
 #define CON_CMDREP 0x04
+#define CON_DSPSNT 0x08
+#define CON_DSPREP 0x10
 int ser[256];
 unsigned char con_ser = 0;
 struct con_struct {
@@ -97,9 +102,13 @@ struct con_struct {
 
     char cmd_req[sizeof(mce_command)];
     char cmd_rep[sizeof(mce_reply)];
-    size_t cmd_req_len;
     int32_t cmd_sent;
     int32_t cmd_replied;
+
+    char dsp_req[sizeof(dsp_command)];
+    char dsp_rep[sizeof(dsp_message)];
+    int32_t dsp_sent;
+    int32_t dsp_replied;
 
     int flags;
     int nerr;
@@ -177,7 +186,7 @@ static const char* colsub(void) {
 #endif
 
 static __thread char spit_buffer[2048];
-const char *SpitMessage(const void *m, ssize_t n)
+static const char *SpitMessage(const void *m, ssize_t n)
 {
     ssize_t i;
     char *ptr = spit_buffer;
@@ -190,7 +199,8 @@ const char *SpitMessage(const void *m, ssize_t n)
     return spit_buffer;
 }
 
-int AddSocket(int fd, short events, int type, int c, struct sockaddr_in addr)
+static int AddSocket(int fd, short events, int type, int c,
+        struct sockaddr_in addr)
 {
     dtrace("%i, %i, %i, %i, %p", fd, events, type, c, &addr);
     /* allocate, if necessary */
@@ -222,7 +232,7 @@ int AddSocket(int fd, short events, int type, int c, struct sockaddr_in addr)
     return npfd++;
 }
 
-void DropSocket(int p)
+static void DropSocket(int p)
 {
     if (p >= 0) {
         npfd--;
@@ -232,7 +242,7 @@ void DropSocket(int p)
     }
 }
 
-void DropConnection(int c) {
+static void DropConnection(int c) {
     lprintf(LOG_INFO, "Dropping CLx%02hhX.\n", con[c].ser);
     ser[con[c].ser] = 0;
     DropSocket(con[c].sock[3]);
@@ -472,13 +482,14 @@ static void MCEInit(int i)
 }
 
 /* (DevThread) Respond to an ITC request */
-void DevRes(int me, struct itc_t *req)
+static void DevRes(int me, struct itc_t *req)
 {
     dtrace("%i, %p [%i]", me, req, req->req);
 
     int32_t ret;
     char buffer[5];
-    mce_reply rep;
+    mce_reply cmd_rep;
+    dsp_message dsp_msg;
 
     switch(req->req) {
         case ITC_ATTACH:
@@ -511,13 +522,38 @@ void DevRes(int me, struct itc_t *req)
             ITRes(me, req->ser, ITC_CMDSEND, &ret, 4);
             break;
         case ITC_CMDREPL:
-            ret = (int32_t)mcecmd_read_reply_now(dev[me].context, &rep);
+            ret = (int32_t)mcecmd_read_reply_now(dev[me].context, &cmd_rep);
             if (ret < 0) {
                 /* reply error! */
                 ITRes(me, req->ser, ITC_CMDREPL, &ret, 4);
             } else
                 /* good response, send it back to the master */
-                ITRes(me, req->ser, ITC_CMDREPL, &rep, sizeof(mce_reply));
+                ITRes(me, req->ser, ITC_CMDREPL, &cmd_rep, sizeof(mce_reply));
+            break;
+        case ITC_DSPIOCTL:
+            /* ioctl time */
+            ret = (int32_t)mcedsp_ioctl(dev[me].context,
+                    *(uint32_t*)req->req_data, *(int32_t*)(req->req_data + 4));
+            /* send the result back to the command thread */
+            memcpy(buffer, &ret, 4);
+            ITRes(me, req->ser, ITC_DSPIOCTL, buffer, 4);
+            break;
+        case ITC_DSPSEND:
+            /* send a command ... */
+            ret = (int32_t)mcedsp_write(dev[me].context,
+                    (dsp_command*)req->req_data);
+
+            /* pass the return value up */
+            ITRes(me, req->ser, ITC_DSPSEND, &ret, 4);
+            break;
+        case ITC_DSPREPL:
+            ret = (int32_t)mcedsp_read(dev[me].context, &dsp_msg);
+            if (ret < 0) {
+                /* reply error! */
+                ITRes(me, req->ser, ITC_DSPREPL, &ret, 4);
+            } else
+                /* good response, send it back to the master */
+                ITRes(me, req->ser, ITC_DSPREPL, &dsp_msg, sizeof(dsp_msg));
             break;
         default:
             lprintf(LOG_CRIT, "Unknown ITC request: %i\n", req->req);
@@ -528,7 +564,7 @@ void DevRes(int me, struct itc_t *req)
 
 /* this is the start routine for the device threads; the argument is a
  * pseudopointer cryptinteger. */
-void *RunDev(void *arg)
+static void *RunDev(void *arg)
 {
     const int me = (int)arg;
 
@@ -588,6 +624,15 @@ static int HandleITRes(struct itc_t *itc, int c, int d)
             pfd[ctlsock].events = POLLOUT;
             con[c].pending = NULL;
             break;
+        case ITC_CMDIOCTL:
+            /* send the result */
+            confd[ctlsock].rsp[0] = MCENETD_IOCTLRET;
+            confd[ctlsock].rsp[1] = 6;
+            memcpy(confd[ctlsock].rsp + 2, itc->res_data, 4);
+            confd[ctlsock].rsplen = 6;
+            pfd[ctlsock].events = POLLOUT;
+            con[c].pending = NULL;
+            break;
         case ITC_CMDSEND:
             /* report the result of the send, and immediately ask for a reply 
              * to avoid getting confused */
@@ -611,13 +656,36 @@ static int HandleITRes(struct itc_t *itc, int c, int d)
             pfd[con[c].sock[FDTYPE_CMD]].events = POLLOUT;
             con[c].pending = NULL;
             break;
-        case ITC_CMDIOCTL:
+        case ITC_DSPIOCTL:
             /* send the result */
             confd[ctlsock].rsp[0] = MCENETD_IOCTLRET;
             confd[ctlsock].rsp[1] = 6;
             memcpy(confd[ctlsock].rsp + 2, itc->res_data, 4);
             confd[ctlsock].rsplen = 6;
             pfd[ctlsock].events = POLLOUT;
+            con[c].pending = NULL;
+            break;
+        case ITC_DSPSEND:
+            /* report the result of the send, and immediately ask for a reply 
+             * to avoid getting confused */
+            con[c].dsp_sent = *(int32_t*)(itc->res_data);
+            con[c].pending = ITReq(con[c].dev_idx, ITC_DSPREPL, NULL, 0, 1);
+            con[c].flags |= CON_DSPSNT;
+            pfd[con[c].sock[FDTYPE_DSP]].events = POLLOUT;
+            break;
+        case ITC_DSPREPL:
+            /* store the response and signal we're ready to send it out to the
+             * client */
+            if (itc->res_dlen == 4) {
+                /* an error code */
+                con[c].dsp_replied = *(int32_t*)(itc->res_data);
+            } else {
+                /* no error, things went well */
+                con[c].dsp_replied = 0;
+                memcpy(con[c].dsp_rep, itc->res_data, itc->res_dlen);
+            }
+            con[c].flags |= CON_DSPREP;
+            pfd[con[c].sock[FDTYPE_DSP]].events = POLLOUT;
             con[c].pending = NULL;
             break;
         default:
@@ -664,7 +732,7 @@ static void InitDevs(void)
 }
 
 /* verify a hello message.  On error, drop the connection */
-void Hello(int p, int c, unsigned char *message, ssize_t n)
+static void Hello(int p, int c, unsigned char *message, ssize_t n)
 {
     const struct dev_t *d;
 
@@ -739,7 +807,7 @@ void RspWrite(int p, int c)
     dreturnvoid();
 }
 
-ssize_t NetRead(int d, int c, unsigned char *buf, const char *where,
+static ssize_t NetRead(int d, int c, unsigned char *buf, const char *where,
         unsigned int who)
 {
     ssize_t n;
@@ -759,107 +827,153 @@ ssize_t NetRead(int d, int c, unsigned char *buf, const char *where,
     return n;
 }
 
-/* process a read on the command port */
-void CmdRead(int p, int c)
+/* process a read on a device port */
+static void DevRead(int fd, int c, int itreq, void *buf, size_t bufsize,
+        const char *what)
 {
+    dtrace("%i, %i, %i, %p, %zi, \"%s\"", fd, c, itreq, buf, bufsize, what);
+    size_t req_len = 0;
     /* Read a command from the client... basically we're trying to fill up
-     * cmd_req with a full mce command.  Once it's full, it's time to send it
+     * buf with a full mce command.  Once it's full, it's time to send it
      * off downstream */
 
-    if (con[c].cmd_req_len < sizeof(mce_command)) {
-        size_t n = read(pfd[p].fd, con[c].cmd_req + con[c].cmd_req_len,
-                sizeof(mce_command) - con[c].cmd_req_len);
+    if (req_len < bufsize) {
+        size_t n = read(fd, buf + req_len, bufsize - req_len);
 
         if (n < 0) {
             char errbuf[2048];
-            lprintf(LOG_ERR, "error reading from CMD port: %s\n", 
+            lprintf(LOG_ERR, "error reading from %s port: %s\n", what,
                 strerror_r(errno, errbuf, 2048));
             return;
         } else
-            con[c].cmd_req_len += n;
+            req_len += n;
 
         lprintf(LOG_DEBUG, "CMD@CLx%02hhX: ==> %s\n", con[c].ser,
-                SpitMessage((const unsigned char*)con[c].cmd_req +
-                    con[c].cmd_req_len - n, n));
+                SpitMessage((const unsigned char*)buf + req_len - n, n));
     }
 
     /* check for a full command */
-    if (con[c].cmd_req_len == sizeof(mce_command)) {
+    if (req_len == bufsize) {
         /* send an ITC signalling the availability of a command */
-        con[c].pending = ITReq(con[c].dev_idx, ITC_CMDSEND, con[c].cmd_req,
-                sizeof(mce_command), 0);
-        /* and then forget about the command completely */
-        con[c].cmd_req_len = 0;
-    }
-}
-
-/* shove a reply all up into the command port */
-void CmdWrite(int p, int c)
-{
-    ssize_t n;
-
-    dtrace("%i, %i", p, c);
-
-    pfd[p].events = POLLIN;
-
-    if (con[c].flags & CON_CMDSNT) {
-        lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser,
-                con[c].flags, SpitMessage(&con[c].cmd_sent, 4));
-
-        n = write(pfd[p].fd, &con[c].cmd_sent, 4);
-        if (n < 0) {
-            char errbuf[2048];
-            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
-                        2048));
-        } else if (n == 0) {
-            /* dropped */
-            con[c].flags = CON_DROP;
-            dreturnvoid();
-            return;
-        }
-
-        con[c].flags &= ~CON_CMDSNT;
-    }
-
-    if (con[c].flags & CON_CMDREP) {
-        lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser,
-                con[c].flags, SpitMessage(&con[c].cmd_replied, 4));
-
-        n = write(pfd[p].fd, &con[c].cmd_replied, 4);
-        if (n < 0) {
-            char errbuf[2048];
-            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
-                        2048));
-        } else if (n == 0) {
-            /* dropped */
-            con[c].flags = CON_DROP;
-            dreturnvoid();
-            return;
-        }
-
-        lprintf(LOG_DEBUG, "CMD@CLx%02hhX: f:%x ==> %s\n", con[c].ser,
-                con[c].flags, SpitMessage(&con[c].cmd_rep, sizeof(mce_reply)));
-
-        n = write(pfd[p].fd, &con[c].cmd_rep, sizeof(mce_reply));
-        if (n < 0) {
-            char errbuf[2048];
-            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
-                        2048));
-        } else if (n == 0) {
-            /* dropped */
-            con[c].flags = CON_DROP;
-            dreturnvoid();
-            return;
-        }
-
-        con[c].flags &= ~CON_CMDREP;
+        con[c].pending = ITReq(con[c].dev_idx, itreq, buf, bufsize, 0);
     }
 
     dreturnvoid();
 }
 
+/* process a write on a device port */
+static void DevWrite(int p, int c, int sflag, int32_t sret, int rflag,
+        int32_t rret, void *rdata, size_t rlen, const char *what)
+{
+    ssize_t n;
+
+    dtrace("%i, %i, %i, %i, %i, %i, %p, %zi, \"%s\"", p, c, sflag, sret,
+            rflag, rret, rdata, rlen, what);
+
+    pfd[p].events = POLLIN;
+
+    if (con[c].flags & sflag) {
+        lprintf(LOG_DEBUG, "%s@CLx%02hhX: f:%x ==> %s\n", what, con[c].ser,
+                con[c].flags, SpitMessage(&sret, 4));
+
+        n = write(pfd[p].fd, &sret, 4);
+        if (n < 0) {
+            char errbuf[2048];
+            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
+                        2048));
+        } else if (n == 0) {
+            /* dropped */
+            con[c].flags = CON_DROP;
+            dreturnvoid();
+            return;
+        }
+
+        con[c].flags &= ~sflag;
+    }
+
+    if (con[c].flags & rflag) {
+        lprintf(LOG_DEBUG, "%sD@CLx%02hhX: f:%x ==> %s\n", what, con[c].ser,
+                con[c].flags, SpitMessage(&rret, 4));
+
+        n = write(pfd[p].fd, &rret, 4);
+        if (n < 0) {
+            char errbuf[2048];
+            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
+                        2048));
+        } else if (n == 0) {
+            /* dropped */
+            con[c].flags = CON_DROP;
+            dreturnvoid();
+            return;
+        }
+
+        lprintf(LOG_DEBUG, "%s@CLx%02hhX: f:%x ==> %s\n", what, con[c].ser,
+                con[c].flags, SpitMessage(rdata, rlen));
+
+        n = write(pfd[p].fd, rdata, rlen);
+        if (n < 0) {
+            char errbuf[2048];
+            lprintf(LOG_ERR, "write error: %s\n", strerror_r(errno, errbuf,
+                        2048));
+        } else if (n == 0) {
+            /* dropped */
+            con[c].flags = CON_DROP;
+            dreturnvoid();
+            return;
+        }
+
+        con[c].flags &= ~rflag;
+    }
+
+    dreturnvoid();
+}
+
+/* process a read on the command port */
+static void CmdRead(int p, int c)
+{
+    dtrace("%i, %i", p, c);
+
+    DevRead(pfd[p].fd, c, ITC_CMDSEND, con[c].cmd_req, sizeof(mce_command),
+            DEVID(p));
+
+    dreturnvoid();
+}
+
+/* process a read on the dsp port */
+static void DspRead(int p, int c)
+{
+    dtrace("%i, %i", p, c);
+
+    DevRead(pfd[p].fd, c, ITC_DSPSEND, con[c].dsp_req, sizeof(dsp_command),
+            DEVID(p));
+
+    dreturnvoid();
+}
+
+/* shove a reply all up into the command port */
+static void CmdWrite(int p, int c)
+{
+    dtrace("%i, %i", p, c);
+
+    DevWrite(p, c, CON_CMDSNT, con[c].cmd_sent, CON_CMDREP, con[c].cmd_replied,
+            con[c].cmd_rep, sizeof(mce_reply), DEVID(p));
+
+    dreturnvoid();
+}
+
+/* ditto for the dsp port */
+static void DspWrite(int p, int c)
+{
+    dtrace("%i, %i", p, c);
+
+    DevWrite(p, c, CON_DSPSNT, con[c].dsp_sent, CON_DSPREP, con[c].dsp_replied,
+            con[c].dsp_rep, sizeof(dsp_message), DEVID(p));
+
+    dreturnvoid();
+}
+
 /* process a request on the control channel */
-void CtlRead(int p, int c)
+static void CtlRead(int p, int c)
 {
     ssize_t n;
     unsigned char message[256];
@@ -891,6 +1005,13 @@ void CtlRead(int p, int c)
         /* copy ioctl reqeust # and argument and send it to the dev thread */
         memcpy(buffer, message + 1, 8);
         con[c].pending = ITReq(con[c].dev_idx, ITC_CMDIOCTL, buffer, 8, 0);
+    } else if (message[0] == MCENETD_DSPIOCTL) {
+        /* Send the IOCTL to the dev thread */
+        char buffer[8];
+
+        /* copy ioctl reqeust # and argument and send it to the dev thread */
+        memcpy(buffer, message + 1, 8);
+        con[c].pending = ITReq(con[c].dev_idx, ITC_DSPIOCTL, buffer, 8, 0);
     } else {
         lprintf(LOG_CRIT, "Unhandled communication (%x): CTL#%x\n", message[0],
                 con->flags);
@@ -898,7 +1019,7 @@ void CtlRead(int p, int c)
 }
 
 /* accept a new connection on one of the device ports */
-void AcceptDevice(int p)
+static void AcceptDevice(int p)
 {
     int fd;
     struct sockaddr_in addr;
@@ -918,7 +1039,7 @@ void AcceptDevice(int p)
 }
 
 /* finalise the handshaking for one of the device ports */
-void HandshakeDevice(int p)
+static void HandshakeDevice(int p)
 {
     ssize_t n;
     unsigned char message[256];
@@ -956,7 +1077,7 @@ void HandshakeDevice(int p)
 }
 
 /* accept a new conenction on the control port */
-void NewClient(void)
+static void NewClient(void)
 {
     int fd;
     socklen_t addrlen = sizeof(struct sockaddr_in);
@@ -1133,16 +1254,24 @@ int main(int argc, char **argv)
                 }
 
                 if (pfd[i].revents & POLLOUT) {
-                    if (confd[i].type == FDTYPE_CTL ||
-                            confd[i].type & FDTYPE_HX)
-                    {
-                        RspWrite(i, confd[i].con);
-                    } else if (confd[i].type == FDTYPE_CMD) {
-                        CmdWrite(i, confd[i].con);
-                    } else {
-                        lprintf(LOG_CRIT,
-                                "Unexpected POLLOUT for fd#%i, type %x\n",
-                                pfd[i].fd, confd[i].type);
+                    switch (confd[i].type) {
+                        case FDTYPE_CTL:
+                        case FDTYPE_CTL | FDTYPE_HX:
+                        case FDTYPE_DSP | FDTYPE_HX:
+                        case FDTYPE_CMD | FDTYPE_HX:
+                        case FDTYPE_DAT | FDTYPE_HX:
+                            RspWrite(i, confd[i].con);
+                            break;
+                        case FDTYPE_CMD:
+                            CmdWrite(i, confd[i].con);
+                            break;
+                        case FDTYPE_DSP:
+                            DspWrite(i, confd[i].con);
+                            break;
+                        default:
+                            lprintf(LOG_CRIT,
+                                    "Unexpected POLLOUT for fd#%i, type %x\n",
+                                    pfd[i].fd, confd[i].type);
                     }
                 }
 
@@ -1157,15 +1286,12 @@ int main(int argc, char **argv)
                         case FDTYPE_DAT | FDTYPE_HX:
                             HandshakeDevice(i);
                             break;
-                        case FDTYPE_DSP:
-                            lprintf(LOG_CRIT, "can't handle read on dsp#%i\n",
-                                    i);
                         case FDTYPE_CMD:
                             CmdRead(i, confd[i].con);
                             break;
-                        case FDTYPE_DAT:
-                            lprintf(LOG_CRIT, "can't handle read on dat#%i\n",
-                                    i);
+                        case FDTYPE_DSP:
+                            DspRead(i, confd[i].con);
+                            break;
                         default:
                             lprintf(LOG_CRIT, "unhandled read type: %i\n",
                                     confd[i].type);

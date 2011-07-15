@@ -26,7 +26,8 @@
 /* 02 <VERSION> <SER> <DDEPTH> <ENDPT> <FLAGS> */
 
 #define MCENETD_CMDIOCTL 0x03
-/* 03 <32-bit REQ> <32-bit ARG> */
+#define MCENETD_DSPIOCTL 0x05
+/* 03/05 <32-bit REQ> <32-bit ARG> */
 
 #define MCENETD_IOCTLRET 0x04
 /* 04 <MSGLEN> <32-bit RET> ... */
@@ -36,6 +37,7 @@
     (op == MCENETD_HELLO) ? 6 : \
     (op == MCENETD_READY) ? 6 : \
     (op == MCENETD_CMDIOCTL) ? 9 : \
+    (op == MCENETD_DSPIOCTL) ? 9 : \
     0 ) /* zero implies a variable length message */
 
 /* error responses */
