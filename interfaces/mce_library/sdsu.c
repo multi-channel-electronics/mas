@@ -15,6 +15,7 @@
 #include <mcedsp.h>
 #include <mce/mce_ioctl.h>
 #include <mce/dsp_errors.h>
+#include <mce/dsp_ioctl.h>
 #include <mce/data_ioctl.h>
 #include "context.h"
 
@@ -88,7 +89,6 @@ int mcedsp_sdsu_connect(mce_context_t context)
     }
 
     context->dsp.fd = fd;
-    context->dsp.opened = 1;
 
     return 0;
 }
@@ -114,14 +114,20 @@ int mcedsp_sdsu_ioctl(mce_context_t context, unsigned long int req, ...)
     return ret;
 }
 
-ssize_t mcedsp_sdsu_read(mce_context_t context, void *buf, size_t count)
+int mcedsp_sdsu_read(mce_context_t context, void *buf, size_t count)
 {
-    return read(context->dsp.fd, buf, count);
+    if ( count != read(context->dsp.fd, buf, count) )
+        return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR, 0);
+
+    return 0;
 }
 
-ssize_t mcedsp_sdsu_write(mce_context_t context, const void *buf, size_t count)
+int mcedsp_sdsu_write(mce_context_t context, const void *buf, size_t count)
 {
-    return write(context->dsp.fd, buf, count);
+    if ( count != write(context->dsp.fd, buf, count) )
+        return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR, 0);
+
+    return 0;
 }
 
 /* DATA subsystem */

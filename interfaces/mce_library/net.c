@@ -224,6 +224,123 @@ static int dev_connect(mce_context_t context, int port, const char *what)
     return sock;
 }
 
+static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
+{
+    ssize_t n, done;
+    int32_t result;
+    /* read the a response from the server.  This consists of a 32-bit
+     * return value from the upstream read, followed by a reply packet
+     * (which is bogus, if the return value indicates an error, but must
+     * still be flushed from the network queue). We shove it into buf,
+     * since that's a convenient place to discard it. */
+
+    /* wait for the socket to become ready */
+    if (mcenet_poll(fd, POLLIN, dev_name))
+        return -1;
+
+    n = read(fd, &result, 4);
+
+    if (n < 0)
+        return -MCE_ERR_DEVICE;
+    else if (n == 0) {
+        fprintf(stderr, "mcenet: server %s unexpectedly dropped connection.\n",
+                dev_name);
+        return -MCE_ERR_DEVICE;
+    }
+
+#if 1
+        int i;
+        fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
+        for (i = 0; i < (size_t)n; ++i)
+            fprintf(stderr, " %02hhx", ((const char*)&result)[i]);
+        fprintf(stderr, "\n");
+#endif
+
+    for (done = 0; done < count; done += n) {
+        /* wait for the socket to become ready */
+        if (mcenet_poll(fd, POLLIN, dev_name))
+            return -1;
+
+        n = read(fd, (char*)buf + done, count - done);
+
+        if (n < 0)
+            return -MCE_ERR_DEVICE;
+        else if (n == 0) {
+            fprintf(stderr,
+                    "mcenet: server %s unexpectedly dropped connection.\n",
+                    dev_name);
+            return -MCE_ERR_DEVICE;
+        }
+    }
+
+#if 1
+        fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
+        for (i = 0; i < count; ++i)
+            fprintf(stderr, " %02hhx", ((const char*)buf)[i]);
+        fprintf(stderr, "\n");
+#endif
+
+    return (int)result;
+}
+
+static int dev_write(int fd, const void *buf, size_t count,
+        const char *dev_name)
+{
+    ssize_t n, done;
+    int32_t result;
+
+    /* send all the data, when possible */
+    for (done = 0; done < count; done += n) {
+        /* wait for the socket to become ready */
+        if (mcenet_poll(fd, POLLOUT, dev_name))
+            return -1;
+
+        n = write(fd, (const char*)buf + done, count - done);
+
+        if (n < 0)
+            return -MCE_ERR_DEVICE;
+        else if (n == 0) {
+            fprintf(stderr,
+                    "mcenet: server %s unexpectedly dropped connection.\n",
+                    dev_name);
+            return -MCE_ERR_DEVICE;
+        }
+
+#if 1
+        int i;
+        fprintf(stderr, "mcenet: req@%i -> %s:", fd, dev_name);
+        for (i = 0; i < (size_t)n; ++i)
+            fprintf(stderr, " %02hhx", ((const char*)buf + done)[i]);
+        fprintf(stderr, "\n");
+#endif
+
+    }
+
+    /* wait for the response */
+    if (mcenet_poll(fd, POLLIN, dev_name))
+        return -1;
+
+    n = read(fd, &result, 4);
+
+    if (n < 0)
+        return -MCE_ERR_DEVICE;
+    else if (n == 0) {
+        fprintf(stderr, "mcenet: server %s unexpectedly dropped connection.\n",
+                dev_name);
+        return -MCE_ERR_DEVICE;
+    }
+
+#if 1
+    int i;
+    fprintf(stderr, "mcenet: rsp@%i <- %s:", fd, dev_name);
+    for (i = 0; i < (size_t)n; ++i)
+        fprintf(stderr, " %02hhx", ((char*)(&result))[i]);
+    fprintf(stderr, "\n");
+#endif
+
+    return (int)result;
+}
+
 static int dev_disconnect(int sock)
 {
     if (sock >= 0) {
@@ -294,120 +411,38 @@ int mcecmd_net_ioctl(mce_context_t context, unsigned long int req, int arg)
 
 int mcecmd_net_read(mce_context_t context, void *buf, size_t count)
 {
-    ssize_t n, done;
-    int32_t result;
-    /* read the a response from the server.  This consists of a 32-bit
-     * return value from mce_send_command_now, followed by a reply packet
-     * (which is bogus, if the return value indicates an error, but must
-     * still be flushed from the network queue -- we shove it into buf,
-     * since that's a convenient place to discard it. */
-
-    /* wait for the socket to become ready */
-    if (mcenet_poll(context->net.cmd_sock, POLLIN, context->dev_name))
-        return -1;
-
-    n = read(context->net.cmd_sock, &result, 4);
-
-    if (n < 0)
-        return -MCE_ERR_DEVICE;
-    else if (n == 0) {
-        fprintf(stderr, "mcenet: server %s unexpectedly dropped connection.\n",
-                context->dev_name);
-        return -MCE_ERR_DEVICE;
-    }
-
-    for (done = 0; done < count; done += n) {
-        /* wait for the socket to become ready */
-        if (mcenet_poll(context->net.cmd_sock, POLLIN, context->dev_name))
-            return -1;
-
-        n = read(context->net.cmd_sock, (char*)buf + done, count - done);
-
-        if (n < 0)
-            return -MCE_ERR_DEVICE;
-        else if (n == 0) {
-            fprintf(stderr,
-                    "mcenet: server %s unexpectedly dropped connection.\n",
-                    context->dev_name);
-            return -MCE_ERR_DEVICE;
-        }
-    }
-
-    return (int)result;
+    return dev_read(context->net.cmd_sock, buf, count, context->dev_name);
 }
 
 int mcecmd_net_write(mce_context_t context, const void *buf, size_t count)
 {
-    ssize_t n, done;
-    int32_t result;
-
-    /* send all the data, when possible */
-    for (done = 0; done < count; done += n) {
-        /* wait for the socket to become ready */
-        if (mcenet_poll(context->net.cmd_sock, POLLOUT, context->dev_name))
-            return -1;
-
-        n = write(context->net.cmd_sock, (const char*)buf + done, count - done);
-
-        if (n < 0)
-            return -MCE_ERR_DEVICE;
-        else if (n == 0) {
-            fprintf(stderr,
-                    "mcenet: server %s unexpectedly dropped connection.\n",
-                    context->dev_name);
-            return -MCE_ERR_DEVICE;
-        }
-
-#if 1
-        int i;
-        fprintf(stderr, "mcenet: req@%i -> %s:", context->net.cmd_sock,
-                context->dev_name);
-        for (i = 0; i < (size_t)n; ++i)
-            fprintf(stderr, " %02hhx", ((const char*)buf + done)[i]);
-        fprintf(stderr, "\n");
-#endif
-
-    }
-
-    /* wait for the response */
-    if (mcenet_poll(context->net.cmd_sock, POLLIN, context->dev_name))
-        return -1;
-
-    n = read(context->net.cmd_sock, &result, 4);
-
-    if (n < 0)
-        return -MCE_ERR_DEVICE;
-    else if (n == 0) {
-        fprintf(stderr, "mcenet: server %s unexpectedly dropped connection.\n",
-                context->dev_name);
-        return -MCE_ERR_DEVICE;
-    }
-
-#if 1
-    int i;
-    fprintf(stderr, "mcenet: rsp@%i <- %s:", context->net.cmd_sock,
-            context->dev_name);
-    for (i = 0; i < (size_t)n; ++i)
-        fprintf(stderr, " %02hhx", ((char*)(&result))[i]);
-    fprintf(stderr, "\n");
-#endif
-
-    return (int)result;
+    return dev_write(context->net.cmd_sock, buf, count, context->dev_name);
 }
 
 /* DSP subsystem */
 int mcedsp_net_connect(mce_context_t context)
 {
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
+    /* check that the dsp port is available */
+    if (~context->net.flags & MCENETD_F_DSP_OK) {
+        fprintf(stderr,
+                "mcelib: server reports dsp device of %s unavailable.\n",
+                context->url);
+        return -MCE_ERR_ATTACH;
+    }
+
+    int sock = dev_connect(context, MCENETD_DSPPORT, "dsp");
+
+    if (sock < 0)
+        return -MCE_ERR_ATTACH;
+
+    context->net.dsp_sock = sock;
+
+    return 0;
 }
 
 int mcedsp_net_disconnect(mce_context_t context)
 {
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
+    return dev_disconnect(context->net.dsp_sock);
 }
 
 int mcedsp_net_ioctl(mce_context_t context, unsigned long int req, ...)
@@ -419,16 +454,12 @@ int mcedsp_net_ioctl(mce_context_t context, unsigned long int req, ...)
 
 ssize_t mcedsp_net_read(mce_context_t context, void *buf, size_t count)
 {
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
+    return dev_read(context->net.dsp_sock, buf, count, context->dev_name);
 }
 
 ssize_t mcedsp_net_write(mce_context_t context, const void *buf, size_t count)
 {
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
+    return dev_write(context->net.dsp_sock, buf, count, context->dev_name);
 }
 
 /* DATA subsystem */

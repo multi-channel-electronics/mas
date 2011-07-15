@@ -38,6 +38,8 @@ static inline int mem_type_valid(dsp_memory_code mem) {
 
 int mcedsp_open(mce_context_t context)
 {
+    int ret;
+
     if (context->dev_endpoint == eth) {
         fprintf(stderr, "mcedsp: Cannot attach DSP: ethernet endpoint.");
         return -DSP_ERR_ATTACH;
@@ -58,7 +60,13 @@ int mcedsp_open(mce_context_t context)
             return -DSP_ERR_ATTACH;
     }
 
-    return context->dsp.connect(context);
+    ret = context->dsp.connect(context);
+    
+    if (ret)
+        return ret;
+
+    context->dsp.opened = 1;
+    return 0;
 }
 
 int mcedsp_close(mce_context_t context)
@@ -103,17 +111,25 @@ int mcedsp_speak(mce_context_t context, unsigned long arg)
 
 int mcedsp_send_command_now(mce_context_t context, dsp_command *cmd)
 {
-    if ( sizeof(*cmd) != context->dsp.write(context, cmd, sizeof(*cmd)) )
-        return context->dsp.ioctl(context, DSPDEV_IOCT_ERROR, 0);
-
+    int ret;
     dsp_message msg;
+ 
+    if ((ret = context->dsp.write(context, cmd, sizeof(*cmd)))) {
+        fprintf(stderr, "write = %i\n", ret);
+        return ret;
+    }
 
-    if ( sizeof(msg) != context->dsp.read(context, &msg, sizeof(msg)) )
-        return context->dsp.ioctl(context, DSPDEV_IOCT_ERROR, 0);
+    if ((ret = context->dsp.read(context, &msg, sizeof(msg)))) {
+        fprintf(stderr, "write = %i\n", ret);
+        return ret;
+    }
 
-    if ( msg.type != DSP_REP ) return -DSP_ERR_UNKNOWN;
-    if ( msg.command != cmd->command ) return -DSP_ERR_REPLY;
-    if ( msg.reply != DSP_ACK ) return -DSP_ERR_FAILURE;
+    if ( msg.type != DSP_REP )
+        return -DSP_ERR_UNKNOWN;
+    if ( msg.command != cmd->command )
+        return -DSP_ERR_REPLY;
+    if ( msg.reply != DSP_ACK )
+        return -DSP_ERR_FAILURE;
 
     return (int) (msg.data & DSP_DATAMASK);
 }
@@ -190,7 +206,7 @@ int mcedsp_reset(mce_context_t context)
     CHECK_OPEN(context);
 
     dsp_command cmd = {
-command : DSP_RST,
+        .command = DSP_RST,
     };
 
     return mcedsp_send_command_now(context, &cmd);
@@ -210,7 +226,7 @@ int mcedsp_stop_application(mce_context_t context)
     CHECK_OPEN(context);
 
     dsp_command cmd = {
-command : DSP_STP,
+        .command = DSP_STP,
     };
     return mcedsp_send_command_now(context, &cmd);
 }
@@ -220,7 +236,7 @@ int mcedsp_reset_mce(mce_context_t context)
     CHECK_OPEN(context);
 
     dsp_command cmd = {
-command: DSP_RCO,
+        .command = DSP_RCO,
     };
     return mcedsp_send_command_now(context, &cmd);
 }
@@ -230,8 +246,8 @@ int mcedsp_qt_set(mce_context_t context, int var, int arg1, int arg2)
     CHECK_OPEN(context);
 
     dsp_command cmd = {
-command: DSP_QTS,
-         args: {var, arg1, arg2},
+        .command = DSP_QTS,
+        .args = {var, arg1, arg2},
     };
     return mcedsp_send_command_now(context, &cmd);
 }
