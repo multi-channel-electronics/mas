@@ -27,10 +27,19 @@
 
 #define MCENETD_CMDIOCTL 0x03
 #define MCENETD_DSPIOCTL 0x05
-/* 03/05 <32-bit REQ> <32-bit ARG> */
+#define MCENETD_DATIOCTL 0x07
+/* 03/05/07 <32-bit REQ> <32-bit ARG> */
 
-#define MCENETD_IOCTLRET 0x04
+#define MCENETD_IOCTLRET 0x08
 /* 04 <MSGLEN> <32-bit RET> ... */
+
+#define MCENETD_DATAREQ 0x09
+/* 09 <32-bit LEN> */
+
+#define MCENETD_DATAACK 0x0A
+/* 0A */
+
+
 
 /* fixed-length message lengths, this count includes the opcode */
 #define MCENETD_MSGLEN(op) ( \
@@ -38,6 +47,9 @@
     (op == MCENETD_READY) ? 6 : \
     (op == MCENETD_CMDIOCTL) ? 9 : \
     (op == MCENETD_DSPIOCTL) ? 9 : \
+    (op == MCENETD_DATIOCTL) ? 9 : \
+    (op == MCENETD_DATAREQ) ? 5 : \
+    (op == MCENETD_DATAACK) ? 1 : \
     0 ) /* zero implies a variable length message */
 
 /* error responses */
