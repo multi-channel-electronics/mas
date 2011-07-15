@@ -15,10 +15,9 @@ extern int mcecmd_eth_write(mce_context_t, const void*, size_t);
 
 extern int mcedata_eth_connect(mce_context_t);
 extern int mcedata_eth_disconnect(mce_context_t);
-extern int mcedata_eth_ioctl(mce_context_t, unsigned long int, ...);
-extern ssize_t mcedata_eth_read(mce_context_t, void*, size_t);
-extern ssize_t mcedata_eth_write(mce_context_t, const void*, size_t);
-
+extern int mcedata_eth_ioctl(mce_context_t, unsigned long int, int);
+extern int mcedata_eth_read(mce_context_t, void*, size_t);
+#define mcedata_eth_write NULL
 
 /* Ethernet packet filtering and service direction*/
 struct _eth_transport;

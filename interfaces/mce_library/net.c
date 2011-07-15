@@ -254,7 +254,7 @@ int dev_ioctl(mce_context_t context, unsigned char ioctl_type,
         return -1;
     }
 
-    return *(int*)ptr;
+    return *(int*)(message + 2);
 }
 
 static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
@@ -492,23 +492,35 @@ int mcedata_net_disconnect(mce_context_t context)
     return dev_disconnect(context->net.dat_sock);
 }
 
-int mcedata_net_ioctl(mce_context_t context, unsigned long int req, ...)
+int mcedata_net_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
+    return dev_ioctl(context, MCENETD_DATIOCTL, req, arg);
 }
 
-ssize_t mcedata_net_read(mce_context_t context, void *buf, size_t count)
+int mcedata_net_read(mce_context_t context, void *buf, size_t count)
 {
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
-}
+    int l;
+    unsigned char message[5];
+    uint32_t* ptr = (uint32_t*)(message + 1);
 
-ssize_t mcedata_net_write(mce_context_t context, const void *buf, size_t count)
-{
-    fprintf(stderr, "Some work is needed on line %i of %s\n", __LINE__,
-            __FILE__);
-    abort();
+    /* send a request for some data */
+    message[0] = MCENETD_DATAREQ;
+    *ptr = count;
+    l = mcenet_req(context, context->net.ctl_sock, message,
+            MCENETD_MSGLEN(MCENETD_DATAREQ), -1, 0);
+
+    if (l < 0)
+        return -1;
+    else if (l == 0) {
+        fprintf(stderr, "mcenet: server %s unexpectedly dropped connection.\n",
+                context->dev_name);
+        return -1;
+    } else if (message[0] != MCENETD_DATAACK) {
+        fprintf(stderr, "mcenet: unexpected data request response from %s.\n",
+                context->dev_name);
+        return -1;
+    }
+
+    /* data's now queueing, so read it, when it comes */
+    return dev_read(context->net.dat_sock, buf, count, context->dev_name);
 }

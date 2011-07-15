@@ -77,12 +77,12 @@ int mcedata_set_datasize(mce_context_t context, int datasize)
 
 int mcedata_empty_data(mce_context_t context)
 {
-    return C_data.ioctl(context, DATADEV_IOCT_EMPTY, NULL);
+    return C_data.ioctl(context, DATADEV_IOCT_EMPTY, 0);
 }
 
 int mcedata_fake_stopframe(mce_context_t context)
 {
-    return C_data.ioctl(context, DATADEV_IOCT_FAKE_STOPFRAME, NULL);
+    return C_data.ioctl(context, DATADEV_IOCT_FAKE_STOPFRAME, 0);
 }
 
 int mcedata_qt_enable(mce_context_t context, int on)
@@ -104,13 +104,13 @@ void mcedata_buffer_query(mce_context_t context, int *head, int *tail, int *coun
 
 int mcedata_poll_offset(mce_context_t context, int *offset)
 {
-    *offset = C_data.ioctl(context, DATADEV_IOCT_FRAME_POLL, NULL);
+    *offset = C_data.ioctl(context, DATADEV_IOCT_FRAME_POLL, 0);
     return (*offset >= 0);
 }
 
 int mcedata_consume_frame(mce_context_t context)
 {
-    return C_data.ioctl(context, DATADEV_IOCT_FRAME_CONSUME, NULL);
+    return C_data.ioctl(context, DATADEV_IOCT_FRAME_CONSUME, 0);
 }
 
 int mcedata_lock_query(mce_context_t context)

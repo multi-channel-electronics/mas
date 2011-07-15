@@ -33,9 +33,9 @@ typedef struct mcedata {
     /* I/O methods */
     int (*connect)(mce_context_t);
     int (*disconnect)(mce_context_t);
-    int (*ioctl)(mce_context_t, unsigned long int, ...);
-    ssize_t (*read)(mce_context_t, void*, size_t);
-    ssize_t (*write)(mce_context_t, const void*, size_t);
+    int (*ioctl)(mce_context_t, unsigned long int, int);
+    int (*read)(mce_context_t, void*, size_t);
+    void *write; /* laziness */
 } mcedata_t;
 
 typedef struct mceconfig {

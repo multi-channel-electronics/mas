@@ -9,7 +9,6 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-#include <stdarg.h>
 
 #include <mce_library.h>
 #include <mcedsp.h>
@@ -104,11 +103,7 @@ int mcedsp_sdsu_disconnect(mce_context_t context)
 
 int mcedsp_sdsu_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
-    int ret;
-
-    ret = ioctl(context->dsp.fd, req, arg);
-
-    return ret;
+    return ioctl(context->dsp.fd, req, arg);
 }
 
 int mcedsp_sdsu_read(mce_context_t context, void *buf, size_t count)
@@ -176,24 +171,12 @@ int mcedata_sdsu_disconnect(mce_context_t context)
     return 0;
 }
 
-int mcedata_sdsu_ioctl(mce_context_t context, unsigned long int req, ...)
+int mcedata_sdsu_ioctl(mce_context_t context, unsigned long int req, int arg)
 {
-    int ret;
-    va_list ap;
-
-    va_start(ap, req);
-    ret = ioctl(context->data.fd, req, va_arg(ap, void*));
-    va_end(ap);
-
-    return ret;
+    return ioctl(context->data.fd, req, arg);
 }
 
-ssize_t mcedata_sdsu_read(mce_context_t context, void *buf, size_t count)
+int mcedata_sdsu_read(mce_context_t context, void *buf, size_t count)
 {
     return read(context->data.fd, buf, count);
-}
-
-ssize_t mcedata_sdsu_write(mce_context_t context, const void *buf, size_t count)
-{
-    return write(context->data.fd, buf, count);
 }

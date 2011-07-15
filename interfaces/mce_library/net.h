@@ -18,9 +18,9 @@ extern int mcecmd_net_write(mce_context_t, const void*, size_t);
 
 extern int mcedata_net_connect(mce_context_t);
 extern int mcedata_net_disconnect(mce_context_t);
-extern int mcedata_net_ioctl(mce_context_t, unsigned long int, ...);
-extern ssize_t mcedata_net_read(mce_context_t, void*, size_t);
-extern ssize_t mcedata_net_write(mce_context_t, const void*, size_t);
+extern int mcedata_net_ioctl(mce_context_t, unsigned long int, int);
+extern int mcedata_net_read(mce_context_t, void*, size_t);
+#define mcedata_net_write NULL
 
 extern int mcedsp_net_connect(mce_context_t);
 extern int mcedsp_net_disconnect(mce_context_t);
