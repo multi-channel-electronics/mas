@@ -257,21 +257,15 @@ int dev_ioctl(mce_context_t context, unsigned char ioctl_type,
     return *(int*)(message + 2);
 }
 
-static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
+static ssize_t raw_read(int fd, void *buf, size_t count, const char *dev_name)
 {
-    ssize_t n, done;
-    int32_t result;
-    /* read the a response from the server.  This consists of a 32-bit
-     * return value from the upstream read, followed by a reply packet
-     * (which is bogus, if the return value indicates an error, but must
-     * still be flushed from the network queue). We shove it into buf,
-     * since that's a convenient place to discard it. */
+    ssize_t n;
 
     /* wait for the socket to become ready */
     if (mcenet_poll(fd, POLLIN, dev_name))
         return -1;
 
-    n = read(fd, &result, 4);
+    n = read(fd, buf, count);
 
     if (n < 0)
         return -MCE_ERR_DEVICE;
@@ -282,19 +276,31 @@ static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
     }
 
 #if 1
-        int i;
-        fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
-        for (i = 0; i < (size_t)n; ++i)
-            fprintf(stderr, " %02hhx", ((const char*)&result)[i]);
-        fprintf(stderr, "\n");
+    int i;
+    fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
+    for (i = 0; i < n; ++i)
+        fprintf(stderr, " %02hhx", ((const char*)buf)[i]);
+    fprintf(stderr, "\n");
 #endif
 
-    for (done = 0; done < count; done += n) {
+    return n;
+}
+
+static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
+{
+    ssize_t n, done;
+    int32_t result;
+    /* read the a response from the server.  This consists of a 32-bit
+     * return value from the upstream read, followed by a reply packet
+     * (which is bogus, if the return value indicates an error, but must
+     * still be flushed from the network queue). We shove it into buf,
+     * since that's a convenient place to discard it. */
+
         /* wait for the socket to become ready */
         if (mcenet_poll(fd, POLLIN, dev_name))
             return -1;
 
-        n = read(fd, (char*)buf + done, count - done);
+        n = read(fd, &result, 4);
 
         if (n < 0)
             return -MCE_ERR_DEVICE;
@@ -304,14 +310,21 @@ static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
                     dev_name);
             return -MCE_ERR_DEVICE;
         }
-    }
 
 #if 1
+        int i;
         fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
-        for (i = 0; i < count; ++i)
-            fprintf(stderr, " %02hhx", ((const char*)buf)[i]);
+        for (i = 0; i < (size_t)n; ++i)
+            fprintf(stderr, " %02hhx", ((const char*)&result)[i]);
         fprintf(stderr, "\n");
 #endif
+
+    for (done = 0; done < count; done += n) {
+        n = raw_read(fd, (char*)buf + done, count - done, dev_name);
+
+        if (n < 0)
+            return n;
+    }
 
     return (int)result;
 }
@@ -497,7 +510,7 @@ int mcedata_net_ioctl(mce_context_t context, unsigned long int req, int arg)
     return dev_ioctl(context, MCENETD_DATIOCTL, req, arg);
 }
 
-int mcedata_net_read(mce_context_t context, void *buf, size_t count)
+ssize_t mcedata_net_read(mce_context_t context, void *buf, size_t count)
 {
     int l;
     unsigned char message[5];
@@ -522,5 +535,5 @@ int mcedata_net_read(mce_context_t context, void *buf, size_t count)
     }
 
     /* data's now queueing, so read it, when it comes */
-    return dev_read(context->net.dat_sock, buf, count, context->dev_name);
+    return raw_read(context->net.dat_sock, buf, count, context->dev_name);
 }
