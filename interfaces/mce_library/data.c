@@ -69,7 +69,18 @@ int mcedata_close(mce_context_t context)
 	return 0;
 }
 
+/* a generic read request */
+int mcedata_read(mce_context_t context, void *buf, size_t count)
+{
+    return C_data.read(context, buf, count);
+}
+
 /* ioctl on data device */
+int mcedata_ioctl(mce_context_t context, unsigned long int req, int arg)
+{
+    return C_data.ioctl(context, req, arg);
+}
+
 int mcedata_set_datasize(mce_context_t context, int datasize)
 {
     return C_data.ioctl(context, DATADEV_IOCT_SET_DATASIZE, datasize);

@@ -17,6 +17,7 @@
 #include <mcenetd.h>
 #include <mce_library.h>
 #include <mce/defaults.h>
+#include <mce/data_ioctl.h>
 
 #include "../../defaults/config.h"
 
@@ -25,6 +26,10 @@
 
 /* number of consecutive request errors we're willing to tolerate. */
 #define MAX_ERR 3
+
+/* the size of the data buffer; going over a pagesize (64k) can result in a
+ * performance hit */
+#define DATBLOB_SIZE 65000
 
 #define DEVID(p) ( ((confd[p].type & 3) == FDTYPE_DAT) ? "DAT" : \
         ((confd[p].type & 3) == FDTYPE_CMD) ? "CMD" : \
@@ -41,6 +46,8 @@ int itc_ser = 1;
 #define ITC_DSPIOCTL 5
 #define ITC_DSPSEND  6
 #define ITC_DSPREPL  7
+#define ITC_DATIOCTL 8
+#define ITC_DATAQ    9
 static struct itc_t {
     int dev;
     int ser;
@@ -110,6 +117,10 @@ struct con_struct {
     int32_t dsp_sent;
     int32_t dsp_replied;
 
+    unsigned char *dat_buf;
+    uint32_t dat_len; /* how much data we have */
+    uint32_t dat_req; /* how much data we need to send to the client */
+
     int flags;
     int nerr;
 } *con = NULL;
@@ -126,7 +137,7 @@ struct dev_t {
     unsigned char flags;
 
     unsigned char *dat_buf;
-    size_t dat_len;
+    size_t dat_len; /* how much data we have */
 } *dev;
 int ndev = 0;
 
@@ -185,7 +196,7 @@ static const char* colsub(void) {
 #define dreturnvoid()
 #endif
 
-static __thread char spit_buffer[2048];
+static __thread char spit_buffer[3010];
 static const char *SpitMessage(const void *m, ssize_t n)
 {
     ssize_t i;
@@ -193,8 +204,12 @@ static const char *SpitMessage(const void *m, ssize_t n)
     for (i = 0; i < n; ++i) {
         sprintf(ptr, "%02hhx ", ((unsigned char*)m)[i]);
         ptr += 3;
+        if (i == 999) {
+            sprintf(ptr, "... [%i]", n - 1000);
+            ptr += 3;
+            break;
+        }
     }
-    *ptr = '\0';
 
     return spit_buffer;
 }
@@ -257,6 +272,8 @@ static void DropConnection(int c) {
 /* delete an ITC */
 static void ITDiscard(struct itc_t *it)
 {
+    dtrace("%p", it);
+
     const int who = it->dev;
     struct itc_t **ptr, *tmp = NULL;
 
@@ -280,6 +297,8 @@ static void ITDiscard(struct itc_t *it)
         free(tmp);
     } else
         lprintf(LOG_CRIT, "Failed to find ITC %p\n", it);
+
+    dreturnvoid();
 }
 
 /* return a device interthread response */
@@ -445,8 +464,12 @@ static void NetInit(void)
 
 static void MCEInit(int i)
 {
-    dev[i].flags = dev[i].dat_len = 0;
-    dev[i].dat_buf = NULL;
+    dev[i].flags = dev[i].dat_len = dev[i].dat_len = 0;
+    if (dev[i].dat_buf == NULL) {
+        dev[i].dat_buf = malloc(DATBLOB_SIZE);
+        if (dev[i].dat_buf == NULL)
+            lprintf(LOG_CRIT, "Memory error.\n");
+    }
 
     /* get a context, if this fails, we disable the card completely */
     if ((dev[i].context = mcelib_create(i, options.mas_file, 0)) == NULL)
@@ -487,6 +510,7 @@ static void DevRes(int me, struct itc_t *req)
     dtrace("%i, %p [%i]", me, req, req->req);
 
     int32_t ret;
+    ssize_t dat_req;
     char buffer[5];
     mce_reply cmd_rep;
     dsp_message dsp_msg;
@@ -534,7 +558,7 @@ static void DevRes(int me, struct itc_t *req)
             /* ioctl time */
             ret = (int32_t)mcedsp_ioctl(dev[me].context,
                     *(uint32_t*)req->req_data, *(int32_t*)(req->req_data + 4));
-            /* send the result back to the command thread */
+            /* send the result back to the control thread */
             memcpy(buffer, &ret, 4);
             ITRes(me, req->ser, ITC_DSPIOCTL, buffer, 4);
             break;
@@ -555,6 +579,43 @@ static void DevRes(int me, struct itc_t *req)
                 /* good response, send it back to the master */
                 ITRes(me, req->ser, ITC_DSPREPL, &dsp_msg, sizeof(dsp_msg));
             break;
+        case ITC_DATIOCTL:
+            /* ioctl time */
+            ret = (int32_t)mcedata_ioctl(dev[me].context,
+                    *(uint32_t*)req->req_data, *(int32_t*)(req->req_data + 4));
+
+            /* send the result back to the control thread */
+            memcpy(buffer, &ret, 4);
+            ITRes(me, req->ser, ITC_DATIOCTL, buffer, 4);
+            break;
+        case ITC_DATAQ:
+            dat_req = *(uint32_t*)req->req_data;
+
+            if (dev[me].dat_len < DATBLOB_SIZE) {
+                /* try to read as much data as possible */
+                ssize_t n = (int32_t)mcedata_read(dev[me].context,
+                        dev[me].dat_buf + dev[me].dat_len,
+                        DATBLOB_SIZE - dev[me].dat_len);
+                if (n < 0) {
+                    char errbuf[2048];
+                    lprintf(LOG_ERR, "Read error on DAT, %s\n",
+                            strerror_r(errno, errbuf, 2048));
+                } else
+                    dev[me].dat_len += n;
+            }
+
+            /* now send back to the controller as much of the request as
+             * we can; if we're short, the controller will send us another
+             * request */
+            if (dat_req > dev[me].dat_len)
+                dat_req = dev[me].dat_len;
+            ITRes(me, req->ser, ITC_DATAQ, dev[me].dat_buf, dat_req);
+            
+            /* and then flush the data we sent from the buffer */
+            memmove(dev[me].dat_buf, dev[me].dat_buf + dat_req,
+                    dev[me].dat_len - dat_req);
+            dev[me].dat_len -= dat_req;
+            break;
         default:
             lprintf(LOG_CRIT, "Unknown ITC request: %i\n", req->req);
     }
@@ -569,6 +630,8 @@ static void *RunDev(void *arg)
     const int me = (int)arg;
 
     dtrace("%i", me);
+
+    memset(dev + me, 0, sizeof(struct dev_t));
 
     int need_unlock;
     struct itc_t *ptr;
@@ -625,6 +688,8 @@ static int HandleITRes(struct itc_t *itc, int c, int d)
             con[c].pending = NULL;
             break;
         case ITC_CMDIOCTL:
+        case ITC_DSPIOCTL:
+        case ITC_DATIOCTL:
             /* send the result */
             confd[ctlsock].rsp[0] = MCENETD_IOCTLRET;
             confd[ctlsock].rsp[1] = 6;
@@ -656,15 +721,6 @@ static int HandleITRes(struct itc_t *itc, int c, int d)
             pfd[con[c].sock[FDTYPE_CMD]].events = POLLOUT;
             con[c].pending = NULL;
             break;
-        case ITC_DSPIOCTL:
-            /* send the result */
-            confd[ctlsock].rsp[0] = MCENETD_IOCTLRET;
-            confd[ctlsock].rsp[1] = 6;
-            memcpy(confd[ctlsock].rsp + 2, itc->res_data, 4);
-            confd[ctlsock].rsplen = 6;
-            pfd[ctlsock].events = POLLOUT;
-            con[c].pending = NULL;
-            break;
         case ITC_DSPSEND:
             /* report the result of the send, and immediately ask for a reply 
              * to avoid getting confused */
@@ -687,6 +743,17 @@ static int HandleITRes(struct itc_t *itc, int c, int d)
             con[c].flags |= CON_DSPREP;
             pfd[con[c].sock[FDTYPE_DSP]].events = POLLOUT;
             con[c].pending = NULL;
+            break;
+        case ITC_DATAQ:
+            /* queue the data from the client ... */
+            con[c].dat_buf = itc->res_data;
+            con[c].dat_len = itc->res_dlen;
+            /* to make sure ITC GC doesn't delete our data */
+            itc->res_data = NULL;
+            con[c].pending = NULL;
+
+            /* indicate we're ready to ship data out */
+            pfd[con[c].sock[FDTYPE_DAT]].events = POLLOUT;
             break;
         default:
             lprintf(LOG_CRIT, "Unknown ITC response: %i\n", itc->res);
@@ -713,7 +780,7 @@ static void InitDevs(void)
     mutex = malloc(ndev * sizeof(pthread_mutex_t));
 
     if (dev == NULL || itc == NULL || tid == NULL)
-        lprintf(LOG_CRIT, "Memory allocation error.\n");
+        lprintf(LOG_CRIT, "Memory error.\n");
 
     memset(dev, 0, ndev * sizeof(struct dev_t));
     memset(itc, 0, ndev * sizeof(struct itc_t*));
@@ -972,6 +1039,40 @@ static void DspWrite(int p, int c)
     dreturnvoid();
 }
 
+/* The data writer is simpler, it just sends data */
+static void DatWrite(int p, int c)
+{
+    dtrace("%i, %i", p, c);
+
+    pfd[p].events = POLLIN;
+
+    ssize_t n = write(pfd[p].fd, con[c].dat_buf, con[c].dat_len);
+
+    lprintf(LOG_DEBUG, "DAT@CLx%02hhX: f:%x ==> %s\n", con[c].ser, con[c].flags,
+            SpitMessage(con[c].dat_buf, con[c].dat_len));
+
+    if (n < 0) {
+        char errbuf[2048];
+        lprintf(LOG_CRIT, "data write error: %s\n",
+                strerror_r(errno, errbuf, 2048));
+    } else if (n == con[c].dat_len) {
+        /* finished with this particular fragment.  This will trigger another
+         * data request from the dev thread, if there's more data to be read
+         */
+        con[c].dat_len = 0;
+        con[c].dat_req -= n;
+        free(con[c].dat_buf);
+        con[c].dat_buf = NULL;
+    } else {
+        /* flush sent data */
+        memmove(con[c].dat_buf, con[c].dat_buf + n, con[c].dat_len - n);
+        con[c].dat_req -= n;
+        con[c].dat_len -= n;
+    }
+
+    dreturnvoid();
+}
+
 /* process a request on the control channel */
 static void CtlRead(int p, int c)
 {
@@ -999,19 +1100,22 @@ static void CtlRead(int p, int c)
         Hello(p, c, message, n);
         confd[p].type = FDTYPE_CTL;
     } else if (message[0] == MCENETD_CMDIOCTL) {
-        /* Send the IOCTL to the dev thread */
-        char buffer[8];
-
         /* copy ioctl reqeust # and argument and send it to the dev thread */
-        memcpy(buffer, message + 1, 8);
-        con[c].pending = ITReq(con[c].dev_idx, ITC_CMDIOCTL, buffer, 8, 0);
+        con[c].pending = ITReq(con[c].dev_idx, ITC_CMDIOCTL, message + 1, 8, 0);
     } else if (message[0] == MCENETD_DSPIOCTL) {
-        /* Send the IOCTL to the dev thread */
-        char buffer[8];
-
         /* copy ioctl reqeust # and argument and send it to the dev thread */
-        memcpy(buffer, message + 1, 8);
-        con[c].pending = ITReq(con[c].dev_idx, ITC_DSPIOCTL, buffer, 8, 0);
+        con[c].pending = ITReq(con[c].dev_idx, ITC_DSPIOCTL, message + 1, 8, 0);
+    } else if (message[0] == MCENETD_DATIOCTL) {
+        /* copy ioctl reqeust # and argument and send it to the dev thread */
+        con[c].pending = ITReq(con[c].dev_idx, ITC_DATIOCTL, message + 1, 8, 0);
+    } else if (message[0] == MCENETD_DATAREQ) {
+        /* increment the pending data request */
+        con[c].dat_req += *(uint32_t*)(message + 1);
+
+        /* and acknowledge */
+        confd[p].rsp[0] = MCENETD_DATAACK;
+        confd[p].rsplen = 1;
+        pfd[p].events = POLLOUT;
     } else {
         lprintf(LOG_CRIT, "Unhandled communication (%x): CTL#%x\n", message[0],
                 con->flags);
@@ -1199,10 +1303,10 @@ int main(int argc, char **argv)
     /* initialise the network interface */
     NetInit();
 
-    /* poll loop */
+    /* poll loop for the control thread */
     for (;;) {
-        /* check for ITC responses */
         for (i = 0; i < ncon; ++i) {
+            /* check for ITC responses */
             if (con[i].pending != NULL) {
                 struct itc_t *pending = con[i].pending;
                 pthread_mutex_t *mu = mutex + pending->dev;
@@ -1213,6 +1317,14 @@ int main(int argc, char **argv)
                         ITDiscard(pending);
                 } else
                     pthread_mutex_unlock(mu);
+            }
+
+            /* trigger the dev thread to send us some data, if we need some */
+            if (con[i].pending == NULL && con[i].dat_req > 0 &&
+                    con[i].dat_buf == NULL)
+            {
+                con[i].pending = ITReq(con[i].dev_idx, ITC_DATAQ,
+                        &(con[i].dat_req), 4, 0);
             }
         }
 
@@ -1267,6 +1379,9 @@ int main(int argc, char **argv)
                             break;
                         case FDTYPE_DSP:
                             DspWrite(i, confd[i].con);
+                            break;
+                        case FDTYPE_DAT:
+                            DatWrite(i, confd[i].con);
                             break;
                         default:
                             lprintf(LOG_CRIT,
