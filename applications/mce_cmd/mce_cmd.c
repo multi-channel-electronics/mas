@@ -345,13 +345,13 @@ int  main(int argc, char **argv)
 		}
 
 		if (!err) {
-			int count = cmdtree_select( args, root_opts, errmsg);
+			int count = cmdtree_select( args, root_opts, errmsg, 1);
 
 			if (count < 0) {
 				err = -1;
 			} else if (count == 0) {
 				if (options.interactive || args->n > 0) {
-					cmdtree_list(errmsg, root_opts,
+					cmdtree_list(errmsg, root_opts, 1,
 						     "mce_cmd expects argument from [ ", " ", "]");
 					err = -1;
                 }
@@ -478,7 +478,7 @@ int translate_card_string(char *s, char *errmsg)
 		return -1;
 	}
 
-	if (cmdtree_select(&rc_token, rc_list, errmsg) <= 0)
+	if (cmdtree_select(&rc_token, rc_list, errmsg, 1) <= 0)
 		return -1;
 
 	return rc_token.value;

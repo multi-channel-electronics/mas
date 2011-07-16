@@ -48,11 +48,13 @@ typedef struct {
 	char *line;
 } cmdtree_token_t;
 
-int cmdtree_suggest( cmdtree_token_t *t, const cmdtree_opt_t *opt, char *errmsg );
-int cmdtree_select( cmdtree_token_t *t, const cmdtree_opt_t *opt, char *errmsg );
+int cmdtree_suggest( cmdtree_token_t *t, const cmdtree_opt_t *opt, char *errmsg,
+    int pretty);
+int cmdtree_select( cmdtree_token_t *t, const cmdtree_opt_t *opt, char *errmsg,
+    int pretty);
 int cmdtree_token_word( char *word, cmdtree_token_t *tset );
 int cmdtree_tokenize(cmdtree_token_t *tset, char *line, int max_tokens);
-int cmdtree_list(char *dest, const cmdtree_opt_t *opts,
+int cmdtree_list(char *dest, const cmdtree_opt_t *opts, int pretty,
 		 const char *intro, const char *delim, const char *outro);
 
 

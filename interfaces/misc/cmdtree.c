@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,14 +15,49 @@ int cmdtree_debug = 0;
 
 static int get_int(char *card, long *card_id);
 
+static const char **add_lm(const char **lm, int *lm_size, int *nlm,
+        size_t *lm_len, const char *item)
+{
+    const char **e = lm;
+    if (*nlm == *lm_size) {
+        *lm_size += 10;
+        e = realloc(lm, *lm_size * sizeof(char *));
+        if (e == NULL)
+            return lm;
+    }
 
-int cmdtree_list(char *dest, const cmdtree_opt_t *opts,
+    size_t l = strlen(item);
+    if (l > *lm_len)
+        *lm_len = l;
+
+    e[(*nlm)++] = item;
+    
+    return e;
+}
+
+static int lmcmp(const void *a, const void *b)
+{
+    return strcmp(*(const char**)a, *(const char**)b);
+}
+
+#define LINELEN 80
+int cmdtree_list(char *dest, const cmdtree_opt_t *opts, int pretty,
 		 const char *intro, const char *delim, const char *outro)
 {
+    fprintf(stderr, "pretty = %i\n", pretty);
+    const char **lm = NULL;
+    int lm_size = 0;
+    int nlm = 0;
+    size_t lm_len = 0;
+
 	int done = 0;
 	int i;
-	char *d = dest;
+	char *t, *d = dest;
 	d += sprintf(d, "%s", intro);
+    if (pretty)
+        d += sprintf(d, "\n\n  ");
+    t = d - 2;
+
 	for (i=0; !done; i++) {
 		int type = opts[i].flags & CMDTREE_TYPE_MASK;
 		
@@ -29,26 +67,44 @@ int cmdtree_list(char *dest, const cmdtree_opt_t *opts,
 			break;
 
 		case CMDTREE_SELECT:
-			d += sprintf(d, "%s%s", opts[i].name, delim);
+            lm = add_lm(lm, &lm_size, &nlm, &lm_len, opts[i].name);
 			break;
 			
 		case CMDTREE_INTEGER:
-			d += sprintf(d, "(int)%s", delim);
+            lm = add_lm(lm, &lm_size, &nlm, &lm_len, "(int)");
 			break;
 			
 		case CMDTREE_STRING:
-			d += sprintf(d, "(string)%s", delim);
+            lm = add_lm(lm, &lm_size, &nlm, &lm_len, "(string)");
 			break;
 				
 		default:
-			d += sprintf(d, "(other)%s", delim);
+            lm = add_lm(lm, &lm_size, &nlm, &lm_len, "(other)");
 		}
 	}
+
+    if (pretty)
+        qsort(lm, nlm, sizeof(char *), lmcmp);
+
+    for (i = 0; i < nlm; ++i)
+        if (pretty) {
+            if (d - t + lm_len > LINELEN) {
+                d += sprintf(d, "\n  ");
+                t = d - 2;
+            }
+            d += sprintf(d, "%*s%s", -lm_len, lm[i], delim);
+        } else
+            d += sprintf(d, "%s%s", lm[i], delim);
+
+    free(lm);
+
+    if (pretty)
+        d += sprintf(d, "\n\n");
 	d += sprintf(d, "%s", outro);
 	return d-dest;
 }
 
-int list_args(char *dest, cmdtree_opt_t *opts)
+static int list_args(char *dest, cmdtree_opt_t *opts)
 {
 	int index = 0;
 	while (opts != NULL) {
@@ -62,7 +118,7 @@ int list_args(char *dest, cmdtree_opt_t *opts)
 }
 
 
-int nocase_cmp(const char *s1, const char *s2)
+static int nocase_cmp(const char *s1, const char *s2)
 {
 	while (*s1 != 0) {
 		if (*s2==0) return 1;
@@ -73,11 +129,12 @@ int nocase_cmp(const char *s1, const char *s2)
 	return 0;
 }
 
-int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
+static int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg,
+        int suggest, int pretty)
 {
 	int i;
 	char arg_s[1024];
-	long  arg_i;
+	long arg_i;
 	const cmdtree_opt_t *my_opt = opt;
 	int arg = 0;
 
@@ -146,14 +203,14 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 	}
 	
 	if (t->n > 1) {
-		count = climb( t+1, my_opt->sub_opts, errmsg, suggest);
+		count = climb( t+1, my_opt->sub_opts, errmsg, suggest, pretty);
 	} 
 
 	if (count < 0) return count - 1;
 
 	if (count == 0 && t->n > 1) {
 		errmsg += sprintf(errmsg, "%s expects argument from ", arg_s);
-		errmsg += cmdtree_list(errmsg, my_opt->sub_opts, "[ ",
+		errmsg += cmdtree_list(errmsg, my_opt->sub_opts, pretty, "[ ",
 				       " ", "]");
 		return -2; // Biased so that missing arg position is well-represented.
 	}
@@ -162,18 +219,18 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 	if (count < my_opt->min_args) {
 		if (my_opt->sub_opts == NULL ||
 		    (my_opt->sub_opts->flags & CMDTREE_ARGS)==0 ) {
-			sprintf(errmsg, "%s expects at least %i arguments",
-				arg_s, my_opt->min_args);
+			sprintf(errmsg, "%s expects at least %i argument%s",
+				arg_s, my_opt->min_args, (my_opt->min_args == 1) ? "" : "s");
 		} else {
-			errmsg += sprintf(errmsg, "%s takes arguments [", arg_s);
+			errmsg += sprintf(errmsg, "%s takes arguments [ ", arg_s);
 			errmsg += list_args(errmsg, my_opt->sub_opts);
 			errmsg += sprintf(errmsg, " ]");
 		}
 		return -1;
 	}
 	if (my_opt->max_args >=0 && count > my_opt->max_args) {
-		sprintf(errmsg, "%s expects at most %i arguments",
-			arg_s, my_opt->max_args);
+		sprintf(errmsg, "%s expects at most %i argument%s",
+			arg_s, my_opt->max_args, (my_opt->max_args == 1) ? "" : "s");
 		return -1;
 	}
 
@@ -185,18 +242,20 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 
 /* These aren't different. Hm. */
 
-int cmdtree_suggest( token_t *t, const cmdtree_opt_t *opt, char *errmsg )
+int cmdtree_suggest( token_t *t, const cmdtree_opt_t *opt, char *errmsg,
+        int pretty)
 {
-	return climb(t, opt, errmsg, 1);
+	return climb(t, opt, errmsg, 1, pretty);
 }
 
-int cmdtree_select( token_t *t, const cmdtree_opt_t *opt, char *errmsg )
+int cmdtree_select( token_t *t, const cmdtree_opt_t *opt, char *errmsg,
+        int pretty)
 {
-	return climb(t, opt, errmsg, 0);
+	return climb(t, opt, errmsg, 0, pretty);
 }
 
 
-int get_int(char *card, long *card_id) {
+static int get_int(char *card, long *card_id) {
 	char *last;
 	errno = 0;
 	if (card==NULL) return -1;

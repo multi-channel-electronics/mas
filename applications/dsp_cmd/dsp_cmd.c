@@ -179,7 +179,7 @@ int main(int argc, char **argv)
 				err = -1;
 			} else if (count == 0) {
 				if (options.interactive || args->n > 0) {
-					cmdtree_list(errmsg, root_opts,
+					cmdtree_list(errmsg, root_opts, 1,
                             "dsp_cmd expects argument from [ ", " ", "]");
 					err = -1;
         }
