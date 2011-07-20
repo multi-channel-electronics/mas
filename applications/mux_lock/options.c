@@ -90,12 +90,14 @@ int process_options(option_t *options, int argc, char **argv)
   }
 
   if (options->experiment_file == NULL) {
-      options->experiment_file =
-          mcelib_default_experimentfile(options->dev_index);
+      mce_context_t mce = mcelib_create(options->dev_index,
+              options->config_file, 0);
+      options->experiment_file = mcelib_default_experimentfile(mce);
       if (options->experiment_file == NULL) {
           fprintf(stderr, "Unable to obtain path to default experiment.cfg!\n");
           return -1;
       }
+      mcelib_destroy(mce);
   }
 
   return optind;

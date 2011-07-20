@@ -1,5 +1,8 @@
 <?php
 
+/* install prefix */
+$prefix = "@prefix@";
+
 /* The network host and port for the logger daemon */
 $log_address = "localhost:7884";
 
@@ -12,8 +15,6 @@ $log_level   = 1;
 /* The number of fibre cards in the system */
 $n_card      = @MAX_FIBRE_CARD@;
 
-$mas_data    = "\${MAS_DATA}";
-
 /* The list of MCEs we're prepared to deal with, in order.
  * This is a comma separated list of elements, each of which is:
  * (1) a number, N, indicating the local MCE talking to logical
@@ -24,6 +25,13 @@ $mas_data    = "\${MAS_DATA}";
  *     remote host enumerates it's devices.)
  */
 $mce_device_list = "@MCE_LIST@";
+
+/* directories */
+$etc_dir = "@MAS_ETCDIR@";
+$mas_root = @MAS_ROOTDIR@;
+$mas_temp = "@MAS_TEMPDIR@";
+$dataroot_list = "@MAS_DATAROOTLIST@";
+$data_dir = "@MAS_DATADIR@";
 
 /* Is this a mcenetd server? */
 $mcenetd_server = @MCENETD_SERVER@;

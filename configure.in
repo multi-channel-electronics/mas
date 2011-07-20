@@ -129,31 +129,7 @@ AC_SUBST(MCE_CFG_LIST)
 AC_SUBST(FIRST_MCE_CIN)
 AC_SUBST(MAX_FIBRE_CARD)
 
-dnl Some defaults.
-
-AC_ARG_VAR([DEFAULT_EXPERIMENTFILE],
-                  [the default experiment configuration file ]
-                  [($][{MAS_DATA}/experiment.cfg is used if not specified)])
-if test -z "$DEFAULT_EXPERIMENTFILE"; then
-       DEFAULT_EXPERIMENTFILE="\${MAS_DATA}/experiment.cfg"
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_EXPERIMENTFILE], ["$DEFAULT_EXPERIMENTFILE"],
-                                  [ Define to the default experiment configuration file. ])
-
-AC_ARG_VAR([DEFAULT_HARDWAREFILE],
-                  [the default hardware configuration filename format specifier used by ]
-       [single card MAS.  (/etc/mce/mce.cfg is used if not specified, or ]
-       [/etc/mce/mce${MAS_MCE_DEV}.cfg, in the case of Multicard MAS)])
-if test -z "$DEFAULT_HARDWAREFILE"; then
-  if test $MAX_FIBRE_CARD -eq 1; then
-    DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
-  else
-    DEFAULT_HARDWAREFILE="/etc/mce/mce\${MAS_MCE_DEV}.cfg"
-  fi
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFILE], ["$DEFAULT_HARDWAREFILE"],
-                   [ Define to the default hardware configuration file. ])
-
+dnl Some paths
 
 AC_ARG_VAR([DEFAULT_MASFILE],
 		   [the default MAS configuration file (/etc/mce/mas.cfg is used if ]
@@ -364,27 +340,57 @@ if test "$PYTHON_DIR" != "no"; then
 fi
 
 
-dnl MCE script default defaults.  These are declared late for help munging
-dnl reasons
-m4_divert_once([HELP_VAR], [[
-The following variables may be set to influence the values computed for
-environmental variables returned by mas_config.  They may be overridden later
-by the user by creating environmental variables MASDEFAULT_<foo> for the default
-to the MAS_<foo> environemntal variable.  Unlike shell variables, these may
-contain references to other MAS_<foo> variables, which will be multiply expanded
-as needed.  Note: the value of MAS_ROOT is not specified here, but done instead
-by mce_script itself.
-]])
+dnl Paths
+AC_ARG_WITH([etc-dir], [AS_HELP_STRING([--with-etc-dir=DIR],
+           [the default location of the hardware config files.  (/etc/mce is ]
+           [used if not specified.)])], [MAS_ETCDIR="${withval}"],
+           [MAS_ETCDIR="no"])
+if test "x$MAS_ETCDIR" = "xno"; then
+  MAS_ETCDIR="/etc/mce/"
+fi
+AC_SUBST([MAS_ETCDIR])
 
-MAS_DEFAULT_VAR([BIN], [${MAS_PREFIX}/bin])
-MAS_DEFAULT_VAR([DATA], [${MAS_DATA_ROOT}/current_data])
-MAS_DEFAULT_VAR([DATA_ROOT], [/data/cryo], [/data/cryo${MAS_MCE_DEV}])
-MAS_DEFAULT_VAR([IDL], [${MAS_ROOT}/idl])
-MAS_DEFAULT_VAR([PYTHON], [${MAS_ROOT}/python])
-MAS_DEFAULT_VAR([SCRIPT], [${MAS_ROOT}/script])
-MAS_DEFAULT_VAR([TEMP], [/tmp])
-MAS_DEFAULT_VAR([TEMPLATE], [${MAS_ROOT}/template])
-MAS_DEFAULT_VAR([TEST_SUITE], [${MAS_ROOT}/test_suite])
+AC_ARG_WITH([mas-root], [AS_HELP_STRING([--with-mas-root=DIR],
+            [the default location of the MCE Script tree. ]
+            [(PREFIX/mce_script is used if not specified.)])],
+            [MAS_ROOTDIR="\"${withval}\""], [MAS_ROOTDIR="no"])
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_ROOTDIR" = "xno"; then
+  MAS_ROOTDIR="\$prefix . \"/mce_script\""
+fi
+AC_SUBST([MAS_ROOTDIR])
+
+AC_ARG_WITH([mas-temp], [AS_HELP_STRING([--with-mas-temp=DIR],
+            [the temporary directory for use by MAS and MCE Script. ]
+            [(/tmp is used if not specified.)])],
+            [MAS_TEMPDIR="${withval}"], [MAS_TEMPDIR="no"])
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_TEMPDIR" = "xno"; then
+  MAS_TEMPDIR="/tmp";
+fi
+AC_SUBST([MAS_TEMPDIR])
+
+AC_ARG_WITH([data-root], [AS_HELP_STRING([--with-data-root=DIR,DIR,DIR,...],
+            [the base data directories used by MAS and MCE Script.  There ]
+            [should be one per MCE device controlled (see --with-mces above). ]
+            [(A list consisting of /data/mce0,/data/mce1,... as necessary is ]
+            [used if not specified.)])],
+            [MAS_DATAROOTLIST="${withval}"], [MAS_DATAROOTLIST="no"])
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_DATAROOTLIST" = "xno"; then
+  MAS_DATAROOTLIST="/data/mce"$(seq -s,/data/mce 0 $(expr $MAX_FIBRE_CARD - 1))
+fi
+AC_SUBST([MAS_DATAROOTLIST])
+
+AC_ARG_WITH([mas-data], [AS_HELP_STRING([--with-mas-data=SUBDIR],
+            [the subdirectory under DATA_ROOT (see --with-data-root above) ]
+            [in which data is actually written. (current_data is used if not ]
+            [specified.)])], [MAS_DATADIR="${withval}"], [MAS_DATADIR="no"])
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_TEMPDIR" = "xno"; then
+  MAS_DATADIR="current_data";
+fi
+AC_SUBST([MAS_DATADIR])
 
 dnl Write.
 

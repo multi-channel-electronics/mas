@@ -3,12 +3,6 @@
 /* Define to 1 to use bigphysarea in the kernel driver. */
 #undef BIGPHYS
 
-/* Define to the default experiment configuration file. */
-#undef DEFAULT_EXPERIMENTFILE
-
-/* Define to the default hardware configuration file. */
-#undef DEFAULT_HARDWAREFILE
-
 /* Define to the default MAS configuration file. */
 #undef DEFAULT_MASFILE
 
@@ -53,33 +47,6 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
-
-/* Define to the default for MAS_BIN. */
-#undef MASDEFAULT_BIN
-
-/* Define to the default for MAS_DATA. */
-#undef MASDEFAULT_DATA
-
-/* Define to the default for MAS_DATA_ROOT. */
-#undef MASDEFAULT_DATA_ROOT
-
-/* Define to the default for MAS_IDL. */
-#undef MASDEFAULT_IDL
-
-/* Define to the default for MAS_PYTHON. */
-#undef MASDEFAULT_PYTHON
-
-/* Define to the default for MAS_SCRIPT. */
-#undef MASDEFAULT_SCRIPT
-
-/* Define to the default for MAS_TEMP. */
-#undef MASDEFAULT_TEMP
-
-/* Define to the default for MAS_TEMPLATE. */
-#undef MASDEFAULT_TEMPLATE
-
-/* Define to the default for MAS_TEST_SUITE. */
-#undef MASDEFAULT_TEST_SUITE
 
 /* The MAS group */
 #undef MAS_GROUP

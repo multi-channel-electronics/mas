@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -10,7 +13,7 @@
 options_t options = {
 	.mode = MODE_IDLE,
 	.format = FORMAT_BASH,
-	.fibre_card = -1
+    .fibre_card = MCE_DEFAULT_MCE
 };
 
 int main(int argc, char **argv)
@@ -22,6 +25,12 @@ int main(int argc, char **argv)
 		return 1;
 
 	// Load the target config file
+    if (options.source_file == NULL) {
+        mce_context_t mce = mcelib_create(options.fibre_card,
+                options.config_file, 0);
+        options.source_file = mcelib_default_experimentfile(mce);
+        mcelib_destroy(mce);
+    }
 	if (mas_load(options.source_file, &cfg) != 0)
 		return 1;
 	options.root = config_root_setting (&cfg);

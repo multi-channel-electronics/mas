@@ -11,50 +11,29 @@
 #include "context.h"
 
 #define SET_MASDEFAULT(x) \
-  setenv("MASDEFAULT_" #x, MASDEFAULT_ ## x, 0)
+    setenv("MAS_" #x, mcelib_lookup_dir(context, MAS_DIR_ ##x), 0)
 
 /* sanitise the environment */
-static void check_env(int dev)
+static void check_env(const mce_context_t context)
 {
-    static int done = -1;
-
-    if (dev < 0)
-        dev = -1;
-
-    /* no need to try this every time */
-    if ((dev != -1 && done == dev) || (dev == -1 && done == DEFAULT_MCE)) {
-        return;
-    }
-
-    /* MAS_MCE_DEV is overridden if dev is set */
     char buffer[10];
-    if (dev == -1) {
-        sprintf(buffer, "%i", DEFAULT_MCE);
-        setenv("MAS_MCE_DEV", buffer, 0);
-        dev = DEFAULT_MCE;
-    } else {
-        sprintf(buffer, "%i", dev);
-        setenv("MAS_MCE_DEV", buffer, 1);
-    }
+
+    if (context == NULL)
+        sprintf(buffer, "%i", mcelib_default_mce());
+    else
+        sprintf(buffer, "%i", context->dev_index);
+    setenv("MAS_MCE_DEV", buffer, 1);
+
     SET_MASDEFAULT(BIN);
-    SET_MASDEFAULT(DATA);
-    SET_MASDEFAULT(DATA_ROOT);
-    SET_MASDEFAULT(IDL);
-    SET_MASDEFAULT(PYTHON);
-    SET_MASDEFAULT(SCRIPT);
-    SET_MASDEFAULT(TEMP);
-    SET_MASDEFAULT(TEMPLATE);
-    SET_MASDEFAULT(TEST_SUITE);
-    done = dev;
+    if (context) {
+        SET_MASDEFAULT(ETC);
+    }
 }
 
 /* shell expand input; returns a newly malloc'd string on success or
  * NULL on error */
-char *mcelib_shell_expand(const char* input, int dev)
+char *mcelib_shell_expand(const mce_context_t context, const char* input)
 {
-#if 0
-    fprintf(stderr, "%s(\"%s\", %i)\n", __func__, input, dev);
-#endif
     char *ptr;
     static int depth = 0;
     wordexp_t expansion;
@@ -66,7 +45,7 @@ char *mcelib_shell_expand(const char* input, int dev)
     } else
         depth++;
 
-    check_env(dev);
+    check_env(context);
 
     /* shell expand the path, if necessary */
     if (wordexp(input, &expansion, 0) != 0) {
@@ -89,13 +68,9 @@ char *mcelib_shell_expand(const char* input, int dev)
     /* if there are still things to expand, run it through again */
     if (strcmp(ptr, input) && strchr(ptr, '$')) {
         char *old = ptr;
-        ptr = mcelib_shell_expand(ptr, dev);
+        ptr = mcelib_shell_expand(context, ptr);
         free(old);
     }
-#if 0
-    else
-        fprintf(stderr, "%s = \"%s\"\n", __func__, ptr);
-#endif
 
     depth--;
     return ptr;
@@ -107,19 +82,131 @@ int mcelib_default_mce(void)
     return (ptr == NULL) ? DEFAULT_MCE : atoi(ptr);
 }
 
-char *mcelib_default_experimentfile(int dev_index)
+char *mcelib_default_experimentfile(const mce_context_t context)
 {
-    return mcelib_shell_expand(DEFAULT_EXPERIMENTFILE, dev_index);
+    const char *datadir = mcelib_lookup_dir(context, MAS_DIR_DATA);
+    char *expcfg = malloc(strlen(datadir) + 16);
+
+    sprintf(expcfg, "%s/experiment.cfg", datadir);
+
+    return expcfg;
 }
 
-char *mcelib_default_hardwarefile(int dev_index)
+char *mcelib_default_hardwarefile(const mce_context_t context)
 {
-    return mcelib_shell_expand(DEFAULT_HARDWAREFILE, dev_index);
+    char *mcecfg;
+    const char *etcdir = mcelib_lookup_dir(context, MAS_DIR_ETC);;
+
+    if (etcdir == NULL)
+        return NULL;
+
+    mcecfg = malloc(strlen(etcdir) + 12);
+
+    if (mcecfg == NULL)
+        return NULL;
+
+    sprintf(mcecfg, "%s/mce%i.cfg", etcdir, context->dev_index);
+
+    return mcecfg;
 }
 
 char *mcelib_default_masfile(void)
 {
     if (getenv("MCE_MAS_CFG"))
-        return mcelib_shell_expand("${MCE_MAS_CFG}", -1);
-    return mcelib_shell_expand(DEFAULT_MASFILE, -1);
+        return mcelib_shell_expand(NULL, "${MCE_MAS_CFG}");
+    return mcelib_shell_expand(NULL, DEFAULT_MASFILE);
+}
+
+const char *mcelib_lookup_dir(const mce_context_t context, int index)
+{
+    const char *dir = NULL;
+    switch(index) {
+        case MAS_DIR_BIN:
+            dir = getenv("MAS_BIN");
+            if (dir == NULL)
+                dir = MAS_PREFIX "/bin";
+            break;
+        case MAS_DIR_DATA:
+            dir = getenv("MAS_DATA");
+            if (dir == NULL) {
+                const char *dataroot = mcelib_lookup_dir(context,
+                        MAS_DIR_DATA_ROOT);
+                free(context->data_dir);
+                dir = context->data_dir = malloc(strlen(dataroot) + 2 +
+                        strlen(context->data_subdir));
+                sprintf(context->data_dir, "%s/%s", dataroot,
+                        context->data_subdir);
+            }
+            break;
+        case MAS_DIR_DATA_ROOT:
+            dir = getenv("MAS_DATA_ROOT");
+            if (dir == NULL)
+                dir = context->data_root;
+            break;
+        case MAS_DIR_ETC:
+            dir = getenv("MAS_ETC");
+            if (dir == NULL)
+                dir = context->etc_dir;
+            break;
+        case MAS_DIR_IDL:
+            dir = getenv("MAS_IDL");
+            if (dir == NULL) {
+                const char *masroot = mcelib_lookup_dir(context, MAS_DIR_ROOT);
+                free(context->idl_dir);
+                dir = context->idl_dir = malloc(strlen(masroot) + 5);
+                sprintf(context->idl_dir, "%s/idl", masroot);
+            }
+            break;
+        case MAS_DIR_PYTHON:
+            dir = getenv("MAS_PYTHON");
+            if (dir == NULL) {
+                const char *masroot = mcelib_lookup_dir(context, MAS_DIR_ROOT);
+                free(context->python_dir);
+                dir = context->python_dir = malloc(strlen(masroot) + 8);
+                sprintf(context->python_dir, "%s/python", masroot);
+            }
+            break;
+        case MAS_DIR_ROOT:
+            dir = getenv("MAS_ROOT");
+            if (dir == NULL)
+                dir = context->mas_root;
+            break;
+        case MAS_DIR_SCRIPT:
+            dir = getenv("MAS_SCRIPT");
+            if (dir == NULL) {
+                const char *masroot = mcelib_lookup_dir(context, MAS_DIR_ROOT);
+                free(context->script_dir);
+                dir = context->script_dir = malloc(strlen(masroot) + 8);
+                sprintf(context->script_dir, "%s/script", masroot);
+            }
+            break;
+        case MAS_DIR_TEMP:
+            dir = getenv("MAS_TEMP");
+            if (dir == NULL)
+                dir = context->temp_dir;
+            break;
+        case MAS_DIR_TEMPLATE:
+            dir = getenv("MAS_TEMPLATE");
+            if (dir == NULL) {
+                const char *masroot = mcelib_lookup_dir(context, MAS_DIR_ROOT);
+                free(context->template_dir);
+                dir = context->template_dir = malloc(strlen(masroot) + 10);
+                sprintf(context->template_dir, "%s/template", masroot);
+            }
+            break;
+        case MAS_DIR_TEST_SUITE:
+            dir = getenv("MAS_TEST_SUITE");
+            if (dir == NULL) {
+                const char *masroot = mcelib_lookup_dir(context, MAS_DIR_ROOT);
+                free(context->test_dir);
+                dir = context->test_dir = malloc(strlen(masroot) + 12);
+                sprintf(context->test_dir, "%s/test_suite", masroot);
+            }
+            break;
+        default:
+            fprintf(stderr, "mcelib: can't find directory #%i in %s\n", index,
+                    __func__);
+    }
+
+    return dir;
 }

@@ -89,8 +89,7 @@ int mcecmd_open(mce_context_t context)
     }
 
     if (context->maslog == NULL) {
-        char *ptr = mcelib_shell_expand("mcelib[${MAS_MCE_DEV}]",
-                context->dev_index);
+        char *ptr = mcelib_shell_expand(context, "mcelib[${MAS_MCE_DEV}]");
         context->maslog = maslog_connect(context, ptr);
         free(ptr);
     }

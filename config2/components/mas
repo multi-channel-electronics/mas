@@ -1,7 +1,7 @@
 /* Configuration file for MAS */
 
 <?php
-include "mas_mce_list";
+include "mas_config";
 
 if ($mcenetd_server) {
   include "mcenetd_server";

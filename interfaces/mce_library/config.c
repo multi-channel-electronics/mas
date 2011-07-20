@@ -103,7 +103,7 @@ int mceconfig_open(mce_context_t context, const char *filename,
     }
 
     if (filename == NULL) {
-        char *ptr = mcelib_default_hardwarefile(context->dev_index);
+        char *ptr = mcelib_default_hardwarefile(context);
         if (ptr == NULL) {
             fprintf(stderr, "mceconfig: Unable to determine hardware config "
                     "file for MCE device #%i\n", context->dev_index);

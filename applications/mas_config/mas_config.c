@@ -15,21 +15,19 @@ typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_PREFIX,
     OPT_LIBS, OPT_CFLAGS, OPT_MASFILE, OPT_HARDWARE_FILE, OPT_EXPERIMENT_FILE,
     OPT_MCE_DEVNUM, OPT_BIGPHYS, OPT_FAKEMCE, OPT_MAX_FIBRE_CARD, OPT_USER,
     OPT_GROUP, OPT_MAS_DATA, OPT_MAS_DATA_ROOT, OPT_MAS_TEMPLATE, OPT_MAS_BIN,
-    OPT_MAS_TEMP, OPT_MAS_SCRIPT, OPT_MAS_IDL, OPT_MAS_PYTHON,
+    OPT_MAS_TEMP, OPT_MAS_SCRIPT, OPT_MAS_IDL, OPT_MAS_PYTHON, OPT_MAS_ROOT,
     OPT_MAS_TEST_SUITE, OPT_PATH_BASE, OPT_PATH, OPT_PYTHONPATH,
-    OPT_PYTHONPATH_BASE, OPT_MAX_MCE, OPT_MCE_DEVNAME } parm_t;
+    OPT_PYTHONPATH_BASE, OPT_NUM_MCE, OPT_MCE_DEVNAME, OPT_MAS_ETC } parm_t;
 
 #define OPT_DEFAULT(x) \
-        case OPT_MAS_ ## x: \
-    ptr = mcelib_shell_expand("${MASDEFAULT_" #x "}", devnum); \
-    puts(ptr); \
-    free(ptr); \
+    case OPT_MAS_ ## x: \
+    puts(mcelib_lookup_dir(mce, MAS_DIR_ ## x)); \
     break
 
-static char *strip_path(const char *var)
+static char *strip_path(const mce_context_t mce, const char *var)
 {
     char *path_in = getenv(var);
-    char *mas_root = getenv("MAS_ROOT");
+    const char *mas_root = mcelib_lookup_dir(mce, MAS_DIR_ROOT);
     size_t mas_root_len = 0;
     char *path_out;
     char *elem;
@@ -92,6 +90,9 @@ void __attribute__((noreturn)) Usage(int ret)
             "environment)\n"
             "  --data-root       the root data directory (MAS_DATA_ROOT in the "
             "environment)\n"
+            "  --etc-dir         the directory containing the hardware "
+            "description files.\n"
+            "                      (MAS_ETC in the environment.)\n"
             "  --experiment-file the full path of the experiment configuration "
             "file\n"
             "                      (experiment.cfg)\n"
@@ -104,12 +105,15 @@ void __attribute__((noreturn)) Usage(int ret)
             "environment)\n"
             "  --libs            ld(1) options needed to link to the MAS "
             "libraries\n"
+            "  --mas-root        the base directory for the MCE script tree "
+            "(MAS_ROOT\n"
+            "                      in the environment\n"
             "  --max-fibre-card  the maximum number of fibre cards supported "
             "by the\n"
             "                      kernel driver\n"
-            "  --max-mce         the maximum number of MCEs managed by MAS.\n"
             "  --mce-devname     the name of the current MCE device.\n"
             "  --mce-devnum      the number of the current MCE device.\n"
+            "  --num-mce         the number number of MCEs managed by MAS.\n"
             "  --path[=PATHBASE] a shell PATH variable for MAS.  If given, MAS "
             "specific\n"
             "                      directories will be appended to PATHBASE, "
@@ -120,10 +124,10 @@ void __attribute__((noreturn)) Usage(int ret)
             "  --path-base       the current PATH variable stripped of any "
             "directories which\n"
             "                      start with the MAS prefix (see --prefix) or "
-            "the MAS_ROOT\n"
-            "                      environment variable, if it is defined.  "
-            "The value is\n"
-            "                      suitable for providing to --path.\n"
+            "MAS root\n"
+            "                      (see --mas-root).  The value is suitable "
+            "for providing\n"
+            "                      to --path.\n"
             "  --prefix          the MAS prefix\n"
             "  --pythonpath[=PATHBASE]\n"
             "                    a PYTHONPATH variable for MAS.  If given, MAS "
@@ -136,11 +140,10 @@ void __attribute__((noreturn)) Usage(int ret)
             "  --pythonpath-base the current PYTHONPATH variable stripped of "
             "any directories\n"
             "                      which start with the MAS prefix (see "
-            "--prefix) or the\n"
-            "                      MAS_ROOT environment variable, if it is "
-            "defined.  The\n"
-            "                      value is suitable for providing to "
-            "--pythonpath.\n"
+            "--prefix) or MAS\n"
+            "                      root (see --mas-root).  The value is "
+            "suitable for\n"
+            "                      providing to --pythonpath.\n"
             "  --python-dir      the MCE script python directory (MAS_PYTHON "
             "in the\n"
             "                      environment)\n"
@@ -173,13 +176,14 @@ int main(int argc, char **argv)
         { "cflags", 0, NULL, OPT_CFLAGS },
         { "config-file", 0, NULL, OPT_MASFILE },
         { "hardware-file", 0, NULL, OPT_HARDWARE_FILE },
+        { "etc-dir", 0, NULL, OPT_MAS_ETC },
         { "experiment-file", 0, NULL, OPT_EXPERIMENT_FILE },
         { "mce-devname", 0, NULL, OPT_MCE_DEVNAME },
         { "mce-devnum", 0, NULL, OPT_MCE_DEVNUM },
         { "bigphys", 0, NULL, OPT_BIGPHYS },
         { "fakemce", 0, NULL, OPT_FAKEMCE },
         { "max-fibre-card", 0, NULL, OPT_MAX_FIBRE_CARD },
-        { "max-mce", 0, NULL, OPT_MAX_MCE },
+        { "num-mce", 0, NULL, OPT_NUM_MCE },
         { "user", 0, NULL, OPT_USER },
         { "group", 0, NULL, OPT_GROUP },
         { "data-dir", 0, NULL, OPT_MAS_DATA },
@@ -195,6 +199,7 @@ int main(int argc, char **argv)
         { "path-base", 0, NULL, OPT_PATH_BASE },
         { "pythonpath", 2, NULL, OPT_PYTHONPATH },
         { "pythonpath-base", 0, NULL, OPT_PYTHONPATH_BASE },
+        { "mas-root", 0, NULL, OPT_MAS_ROOT },
         { NULL, 0, NULL, 0 }
     };
     int option, devnum = -1;
@@ -293,12 +298,12 @@ int main(int argc, char **argv)
                 free(ptr);
                 break;
             case OPT_HARDWARE_FILE:
-                ptr = mcelib_default_hardwarefile(devnum);
+                ptr = mcelib_default_hardwarefile(mce);
                 puts(ptr);
                 free(ptr);
                 break;
             case OPT_EXPERIMENT_FILE:
-                ptr = mcelib_default_experimentfile(devnum);
+                ptr = mcelib_default_experimentfile(mce);
                 puts(ptr);
                 free(ptr);
                 break;
@@ -328,7 +333,7 @@ int main(int argc, char **argv)
             case OPT_MAX_FIBRE_CARD:
                 printf("%i\n", MAX_FIBRE_CARD);
                 break;
-            case OPT_MAX_MCE:
+            case OPT_NUM_MCE:
                 printf("%i\n", mcelib_ndev(mce));
                 break;
             case OPT_USER:
@@ -338,7 +343,7 @@ int main(int argc, char **argv)
                 puts(MAS_GROUP);
                 break;
             case OPT_PATH_BASE:
-                ptr = strip_path("PATH");
+                ptr = strip_path(mce, "PATH");
                 puts(ptr);
                 free(ptr);
                 break;
@@ -347,13 +352,13 @@ int main(int argc, char **argv)
                     setenv("PATH", parg[i], 1);
                 }
 
-                ptr = mcelib_shell_expand("${PATH}:${MAS_BIN}:${MAS_SCRIPT}:"
-                        "${MAS_TEST_SUITE}", -1);
+                ptr = mcelib_shell_expand(mce,
+                        "${PATH}:${MAS_BIN}:${MAS_SCRIPT}:${MAS_TEST_SUITE}");
                 puts(ptr);
                 free(ptr);
                 break;
             case OPT_PYTHONPATH_BASE:
-                ptr = strip_path("PYTHONPATH");
+                ptr = strip_path(mce, "PYTHONPATH");
                 puts(ptr);
                 free(ptr);
                 break;
@@ -361,27 +366,19 @@ int main(int argc, char **argv)
                 if (parg[i])
                     setenv("PYTHONPATH", parg[i], 1);
 
-                ptr = mcelib_shell_expand("${PYTHONPATH}:${MAS_PYTHON}:"
-                        MAS_PREFIX "/python", -1);
-                puts(ptr);
-                free(ptr);
-                break;
-            case OPT_MAS_DATA:
-                /* set data root, if necessary */
-                ptr = mcelib_shell_expand("${MASDEFAULT_DATA_ROOT}",
-                        devnum);
-                setenv("MAS_DATA_ROOT", ptr, 0);
-                free(ptr);
-
-                ptr = mcelib_shell_expand("${MASDEFAULT_DATA}", devnum);
+                ptr = mcelib_shell_expand(mce, "${PYTHONPATH}:${MAS_PYTHON}:"
+                        MAS_PREFIX "/python");
                 puts(ptr);
                 free(ptr);
                 break;
 
                 OPT_DEFAULT(BIN);
+                OPT_DEFAULT(DATA);
                 OPT_DEFAULT(DATA_ROOT);
+                OPT_DEFAULT(ETC);
                 OPT_DEFAULT(IDL);
                 OPT_DEFAULT(PYTHON);
+                OPT_DEFAULT(ROOT);
                 OPT_DEFAULT(SCRIPT);
                 OPT_DEFAULT(TEMP);
                 OPT_DEFAULT(TEMPLATE);

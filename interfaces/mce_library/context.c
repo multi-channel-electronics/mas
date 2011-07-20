@@ -3,6 +3,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 
 #include <mce_library.h>
 #include <mce/defaults.h>
@@ -57,7 +58,7 @@ static int parse_url(mce_context_t context)
     context->dev_name = NULL;
     context->dev_route = none;
 
-    /* check for authority (ie dev_namename) section */
+    /* check for authority (ie host) section */
     if (*ptr == '/') {
         ptr++;
         /* this is more space than we need, but ... whatever */
@@ -73,7 +74,7 @@ static int parse_url(mce_context_t context)
             return 1;
         }
 
-        /* convert to a number, ensuring there's no trailing */
+        /* convert to a number, ensuring there's no trailing characters */
         context->dev_num = (int)strtol(ptr, &nptr, 10);
 
         /* trailing characters */
@@ -91,7 +92,7 @@ static int parse_url(mce_context_t context)
             return 1;
         }
 
-        /* convert to a number, ensuring there's no trailing */
+        /* convert to a number, ensuring there's no trailing characters */
         context->dev_num = (int)strtol(ptr, &nptr, 10);
 
         /* trailing characters */
@@ -112,7 +113,7 @@ static int parse_url(mce_context_t context)
         /* this is more space than we need, but ... whatever */
         nptr = context->dev_name = strdup(context->url);
 
-        /* copy dev_namename, it ends at the next '/' */
+        /* copy interface name, it ends at the next '/' or '?' */
         while (*ptr && *ptr != '?' && *ptr != '/')
             *(nptr++) = *(ptr++);
         *nptr = '\0';
@@ -153,12 +154,28 @@ static int parse_url(mce_context_t context)
     return 0;
 }
 
+static char *get_default_dir(config_setting_t *masconfig, const char *name,
+        const char *def)
+{
+    config_setting_t *config_item;
+
+    if ((config_item = config_setting_get_member(masconfig, name)) == NULL 
+            || (config_setting_type(config_item) != CONFIG_TYPE_STRING))
+    {
+        if (def == NULL)
+            return NULL;
+        return strdup(def);
+    }
+    return strdup(config_setting_get_string(config_item));
+}
+
 mce_context_t mcelib_create(int dev_num, const char *mas_config,
         unsigned char udepth)
 {
+    char *mas_cfg;
     char *envdev;
     config_setting_t *masconfig;
-    config_setting_t *mcelist = NULL;
+    config_setting_t *config_item = NULL;
     mce_context_t c = (mce_context_t)malloc(sizeof(struct mce_context));
     c->mas_cfg = (struct config_t *)malloc(sizeof(struct config_t));
     config_init(c->mas_cfg);
@@ -199,30 +216,24 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
         c->dev_index = dev_num;
 
     /* load mas.cfg */
-    if (mas_config != NULL) {
-        if (!config_read_file(c->mas_cfg, mas_config)) {
-            fprintf(stderr, "mcelib: Could not read config file '%s':\n"
-                    "   %s on line %i\n", mas_config,
-                    config_error_text(c->mas_cfg),
-                    config_error_line(c->mas_cfg));
-            mcelib_destroy(c);
-            return NULL;
-        }
-    } else {
-        char *ptr = mcelib_default_masfile();
-        if (ptr == NULL) {
+    if (mas_config != NULL) 
+        mas_cfg = strdup(mas_config);
+    else {
+        mas_cfg = mcelib_default_masfile();
+        if (mas_cfg == NULL) {
             fprintf(stderr,
                     "mcelib: Unable to obtain path to default configfile!\n");
             mcelib_destroy(c);
             return NULL;
-        } else if (!config_read_file(c->mas_cfg, ptr)) {
-            fprintf(stderr,
-                    "mcelib: Could not read default configfile '%s'\n", ptr);
-            mcelib_destroy(c);
-            free(ptr);
-            return NULL;
         }
-        free(ptr);
+    }
+
+    if (!config_read_file(c->mas_cfg, mas_cfg)) {
+        fprintf(stderr, "mcelib: Could not read config file '%s':\n"
+                "   %s on line %i\n", mas_cfg, config_error_text(c->mas_cfg),
+                config_error_line(c->mas_cfg));
+        mcelib_destroy(c);
+        return NULL;
     }
 
     /* load the device list */
@@ -231,29 +242,29 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
         fprintf(stderr, "mcelib: Missing required section `mas' in MAS "
                 "configuration.\n");
     else
-        mcelist = config_setting_get_member(masconfig, "mce_devices");
+        config_item = config_setting_get_member(masconfig, "mce_devices");
 
-    if (mcelist) {
-        if (config_setting_type(mcelist) != CONFIG_TYPE_ARRAY ||
-                config_setting_type(config_setting_get_elem(mcelist, 0))
+    if (config_item) {
+        if (config_setting_type(config_item) != CONFIG_TYPE_ARRAY ||
+                config_setting_type(config_setting_get_elem(config_item, 0))
                 != CONFIG_TYPE_STRING) {
             fprintf(stderr, "mcelib: Ignoring malformed MCE device list.\n");
-            mcelist = NULL;
+            config_item = NULL;
         } else {
-            c->ndev = config_setting_length(mcelist);
+            c->ndev = config_setting_length(config_item);
             if (c->dev_index != MCE_NULL_MCE) {
                 if (c->dev_index >= c->ndev) {
                     fprintf(stderr, "mcelib: Device number out of range.\n");
                     mcelib_destroy(c);
                     return NULL;
                 }
-                c->url = strdup(config_setting_get_string_elem(mcelist,
+                c->url = strdup(config_setting_get_string_elem(config_item,
                             c->dev_index));
             }
         }
     }
 
-    if (mcelist == NULL) {
+    if (config_item == NULL) {
         fprintf(stderr, "mcelib: No MCE device list.  Assuming a naive "
                 "default.\n");
         c->ndev = MAX_FIBRE_CARD;
@@ -270,6 +281,46 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
         }
     }
 
+    /* load default paths */
+    c->etc_dir = get_default_dir(masconfig, "etcdir", NULL);
+    if (c->etc_dir == NULL) {
+        /* if etcdir is not specified, MAS assumes the hardware config files
+         * are in the same directory as the mas.cfg that we've just read. */
+
+        /* (dirname may modify it's input) */
+        char *temp = strdup(mas_cfg);
+        c->etc_dir = strdup(dirname(temp));
+
+        free(temp);
+
+        /* absolutify, if necessary */
+        if (c->etc_dir[0] != '/') {
+            char *realpath = c->etc_dir;
+            char *cwd = getcwd(NULL, 0);
+            c->etc_dir = realloc(cwd, strlen(cwd) + strlen(realpath) + 2);
+            strcat(strcat(c->etc_dir, "/"), realpath);
+            free(realpath);
+        }
+    }
+    free(mas_cfg);
+
+    if ((config_item = config_setting_get_member(masconfig, "dataroot")) == NULL
+            || (config_setting_type(config_item) != CONFIG_TYPE_ARRAY)
+            || config_setting_type(config_setting_get_elem(config_item, 0))
+                != CONFIG_TYPE_STRING)
+    {
+        c->data_root = malloc(12);
+        sprintf(c->data_root, "/data/mce%i", c->dev_index);
+    } else
+        c->data_root = strdup(config_setting_get_string_elem(config_item,
+                    c->dev_index));
+
+    c->temp_dir = get_default_dir(masconfig, "tmpdir", "/tmp");
+    c->data_subdir = get_default_dir(masconfig, "datadir", "current_data");
+    c->mas_root = get_default_dir(masconfig, "masroot",
+            MAS_PREFIX "/mce_script");
+
+    /* resolve the device */
     if (c->dev_index == MCE_NULL_MCE) {
         c->url = c->dev_name = NULL;
         c->dev_route = c->dev_endpoint = none;
@@ -280,10 +331,12 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
         mcelib_destroy(c);
         return NULL;
     }
+
     if (find_endpoint(c)) {
         mcelib_destroy(c);
         return NULL;
     }
+
     return c;
 }
 
@@ -320,6 +373,18 @@ void mcelib_destroy(mce_context_t context)
     free(context->mas_cfg);
     free(context->url);
     free(context->dev_name);
+
+    free(context->etc_dir);
+    free(context->data_dir);
+    free(context->data_subdir);
+    free(context->data_root);
+    free(context->mas_root);
+    free(context->idl_dir);
+    free(context->python_dir);
+    free(context->script_dir);
+    free(context->template_dir);
+    free(context->temp_dir);
+    free(context->test_dir);
 
     free(context);
 }

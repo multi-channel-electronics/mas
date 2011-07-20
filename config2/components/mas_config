@@ -1,0 +1,127 @@
+/* Global MAS configuration */
+
+mas:
+{
+  /* The list of MCE devices, these are either:
+   *
+   * - mce:/sdsu/N
+   *
+   *   indicating the locally attached MCE communicating via logical
+   *   SDSU fibre card #N, e.g.:
+   *
+   *        "mce:/sdsu/0"
+   *
+   * - mce://eth/IFACE?MAC
+   *
+   *   indicating the MCE ethernet rack with MAC address MAC attached to
+   *   local ethernet interface IFACE, e.g.:
+   *
+   *        "mce:/eth/eth0?00:3E:32:10:54:26"
+   *
+   * - mce://HOST/N
+   *
+   *   indicating the remote MCE device #N on the mcenetd daemon running on
+   *   HOST.  (NB: This is not necessarily the MCE attached to card #N on
+   *   HOST, but the N'th item in *this* list in the mas.cfg file on HOST.
+   *
+   *        "mce://mcc0.phas.ubc.ca/0"
+   *
+   * ALSO NOTE: "mce:/sdsu/0" is *not* the same as "mce://localhost/0".  The
+   * first of these communicates directly to the MCE on fibre card #0, the
+   * second communicates to MCE device #0 managed by the mcenetd running on this
+   * computer, that is, the first MCE device defined in whichever mas.cfg
+   * file that was read by the mcenetd daemon, which is probably not the same
+   * thing.
+   *
+   */
+
+  mce_devices = [
+<?php
+  $i = 0;
+  $mces = explode(",", $mce_device_list);
+  foreach ($mces as $mce) {
+    if ($i != 0) {
+        echo ",";
+    }
+    echo "\n            /* MCE device #$i */ \"mce:/";
+    if (preg_match("/\//", $mce)) {
+      echo "/", $mce;
+    } else if (preg_match("/\?/", $mce)) {
+      echo "eth/", $mce;
+    } else {
+      echo "sdsu/", $mce;
+    }
+    echo "\"";
+    $i++;
+  }
+?>
+
+
+  ];
+  
+  /* Path defaults:
+   * 
+   * etcdir: the directory containing the hardware config files (mce*.cfg).
+   *         If this is not specified, MAS will search for hardware config
+   *         files in the directory containing *this* mas.cfg file.  May be
+   *         overridden at runtime via the MAS_ETC environmental variable.
+   *
+   */
+  etcdir = "<?php echo $etc_dir?>";
+
+  /* masroot: the location of the MCE Scripts tree.  May be overridden at
+   *          runtime via the MAS_ROOT environmental variable.
+   *
+   *     Additionally, various subdirectories under this directory may be
+   *     overridden separately via environmental variables:
+   *
+   *         ${MAS_ROOT}/idl        -> ${MAS_IDL}
+   *         ${MAS_ROOT}/python     -> ${MAS_PYTHON}
+   *         ${MAS_ROOT}/script     -> ${MAS_SCRIPT}
+   *         ${MAS_ROOT}/template   -> ${MAS_TEMPLATE}
+   *         ${MAS_ROOT}/test_suite -> ${MAS_TEST_SUITE}
+   *
+   */
+  masroot = "<?php echo $mas_root?>";
+
+  /* tmpdir: the temporary directory to be used by MAS and MCE Script.  If
+   *         not specified, /tmp is used.  May be overridden at runtime via the
+   *         MAS_TEMP environmental variable.
+   *
+   */
+  tmpdir = "<?php echo $mas_temp?>";
+
+  /* dataroot: the base directory for data acquired by MAS and MCE Script.  This
+   *           should be an array of strings, one per MCE device listed above.
+   *           If not specified, /data/mce# is used, with # replaced by the
+   *           device number.  This may be overridden at runtime via the
+   *           MAS_DATA_ROOT environmental variable; in this case it is often
+   *           necessary to set the MAS_DATA environmental variable as well: see
+   *           datadir, below.
+   *
+   */
+  dataroot = [
+<?php
+  $i = 0;
+  $dirs = explode(",", $dataroot_list);
+  foreach ($dirs as $dir) {
+    if ($i != 0) {
+        echo ",";
+    }
+    echo "\n            /* MCE device #$i */ \"", $dir, "\"";
+    $i++;
+  }
+?>
+
+
+  ];
+
+  /* datadir: the subdirectory under dataroot above into which data is actually
+   *          written.  If not specified, current_data is used.  The full data
+   *          directory (including dataroot) may be overridden at runtime via
+   *          the MAS_DATA environmental variable.
+   *
+   */
+  datadir = "<?php echo $mas_data?>";
+};
+

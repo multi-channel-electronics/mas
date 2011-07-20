@@ -112,6 +112,18 @@ struct mce_context {
     int               dev_index;      /* MCE device index for this context */
     char             *url;            /* MCE device URL */
 
+    char             *data_root;      /* the base data directory */
+    char             *data_dir;       /* DATA_ROOT/current_data, or whatever */
+    char             *data_subdir;    /* "current_data", or whatever */
+    char             *etc_dir;        /* location of the mce.cfg files */
+    char             *mas_root;       /* ${MAS_ROOT} */
+    char             *idl_dir;        /* ${MAS_IDL} */
+    char             *python_dir;     /* ${MAS_PYTHON} */
+    char             *script_dir;     /* ${MAS_SCRIPT} */
+    char             *template_dir;   /* ${MAS_TEMPLATE} */
+    char             *temp_dir;       /* ${MAS_TEMP} */
+    char             *test_dir;       /* ${MAS_TEST_SUITE} */
+
     int               ndev;           /* The number of MCE devices in the MAS
                                          configuration -- not used by mcelib
                                          itself, but stored for informational
