@@ -397,7 +397,6 @@ dnl Write.
 AC_CONFIG_HEADERS([defaults/config.h])
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([applications/Makefile])
-AC_CONFIG_FILES([applications/mas_config/Makefile])
 AC_CONFIG_FILES([config2/Makefile])
 AC_CONFIG_FILES([config2/mas.cin])
 AC_CONFIG_FILES([driver/Makefile])

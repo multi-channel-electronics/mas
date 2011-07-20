@@ -3,13 +3,9 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-prefix = @prefix@
-MAS_PREFIX = @MAS_PREFIX@
-
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-DEFS += -DVERSION_STRING="$(REPO_VER)" -DMAS_PREFIX="\"${MAS_PREFIX}\"" \
-				-DMCE_STATIC_LIBS="\"$(LIBS)\""
+DEFS += -DVERSION_STRING="$(REPO_VER)" -DMCE_STATIC_LIBS="\"$(LIBS)\""
 
 LIBRARY=$(MCE_LIBS)
 
@@ -38,7 +34,3 @@ INSTALL_TARGET=mas_config
 include $(MAKERULES)Makefile.install_rule
 
 install: install__mas_config
-
-.PRECIOUS: Makefile
-Makefile: ../../config.status Makefile.in
-	cd ../.. && $(MAKE) applications/mas_config/Makefile
