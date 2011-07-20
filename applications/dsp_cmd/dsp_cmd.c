@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 		}
 
 		if (!err) {
-			int count = cmdtree_select( args, root_opts, errmsg);
+			int count = cmdtree_select( args, root_opts, errmsg, 1);
 
 			if (count < 0) {
 				err = -1;
