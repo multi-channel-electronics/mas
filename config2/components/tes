@@ -19,6 +19,9 @@
 <? } elseif ($tes_para == "bc3_f_24_31") { ?>
                     count = 8;
                     maps = ( { start=0; count=8; card="bc3"; param="flux_fb"; offset=24; } );
+<? } elseif ($tes_para == "bc2_fu_00_15") { ?>
+                    count = 16;
+                    maps = ( { start=0; count=16; card="bc2"; param="flux_fb_upper"; offset=0; } );
 <? } elseif ($tes_para == "none") { ?>
 	            count = 0;
 		    maps = ( { start=0; count=0; card=""; params=""; offset=0; } );
