@@ -39,7 +39,7 @@ static int load_data_params(mce_context_t *context, mce_acq_t *acq,
 
 static int load_ret_dat(mce_acq_t *acq, int cards);
 
-static int cards_to_rcsflags(int c);
+/* static int cards_to_rcsflags(int c); */
 
 static int rcsflags_to_cards(int c);
 
@@ -553,6 +553,7 @@ int card_count(int cards)
 	return n;
 }
 
+/*
 static int cards_to_rcsflags(int c)
 {
 	//Sure, there are cuter ways.
@@ -563,6 +564,7 @@ static int cards_to_rcsflags(int c)
 	if (c & MCEDATA_RC4) out |= MCEDATA_RCSFLAG_RC4;
 	return out;
 }
+*/
 
 static int rcsflags_to_cards(int c)
 {

@@ -143,8 +143,8 @@ int main(int argc, char **argv)
 			done = 1;
 		} else {
 
-			getline(&line, &n, fin);
-			if (n==0 || feof(fin)) break;
+			int ret = getline(&line, &n, fin);
+			if (ret == -1 || n==0 || feof(fin)) break;
 
 			n = strlen(line);
 			if (line[n-1]=='\n') line[--n]=0;

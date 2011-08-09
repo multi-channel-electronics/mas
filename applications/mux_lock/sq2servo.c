@@ -123,7 +123,6 @@ int main (int argc, char **argv)
    FILE *fd;                /* pointer to output file*/
    char outfile[MAXLINE];   /* output data file */
    char init_line[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
-   char tempbuf[MAXLINE];
   
    char *endptr;
    i32 ssafb[MAXCOLS];     /* series array feedback voltages */
