@@ -134,8 +134,7 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 
 
-int data_ioctl(struct inode *inode, struct file *filp,
-	       unsigned int iocmd, unsigned long arg)
+long data_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 	int card = fpdata->minor;
@@ -244,7 +243,7 @@ int data_release(struct inode *inode, struct file *filp)
 struct file_operations data_fops = 
 {
 	.owner=   THIS_MODULE,
- 	.ioctl=   data_ioctl,
+ 	.unlocked_ioctl= data_ioctl,
 	.mmap=    data_mmap,
 	.open=    data_open, 
 	.read=    data_read,
@@ -285,7 +284,7 @@ int data_ops_probe(int card)
 	frame_buffer_t *dframes = data_frames + card;
         PRINT_INFO(card, "entry\n");
 
-	init_MUTEX(&dframes->sem); 
+	sema_init(&dframes->sem, 1);
 
         PRINT_INFO(card, "ok\n");
 	return 0;

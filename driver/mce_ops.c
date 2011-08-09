@@ -5,6 +5,7 @@
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
 #include <asm/uaccess.h>
 
 #include "kversion.h"
@@ -22,7 +23,7 @@ struct file_operations mce_fops =
 	.read=    mce_read,
  	.release= mce_release,
 	.write=   mce_write,
- 	.ioctl=   mce_ioctl,
+ 	.unlocked_ioctl= mce_ioctl,
 };
 
 typedef enum {
@@ -326,8 +327,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 }
 
 
-int mce_ioctl(struct inode *inode, struct file *filp,
-	      unsigned int iocmd, unsigned long arg)
+long mce_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 	int card = fpdata->minor;
@@ -438,7 +438,7 @@ int mce_ops_probe(int card)
         PRINT_INFO(card, "entry\n");
 
 	init_waitqueue_head(&mops->queue);
-	init_MUTEX(&mops->sem);
+	sema_init(&mops->sem, 1);
 
 	mops->state = OPS_IDLE;
  
