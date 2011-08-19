@@ -42,6 +42,7 @@ if ($hw_bac)
 <?
 include "squids";
 include "tes";
+include "heater";
 ?>
 
         {

@@ -1,0 +1,20 @@
+        {
+            name = "heater_mapping";
+            parameters = (
+                {
+                    name = "bias";
+		    count = <?=$heater_count?>;
+                    maps = (   
+<? $s = "";
+   $indent = "                             ";
+   foreach ($heater_mapping as $map) {
+     $s .= $indent . "{ start=$map[0]; count=$map[1]; card=\"$map[2]\"; " .
+           "param=\"$map[3]\"; offset=$map[4]; },\n";
+   }
+   $s = substr($s, 0, -2);
+   echo $s;
+?>			
+                           );
+                }
+            );
+        },
