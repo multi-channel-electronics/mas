@@ -38,6 +38,15 @@ $hw_rev = array(
 $tes_para = "small16";
 
 
+/* The "heater bias" mapping described below will not be available
+ * unless "heater" is added to the $virt_list array below. */
+
+$heater_count = 0;
+$heater_mapping = array(
+		/* args are mapping_start, mapping_count, card, param, param_offset */
+/*		array(0, 4, "bc1", "flux_fb", 16),
+		array(4, 4, "bc2", "flux_fb", 16) */);
+
 
 
 /*
@@ -58,8 +67,9 @@ $fw_rev = array(
  *   VIRTUAL FUNCTIONS
  */
 
-/* List of virtual cards to expose (you probably don't want to change
- * this).  */
+/* List of virtual cards to expose.  Probably doesn't need to be altered
+ * except to add "heater".
+ */
 
 $virt_list = array("rcs", "rca", "sys", "sa", "sq2", "sq1", "tes");
 
