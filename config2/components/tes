@@ -12,7 +12,13 @@
 <? } elseif ($tes_para == "small16") { ?>
                     count = 16;
                     maps = ( { start=0; count=16; card="bc3"; param="flux_fb"; offset=0; } );
-
+<? } elseif ($tes_para == "revD_32") { ?>
+                    count = 32;
+                    maps = ( { start=0;  count=10; card="bc1"; param="bias"; offset=0;  },
+                             { start=10; count=10; card="bc2"; param="bias"; offset=0;  },
+                             { start=20; count=10; card="bc3"; param="bias"; offset=0;  },
+                             { start=30; count=1;  card="bc1"; param="bias"; offset=10; },
+                             { start=31; count=1;  card="bc2"; param="bias"; offset=11; } );
 <? } elseif ($tes_para == "bc1_f_24_31") { ?>
                     count = 8;
                     maps = ( { start=0; count=8; card="bc1"; param="flux_fb"; offset=24; } );
