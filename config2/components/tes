@@ -31,6 +31,19 @@
 <? } elseif ($tes_para == "none") { ?>
 	            count = 0;
 		    maps = ( { start=0; count=0; card=""; params=""; offset=0; } );
+<? } elseif ($tes_para == "map") { ?>
+		    count = <?=$tes_bias_count?>;
+                    maps = (   
+<? $s = "";
+   $indent = "                             ";
+   foreach ($tes_bias_mapping as $map) {
+     $s .= $indent . "{ start=$map[0]; count=$map[1]; card=\"$map[2]\"; " .
+           "param=\"$map[3]\"; offset=$map[4]; },\n";
+   }
+   $s = substr($s, 0, -2);
+   echo $s;
+?>
+                    );
 <? } else {
       throw new Exception("Unhandled value for \$tes_para: \"$tes_para\".");
    } /* $tes_para */ ?>
