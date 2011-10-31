@@ -58,7 +58,7 @@ status_bits = [
     ('APPLICATION_RUNNING', 0),
     ('SEND_IO_TO_HOST', 1),
     ('FATAL_ERROR', 2),
-    ('FO_WRD_RECV', 3),
+    ('FO_WRD_RCV', 3),
     ('HST_NFYD', 9),
     ('CON_DEMAND', 10),
     ('CON_MCE', 11),
@@ -93,12 +93,12 @@ if __name__ == '__main__':
 
     print 'STATUS = %#06x' % stat
     for k,b in status_bits:
-        print '  %-20s : %i' % (k, (stat >> b) & 1)
+        print '  %-20s : %i' % (k, get_bit(stat, b))
 
     mode = d.read('X', ADDRS['MODE'])
     print 'MODE = %#06x' % mode
     for k,b in mode_bits:
-        print '  %-20s : %i' % (k, (stat >> b) & 1)
+        print '  %-20s : %i' % (k, get_bit(mode, b))
 
     print 'Checking main loop...  ',
     stat = set_bit(stat, status_dict['MAIN_LOOP_POLL'])
