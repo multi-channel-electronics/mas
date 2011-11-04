@@ -20,6 +20,7 @@
 #define DSP_U0103          0x550103
 #define DSP_U0104          0x550104
 #define DSP_U0105          0x550105
+#define DSP_U0106          0x550106
 
 
 /* PCI DMA alignment */

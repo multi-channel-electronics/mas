@@ -808,6 +808,7 @@ int dsp_set_latency(int card, int value)
 	   configuration registers (that's the right way). */
 	   
 	struct dsp_dev_t *dev = dsp_dev + card;
+        dsp_command cmd0 = { DSP_QTS, { DSP_QT_BURST, 0, 0 }};
 	dsp_command cmd1 = { DSP_WRM, { DSP_MEMX, 0, 0 }};
 	dsp_command cmd2 = { DSP_WRM, { DSP_MEMP, 0, 0 }};
 	dsp_message rep;
@@ -827,7 +828,16 @@ int dsp_set_latency(int card, int value)
                 PRINT_ERR(card, "bad latency value %#x\n", (int)c);
 		return -1;
 	}
+
+        /* As of U0106, this is easy */
+        if (dev->version >= DSP_U0106) {
+                cmd0.args[1] = (int)(c-4);
+                dsp_send_command_wait(&cmd0, &rep, card);
+                return (rep.reply == DSP_ACK) ? 0 : -1;
+        }
 			
+        /* Hacks for older versions; modify temporary and
+           semi-permanent storage of PCI_BURST_SIZE */
 	cmd1.args[2] = (int)c;
 	cmd2.args[2] = (int)c;
 	switch (dev->version) {
