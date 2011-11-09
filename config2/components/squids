@@ -84,6 +84,11 @@
                     maps = ( { start= 0; count=41; card="ac"; param="on_bias"; offset=0; });
                 },
                 {
+                    name = "bias_off";
+                    count = 41;
+                    maps = ( { start= 0; count=41; card="ac"; param="off_bias"; offset=0; });
+                },
+                {
                     name = "fb_const";
                     count = <?php echo $num_columns?>;
                     maps = (

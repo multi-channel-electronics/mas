@@ -3,17 +3,19 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-TARGET = $(MCE_LIST) mas.cfg
-FIRST_MCE_CIN = @FIRST_MCE_CIN@
 MAKE_CONFIG2=@DO_CONFIG2@
-
-all: Makefile $(TARGET)
 
 ifeq ($(MAKE_CONFIG2),yes)
 INSTALL_MCE=install-multimce
 SOURCE = @MCE_CIN_LIST@
 MCE_LIST = @MCE_CFG_LIST@
 endif
+
+MAS_ETCDIR=@MAS_ETCDIR@
+TARGET=$(MCE_LIST) mas.cfg
+FIRST_MCE_CIN=@FIRST_MCE_CIN@
+
+all: Makefile $(TARGET)
 
 mas.cin: mas.cin.in ../config.status
 	cd .. && $(MAKE) config2/mas.cin

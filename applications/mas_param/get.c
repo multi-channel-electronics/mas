@@ -21,8 +21,11 @@ int param_save(options_t *options)
 		return -1;
 	}
 	
-	if (param_get(c, &m))
-		return 1;
+	if (param_get(c, &m)) {
+        fprintf(stderr, "Failed to retrieve '%s' in file '%s'.\n",
+                options->param_name, options->source_file);
+		return -1;
+    }
 
 	switch (m.type) {
 	case CFG_STR:
@@ -56,7 +59,6 @@ int param_save(options_t *options)
 				config_setting_set_float_elem(c, i, strtod(options->data_source[i],0));
 		else 
 			config_setting_set_float(c, strtod(options->data_source[0],0));
-
 		break;
 	}
 

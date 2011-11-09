@@ -28,15 +28,34 @@ $hw_rev = array(
 );	
 
 
-/* The TES bias line configuration can vary widely.  For now support:
+/* The TES bias line configuration can vary widely.  It is specified 
+ * by setting $tes_para.  See mcewiki entry on "mce.cfg" for options.
  *
+ * Some basic ones:
  *   "classic"       one line from each bias card (rev D)
  *   "small16"       on 3-MDM subracks, 16 lines from bc3 flux_fb[:16]
  *   "none"          none
+ *   "map"           use map described by $tes_bias_count, $tes_bias_mapping.
  */
 
 $tes_para = "small16";
 
+/* The tes_bias_count and tes_bias_mapping are used if $tes_para = "map". */
+
+$tes_bias_count = 0;
+$tes_bias_mapping = array (
+     /* args are mapping_start, mapping_count, card, param, param_offset */
+     /*	        array(0, 1, "bc2", "bias", 1) */);
+
+
+/* The "heater bias" mapping described below will not be available
+ * unless "heater" is added to the $virt_list array below. */
+
+$heater_count = 0;
+$heater_mapping = array(
+		/* args are mapping_start, mapping_count, card, param, param_offset */
+/*		array(0, 4, "bc1", "flux_fb", 16),
+		array(4, 4, "bc2", "flux_fb", 16) */);
 
 
 
@@ -58,8 +77,9 @@ $fw_rev = array(
  *   VIRTUAL FUNCTIONS
  */
 
-/* List of virtual cards to expose (you probably don't want to change
- * this).  */
+/* List of virtual cards to expose.  Probably doesn't need to be altered
+ * except to add "heater".
+ */
 
 $virt_list = array("rcs", "rca", "sys", "sa", "sq2", "sq1", "tes");
 

@@ -105,23 +105,20 @@ AC_SUBST(MCE_LIST)
 
 AC_DEFINE_UNQUOTED(MAX_FIBRE_CARD, [$MAX_FIBRE_CARD],
           [ Define to the total allowable number of fibre cards in the kernel. ])
-if test $MAX_FIBRE_CARD -eq 1; then
-  FIRST_MCE_CIN="mce.cin"
-  MCE_CFG_LIST="mce.cfg"
-  MCE_CIN_LIST="mce.cin"
-else
+
+n_devs=`echo $MCE_LIST | grep -o , | wc -l`
+if echo $MCE_LIST | grep -q ,; then
   FIRST_MCE_CIN="mce0.cin"
   MCE_CFG_LIST="mce0.cfg"
   MCE_CIN_LIST="mce0.cin"
-  for n in $(seq $(expr $MAX_FIBRE_CARD - 1)); do
+  for n in $(seq $n_devs); do
     MCE_CFG_LIST="$MCE_CFG_LIST mce$n.cfg"
     MCE_CIN_LIST="$MCE_CIN_LIST mce$n.cin"
   done
-fi
-
-if test "x${CLIENT_ONLY}" != "xno"; then
-  MCE_CFG_LIST=
-  MCE_CIN_LIST=
+else
+  FIRST_MCE_CIN="mce.cin"
+  MCE_CFG_LIST="mce.cfg"
+  MCE_CIN_LIST="mce.cin"
 fi
 
 AC_SUBST(MCE_CIN_LIST)
@@ -346,7 +343,7 @@ AC_ARG_WITH([etc-dir], [AS_HELP_STRING([--with-etc-dir=DIR],
            [used if not specified.)])], [MAS_ETCDIR="${withval}"],
            [MAS_ETCDIR="no"])
 if test "x$MAS_ETCDIR" = "xno"; then
-  MAS_ETCDIR="/etc/mce/"
+  MAS_ETCDIR="/etc/mce"
 fi
 AC_SUBST([MAS_ETCDIR])
 
@@ -377,8 +374,9 @@ AC_ARG_WITH([data-root], [AS_HELP_STRING([--with-data-root=DIR,DIR,DIR,...],
             [used if not specified.)])],
             [MAS_DATAROOTLIST="${withval}"], [MAS_DATAROOTLIST="no"])
 #(there is some embedded php syntax happening here...)
+echo n_devs=$n_devs
 if test "x$MAS_DATAROOTLIST" = "xno"; then
-  MAS_DATAROOTLIST="/data/mce"$(seq -s,/data/mce 0 $(expr $MAX_FIBRE_CARD - 1))
+  MAS_DATAROOTLIST="/data/mce"$(seq -s,/data/mce 0 $n_devs)
 fi
 AC_SUBST([MAS_DATAROOTLIST])
 
@@ -387,7 +385,7 @@ AC_ARG_WITH([mas-data], [AS_HELP_STRING([--with-mas-data=SUBDIR],
             [in which data is actually written. (current_data is used if not ]
             [specified.)])], [MAS_DATADIR="${withval}"], [MAS_DATADIR="no"])
 #(there is some embedded php syntax happening here...)
-if test "x$MAS_TEMPDIR" = "xno"; then
+if test "x$MAS_DATADIR" = "xno"; then
   MAS_DATADIR="current_data";
 fi
 AC_SUBST([MAS_DATADIR])

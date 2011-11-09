@@ -33,13 +33,18 @@ static int find_endpoint(mce_context_t context)
     if (context->net.ctl_sock < 0) {
         fprintf(stderr, "mcelib: Unable to connect to mcenetd at %s\n",
                 context->dev_name);
-        return -1;
+        context->dev_index = MCE_NULL_MCE;
+        context->dev_route = context->dev_endpoint = none;
+        return 0;
     }
     context->net.cmd_sock = context->net.dsp_sock = context->net.dat_sock = -1;
 
     /* send the greeting, this will set the endpoint */
-    if (mcenet_hello(context))
-        return -1;
+    if (mcenet_hello(context)) {
+        context->dev_index = MCE_NULL_MCE;
+        context->dev_route = context->dev_endpoint = none;
+        return 0;
+    }
 
     return 0;
 }

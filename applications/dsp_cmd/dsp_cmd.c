@@ -68,6 +68,7 @@ cmdtree_opt_t qt_opts[] = {
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "ENABLE", 1,1, DSP_QT_ENABLE, integer_opts},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "TON" ,0,0, 10, NULL},
 	{ CMDTREE_SELECT | CMDTREE_NOCASE, "TOFF",0,0, 11, NULL},
+	{ CMDTREE_SELECT | CMDTREE_NOCASE, "BURST" , 1,1, DSP_QT_BURST , integer_opts},
 	{ CMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
 
@@ -147,8 +148,8 @@ int main(int argc, char **argv)
 			done = 1;
 		} else {
 
-			getline(&line, &n, fin);
-			if (n==0 || feof(fin)) break;
+			int ret = getline(&line, &n, fin);
+			if (ret == -1 || n==0 || feof(fin)) break;
 
 			n = strlen(line);
 			if (line[n-1]=='\n') line[--n]=0;

@@ -273,13 +273,12 @@ int dsp_write_callback(int error, dsp_message* msg, int card)
 	return 0;
 }
 
-int dsp_ioctl(struct inode *inode, struct file *filp,
-	      unsigned int iocmd, unsigned long arg)
+long dsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 {
 	struct filp_pdata *fpdata = filp->private_data;
 	struct dsp_ops_t *dops = dsp_ops + fpdata->minor;
         int card = fpdata->minor;
-	int x;
+	long x;
 
         PRINT_INFO(card, "entry! fpdata->minor=%d\n", fpdata->minor);
 
@@ -364,7 +363,7 @@ struct file_operations dsp_fops =
 	.read=    dsp_read,
 	.release= dsp_release,
 	.write=   dsp_write,
-	.ioctl=   dsp_ioctl,
+	.unlocked_ioctl= dsp_ioctl,
 };
 
 
@@ -373,7 +372,7 @@ int dsp_ops_probe(int card)
 	struct dsp_ops_t *dops = dsp_ops + card;
 
 	init_waitqueue_head(&dops->queue);
-	init_MUTEX(&dops->sem);
+	sema_init(&dops->sem, 1);
 
 	dops->state = OPS_IDLE;
 

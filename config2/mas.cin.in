@@ -12,9 +12,6 @@ $log_file    = "/data/cryo/current_data/log";
 /* The log level */
 $log_level   = 1;
 
-/* The number of fibre cards in the system */
-$n_card      = @MAX_FIBRE_CARD@;
-
 /* The list of MCEs we're prepared to deal with, in order.
  * This is a comma separated list of elements, each of which is:
  * (1) a number, N, indicating the local MCE talking to logical

@@ -122,6 +122,6 @@ mas:
    *          the MAS_DATA environmental variable.
    *
    */
-  datadir = "<?php echo $mas_data?>";
+  datadir = "<?php echo $data_dir?>";
 };
 

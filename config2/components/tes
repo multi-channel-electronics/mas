@@ -12,16 +12,38 @@
 <?php } elseif ($tes_para == "small16") { ?>
                     count = 16;
                     maps = ( { start=0; count=16; card="bc3"; param="flux_fb"; offset=0; } );
-
+<?php } elseif ($tes_para == "revF_32") { ?>
+                    count = 32;
+                    maps = ( { start=0;  count=10; card="bc1"; param="bias"; offset=0;  },
+                             { start=10; count=10; card="bc2"; param="bias"; offset=0;  },
+                             { start=20; count=10; card="bc3"; param="bias"; offset=0;  },
+                             { start=30; count=1;  card="bc1"; param="bias"; offset=10; },
+                             { start=31; count=1;  card="bc2"; param="bias"; offset=11; } );
 <?php } elseif ($tes_para == "bc1_f_24_31") { ?>
                     count = 8;
                     maps = ( { start=0; count=8; card="bc1"; param="flux_fb"; offset=24; } );
 <?php } elseif ($tes_para == "bc3_f_24_31") { ?>
                     count = 8;
                     maps = ( { start=0; count=8; card="bc3"; param="flux_fb"; offset=24; } );
+<?php } elseif ($tes_para == "bc2_fu_00_15") { ?>
+                    count = 16;
+                    maps = ( { start=0; count=16; card="bc2"; param="flux_fb_upper"; offset=0; } );
 <?php } elseif ($tes_para == "none") { ?>
 	            count = 0;
 		    maps = ( { start=0; count=0; card=""; params=""; offset=0; } );
+<?php } elseif ($tes_para == "map") { ?>
+		    count = <?=$tes_bias_count?>;
+                    maps = (   
+<?php $s = "";
+   $indent = "                             ";
+   foreach ($tes_bias_mapping as $map) {
+     $s .= $indent . "{ start=$map[0]; count=$map[1]; card=\"$map[2]\"; " .
+           "param=\"$map[3]\"; offset=$map[4]; },\n";
+   }
+   $s = substr($s, 0, -2);
+   echo $s;
+?>
+                    );
 <?php } else {
       throw new Exception("Unhandled value for \$tes_para: \"$tes_para\".");
    } /* $tes_para */ ?>

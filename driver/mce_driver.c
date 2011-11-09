@@ -790,8 +790,8 @@ int mce_probe(int card, int dsp_version)
 
 	memset(mdat, 0, sizeof(*mdat));
 
-	init_MUTEX(&mdat->sem);
-	init_MUTEX(&mdat->local.sem);
+	sema_init(&mdat->sem, 1);
+	sema_init(&mdat->local.sem, 1);
 	spin_lock_init(&mdat->state_lock);
 	
 	init_waitqueue_head(&mdat->local.queue);

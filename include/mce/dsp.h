@@ -61,6 +61,8 @@ typedef enum
 	DSP_QT_FLUSH  = 0x00464c55, // "FLU" - flush (inform) remaining data
 	DSP_QT_ENABLE = 0x00534554, // "SET" - enable/disable quiet transfer
 
+	DSP_QT_BURST  = 0x00425552, // "BUR" - set PCI burst size (latency timer)
+
 	DSP_QT_RPSIZE = 0x00525053, // "RPS" - set max packet size for replies
 	DSP_QT_RPBASE = 0x00525042, // "RPB" - set bus address for reply
 	DSP_QT_RPENAB = 0x00525045  // "RPE" - enable/disable quiet RP handling

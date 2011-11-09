@@ -195,11 +195,13 @@
                     name = "awg_data";
                     id = 0xBA;
 		    count = 32; /* arbitrary, sorta */
+                    status = 0;
                 },
 
                 {
                     name = "awg_addr";
                     id = 0xBC;
+                    status = 0;
                 }
 <?php } ?>
 <?php if ($fw_rev_cc_jtag) { ?>

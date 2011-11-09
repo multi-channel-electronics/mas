@@ -630,29 +630,15 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 
 	data_reset(card);
 
-	switch (dsp_version) {
-	case 0:
-                PRINT_ERR(card,
-			  "DSP code is old, you'll get checksum errors.\n");
-		break;
-
-	case DSP_U0103:
-                PRINT_ERR(card, "DSP code wants to be upgraded to U0104!\n");
-		break;
-		
-	case DSP_U0104:
-	case DSP_U0105:
-		if (data_qt_configure(1, card))
+        if (dsp_version >= DSP_U0104) {
+		if (data_qt_configure(1, card)) {
+                        PRINT_ERR(card, "Failed to enable quiet transfer mode.\n");
 			return -EIO;
-		break;
-		
-	default:
-                PRINT_ERR(card,
-			  "DSP code not recognized, attempting quiet transfer mode...\n");
-		if (data_qt_configure(1, card))
-			return -EIO;
-		break;
-		}
+                }
+        } else {
+                PRINT_ERR(card, "DSP code is old; no quiet transfer mode.\n");
+                return 0;
+        }
 
 	return 0;
 }
