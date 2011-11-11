@@ -309,8 +309,10 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
     }
     free(mas_cfg);
 
-    if ((config_item = config_setting_get_member(masconfig, "dataroot")) == NULL
-            || (config_setting_type(config_item) != CONFIG_TYPE_ARRAY)
+    if (c->dev_index == MCE_NULL_MCE)
+        c->data_root = NULL;
+    else if ((config_item = config_setting_get_member(masconfig, "dataroot"))
+            == NULL || (config_setting_type(config_item) != CONFIG_TYPE_ARRAY)
             || config_setting_type(config_setting_get_elem(config_item, 0))
                 != CONFIG_TYPE_STRING)
     {

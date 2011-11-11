@@ -17,6 +17,9 @@
 #include "context.h"
 #include "net.h"
 
+/* uncomment the following to see mcenetd traffic */
+// #define DEBUG_TRAFIC
+
 /* generic functions */
 
 /* read a message from descriptor d */
@@ -81,7 +84,7 @@ static ssize_t mcenet_req(mce_context_t context, int d, unsigned char *message,
 {
     ssize_t n;
 
-#if 1
+#ifdef DEBUG_TRAFFIC
     size_t i;
     fprintf(stderr, "mcenet: req@%i -> %s:", d, context->dev_name);
     for (i = 0; i < len; ++i)
@@ -110,7 +113,7 @@ static ssize_t mcenet_req(mce_context_t context, int d, unsigned char *message,
     /* read the response */
     n = mcenet_readmsg(d, message, rsplen);
 
-#if 1
+#ifdef DEBUG_TRAFFIC
     fprintf(stderr, "mcenet: rsp@%i <- %s:", d, context->dev_name);
     for (i = 0; i < (size_t)n; ++i)
         fprintf(stderr, " %02hhx", message[i]);
@@ -275,7 +278,7 @@ static ssize_t raw_read(int fd, void *buf, size_t count, const char *dev_name)
         return -MCE_ERR_DEVICE;
     }
 
-#if 1
+#ifdef DEBUG_TRAFFIC
     int i;
     fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
     for (i = 0; i < n; ++i)
@@ -311,7 +314,7 @@ static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
             return -MCE_ERR_DEVICE;
         }
 
-#if 1
+#ifdef DEBUG_TRAFFIC
         int i;
         fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
         for (i = 0; i < (size_t)n; ++i)
@@ -352,7 +355,7 @@ static int dev_write(int fd, const void *buf, size_t count,
             return -MCE_ERR_DEVICE;
         }
 
-#if 1
+#ifdef DEBUG_TRAFFIC
         int i;
         fprintf(stderr, "mcenet: req@%i -> %s:", fd, dev_name);
         for (i = 0; i < (size_t)n; ++i)
@@ -376,7 +379,7 @@ static int dev_write(int fd, const void *buf, size_t count,
         return -MCE_ERR_DEVICE;
     }
 
-#if 1
+#ifdef DEBUG_TRAFFIC
     int i;
     fprintf(stderr, "mcenet: rsp@%i <- %s:", fd, dev_name);
     for (i = 0; i < (size_t)n; ++i)
