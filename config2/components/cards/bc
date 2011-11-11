@@ -15,6 +15,7 @@
                     id = 0x21;
 <? if ($hw_12tes) { ?>
       		    count = 12;
+		    op_xor = 0x8000;
 <? } ?>
                 }
 <? if ($hw_subrack == "small") { ?>
