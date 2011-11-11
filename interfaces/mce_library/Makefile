@@ -6,11 +6,11 @@ include $(BASE)Makefile.children
 LIBNAME = lib$(MCELIB)
 
 OBJECTS = context.o errors.o defaults.o \
-	cmd.o packet.o virtual.o \
+	cmd.o packet.o virtual.o manip.o \
 	data.o acq.o data_thread.o files.o frame_manip.o \
 	dirfile.o config.o data_mode.o
 
-HEADERS = data_thread.h virtual.h ../../defaults/config.h
+HEADERS = data_thread.h virtual.h manip.h ../../defaults/config.h
 
 REPO_VERSION=$(shell svnversion)
 

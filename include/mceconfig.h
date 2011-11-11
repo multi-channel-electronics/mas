@@ -53,7 +53,7 @@ typedef enum {
 #define MCE_PARAM_HEX    0x00000400 /* is naturally hexadecimal */
 #define MCE_PARAM_MULTI  0x00000800 /* multi-card alias */
 #define MCE_PARAM_MAPPED 0x00001000 /* virtual parameter */
-
+#define MCE_PARAM_MANIP  0x00002000 /* data manipulation */
 
 /* Maximum number of grouped cards */
 
@@ -152,6 +152,8 @@ typedef struct {
 
 	int map_count;
 	config_setting_t *maps;
+
+	int op_xor;
 } param_t;
 
 

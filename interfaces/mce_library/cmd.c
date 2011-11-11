@@ -18,6 +18,7 @@
 #include <mce/mce_ioctl.h>
 
 #include "virtual.h"
+#include "manip.h"
 
 #define LOG_LEVEL_CMD     LOGGER_DETAIL
 #define LOG_LEVEL_REP_OK  LOGGER_DETAIL
@@ -227,7 +228,7 @@ int mcecmd_load_param(mce_context_t* context, mce_param_t *param,
 
 
 int mcecmd_write_block(mce_context_t* context, const mce_param_t *param,
-		       int count, const u32 *data)
+		       int count, u32 *data)
 {
 	// This used to run the show, but these days we pass it to write_range
 	return mcecmd_write_range(context, param, 0, data, count);
@@ -310,7 +311,7 @@ int mcecmd_read_size(const mce_param_t *p, int count)
 /* MCE special commands - these provide additional logical support */
 
 int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
-		       int data_index, const u32 *data, int count)
+		       int data_index, u32 *data, int count)
 {
 	int error = 0;
 	u32 _block[MCE_CMD_DATA_MAX];
@@ -321,6 +322,9 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 	 
 	if (count < 0)
 		count = param->param.count - data_index;
+
+	// Pre-process command data before writing to MCE?
+	mcecmd_prewrite_manip(param, data, count);
 
 	// Redirect Virtual cards, though virtual system will recurse here
 	if (param->card.nature == MCE_NATURE_VIRTUAL)
@@ -389,6 +393,9 @@ int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
 		memcpy(data+i*count, rep.data+data_index, count*sizeof(u32));
 	}
 	
+	// Post-process the reply data before returning?
+	mcecmd_postread_manip(param, data, count);
+
 	return 0;
 }
 
@@ -405,7 +412,7 @@ int mcecmd_read_element(mce_context_t* context, const mce_param_t *param,
 }
 
 int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
-			     int count, const u32 *data, int retries)
+			     int count, u32 *data, int retries)
 {
 	int i, error;
 	u32 readback[MCE_CMD_DATA_MAX];
