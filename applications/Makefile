@@ -1,25 +1,19 @@
 
 # Don't make example dir by default, it's not really in our build system
-SUB_DIRS = dsp_cmd mas_config mas_mon mas_param maslog mce_cmd mce_jam \
-					 mce_ramp mce_status mux_lock psc_status raw_acq testing
+SUB_DIRS = dsp_cmd dsp_status mas_config mas_mon mas_param maslog mce_cmd \
+	mce_jam mce_ramp mce_status mux_lock psc_status raw_acq testing
 
 sub-dirs:
-	@for d in ${SUB_DIRS}; do		\
-		make -C $$d || exit 1;		\
-	done
+	$(foreach d, $(SUB_DIRS), make -C $(d); )
 
 install:
-	@for d in ${SUB_DIRS}; do		\
-		make -C $$d install || exit 1;	\
-	done
+	$(foreach d, $(SUB_DIRS), make -C $(d) install; )
 	@echo
 	@echo "Make sure you stop maslog_server before re-installing, or"\
 		"the install will fail."
 	@echo
 
 clean:
-	@for d in ${SUB_DIRS}; do		\
-		make -C $$d clean || exit 1;	\
-	done
+	$(foreach d, $(SUB_DIRS), make -C $(d) clean; )
 
 .PHONY: sub-dirs clean

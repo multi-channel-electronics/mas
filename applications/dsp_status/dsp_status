@@ -52,6 +52,7 @@ def clear_bit(data, bit):
 ADDRS = {
     'STATUS': 0,
     'MODE': 1,
+    'VERSION': 3,
     }
     
 status_bits = [
@@ -85,15 +86,21 @@ if __name__ == '__main__':
     d = dsp()
     
     try:
-        stat = d.read("X", ADDRS['STATUS'])
+        vers = d.read("X", ADDRS['VERSION'])
     except dspError, msg:
-        print 'Failed to query status.  Error message: '
+        print 'Failed to query version.  Error message: '
         print ' ', msg
         sys.exit(1)
 
+    print 'DSP code version = %#x' % vers
+
+    stat = d.read("X", ADDRS['STATUS'])
     print 'STATUS = %#06x' % stat
     for k,b in status_bits:
         print '  %-20s : %i' % (k, get_bit(stat, b))
+
+    if vers < 0x550105 or vers >= 0x560000:
+        sys.exit(0)
 
     mode = d.read('X', ADDRS['MODE'])
     print 'MODE = %#06x' % mode
@@ -109,4 +116,4 @@ if __name__ == '__main__':
         print 'stalled!'
     else:
         print 'running.'
-
+    
