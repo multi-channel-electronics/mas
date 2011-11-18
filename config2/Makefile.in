@@ -18,10 +18,7 @@ all: Makefile $(TARGET)
 
 # General rule...
 %.cfg : %.cin components/
-	@if test -f $<; then \
-		echo "php $< > $@"; \
-		php $< > $@ || rm -f $@; \
-	fi
+	php $< > $@ || ( rm -f $@ && exit 1 )
 
 # we only die if the first .cin doesn't exist, because the user may only have
 # one fibre card.

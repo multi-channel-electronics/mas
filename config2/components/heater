@@ -1,3 +1,8 @@
+<?
+   if (!isset($heater_count) || !isset($heater_mapping)) {
+     throw new Exception('Define $heater_count and $heater_mapping.');
+   }
+?>
         {
             name = "heater_mapping";
             parameters = (

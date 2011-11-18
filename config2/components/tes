@@ -31,7 +31,11 @@
 <? } elseif ($tes_para == "none") { ?>
 	            count = 0;
 		    maps = ( { start=0; count=0; card=""; params=""; offset=0; } );
-<? } elseif ($tes_para == "map") { ?>
+<? } elseif ($tes_para == "map") {
+     if (!isset($tes_bias_mapping) || !isset($tes_bias_count)) {
+       throw new Exception('Define $tes_para and $tes_bias_count for map.');
+     }
+?>
 		    count = <?=$tes_bias_count?>;
                     maps = (   
 <? $s = "";
