@@ -54,7 +54,7 @@ maslog_t maslog_connect(const mce_context_t mce, const char *name)
 
         config_setting_t *client = config_lookup(cfg, CONFIG_CLIENT);
 
-        if ((address = get_string(client, CONFIG_LOGADDR)))
+        if ((address = get_string(client, CONFIG_LOGADDR)) == NULL)
             return NULL;
         free_address = 1;
     }

@@ -182,6 +182,7 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
     config_setting_t *masconfig;
     config_setting_t *config_item = NULL;
     mce_context_t c = (mce_context_t)malloc(sizeof(struct mce_context));
+    memset(c, 0, sizeof(struct mce_context));
     c->mas_cfg = (struct config_t *)malloc(sizeof(struct config_t));
     config_init(c->mas_cfg);
 

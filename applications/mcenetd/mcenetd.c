@@ -42,12 +42,10 @@ int itc_ser = 1;
 #define ITC_ATTACH   1
 #define ITC_CMDIOCTL 2
 #define ITC_CMDSEND  3
-#define ITC_CMDREPL  4
-#define ITC_DSPIOCTL 5
-#define ITC_DSPSEND  6
-#define ITC_DSPREPL  7
-#define ITC_DATIOCTL 8
-#define ITC_DATAQ    9
+#define ITC_DSPIOCTL 4
+#define ITC_DSPSEND  5
+#define ITC_DATIOCTL 6
+#define ITC_DATAQ    7
 static struct itc_t {
     int dev;
     int ser;
@@ -89,6 +87,18 @@ struct confd_struct {
     size_t rsplen;
 } *confd;
 
+struct cmd_data_struct {
+    int32_t send;
+    int32_t recv;
+    mce_reply rep;
+};
+
+struct dsp_data_struct {
+    int32_t send;
+    int32_t recv;
+    dsp_message rep;
+};
+
 /* connection management */
 #define CON_DROP   0x01
 #define CON_CMDSNT 0x02
@@ -108,14 +118,10 @@ struct con_struct {
     unsigned char ser;
 
     char cmd_req[sizeof(mce_command)];
-    char cmd_rep[sizeof(mce_reply)];
-    int32_t cmd_sent;
-    int32_t cmd_replied;
+    struct cmd_data_struct cmd_data;
 
     char dsp_req[sizeof(dsp_command)];
-    char dsp_rep[sizeof(dsp_message)];
-    int32_t dsp_sent;
-    int32_t dsp_replied;
+    struct dsp_data_struct dsp_data;
 
     unsigned char *dat_buf;
     uint32_t dat_len; /* how much data we have */
@@ -157,9 +163,10 @@ static const char *marker[] = {
     ".."  /* LOG_DEBUG   */
 };
 
+#define LOG_MIN LOG_DEBUG 
 #define lprintf(l,f,...) do { \
     if (options.daemonise) syslog(l, f, ##__VA_ARGS__); \
-    else printf("[%s] " f, marker[l], ##__VA_ARGS__); \
+    else if (l <= LOG_MIN) printf("[%s] " f, marker[l], ##__VA_ARGS__); \
     if (l == LOG_CRIT) exit(1); \
 } while (0)
 
@@ -185,6 +192,9 @@ static const char* colsub(void) {
 
     return debug_col2;
 }
+#define dprintf(f,...) lprintf(LOG_DEBUG, "%s %s:%i " f "\n", debug_col, \
+        __func__, __LINE__, ##__VA_ARGS__)
+#define dwatch(f,v) lprintf(LOG_DEBUG, "%s %s = " f "\n", debug_col, #v, v) 
 #define dtrace(f,...) lprintf(LOG_DEBUG, "%s %s(" f ")\n", coladd(), \
         __func__, ##__VA_ARGS__)
 #define dreturn(f,v) lprintf(LOG_DEBUG, "%s %s = " f "\n", colsub(), \
@@ -257,22 +267,10 @@ static void DropSocket(int p)
     }
 }
 
-static void DropConnection(int c) {
-    lprintf(LOG_INFO, "Dropping CLx%02hhX.\n", con[c].ser);
-    ser[con[c].ser] = 0;
-    DropSocket(con[c].sock[3]);
-    DropSocket(con[c].sock[2]);
-    DropSocket(con[c].sock[1]);
-    DropSocket(con[c].sock[0]);
-
-    con[c] = con[--ncon];
-    ser[con[c].ser] = ncon + 1;
-}
-
 /* delete an ITC */
 static void ITDiscard(struct itc_t *it)
 {
-    dtrace("%p", it);
+    dtrace("%p [%i]", it, it->ser);
 
     const int who = it->dev;
     struct itc_t **ptr, *tmp = NULL;
@@ -301,6 +299,26 @@ static void ITDiscard(struct itc_t *it)
     dreturnvoid();
 }
 
+static void DropConnection(int c) {
+    lprintf(LOG_INFO, "Dropping CLx%02hhX.\n", con[c].ser);
+
+    /* drop the ITC for this connection, if any */
+    if (con[c].pending) {
+        lprintf(LOG_DEBUG, "Discarding ITC#%i from dropped client.\n",
+                con[c].pending->ser);
+        ITDiscard(con[c].pending);
+    }
+
+    ser[con[c].ser] = 0;
+    DropSocket(con[c].sock[3]);
+    DropSocket(con[c].sock[2]);
+    DropSocket(con[c].sock[1]);
+    DropSocket(con[c].sock[0]);
+
+    con[c] = con[--ncon];
+    ser[con[c].ser] = ncon + 1;
+}
+
 /* return a device interthread response */
 static void ITRes(int me, int ser, int res, void *data, size_t dlen)
 {
@@ -311,14 +329,17 @@ static void ITRes(int me, int ser, int res, void *data, size_t dlen)
     pthread_mutex_lock(mutex + me);
 
     /* find the request we're responding to */
-    do {
+    while (ptr != NULL) {
         if (ptr->ser == ser)
             break;
         ptr = ptr->next;
-    } while (ptr != NULL);
+    }
 
     if (ptr == NULL) {
-        lprintf(LOG_ERR, "Lost ITC request #%i with pending response!\n", ser);
+        /* This typically happens when the client is dropped between RunDev
+         * discovering a pending ITC and getting here */
+        lprintf(LOG_WARNING, "Lost ITC request #%i with pending response!\n",
+                ser);
         pthread_mutex_unlock(mutex + me);
         dreturnvoid();
         return;
@@ -372,6 +393,7 @@ static struct itc_t *ITReq(int who, int req, void *data, size_t dlen,
         next->req_dlen = dlen;
     }
     next->res = 0;
+    next->res_data = NULL;
     next->next = NULL;
 
     /* find the end of the pending request queue */
@@ -379,14 +401,16 @@ static struct itc_t *ITReq(int who, int req, void *data, size_t dlen,
         ptr = &((*ptr)->next);
     }
 
-    if (!nolock)
+    if (!nolock) {
         pthread_mutex_lock(mutex + who);
+    }
 
     /* store the request */
     *ptr = next;
 
-    if (!nolock)
+    if (!nolock) {
         pthread_mutex_unlock(mutex + who);
+    }
 
     lprintf(LOG_DEBUG, "ITC#%i: %i -> %i: %s\n", next->ser, next->req, who,
             SpitMessage(next->req_data, next->req_dlen));
@@ -512,8 +536,8 @@ static void DevRes(int me, struct itc_t *req)
     int32_t ret;
     ssize_t dat_req;
     char buffer[5];
-    mce_reply cmd_rep;
-    dsp_message dsp_msg;
+    struct cmd_data_struct cmd_data;
+    struct dsp_data_struct dsp_data;
 
     switch(req->req) {
         case ITC_ATTACH:
@@ -539,20 +563,17 @@ static void DevRes(int me, struct itc_t *req)
             break;
         case ITC_CMDSEND:
             /* send a command ... */
-            ret = (int32_t)mcecmd_send_command_now(dev[me].context,
+            dprintf("mcecmd_send_command_now(%p, %p)", dev[me].context,
+                    req->req_data);
+            cmd_data.send = (int32_t)mcecmd_send_command_now(dev[me].context,
                     (mce_command*)req->req_data);
 
-            /* pass the return value up */
-            ITRes(me, req->ser, ITC_CMDSEND, &ret, 4);
-            break;
-        case ITC_CMDREPL:
-            ret = (int32_t)mcecmd_read_reply_now(dev[me].context, &cmd_rep);
-            if (ret < 0) {
-                /* reply error! */
-                ITRes(me, req->ser, ITC_CMDREPL, &ret, 4);
-            } else
-                /* good response, send it back to the master */
-                ITRes(me, req->ser, ITC_CMDREPL, &cmd_rep, sizeof(mce_reply));
+            /* read the response ... */
+            cmd_data.recv = (int32_t)mcecmd_read_reply_now(dev[me].context,
+                    &cmd_data.rep);
+
+            /* pass the return values and reply packet up */
+            ITRes(me, req->ser, ITC_CMDSEND, &cmd_data, sizeof(cmd_data));
             break;
         case ITC_DSPIOCTL:
             /* ioctl time */
@@ -564,20 +585,15 @@ static void DevRes(int me, struct itc_t *req)
             break;
         case ITC_DSPSEND:
             /* send a command ... */
-            ret = (int32_t)mcedsp_write(dev[me].context,
+            dsp_data.send = (int32_t)mcedsp_write(dev[me].context,
                     (dsp_command*)req->req_data);
 
-            /* pass the return value up */
-            ITRes(me, req->ser, ITC_DSPSEND, &ret, 4);
-            break;
-        case ITC_DSPREPL:
-            ret = (int32_t)mcedsp_read(dev[me].context, &dsp_msg);
-            if (ret < 0) {
-                /* reply error! */
-                ITRes(me, req->ser, ITC_DSPREPL, &ret, 4);
-            } else
-                /* good response, send it back to the master */
-                ITRes(me, req->ser, ITC_DSPREPL, &dsp_msg, sizeof(dsp_msg));
+            /* read the response ... */
+            dsp_data.recv = (int32_t)mcedsp_read(dev[me].context,
+                    &dsp_data.rep);
+
+            /* pass the return values and reply packet up */
+            ITRes(me, req->ser, ITC_DSPSEND, &dsp_data, sizeof(dsp_data));
             break;
         case ITC_DATIOCTL:
             /* ioctl time */
@@ -646,6 +662,8 @@ static void *RunDev(void *arg)
          * from the root of the list every time, if we unlock in the middle.
          */
         for (ptr = itc[me]; ptr != NULL; ptr = ptr->next) {
+            if (me == 0)
+                printf("%p: %i %i\n", ptr, ptr->ser, ptr->res);
             if (ptr->res == 0) {
                 /* make a local copy */
                 memcpy(&req, ptr, sizeof(struct itc_t));
@@ -660,8 +678,9 @@ static void *RunDev(void *arg)
             }
         }
 
-        if (need_unlock)
+        if (need_unlock) {
             pthread_mutex_unlock(mutex + me);
+        }
 
         usleep(1000);
     }
@@ -699,48 +718,18 @@ static int HandleITRes(struct itc_t *itc, int c, int d)
             con[c].pending = NULL;
             break;
         case ITC_CMDSEND:
-            /* report the result of the send, and immediately ask for a reply 
-             * to avoid getting confused */
-            con[c].cmd_sent = *(int32_t*)(itc->res_data);
-            con[c].pending = ITReq(con[c].dev_idx, ITC_CMDREPL, NULL, 0, 1);
-            con[c].flags |= CON_CMDSNT;
-            pfd[con[c].sock[FDTYPE_CMD]].events = POLLOUT;
-            break;
-        case ITC_CMDREPL:
-            /* store the response and signal we're ready to send it out to the
-             * client */
-            if (itc->res_dlen == 4) {
-                /* an error code */
-                con[c].cmd_replied = *(int32_t*)(itc->res_data);
-            } else {
-                /* no error, things went well */
-                con[c].cmd_replied = 0;
-                memcpy(con[c].cmd_rep, itc->res_data, itc->res_dlen);
-            }
-            con[c].flags |= CON_CMDREP;
+            /* report the result of the send, and store the reply for future
+             * reference */
+            memcpy(&con[c].cmd_data, itc->res_data, itc->res_dlen);
+            con[c].flags |= CON_CMDSNT | CON_CMDREP;
             pfd[con[c].sock[FDTYPE_CMD]].events = POLLOUT;
             con[c].pending = NULL;
             break;
         case ITC_DSPSEND:
-            /* report the result of the send, and immediately ask for a reply 
-             * to avoid getting confused */
-            con[c].dsp_sent = *(int32_t*)(itc->res_data);
-            con[c].pending = ITReq(con[c].dev_idx, ITC_DSPREPL, NULL, 0, 1);
-            con[c].flags |= CON_DSPSNT;
-            pfd[con[c].sock[FDTYPE_DSP]].events = POLLOUT;
-            break;
-        case ITC_DSPREPL:
-            /* store the response and signal we're ready to send it out to the
-             * client */
-            if (itc->res_dlen == 4) {
-                /* an error code */
-                con[c].dsp_replied = *(int32_t*)(itc->res_data);
-            } else {
-                /* no error, things went well */
-                con[c].dsp_replied = 0;
-                memcpy(con[c].dsp_rep, itc->res_data, itc->res_dlen);
-            }
-            con[c].flags |= CON_DSPREP;
+            /* report the result of the send, and store the reply for future
+             * reference */
+            memcpy(&con[c].dsp_data, itc->res_data, itc->res_dlen);
+            con[c].flags |= CON_DSPSNT | CON_CMDREP;
             pfd[con[c].sock[FDTYPE_DSP]].events = POLLOUT;
             con[c].pending = NULL;
             break;
@@ -915,7 +904,7 @@ static void DevRead(int fd, int c, int itreq, void *buf, size_t bufsize,
         } else
             req_len += n;
 
-        lprintf(LOG_DEBUG, "CMD@CLx%02hhX: ==> %s\n", con[c].ser,
+        lprintf(LOG_DEBUG, "%s@CLx%02hhX: ==> %s\n", what, con[c].ser,
                 SpitMessage((const unsigned char*)buf + req_len - n, n));
     }
 
@@ -1006,6 +995,21 @@ static void CmdRead(int p, int c)
     dreturnvoid();
 }
 
+/* process a read on the dat port */
+static void DatRead(int p, int c)
+{
+    char buf[1000];
+    dtrace("%i, %i", p, c);
+
+    size_t n = read(pfd[p].fd, buf, 1000);
+
+    if (n > 0)
+        lprintf(LOG_WARNING, "Got %i bytes on DAT from CLx%02hhX\n", n,
+                con[c].ser);
+
+    dreturnvoid();
+}
+
 /* process a read on the dsp port */
 static void DspRead(int p, int c)
 {
@@ -1022,8 +1026,8 @@ static void CmdWrite(int p, int c)
 {
     dtrace("%i, %i", p, c);
 
-    DevWrite(p, c, CON_CMDSNT, con[c].cmd_sent, CON_CMDREP, con[c].cmd_replied,
-            con[c].cmd_rep, sizeof(mce_reply), DEVID(p));
+    DevWrite(p, c, CON_CMDSNT, con[c].cmd_data.send, CON_CMDREP, con[c].cmd_data.recv,
+            &con[c].cmd_data.rep, sizeof(mce_reply), DEVID(p));
 
     dreturnvoid();
 }
@@ -1033,8 +1037,8 @@ static void DspWrite(int p, int c)
 {
     dtrace("%i, %i", p, c);
 
-    DevWrite(p, c, CON_DSPSNT, con[c].dsp_sent, CON_DSPREP, con[c].dsp_replied,
-            con[c].dsp_rep, sizeof(dsp_message), DEVID(p));
+    DevWrite(p, c, CON_DSPSNT, con[c].dsp_data.send, CON_DSPREP, con[c].dsp_data.recv,
+            &con[c].dsp_data.rep, sizeof(dsp_message), DEVID(p));
 
     dreturnvoid();
 }
@@ -1199,7 +1203,8 @@ static void NewClient(void)
     }
 
     /* accept the connection, and store it. */
-    fd = accept(pfd[0].fd, (struct sockaddr*)&con[ncon].addr, &addrlen);
+    memset(con + ncon, 0, sizeof(struct con_struct));
+    fd = accept(pfd[0].fd, &con[ncon].addr, &addrlen);
 
     /* find a serial number */
     int old_con_ser = con_ser;
@@ -1214,7 +1219,6 @@ static void NewClient(void)
     }
 
     /* add it to the poll list */
-    memset(con + ncon, 0, sizeof(struct con_struct));
     con[ncon].sock[FDTYPE_CTL] = AddSocket(fd, POLLIN, FDTYPE_CTL, ncon,
             con[ncon].addr);
     con[ncon].sock[FDTYPE_DSP] = con[ncon].sock[FDTYPE_CMD] =
@@ -1224,11 +1228,12 @@ static void NewClient(void)
     con[ncon].ser = con_ser;
     ser[con_ser++] = ncon + 1;
 
-    ncon++;
-
     /* whine */
     lprintf(LOG_INFO, "accepted control connection from %s as CLx%02hhX.\n",
-            inet_ntoa(con[ncon - 1].addr.sin_addr), con_ser - 1);
+            inet_ntoa(con[ncon].addr.sin_addr), con_ser - 1);
+
+    ncon++;
+
 }
 
 int main(int argc, char **argv)
@@ -1315,8 +1320,9 @@ int main(int argc, char **argv)
                 if (pending->res != 0) {
                     if (HandleITRes(pending, i, pending->dev))
                         ITDiscard(pending);
-                } else
+                } else {
                     pthread_mutex_unlock(mu);
+                }
             }
 
             /* trigger the dev thread to send us some data, if we need some */
@@ -1406,6 +1412,9 @@ int main(int argc, char **argv)
                             break;
                         case FDTYPE_DSP:
                             DspRead(i, confd[i].con);
+                            break;
+                        case FDTYPE_DAT:
+                            DatRead(i, confd[i].con);
                             break;
                         default:
                             lprintf(LOG_CRIT, "unhandled read type: %i\n",

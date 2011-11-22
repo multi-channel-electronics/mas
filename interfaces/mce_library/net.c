@@ -307,27 +307,27 @@ static int dev_read(int fd, void *buf, size_t count, const char *dev_name)
      * still be flushed from the network queue). We shove it into buf,
      * since that's a convenient place to discard it. */
 
-        /* wait for the socket to become ready */
-        if (mcenet_poll(fd, POLLIN, dev_name))
-            return -1;
+    /* wait for the socket to become ready */
+    if (mcenet_poll(fd, POLLIN, dev_name))
+        return -1;
 
-        n = read(fd, &result, 4);
+    n = read(fd, &result, 4);
 
-        if (n < 0)
-            return -MCE_ERR_DEVICE;
-        else if (n == 0) {
-            fprintf(stderr,
-                    "mcenet: server %s unexpectedly dropped connection.\n",
-                    dev_name);
-            return -MCE_ERR_DEVICE;
-        }
+    if (n < 0)
+        return -MCE_ERR_DEVICE;
+    else if (n == 0) {
+        fprintf(stderr,
+                "mcenet: server %s unexpectedly dropped connection.\n",
+                dev_name);
+        return -MCE_ERR_DEVICE;
+    }
 
 #ifdef DEBUG_TRAFFIC
-        int i;
-        fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
-        for (i = 0; i < (size_t)n; ++i)
-            fprintf(stderr, " %02hhx", ((const char*)&result)[i]);
-        fprintf(stderr, "\n");
+    int i;
+    fprintf(stderr, "mcenet: res@%i <- %s:", fd, dev_name);
+    for (i = 0; i < (size_t)n; ++i)
+        fprintf(stderr, " %02hhx", ((const char*)&result)[i]);
+    fprintf(stderr, "\n");
 #endif
 
     for (done = 0; done < count; done += n) {
