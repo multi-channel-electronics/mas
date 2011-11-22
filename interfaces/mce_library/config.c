@@ -586,6 +586,10 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 			p->name, type_str);
 	}
 
+	// Data manipulation instructions?
+	if (get_int(&p->op_xor, cfg, "op_xor")==0)
+		p->flags |= MCE_PARAM_MANIP;
+
 	// Set additional flags?
 	get_int(&status , cfg, "status");
 	get_int(&sign   , cfg, "signed");

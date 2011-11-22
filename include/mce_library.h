@@ -33,10 +33,11 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
 void mcelib_destroy(mce_context_t context);
 
 /* context data */
-const char *mcelib_dev(mce_context_t context);
-int mcelib_ndev(mce_context_t context);
-struct config_t *mcelib_mascfg(mce_context_t context);
-int mcelib_ddepth(mce_context_t context);
+int mcelib_devnum(const mce_context_t context);
+const char *mcelib_dev(const mce_context_t context);
+int mcelib_ndev(const mce_context_t context);
+struct config_t *mcelib_mascfg(const mce_context_t context);
+int mcelib_ddepth(const mce_context_t context);
 
 /* Error look-up, versioning */
 

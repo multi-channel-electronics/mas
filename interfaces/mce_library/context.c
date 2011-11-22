@@ -347,22 +347,27 @@ mce_context_t mcelib_create(int dev_num, const char *mas_config,
     return c;
 }
 
+int mcelib_devnum(const mce_context_t context)
+{
+    return context->dev_index;
+}
+
 const char *mcelib_dev(mce_context_t context)
 {
     return context->url;
 }
 
-struct config_t *mcelib_mascfg(mce_context_t context)
+struct config_t *mcelib_mascfg(const mce_context_t context)
 {
     return context->mas_cfg;
 }
 
-int mcelib_ndev(mce_context_t context)
+int mcelib_ndev(const mce_context_t context)
 {
     return context->ndev;
 }
 
-int mcelib_ddepth(mce_context_t context)
+int mcelib_ddepth(const mce_context_t context)
 {
     return context->ddepth;
 }

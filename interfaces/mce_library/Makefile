@@ -23,6 +23,7 @@ OBJECTS = \
 					files.o \
 					frame_manip.o \
 					libmaslog.o \
+					manip.o \
 					net.o \
 					packet.o \
 					sdsu.o \
@@ -30,7 +31,7 @@ OBJECTS = \
 					version.o \
 					virtual.o
 
-HEADERS = data_thread.h virtual.h context.h sdsu.h net.h eth.h \
+HEADERS = data_thread.h virtual.h context.h sdsu.h net.h eth.h manip.h \
 					../../defaults/config.h \
 					../../include/libmaslog.h ../../include/masconfig.h \
 					../../include/mce_library.h ../../include/mcecmd.h \

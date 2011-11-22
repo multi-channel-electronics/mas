@@ -3,6 +3,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <getopt.h>
 #include <mce/defaults.h>
@@ -10,7 +11,9 @@
 
 #include "../../defaults/config.h"
 
-#define OPT_HELP 1000
+#define OPT_SH_ENV  1000
+#define OPT_CSH_ENV 1001
+#define OPT_HELP    1002
 typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_PREFIX,
     OPT_LIBS, OPT_CFLAGS, OPT_MASFILE, OPT_HARDWARE_FILE, OPT_EXPERIMENT_FILE,
     OPT_MCE_DEVNUM, OPT_BIGPHYS, OPT_FAKEMCE, OPT_MAX_FIBRE_CARD, OPT_USER,
@@ -23,6 +26,23 @@ typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_PREFIX,
     case OPT_MAS_ ## x: \
     puts(mcelib_lookup_dir(mce, MAS_DIR_ ## x)); \
     break
+
+static void __attribute__ ((format (printf, 3, 4))) say_env(int csh, const char *name, const char *style, ...)
+{
+    va_list ap;
+    char *fmt = malloc(strlen(style) + strlen(name) + 13);
+
+    va_start(ap, style);
+
+    if (csh)
+        sprintf(fmt, "setenv %s \"%s\";\n", name, style);
+    else
+        sprintf(fmt, "export %s=\"%s\";\n", name, style);
+
+    vprintf(fmt, ap);
+    va_end(ap);
+    free(fmt);
+}
 
 static char *strip_path(const mce_context_t mce, const char *var)
 {
@@ -38,7 +58,7 @@ static char *strip_path(const mce_context_t mce, const char *var)
     if (mas_root)
         mas_root_len = strlen(mas_root);
 
-    path_out = malloc(strlen(path_in));
+    path_out = malloc(strlen(path_in) + 1);
     path_out[0] = 0;
 
     for (elem = strtok(path_in, ":"); elem != NULL; elem = strtok(NULL, ":")) {
@@ -56,10 +76,74 @@ static char *strip_path(const mce_context_t mce, const char *var)
     return path_out;
 }
 
+static void setup_env(int devnum, const mce_context_t mce, int csh)
+{
+    char *path, *base;
+
+    const char *mas_bin;
+    const char *mas_python;
+    const char *mas_script;
+    const char *mas_test_suite;
+
+    /* device number */
+    if (devnum == -1) 
+        say_env(csh, "MAS_MCE_DEV", "%i", mcelib_default_mce());
+    else
+        say_env(csh, "MAS_MCE_DEV", "%i", devnum);
+    say_env(csh, "MAS_MCE_NDEV", "%i", mcelib_ndev(mce));
+    say_env(csh, "MAS_MCE_DEVNAME", "%s", mcelib_dev(mce));
+
+    say_env(csh, "MAS_PREFIX", "%s", MAS_PREFIX);
+    say_env(csh, "MAS_ROOT", "%s", mcelib_lookup_dir(mce, MAS_DIR_ROOT));
+    puts("");
+
+    mas_bin = mcelib_lookup_dir(mce, MAS_DIR_BIN);
+    say_env(csh, "MAS_BIN", "%s", mas_bin);
+    say_env(csh, "MAS_TEMP", "%s", mcelib_lookup_dir(mce, MAS_DIR_TEMP));
+    say_env(csh, "MAS_DATA_ROOT", "%s", mcelib_lookup_dir(mce, MAS_DIR_DATA_ROOT));
+    say_env(csh, "MAS_DATA", "%s", mcelib_lookup_dir(mce, MAS_DIR_DATA));
+    puts("");
+
+    mas_script = mcelib_lookup_dir(mce, MAS_DIR_SCRIPT);
+    mas_python = mcelib_lookup_dir(mce, MAS_DIR_PYTHON);
+    mas_test_suite = mcelib_lookup_dir(mce, MAS_DIR_TEST_SUITE);
+
+    say_env(csh, "MAS_IDL", "%s", mcelib_lookup_dir(mce, MAS_DIR_IDL));
+    say_env(csh, "MAS_PYTHON", "%s", mas_python);
+    say_env(csh, "MAS_SCRIPT", "%s", mas_script);
+    say_env(csh, "MAS_TEMPLATE", "%s", mcelib_lookup_dir(mce, MAS_DIR_TEMPLATE));
+    say_env(csh, "MAS_TEST_SUITE", "%s", mas_test_suite);
+    puts("");
+
+
+    base = strip_path(mce, "PATH");
+    path = malloc(strlen(base) + strlen(mas_bin) + strlen(mas_script) + strlen(mas_test_suite) + 4);
+    if (base[0] == 0)
+        sprintf(path, "%s:%s:%s", mas_bin, mas_script, mas_test_suite);
+    else
+        sprintf(path, "%s:%s:%s:%s", base, mas_bin, mas_script, mas_test_suite);
+    say_env(csh, "PATH", "%s", path);
+    free(base);
+    free(path);
+
+    base = strip_path(mce, "PYTHONPATH");
+    path = malloc(strlen(base) + strlen(mas_python) + sizeof(MAS_PREFIX) + 9);
+    if (base[0] == 0)
+        sprintf(path, "%s:" MAS_PREFIX "/python", mas_python);
+    else
+        sprintf(path, "%s:%s:" MAS_PREFIX "/python", base, mas_python);
+    say_env(csh, "PYTHONPATH", "%s", path);
+    free(base);
+    free(path);
+}
+
 void __attribute__((noreturn)) Usage(int ret)
 {
     printf("Usage: mas_config [OPTION]... [PARAMETER]...\n"
             "\nOptions:\n"
+            "  -c                generate C-shell commands on stdout for "
+            "regularising the\n"
+            "                      environment for the current MCE device\n"
             "  -m <file>         read MAS configuration from the specified "
             "file instead of\n"
             "                      the default mas.cfg (the one reported by "
@@ -72,7 +156,10 @@ void __attribute__((noreturn)) Usage(int ret)
             "                      exit with zero status.  Only makes sense "
             "with a boolean\n"
             "                      parameter: all other parameters are "
-            "implicitly true.\n"
+            "implicitly true\n"
+            "  -s                generate Bourne shell commands on stdout for "
+            "regularising\n"
+            "                      the environment for the current MCE device\n"
             "  --help            display this help and exit\n"
             "\nParameters:\n"
             "  --bigphys         boolean; true if the driver supports "
@@ -85,13 +172,13 @@ void __attribute__((noreturn)) Usage(int ret)
             "  --config-file     the full path of the MAS configuration file "
             "(mas.cfg).  This\n"
             "                      value is not affected by the -m option "
-            "described above.\n"
+            "described above\n"
             "  --data-dir        the current data directory (MAS_DATA in the"
             "environment)\n"
             "  --data-root       the root data directory (MAS_DATA_ROOT in the "
             "environment)\n"
             "  --etc-dir         the directory containing the hardware "
-            "description files.\n"
+            "description files\n"
             "                      (MAS_ETC in the environment.)\n"
             "  --experiment-file the full path of the experiment configuration "
             "file\n"
@@ -111,9 +198,9 @@ void __attribute__((noreturn)) Usage(int ret)
             "  --max-fibre-card  the maximum number of fibre cards supported "
             "by the\n"
             "                      kernel driver\n"
-            "  --mce-devname     the name of the current MCE device.\n"
-            "  --mce-devnum      the number of the current MCE device.\n"
-            "  --num-mce         the number number of MCEs managed by MAS.\n"
+            "  --mce-devname     the name of the current MCE device\n"
+            "  --mce-devnum      the number of the current MCE device\n"
+            "  --num-mce         the number number of MCEs managed by MAS\n"
             "  --path[=PATHBASE] a shell PATH variable for MAS.  If given, MAS "
             "specific\n"
             "                      directories will be appended to PATHBASE, "
@@ -127,7 +214,7 @@ void __attribute__((noreturn)) Usage(int ret)
             "MAS root\n"
             "                      (see --mas-root).  The value is suitable "
             "for providing\n"
-            "                      to --path.\n"
+            "                      to --path\n"
             "  --prefix          the MAS prefix\n"
             "  --pythonpath[=PATHBASE]\n"
             "                    a PYTHONPATH variable for MAS.  If given, MAS "
@@ -143,7 +230,7 @@ void __attribute__((noreturn)) Usage(int ret)
             "--prefix) or MAS\n"
             "                      root (see --mas-root).  The value is "
             "suitable for\n"
-            "                      providing to --pythonpath.\n"
+            "                      providing to --pythonpath\n"
             "  --python-dir      the MCE script python directory (MAS_PYTHON "
             "in the\n"
             "                      environment)\n"
@@ -158,9 +245,9 @@ void __attribute__((noreturn)) Usage(int ret)
             "                      environment)\n"
             "  --user            the MAS username\n"
             "  --version         the mas_config version\n"
-            "\nIf -q is not specified, multiple parameters may be given.  The "
-            "value of each\nparameter will be reported on standard output, one "
-            "per line, in the order\nspecified.\n");
+            "\nIf -c, -q, and -s are not specified, multiple parameters may be "
+            "given.  The\nvalue of each parameter will be reported on standard "
+            "output, one per line, in\nthe order specified.\n");
 
     exit(ret);
 }
@@ -207,10 +294,14 @@ int main(int argc, char **argv)
     const char *parg[MAX_PARAM];
     int i, np = 0;
     int boolean = 0;
-    char *ptr;
+    int do_env = -1;
+    char *ptr, *ptr_in;
     char *mas_cfg = NULL;
+    const char *mas_path1;
+    const char *mas_path2;
+    const char *mas_path3;
 
-    while ((option = getopt_long(argc, argv, "m:n:q", opts, NULL)) >=0) {
+    while ((option = getopt_long(argc, argv, "cm:n:qs", opts, NULL)) >=0) {
         if (option == 'n') {
             devnum = (int)strtol(optarg, &ptr, 10);
             if (*optarg == '\0' || *ptr != '\0' || devnum < 0) {
@@ -223,7 +314,11 @@ int main(int argc, char **argv)
             if (mas_cfg)
                 free(mas_cfg);
             mas_cfg = strdup(optarg);
-        } else if (option == '?')
+        } else if (option == 's')
+          do_env = 0;
+        else if (option == 'c')
+          do_env = 1;
+        else if (option == '?')
             Usage(1);
         else if (option == OPT_HELP)
             Usage(0);
@@ -239,28 +334,34 @@ int main(int argc, char **argv)
     }
 
     /* nothing to do */
-    if (np == 0) {
+    if (np == 0 && do_env == -1) {
         printf("No parameter specified.\n");
         Usage(0);
     }
 
     /* quiet boolean */
-    if (boolean) {
+    if (do_env != -1) {
+        mce_context_t mce = mcelib_create(devnum, mas_cfg, 0);
+        if (mce == NULL)
+            return 1;
+        setup_env(devnum, mce, do_env);
+        return 0;
+    } else if (boolean) {
         switch (plist[0]) {
             case OPT_BIGPHYS:
 #if BIGPHYS
-                exit(0);
+                return 0;
 #else
-                exit(1);
+                return 1;
 #endif
             case OPT_FAKEMCE:
 #if FAKEMCE
-                exit(0);
+                return 0;
 #else
-                exit(1);
+                return 1;
 #endif
             default:
-                exit(0);
+                return 0;
         }
     }
 
@@ -352,9 +453,20 @@ int main(int argc, char **argv)
                     setenv("PATH", parg[i], 1);
                 }
 
-                ptr = mcelib_shell_expand(mce,
-                        "${PATH}:${MAS_BIN}:${MAS_SCRIPT}:${MAS_TEST_SUITE}");
+                mas_path1 = mcelib_lookup_dir(mce, MAS_DIR_BIN);
+                mas_path2 = mcelib_lookup_dir(mce, MAS_DIR_SCRIPT);
+                mas_path3 = mcelib_lookup_dir(mce, MAS_DIR_TEST_SUITE);
+
+                ptr_in = malloc(11 + strlen(mas_path1) + strlen(mas_path2) + strlen(mas_path3));
+
+                if (getenv("PATH") == NULL)
+                    sprintf(ptr_in, "%s:%s:%s", mas_path1, mas_path2, mas_path3);
+                else
+                    sprintf(ptr_in, "${PATH}:%s:%s:%s", mas_path1, mas_path2, mas_path3);
+
+                ptr = mcelib_shell_expand(mce, ptr_in);
                 puts(ptr);
+                free(ptr_in);
                 free(ptr);
                 break;
             case OPT_PYTHONPATH_BASE:
@@ -366,9 +478,18 @@ int main(int argc, char **argv)
                 if (parg[i])
                     setenv("PYTHONPATH", parg[i], 1);
 
-                ptr = mcelib_shell_expand(mce, "${PYTHONPATH}:${MAS_PYTHON}:"
-                        MAS_PREFIX "/python");
+                mas_path1 = mcelib_lookup_dir(mce, MAS_DIR_PYTHON);
+
+                ptr_in = malloc(23 + sizeof(MAS_PREFIX) + strlen(mas_path1));
+
+                if (getenv("PYTHONPATH") == NULL)
+                    sprintf(ptr_in, "%s:" MAS_PREFIX "/python", mas_path1);
+                else
+                    sprintf(ptr_in, "${PYTHONPATH}:%s:" MAS_PREFIX "/python", mas_path1);
+
+                ptr = mcelib_shell_expand(mce, ptr_in);
                 puts(ptr);
+                free(ptr_in);
                 free(ptr);
                 break;
 

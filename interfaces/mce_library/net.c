@@ -17,8 +17,11 @@
 #include "context.h"
 #include "net.h"
 
+/* polling timeout in milliseconds.  -1 will disable */
+#define POLL_TIMEOUT (-1)
+
 /* uncomment the following to see mcenetd traffic */
-// #define DEBUG_TRAFIC
+#define DEBUG_TRAFFIC
 
 /* generic functions */
 
@@ -60,12 +63,12 @@ static int mcenet_poll(int fd, short event, const char *name)
 {
     struct pollfd pfd = { fd, event, 0 };
 
-    int r = poll(&pfd, 1, 1000);
+    int r = poll(&pfd, 1, POLL_TIMEOUT);
     if (r == -1) {
         perror("mcenet: poll");
         return 1;
     } else if (r == 0) {
-        fprintf(stderr, "mcenet: timout waiting for %s\n", name);
+        fprintf(stderr, "mcenet: timeout waiting for %s\n", name);
         return 1;
     } else if (pfd.revents & POLLERR) {
         fprintf(stderr, "mcenet: error waiting for %s\n", name);
@@ -194,6 +197,11 @@ static int dev_connect(mce_context_t context, int port, const char *what)
                 what, context->dev_name);
         return -1;
     }
+
+#ifdef DEBUG_TRAFFIC
+    fprintf(stderr, "mcenet: connected %s:%i as fd#%i\n", context->dev_name,
+        port, sock);
+#endif
 
     /* identify ourselves */
     message[0] = context->net.token;

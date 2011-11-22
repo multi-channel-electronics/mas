@@ -48,7 +48,7 @@ int mcecmd_stop_application (mce_context_t context, const mce_param_t *param);
 int mcecmd_reset            (mce_context_t context, const mce_param_t *param);
 
 int mcecmd_write_block      (mce_context_t context, const mce_param_t *param,
-			     int count, const u32 *data);
+			     int count, u32 *data);
 
 int mcecmd_read_block       (mce_context_t context, const mce_param_t *param,
 			     int count, u32 *data);
@@ -63,13 +63,13 @@ int mcecmd_read_element     (mce_context_t context, const mce_param_t *param,
 			     int data_index, u32 *datum);
 
 int mcecmd_write_range      (mce_context_t context, const mce_param_t *param,
-			     int data_index, const u32 *data, int count);
+			     int data_index, u32 *data, int count);
 
 int mcecmd_read_range       (mce_context_t context, const mce_param_t *param,
 			     int data_index, u32 *data, int count);
 
 int mcecmd_write_block_check(mce_context_t context, const mce_param_t *param,
-			     int count, const u32 *data, int checks);
+			     int count, u32 *data, int checks);
 
 
 /* Raw i/o routines; roll your own packets */

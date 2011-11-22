@@ -1,11 +1,16 @@
+<?php
+   if (!isset($heater_count) || !isset($heater_mapping)) {
+     throw new Exception('Define $heater_count and $heater_mapping.');
+   }
+?>
         {
             name = "heater_mapping";
             parameters = (
                 {
                     name = "bias";
-		    count = <?=$heater_count?>;
+		    count = <?php echo $heater_count?>;
                     maps = (   
-<? $s = "";
+<?php $s = "";
    $indent = "                             ";
    foreach ($heater_mapping as $map) {
      $s .= $indent . "{ start=$map[0]; count=$map[1]; card=\"$map[2]\"; " .

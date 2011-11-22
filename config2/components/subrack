@@ -102,13 +102,13 @@
                 mapping = "tes_mapping";
             },
 <?php } ?>
-<? if (in_array("heater", $virt_list)) { ?>
+<?php if (in_array("heater", $virt_list)) { ?>
             {
                 name = "heater";
                 nature = "virtual";
                 mapping = "heater_mapping";
             },
-<? } ?>
+<?php } ?>
             /* Terminator */
 	    {
 	        name = "dummy";

@@ -14,7 +14,8 @@
                     name = "bias";
                     id = 0x21;
 <?php if ($hw_12tes) { ?>
-      		    count = 12;
+                    count = 12;
+                    op_xor = 0x8000;
 <?php } ?>
                 }
 <?php if ($hw_subrack == "small") { ?>

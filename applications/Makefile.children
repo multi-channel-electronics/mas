@@ -4,4 +4,4 @@ include $(BASE)/Makefile.children
 # Applications get to use C99, threading, and readline.
 
 CC=gcc -std=c99
-CFLAGS += -g -D_GNU_SOURCE
+CFLAGS += -g -D_GNU_SOURCE -Wall
