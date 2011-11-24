@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -137,7 +140,7 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 
 	// Get additional args
 	int count = 0;
-	if (my_opt==NULL) {
+    if (my_opt->sub_opts == NULL) {
 		if (t->n > 1) {
 			sprintf(errmsg, "orphaned arguments!");
 			return -1;
@@ -149,7 +152,8 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 		count = climb( t+1, my_opt->sub_opts, errmsg, suggest);
 	} 
 
-	if (count < 0) return count - 1;
+    if (count < 0)
+        return count - 1;
 
 	if (count == 0 && t->n > 1) {
 		errmsg += sprintf(errmsg, "%s expects argument from ", arg_s);
@@ -178,8 +182,6 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 	}
 
 	return count + 1;
-	
-
 }
 
 
