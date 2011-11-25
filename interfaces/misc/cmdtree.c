@@ -145,7 +145,7 @@ int climb( token_t *t, const cmdtree_opt_t *opt, char *errmsg, int suggest )
 			sprintf(errmsg, "orphaned arguments!");
 			return -1;
 		}
-		return 0;
+        return 1;
 	}
 	
 	if (t->n > 1) {
