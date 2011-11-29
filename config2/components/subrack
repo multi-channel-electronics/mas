@@ -87,7 +87,7 @@
                 nature = "virtual";
                 id = ( <?php echo $id ?> );
                 mapping = "<?php echo $mapping ?>";
-            }<?php if (!$dummy) echo "," ?> 
+            },
 <?php
           echo "\n";
     }
