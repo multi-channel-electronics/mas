@@ -74,47 +74,37 @@
                 status = 0;
             },
 <?php } ?>
-<?php if (in_array("sq2", $virt_list)) { ?>
+<?php /* Virtual cards */
+    function dump_vcard_block($name, $test=True) {
+      global $VIRTUAL_ADDRESS, $virt_list;
+      if ($test && !in_array($name, $virt_list))
+        return;
+      $id = sprintf("0x%02x", $VIRTUAL_ADDRESS[$name]);
+      $mapping = $name . "_mapping";
+?>
             {
-                name = "sq2";
+                name = "<?php echo $name ?>";
                 nature = "virtual";
-                mapping = "sq2_mapping";
-            },
-<?php } ?>
-<?php if (in_array("sq1", $virt_list)) { ?>
-            {
-                name = "sq1";
-                nature = "virtual";
-                mapping = "sq1_mapping";
-            },
-<?php } ?>
-<?php if (in_array("sa", $virt_list)) { ?>
-            {
-                name = "sa";
-                nature = "virtual";
-                mapping = "sa_mapping";
-            },
-<?php } ?>
-<?php if (in_array("tes", $virt_list)) { ?>
-            {
-                name = "tes";
-                nature = "virtual";
-                mapping = "tes_mapping";
-            },
-<?php } ?>
-<?php if (in_array("heater", $virt_list)) { ?>
-            {
-                name = "heater";
-                nature = "virtual";
-                mapping = "heater_mapping";
-            },
-<?php } ?>
+                id = ( <?php echo $id ?> );
+                mapping = "<?php echo $mapping ?>";
+            }<?php if (!$dummy) echo "," ?> 
+<?php
+          echo "\n";
+    }
+
+    dump_vcard_block("sq2");
+    dump_vcard_block("sq1");
+    dump_vcard_block("sa");
+    dump_vcard_block("tes");
+    dump_vcard_block("heater");
+?>
             /* Terminator */
-	    {
-	        name = "dummy";
-		nature = "virtual";
-		mapping = "no_mapping";
-	    }
+            {
+                name = "dummy";
+                nature = "virtual";
+                id = ( <?php printf("0x%02x", $VIRTUAL_ADDRESS["dummy"]) ?> );
+                mapping = "no_mapping";
+            }
         ); //components list
 
     }; // system

@@ -35,6 +35,18 @@ $CARD_ERRBITS = array(
 );
 
 
+/* Pseudo hardware addresses for virtual cards; for remote commanding over IP */
+
+$VIRTUAL_BIAS = 0x80;
+$VIRTUAL_ADDRESS = array(
+  "dummy"  => $VIRTUAL_BIAS + 0x00,
+  "sq2"    => $VIRTUAL_BIAS + 0x01,
+  "sq1"    => $VIRTUAL_BIAS + 0x02,
+  "sa"     => $VIRTUAL_BIAS + 0x03,
+  "tes"    => $VIRTUAL_BIAS + 0x04,
+  "heater" => $VIRTUAL_BIAS + 0x05
+);
+
 /* "sys" cards -- order and eligibility */
 
 $SYS_CARDS = array(

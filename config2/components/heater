@@ -8,6 +8,7 @@
             parameters = (
                 {
                     name = "bias";
+                    id = 0x01;
 		    count = <?php echo $heater_count?>;
                     maps = (   
 <?php $s = "";

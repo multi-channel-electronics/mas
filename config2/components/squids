@@ -3,11 +3,13 @@
             parameters = (
                 {
                     name = "fb";
+                    id = 0x01;
                     count = <?php echo $num_columns?>;
                     maps = ({ start= 0; count=<?php echo $num_columns?>; card="bc1"; param="flux_fb"; offset=0; });
                 },
                 {
                     name = "bias";
+                    id = 0x02;
                     count = <?php echo $num_columns?>;
                     maps = (
 <?php echo rc_map("sa_bias"); ?>
@@ -15,6 +17,7 @@
                 },
                 {
                     name = "offset";
+                    id = 0x03;
                     count = <?php echo $num_columns?>;
                     maps = (
 <?php echo rc_map("offset"); ?>
@@ -35,6 +38,7 @@
 ?>
                 {
                     name = "enbl_mux";
+                    id = 0x01;
                     count = 1;
                     maps = ( { start= 0; count=1; card="bac"; param="enbl_mux"; offset=0; } );
                 },
@@ -47,12 +51,14 @@
 
                 {
                     name = "enbl_mux";
+                    id = 0x01;
                     count = <?php echo $num_columns?>;
                     maps = ( { start=0; count=<?php echo $num_columns?>; card="bc2"; param="enbl_mux"; offset=0; } );
                 },
 <?php   }  /* fw_rev_bc_fast */   ?>
                 {
                     name = "fb";
+                    id = 0x02;
                     count = <?php echo $num_columns?>;
                     maps = ( { start=0; count=<?php echo $num_columns?>; card="bc2"; param="flux_fb"; offset=0; } );
                 },
@@ -62,12 +68,14 @@
 <?php    if ($hw_subrack == "full") { ?>
                 {
                     name = "bias";
+                    id = 0x03;
                     count = <?php echo $num_columns?>;
                     maps = ( { start=0; count=<?php echo $num_columns?>; card="bc3"; param="flux_fb"; offset=0; } );
                 }
 <?php    } else { ?>
                 {
                     name = "bias";
+                    id = 0x04;
                     count = <?php echo $num_columns?>;
                     maps = ( { start=0; count=<?php echo $num_columns?>; card="bc1"; param="flux_fb"; offset=16; } );
                 }
@@ -80,16 +88,19 @@
             parameters = (
                 {
                     name = "bias";
+                    id = 0x01;
                     count = 41;
                     maps = ( { start= 0; count=41; card="ac"; param="on_bias"; offset=0; });
                 },
                 {
                     name = "bias_off";
+                    id = 0x02;
                     count = 41;
                     maps = ( { start= 0; count=41; card="ac"; param="off_bias"; offset=0; });
                 },
                 {
                     name = "fb_const";
+                    id = 0x03;
                     count = <?php echo $num_columns?>;
                     maps = (
 <?php echo rc_map("fb_const"); ?>
@@ -97,6 +108,7 @@
                 },
                 {
                     name = "servo_mode";
+                    id = 0x04;
                     count = <?php echo $num_columns?>;
                     maps = (
 <?php echo rc_map("servo_mode"); ?>

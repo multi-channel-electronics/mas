@@ -3,6 +3,7 @@
             parameters = (
                 {
                     name = "bias";
+                    id = 0x01;
 
 <?php if ($tes_para == "classic") { ?>
                     count = 3;
