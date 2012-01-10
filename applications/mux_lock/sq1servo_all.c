@@ -18,6 +18,8 @@
  *   * MA renamed .fb to .bias and creates a merger-friendly format of .bias file
  *   * MA+MFH: repair multi-bias bug
  *   * MFH added experiment.cfg support
+ *   * MVL: Does not sweep fb1 for channels with columns_off =1, holds 
+ *      them at fb_const instead
  *
  ***********************************************************/
 
@@ -41,11 +43,14 @@ struct {
   int dfb;
   int nfb;
   
+  int fb_const;
+
   int sfb_init[MAXCOLS];
 
   double target[MAXCOLS];
   double gain[MAXCOLS];
   int quanta[MAXCOLS];
+  int columns_off[MAXCOLS];
 	
 } control;
 
@@ -95,13 +100,17 @@ int load_exp_config(const char *filename)
   load_int(cfg, "sq1_servo_bias_count", &control.nbias);
   load_int(cfg, "sq1_servo_bias_step", &control.dbias);
 
+  load_int(cfg, "fb_const", &control.fb_const);
+
   load_double_array(cfg, "sq1_servo_gain",
 		    control.column_0, control.column_n, control.gain);
   load_int_array(cfg, "sq2_fb",
 		 control.column_0, control.column_n, control.sfb_init);
   load_int_array(cfg, "sq2_flux_quanta",
 		 control.column_0, control.column_n, control.quanta);
-
+  load_int_array(cfg, "columns_off",
+		 control.column_0, control.column_n, control.columns_off);
+  
   return 0;
 }
 
@@ -355,8 +364,11 @@ int main(int argc, char **argv)
           error_action("mcecmd_write_block sq1bias", error);
       }
 
-      // Initialize SQ1 FB
+      // Initialize SQ1 FB -- "off" columns will be held to fb_const.
       duplicate_fill(control.fb, temparr, control.column_n);
+      for (int k=0; k<control.column_n; k++)
+	if (control.columns_off[k+control.column_0])
+	  temparr[k] = control.fb_const;
       write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
 
       // Preservo and run the FB ramp.
@@ -370,8 +382,10 @@ int main(int argc, char **argv)
 
 	if (i > 0) {
 	  // Next sq1 fb ramp value.
-	  duplicate_fill(control.fb + i*control.dfb, temparr, control.column_n);
-	  write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
+	  for (int k=0; k<control.column_n; k++)
+	    if (!control.columns_off[k+control.column_0])
+	      temparr[k] = control.fb + i*control.dfb;
+          write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
 	}
 	
 	// Get a frame
