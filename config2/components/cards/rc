@@ -134,6 +134,13 @@
                     id = 0xAD;
                 },
 <? } ?>
+<? if (fw_range("rc", $min=0x5010009)) { ?>
+		{
+		    name = "pterm_decay_bits";
+		    id = 0x64;
+		    default_set = 3;
+		},
+<? } ?>
 <? if (fw_range("rc", $min=0x500000a)) { ?>
 		{
 		    name = "fltr_type";
