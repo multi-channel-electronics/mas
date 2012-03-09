@@ -5,12 +5,14 @@
 #include <mce/defaults.h>
 
 /*
-  Type for holding a C pointer.  Used for mce_context.
+  Catch-all Python class for general MCE use.  Holds a generic C
+  pointer (mce_context_t*), or an mce_param_t.
 */
 
 typedef struct {
      PyObject_HEAD
      void *p;
+     mce_param_t param;
 } ptrobj;
 
 static PyTypeObject
@@ -56,10 +58,24 @@ ptrobjType = {
      0,                         /* tp_new */
 };
 
-int ptrobj_decode(PyObject *o, void **dest)
+static int ptrobj_decode(PyObject *o, void **dest)
 {
      *dest = ((ptrobj*)o)->p;
      return 1;
+}
+
+static int ptrobj_decode_param(PyObject *o, mce_param_t **dest)
+{
+     ptrobj *po = (ptrobj *)o;
+     *dest = &(po->param);
+     return 1;
+}
+
+static ptrobj *ptrobj_new(void *item)
+{
+     ptrobj* p = PyObject_New(ptrobj, &ptrobjType);
+     p->p = item;
+     return p;
 }
 
 /*
@@ -98,8 +114,6 @@ static PyObject* datalet_to_list(const datalet *d)
 	  PyList_SetItem(o, i, PyInt_FromLong(d->data[i]));
      return o;
 }
-
-
 
 
 static PyObject *trace(PyObject *self, PyObject *args)
@@ -145,6 +159,47 @@ static PyObject *mce_connect(PyObject *self, PyObject *args) {
 
 
 /*
+  lookup
+*/
+
+static PyObject *lookup(mce_context_t *mce,
+			PyObject *ocard,
+			PyObject *oparam)
+{
+     ptrobj *o = ptrobj_new(NULL);
+     mce_param_t *p = &o->param;
+     if (PyInt_Check(ocard) && PyInt_Check(oparam)) {
+	  p->card.id[0] = (int)PyInt_AsLong(ocard);
+	  p->card.card_count = 1;
+	  p->param.id = (int)PyInt_AsLong(oparam);
+	  p->param.count = 1;
+     } else {
+	  mcecmd_load_param(mce, p,
+			    PyString_AsString(ocard),
+			    PyString_AsString(oparam));
+     }
+     return (PyObject *)o;
+}
+
+/*
+  mce_lookup
+    args: (mce_context_t, card, param)
+*/
+
+static PyObject *mce_lookup(PyObject *self, PyObject *args)
+{
+     mce_context_t *mce;
+     PyObject *card, *param;
+
+     if (!PyArg_ParseTuple(args, "O&OO",
+			   ptrobj_decode, &mce,
+			   &card, &param))
+	  return NULL;
+     return (PyObject *)lookup(mce, card, param);
+}
+
+
+/*
   mce_write
     args: (mce_context_t, card, param, offset, vals)
 */
@@ -152,23 +207,20 @@ static PyObject *mce_connect(PyObject *self, PyObject *args) {
 static PyObject *mce_write(PyObject *self, PyObject *args)
 {
      mce_context_t *mce;
-     char *card, *param;
      int offset;
      datalet vals;
-
-     if (!PyArg_ParseTuple(args, "O&ssiO&",
+     ptrobj *p;
+     PyObject *card, *param;
+     if (!PyArg_ParseTuple(args, "O&OOiO&",
 			   ptrobj_decode, &mce,
-			   &card, &param,
+			   &card,
+			   &param,
 			   &offset,
 			   datalet_decode, &vals))
 	  return NULL;
-
-     mce_param_t p;
-     mcecmd_load_param(mce, &p, card,  param);
-
-     mcecmd_write_range(mce, &p, offset, vals.data, vals.count);
-
-     return PyFloat_FromDouble(0.);
+     p = (ptrobj *)lookup(mce, card, param);
+     mcecmd_write_range(mce, &p->param, offset, vals.data, vals.count);
+     Py_RETURN_NONE;
 }
 
 /*
@@ -179,25 +231,24 @@ static PyObject *mce_write(PyObject *self, PyObject *args)
 static PyObject *mce_read(PyObject *self, PyObject *args)
 {
      mce_context_t *mce;
-     char *card, *param;
+     PyObject *card, *param;
+     ptrobj *p;
      int offset;
      datalet vals;
 
-     if (!PyArg_ParseTuple(args, "O&ssii",
+     if (!PyArg_ParseTuple(args, "O&OOii",
 			   ptrobj_decode, &mce,
 			   &card, &param,
 			   &offset,
 			   &vals.count))
 	  return NULL;
-
-     mce_param_t p;
-     mcecmd_load_param(mce, &p, card,  param);
+     p = (ptrobj*)lookup(mce, card, param);
 
      if (vals.count < 0)
-	  vals.count = p.param.count - offset;
-     vals.count = mcecmd_read_size(&p, vals.count);
+	  vals.count = p->param.param.count - offset;
+     vals.count = mcecmd_read_size(&p->param, vals.count);
 
-     mcecmd_read_range(mce, &p, offset, vals.data, vals.count);
+     mcecmd_read_range(mce, &p->param, offset, vals.data, vals.count);
 
      return datalet_to_list(&vals);
 }
@@ -229,30 +280,28 @@ static int frame_callback(unsigned long user_data, int size, u32 *data)
 static PyObject *mce_read_data(PyObject *self, PyObject *args)
 {
      mce_context_t *mce;
-     char *card;
-     int count;
+     int cards, count;
      PyArrayObject *array;
 
-     if (!PyArg_ParseTuple(args, "O&siO!",
+     if (!PyArg_ParseTuple(args, "O&iiO!",
 			   ptrobj_decode, &mce,
-			   &card,
-			   &count,
+			   &cards, &count,
 			   &PyArray_Type, &array))
 	  return NULL;
 
-     // Numpy object
-     printf("%i\n", array->nd);
-
+     // Note how this totally doesn't do any array size checking.
      frame_handler_t f;
      f.buf = (void*)array->data;
      f.index = 0;
-     mcedata_storage_t *ramb = mcedata_rambuff_create( frame_callback, (unsigned long)&f );
+     mcedata_storage_t *ramb = mcedata_rambuff_create( frame_callback,
+						       (unsigned long)&f );
      
      mce_acq_t acq;
-     mcedata_acq_create(&acq, mce, 0, -1, -1, ramb);
+     mcedata_acq_create(&acq, mce, 0, cards, -1, ramb);
      mcedata_acq_go(&acq, count);
      mcedata_acq_destroy(&acq);
-     return NULL;
+
+     Py_RETURN_NONE;
 }
 
 
@@ -261,14 +310,18 @@ static PyObject *mce_read_data(PyObject *self, PyObject *args)
 
 static PyMethodDef mceMethods[] = {
      {"trace",  trace, METH_VARARGS,
-     "Return the trace of a matrix."},
-    {"connect",  mce_connect, METH_VARARGS,
-     "Connect."},
-    {"write",  mce_write, METH_VARARGS,
-     "Write."},
-    {"read",  mce_read, METH_VARARGS,
-     "Read."},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+      "Return the trace of a matrix."},
+     {"connect",  mce_connect, METH_VARARGS,
+      "Connect."},
+     {"lookup", mce_lookup, METH_VARARGS,
+      "Lookup."},
+     {"write",  mce_write, METH_VARARGS,
+      "Write."},
+     {"read",  mce_read, METH_VARARGS,
+      "Read."},
+     {"read_data",  mce_read_data, METH_VARARGS,
+      "Read data."},
+     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 
