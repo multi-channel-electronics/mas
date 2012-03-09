@@ -88,7 +88,7 @@ class BasicMCE:
         mcelib.read_data(self.context, card_code, count, data)
         return data
 
-    def read_data(self, count, cards=None, fields=None, extract=False,
+    def read_data(self, count=1, cards=None, fields=None, extract=False,
                   row_col=False, raw_frames=False):
         cards = self.card_list(cards)
         d = MCEBinaryData()

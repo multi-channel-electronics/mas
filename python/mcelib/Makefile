@@ -11,6 +11,9 @@ SOURCE = $(MOD)/__init__.py $(MOD)/basic.py
 default: $(SOURCE)
 	python setup.py build
 
+install: default
+	python setup.py install
+
 mcelib.so: base.o
 	$(LD) $(LDFLAGS) -o $@ $< $(LDLINK)
 

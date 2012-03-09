@@ -11,3 +11,5 @@ RC_CODES = {
     'rcs': -1,
     'rca': -1,
 }
+
+FREQ = 5e7
