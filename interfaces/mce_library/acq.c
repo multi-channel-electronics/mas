@@ -321,7 +321,8 @@ static int load_data_params(mce_context_t *context, mce_acq_t *acq,
 		    (mcecmd_read_block(context, &para, 1, data)==0))
 			acq->data_mode[i] = data[0];
 		else {
-			fprintf(stderr, "Failed to determine data_mode.\n");
+			acq->data_mode[i] = -1;
+			//fprintf(stderr, "Failed to determine data_mode.\n");
 		}
 	}
 	return 0;
