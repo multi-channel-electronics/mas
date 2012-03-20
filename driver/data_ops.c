@@ -64,19 +64,36 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 
         if (fpdata->properties & DATA_LEECH) {
                 //Leeches don't care about semaphores or anything.
-                //But they need to have the latest configuration.
-                if (fpdata->leech_acq != dframes->acq_index)
-                        return -ENODATA;
                 while (count > 0) {
+                        //But they need to have the latest configuration.
+                        if (fpdata->leech_acq != dframes->acq_index)
+                                return -ENODATA;
+
                         this_read = data_peek_frame(buf, count, card,
                                                     &fpdata->leech_tail,
                                                     &fpdata->leech_partial);
                         if (this_read > 0) {
                                 count -= this_read;
                                 read_count += this_read;
-                        } else
+                                continue;
+                        }
+                        
+                        /* Buffer is empty.  O_NONBLOCK exits now, other
+                           readers exit as long as *some* data has been
+                           copied. */
+                        if (filp->f_flags & O_NONBLOCK || read_count > 0)
                                 break;
-                }
+
+                        /* Wait for more data or change of configuration */
+                        if (wait_event_interruptible(dframes->queue,
+                                                     (dframes->flags & FRAME_ERR) ||
+                                                     (fpdata->leech_tail
+                                                      != dframes->head_index) ||
+                                                     (fpdata->leech_acq
+                                                      != dframes->acq_index))) {
+                                return -ERESTARTSYS;
+                        }
+		}
                 return read_count;
         }
 
@@ -283,8 +300,10 @@ int data_open(struct inode *inode, struct file *filp)
 	struct filp_pdata *fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
         PRINT_INFO(iminor(inode), "entry\n");
 
+        memset(fpdata, 0, sizeof(*fpdata));
 	fpdata->minor = iminor(inode);
-        fpdata->properties = 0;
+        fpdata->leech_acq = -1;
+
 	filp->private_data = fpdata;
 
         PRINT_INFO(fpdata->minor, "ok\n");

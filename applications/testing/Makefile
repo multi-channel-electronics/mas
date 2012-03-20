@@ -7,14 +7,14 @@ VER_TARGET := .
 include $(MAKERULES)Makefile.version
 
 # targets
-TARGETS = mce_state
+TARGETS = mce_state peek
 
-OBJECTS = mce_state.o
+OBJECTS = mce_state.o peek.o
 HEADERS = 
 
 all: $(TARGETS)
 
-mce_state: mce_state.o
+%: %.o
 	$(CC) $(CFLAGS) $^ -o $@ $(MCE_LIBS)
 
 $(OBJECTS): $(HEADERS)

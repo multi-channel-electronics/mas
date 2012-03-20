@@ -286,6 +286,10 @@ int data_frame_divide( int new_data_size, int card)
  * effectively pops a frame or part of a frame from the circular
  * buffer, freeing the space.  The frames semaphore should be held
  * when calling this routine.  This routine is not re-entrant.
+ *
+ * Actually this looks broken; the loop doesn't update the destination
+ * address so you better hope it only goes through once. (As of this
+ * writing, users are probably using mmap to get the data anyway.)
  */
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
