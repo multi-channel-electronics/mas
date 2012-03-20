@@ -246,6 +246,7 @@ int data_frame_empty_buffers(int card)
 	dframes->head_index = 0;
 	dframes->tail_index = 0;
 	dframes->partial = 0;
+        dframes->acq_index++;
 	return 0;
 }
 
@@ -338,6 +339,38 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 
 	return count_out;
 }
+
+
+
+int data_peek_frame(void* __user user_buf, int count, int card,
+                    int *tail, int *partial)
+{
+	frame_buffer_t *dframes = data_frames + card;
+	void *source;
+	int count_out = 0;
+	int this_read;
+
+        while ((*tail != dframes->head_index) && (count > 0)) {
+                source = dframes->base + (*tail)*dframes->frame_size + (*partial);
+                
+                // Don't cross frame boundaries.
+                this_read = (dframes->data_size - *partial < count) ?
+                        dframes->data_size - *partial : count;
+                
+                copy_to_user(user_buf+count_out, source, this_read);
+                count -= this_read;
+                count_out += this_read;
+                
+                //Update dest pointer
+                *partial += this_read;
+                if (*partial >= dframes->data_size) {
+                        *partial = 0;
+                        *tail = (*tail + 1) % dframes->max_index;
+                }
+        }                        
+        return count_out;
+}
+
 
 
 /* Call tail_increment to mark a frame as consumed. */
@@ -472,6 +505,7 @@ int data_reset(int card)
 	dframes->head_index = 0;
 	dframes->tail_index = 0;
 	dframes->partial = 0;
+        dframes->acq_index++;
 	dframes->flags = 0;
 	dframes->dropped = 0;
 	
@@ -528,35 +562,6 @@ int data_lock_operation(int card, int operation, void *filp)
 }
 
 
-int data_lock_down(int card, void *filp)
-{
-	int ret_val = 0;
-	frame_buffer_t *dframes = data_frames + card;
-	if (down_interruptible(&dframes->sem))
-		return -ERESTARTSYS;
-	if (dframes->data_lock != NULL) {
-		ret_val = -EBUSY;
-	} else {
-		dframes->data_lock = filp;
-	}
-	up(&dframes->sem);
-	return ret_val;
-}
-
-int data_lock_up(int card, void *filp)
-{
-	int ret_val = 0;
-	frame_buffer_t *dframes = data_frames + card;
-	if (down_interruptible(&dframes->sem))
-		return -ERESTARTSYS;
-	if (dframes->data_lock == filp) {
-		dframes->data_lock = NULL;
-	}
-	up(&dframes->sem);
-	return ret_val;
-}
-
-
 /* Proc! */
 
 int data_proc(char *buf, int count, int card)
@@ -591,7 +596,9 @@ int data_proc(char *buf, int count, int card)
 		len += sprintf(buf+len, "    %-15s %#25x\n", "size:", dframes->frame_size);
 	if (len < count)
 		len += sprintf(buf+len, "    %-15s %#25x\n", "data:", dframes->data_size);
-	if (len < count) {
+	if (len < count)
+		len += sprintf(buf+len, "    %-15s %25i\n", "configs:", dframes->acq_index);
+        if (len < count) {
 		char sstr[64];
 		switch (dframes->data_mode) {
 		case DATAMODE_CLASSIC:
@@ -620,13 +627,15 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
+        memset(dframes, 0, sizeof(*dframes)*MAX_CARDS);
 	init_waitqueue_head(&dframes->queue);
+	sema_init(&dframes->sem, 1);
 
 	err = data_alloc(mem_size, data_size, card);
 	if (err != 0) return err;
 
-	err = data_ops_probe(card);
-	if (err != 0) return err;
+/* 	err = data_ops_probe(card); */
+/* 	if (err != 0) return err; */
 
 	data_reset(card);
 

@@ -18,6 +18,10 @@
 #define      QUERY_DATASIZE  4
 #define      QUERY_FRAMESIZE 5
 #define      QUERY_BUFSIZE   6
+#define      QUERY_LTAIL     7
+#define      QUERY_LPARTIAL  8
+#define      QUERY_LVALID    9
+
   
 /* for use by data_watcher routine */
 #define DATADEV_IOCT_WATCH      _IO(DATADEV_IOC_MAGIC,  2)
@@ -48,5 +52,9 @@
 #define      LOCK_UP         2
 #define      LOCK_RESET      3
 
+/* Behaviours */
+#define DATADEV_IOCT_GET           _IO(DATADEV_IOC_MAGIC, 12)
+#define DATADEV_IOCT_SET           _IO(DATADEV_IOC_MAGIC, 13)
+#define      DATA_LEECH      (1 << 0)  /* Secondary data reader */
 
 #endif

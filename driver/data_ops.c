@@ -25,6 +25,12 @@
 
 struct filp_pdata {
 	int minor;
+        int properties;
+
+        // Private read pointers for DATA_LEECH secondary readers
+        int leech_tail;
+        int leech_partial;
+        int leech_acq;
 };
 
 /**************************************************************************
@@ -55,6 +61,24 @@ ssize_t data_read(struct file *filp, char __user *buf, size_t count,
 	frame_buffer_t *dframes = data_frames + card;
 	int read_count = 0;
 	int this_read = 0;
+
+        if (fpdata->properties & DATA_LEECH) {
+                //Leeches don't care about semaphores or anything.
+                //But they need to have the latest configuration.
+                if (fpdata->leech_acq != dframes->acq_index)
+                        return -ENODATA;
+                while (count > 0) {
+                        this_read = data_peek_frame(buf, count, card,
+                                                    &fpdata->leech_tail,
+                                                    &fpdata->leech_partial);
+                        if (this_read > 0) {
+                                count -= this_read;
+                                read_count += this_read;
+                        } else
+                                break;
+                }
+                return read_count;
+        }
 
 	if (filp->f_flags & O_NONBLOCK) {
 		if (down_trylock(&dframes->sem))
@@ -139,11 +163,18 @@ long data_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 	struct filp_pdata *fpdata = filp->private_data;
 	int card = fpdata->minor;
 	frame_buffer_t *dframes = data_frames + card;
+        int props = fpdata->properties;
 
 	switch(iocmd) {
 
 	case DATADEV_IOCT_RESET:
                 PRINT_INFO(card, "reset\n");
+                if (props & DATA_LEECH) {
+                        // Leeches just get their read pointer re-queued
+                        fpdata->leech_tail = dframes->head_index;
+                        fpdata->leech_partial = 0;
+                        fpdata->leech_acq = dframes->acq_index;
+                }
 		break;
 
 	case DATADEV_IOCT_QUERY:
@@ -163,6 +194,12 @@ long data_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 			return dframes->frame_size;
 		case QUERY_BUFSIZE:
 			return dframes->size;
+                case QUERY_LTAIL:
+                        return fpdata->leech_tail;
+                case QUERY_LPARTIAL:
+                        return fpdata->leech_partial;
+                case QUERY_LVALID:
+                        return (int)(fpdata->leech_acq == dframes->acq_index);
 		default:
 			return -1;
 		}
@@ -188,6 +225,13 @@ long data_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 #endif
 
 	case DATADEV_IOCT_EMPTY:
+                if (props & DATA_LEECH) {
+                        // Leeches just get their read pointer re-queued
+                        fpdata->leech_tail = 0;
+                        fpdata->leech_partial = 0;
+                        fpdata->leech_acq = dframes->acq_index;
+                        return 0;
+                }
                 PRINT_INFO(card, "reset data buffer\n");
 		mce_error_reset(card);
 		return data_frame_empty_buffers(card);
@@ -202,14 +246,30 @@ long data_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 			   "[on=%li]\n", arg);
 		return data_qt_enable(arg, card);
 
-	case DATADEV_IOCT_FRAME_POLL:
-		return (data_frame_poll(card) ? dframes->tail_index*dframes->frame_size : -1);
+        case DATADEV_IOCT_FRAME_POLL:
+                // Used by mmap'ed data reader to access the buffer.
+                return (data_frame_poll(card) ? dframes->tail_index*dframes->frame_size : -1);
 
 	case DATADEV_IOCT_FRAME_CONSUME:
 		return data_tail_increment(card);
 
 	case DATADEV_IOCT_LOCK:
 		return data_lock_operation(card, arg, filp);
+
+	case DATADEV_IOCT_GET:
+		return props;
+		
+        case DATADEV_IOCT_SET:
+                // Update properties
+                fpdata->properties = (int)arg;
+                // Changes?
+                props = fpdata->properties & ~props;
+                if (props & DATA_LEECH) {
+                        fpdata->leech_tail = dframes->head_index;
+                        fpdata->leech_partial = 0;
+                        fpdata->leech_acq = dframes->acq_index;
+                }
+                return 0;
 
 	default:
                 PRINT_ERR(card, "unknown command (%#x)\n", iocmd );
@@ -224,6 +284,7 @@ int data_open(struct inode *inode, struct file *filp)
         PRINT_INFO(iminor(inode), "entry\n");
 
 	fpdata->minor = iminor(inode);
+        fpdata->properties = 0;
 	filp->private_data = fpdata;
 
         PRINT_INFO(fpdata->minor, "ok\n");
@@ -254,7 +315,7 @@ struct file_operations data_fops =
 
 /**************************************************************************
  *                                                                        *
- *      Init probe cleanup and remove                                     *
+ *      Init, cleanup                                                     *
  *                                                                        *
  **************************************************************************/
 
@@ -277,17 +338,6 @@ int data_ops_init(void)
 
         PRINT_INFO(NOCARD, "ok\n");
 	return err;
-}
-
-int data_ops_probe(int card)
-{
-	frame_buffer_t *dframes = data_frames + card;
-        PRINT_INFO(card, "entry\n");
-
-	sema_init(&dframes->sem, 1);
-
-        PRINT_INFO(card, "ok\n");
-	return 0;
 }
 
 int data_ops_cleanup(void)

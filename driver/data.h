@@ -93,6 +93,11 @@ typedef struct {
 
 	int major;
 
+        // acq_index - changes (increments, probably) if the frame
+        // size is changed or if the buffer gets reset (this is to 
+        // help leeches realize they need to update their view).
+        int acq_index;
+
 } frame_buffer_t;
 
 extern frame_buffer_t data_frames[MAX_CARDS];
@@ -121,6 +126,10 @@ int  data_frame_divide(int new_data_size, int card);
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
 		    int count, int nonblock, int card);
+
+int data_peek_frame(void* __user user_buf, int count, int card,
+                    int *tail, int *partial);
+
 int data_frame_fake_stop(int card);
 
 int data_frame_resize(int size, int card);
