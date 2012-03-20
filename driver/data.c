@@ -627,7 +627,8 @@ int data_probe(int dsp_version, int card, int mem_size, int data_size)
 	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
-        memset(dframes, 0, sizeof(*dframes)*MAX_CARDS);
+        // Don't zero dframes here -- data_ops_init has already init'd parts of it.
+
 	init_waitqueue_head(&dframes->queue);
 	sema_init(&dframes->sem, 1);
 
