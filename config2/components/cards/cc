@@ -204,6 +204,13 @@
                     status = 0;
                 }
 <? } ?>
+<? if (fw_range("cc", $min=0x500000c)) { ?>
+      		,
+                {
+                    name = "ramp_step_phase";
+                    id = 0xBB;
+                }
+<? } ?>
 <? if ($fw_rev_cc_jtag) { ?>
                 ,
                 {
