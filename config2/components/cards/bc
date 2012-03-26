@@ -26,6 +26,25 @@
                     count = 16;
                 }
 <? } ?>
+
+<? if (fw_range("bc", $min=0x5030000)) { ?>
+                ,
+                {
+                    name = "enbl_flux_fb_mod";
+                    id = 0x25;
+                    count = 32;
+                },
+                {
+                    name = "enbl_bias_mod";
+                    id = 0x26;
+                    count = 12;
+                },
+                {
+                    name = "mod_val";
+                    id = 0x27;
+                    count = 32;
+                }
+<? } ?>
 /*,
                 {
                     name = "sa_htr0";
