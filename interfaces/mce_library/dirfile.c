@@ -526,6 +526,7 @@ static int dirfileseq_cycle(mce_acq_t *acq, dirfileseq_t *f, int this_frame)
 	// Is there an active dirfile that needs closing?
 	if (f->active_idx != -1) {
 		dirfile_cleanup(acq);
+		dirfile_free(&f->active_dirfile);
 		memset(&f->active_dirfile, 0, sizeof(f->active_dirfile));
 	}
 
