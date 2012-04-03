@@ -42,6 +42,7 @@ enum {
 	SPECIAL_ACQ_CONFIG,
 	SPECIAL_ACQ_CONFIG_FS,
 	SPECIAL_ACQ_CONFIG_DIRFILE,
+	SPECIAL_ACQ_CONFIG_DIRFILESEQ,
 	SPECIAL_ACQ_FLUSH,
 	SPECIAL_LOCK_QUERY,
 	SPECIAL_LOCK_RESET,
@@ -133,6 +134,7 @@ cmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
  	{ SEL_NO, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
  	{ SEL_NO, "ACQ_CONFIG_DIRFILE", 2, 2, SPECIAL_ACQ_CONFIG_DIRFILE, flat_args},
+ 	{ SEL_NO, "ACQ_CONFIG_DIRFILE_FS", 3, 3, SPECIAL_ACQ_CONFIG_DIRFILESEQ, fs_args},
  	{ SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
  	{ SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
 	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
@@ -536,6 +538,16 @@ int prepare_outfile(char *errmsg, int storage_option)
 		}
 		break;
 
+	case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
+		storage = mcedata_dirfileseq_create(options.acq_filename,
+						    options.acq_interval,
+						    FS_DIGITS, 0);
+		if (storage == NULL) {
+			sprintf(errmsg, "Could not create flatfile");
+			return -1; 
+		}
+		break;
+
 	default:
 		sprintf(errmsg, "Unimplemented storage type.");
 		return -1;
@@ -768,7 +780,8 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 			break;
 
 		case SPECIAL_ACQ_CONFIG_DIRFILE:
-			/* Args: filename, card, interval */
+		case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
+			/* Args: filename, card[, interval ] */
 
 			/* Assemble file name using any path override */
 			cmdtree_token_word( s, tokens+1 );
@@ -782,7 +795,10 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 				break;
 			}
 
-			ret_val = prepare_outfile(errmsg, SPECIAL_ACQ_CONFIG_DIRFILE);
+			if (tokens[0].value == SPECIAL_ACQ_CONFIG_DIRFILESEQ)
+				options.acq_interval = tokens[3].value;
+			
+			ret_val = prepare_outfile(errmsg, tokens[0].value);
 			break;
 
 		case SPECIAL_ACQ_FLUSH:

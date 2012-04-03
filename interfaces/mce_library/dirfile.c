@@ -494,3 +494,117 @@ mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options)
 }
 
 
+/*
+ *
+ * File-sequencing support
+ *
+ * Wrap the dirfile calls in the simplest possible way.
+ */
+
+/* This is an extension of dirfile_struct; so leave active_dirfile as
+ * the first entry! */
+
+typedef struct dirfileseq_struct {
+	dirfile_t active_dirfile;  // Must be first struct member!
+	int active_idx;            // -1 if not init'd, otherwise the most recent idx.
+
+	int interval;
+	int digits;
+	int next_switch;
+	int frame_count;
+	char format[MCE_LONG];
+} dirfileseq_t;
+
+
+static int dirfileseq_cycle(mce_acq_t *acq, dirfileseq_t *f, int this_frame)
+{
+	int new_idx = this_frame / f->interval;
+
+	if (f->active_idx == new_idx)
+		return 0;
+
+	// Is there an active dirfile that needs closing?
+	if (f->active_idx != -1) {
+		dirfile_cleanup(acq);
+		memset(&f->active_dirfile, 0, sizeof(f->active_dirfile));
+	}
+
+	// Setup new filename and init dirfile
+	f->active_idx = new_idx;
+	sprintf(f->active_dirfile.basename, f->format, new_idx);
+	return dirfile_init(acq);
+}
+
+static int dirfileseq_init(mce_acq_t *acq)
+{
+	dirfileseq_t *f = (dirfileseq_t *)acq->storage->action_data;
+	dirfileseq_cycle(acq, f, 0);
+
+	return 0;
+}
+
+static int dirfileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
+{
+	dirfileseq_t *f = (dirfileseq_t*)acq->storage->action_data;
+
+	// Don't use the provided counter, it counts only relative to this 'go'
+	if (f->frame_count++ >= f->next_switch) {
+		f->next_switch += f->interval;
+		if (dirfileseq_cycle(acq, f, f->frame_count)) {
+			return -1;
+		}
+	}	
+	
+	return dirfile_post(acq, frame_index, data);
+}
+
+
+/* Generic destructor (not to be confused with cleanup member function) */
+
+static int dirfileseq_destructor(mcedata_storage_t *storage)
+{
+	if (storage->action_data == NULL) return 0;
+
+	// Free the private data for the storage module, clear the structure
+	dirfileseq_t *f = (dirfileseq_t*)storage->action_data;
+	dirfile_free(&f->active_dirfile);
+	FREE_NOT_NULL(f)
+
+	memset(storage, 0, sizeof(*storage));
+	return 0;
+}
+
+
+mcedata_storage_t dirfileseq_actions = {
+	.init = dirfileseq_init,
+	.cleanup = dirfile_cleanup,
+	.post_frame = dirfileseq_post,
+	.flush = dirfile_flush,
+	.destroy = dirfileseq_destructor,
+};
+
+mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
+					     int digits, int options)
+{
+	dirfileseq_t *f = (dirfileseq_t*)malloc(sizeof(dirfileseq_t));
+	mcedata_storage_t *storage =
+		(mcedata_storage_t*)malloc(sizeof(mcedata_storage_t));
+	if (f==NULL || storage==NULL) return NULL;
+
+	//Initialize storage with the file operations, then set local data.
+	memcpy(storage, &dirfileseq_actions, sizeof(dirfileseq_actions));
+	storage->action_data = f;
+
+	memset(f, 0, sizeof(*f));
+
+	f->active_idx = -1;
+	f->interval = interval;
+	f->digits = digits;
+
+	// Produce format like "basename.%03i"
+	sprintf(f->format, "%s.%%0%ii", basename, f->digits);
+	
+	return storage;
+}
+
+
