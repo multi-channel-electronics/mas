@@ -313,7 +313,7 @@ int main ( int argc, char **argv )
    /** generate a runfile **/
    error=genrunfile (full_datafilename, control.filename, 1, control.rc,
 		     control.bias, control.dbias, control.nbias,
-		     control.fb, control.dfb, control.nfb, 
+		     control.fb, control.dfb, control.nfb, control.bias_active,
 		     init_line1, init_line2);
    if (error != 0) {
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);

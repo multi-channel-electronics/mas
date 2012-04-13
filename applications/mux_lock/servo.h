@@ -19,6 +19,7 @@
 #define SA_CARD  "sa"
 #define SQ2_CARD "sq2"
 #define SQ1_CARD "sq1"
+#define ROWSEL_CARD "row"
 
 #define ROW_ORDER "row_order"
 #define SQ2_BIAS "bias"
@@ -29,6 +30,7 @@
 #define SA_FB_COL    "fb_col"
 #define SQ2_FB_COL   "fb_col"
 #define SQ2_FB_MUX   "enbl_mux"
+#define ROWSEL_FB "select"
 
 typedef struct {
   int fcount;
@@ -67,7 +69,8 @@ char *full_datafilename, /* datafilename including the path*/
 char *datafile,          /* datafilename */
 int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
 int  which_rc,
-int  bias, int bstep, int nbias, int feed, int fstep, int nfeed,
+int  bias, int bstep, int nbias, int bias_active,
+int feed, int fstep, int nfeed,
 char *initline1, char *initline2 /*init lines to be included in <servo_init> section*/
 );
 

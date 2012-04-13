@@ -296,7 +296,7 @@ int main (int argc, char **argv)
 
    /** generate a runfile **/
    error=genrunfile (full_datafilename, control.filename, 2, control.rc, 
-		     control.bias, control.dbias, control.nbias,
+		     control.bias, control.dbias, control.nbias, control.bias_active,
 		     control.fb, control.dfb, control.nfb, 
 		     init_line, NULL);
    if (error != 0) {

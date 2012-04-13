@@ -336,7 +336,7 @@ int main(int argc, char **argv)
    /** generate a runfile **/
    sprintf(init_line2, "<super_servo> 1");
    error=genrunfile (full_datafilename, control.filename, 1, control.rc,
-		     control.bias, control.dbias, control.nbias,
+		     control.bias, control.dbias, control.nbias, control.bias_active,
 		     control.fb, control.dfb, control.nfb, 
 		     init_line1, init_line2);
    if (error != 0){

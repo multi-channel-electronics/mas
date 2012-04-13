@@ -22,6 +22,22 @@ int error_action(char *msg, int code){
   ERRPRINT(temp);
   exit (code);  
 }  
+
+char *bias_codes[] = {
+  "",         /* 0 */
+  "sq1bias",  /* 1 - sq1servo */
+  "sq2bias",  /* 2 - sq2servo */
+  "sq1bias",  /* 3 - sq1servo_sa */
+  "sq1bias",  /* 4 - rs_servo */
+};
+char *flux_codes[] = {
+  "",        /* 0 */
+  "sq1fb",   /* 1 - sq1servo */
+  "sq2fb",   /* 2 - sq2servo */
+  "sq1fb",   /* 3 - sq1servo_sa */
+  "rowsel",  /* 4 - rs_servo */
+};
+
 /***********************************************************
  * genrunfile - creates a runfile
  ***********************************************************/
@@ -30,7 +46,8 @@ char *full_datafilename, /* datafilename including the path*/
 char *datafile,          /* datafilename */
 int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
 int  which_rc,
-int  bias, int bstep, int nbias, int feed, int fstep, int nfeed,
+int  bias, int bstep, int nbias, int bias_active,
+int feed, int fstep, int nfeed,
 char *servo_init1,       /* a line of servo_init var_name and values to be included in <servo_init>*/     
 char *servo_init2        /* a line of servo_init var_name and values to be included in <servo_init>*/     
 ){
@@ -65,10 +82,17 @@ FILE *runfile;
   }
   /*<par_ramp> section*/  
   fprintf (runfile,"<par_ramp>\n  <loop_list> loop1 loop2\n");
-  fprintf (runfile,"    <par_list loop1> par1\n      <par_title loop1 par1> sq%dbias\n      <par_step loop1 par1> %d %d %d\n",
-                        which_servo, bias, bstep, nbias);
-  fprintf (runfile,"    <par_list loop2> par1\n      <par_title loop2 par1> sq%dfb\n      <par_step loop2 par1> %d %d %d\n",
-                        which_servo, feed, fstep, nfeed);
+  fprintf (runfile,
+	   "    <par_list loop1> par1\n"
+	   "      <par_title loop1 par1> %s\n"
+	   "      <par_step loop1 par1> %d %d %d\n"
+	   "      <par_active loop1 par1> %i\n",
+	   bias_codes[which_servo], bias, bstep, nbias, bias_active);
+  fprintf (runfile,
+	   "    <par_list loop2> par1\n"
+	   "      <par_title loop2 par1> %s\n"
+	   "      <par_step loop2 par1> %d %d %d\n",
+	   flux_codes[which_servo], feed, fstep, nfeed);
   fprintf (runfile, "</par_ramp>\n\n");
   fclose(runfile);
   

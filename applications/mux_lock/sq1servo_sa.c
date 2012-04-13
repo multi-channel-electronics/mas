@@ -187,7 +187,7 @@ int main(int argc, char **argv)
    }
    if (!args_ok && !options.argument_opts) {
      printf("When ramp parameters are loaded from experiment.cfg, arguments are:\n"
-	    "    sq1servo_all [options] <rc> <filename>\n\n"
+	    "    sq1servo_sa [options] <rc> <filename>\n\n"
 	    "where\n"
 	    "    rc           readout card number (1-4)\n"
 	    "    filename     output file basename ($$MAS_DATA will be prepended)\n");
@@ -315,7 +315,6 @@ int main(int argc, char **argv)
        for (i=0; i<control.rows; i++)
 	 safb[j][i] = temparr[j];
    } else {
-     init_line1[0]='\0';
      // Initialize servo output
      for (j=0; j<control.column_n; j++)
        for (i=0; i<control.rows; i++) 
@@ -329,8 +328,8 @@ int main(int argc, char **argv)
 
    /** generate a runfile **/
    sprintf(init_line2, "<super_servo> 1");
-   error=genrunfile (full_datafilename, control.filename, 1, control.rc,
-		     control.bias, control.dbias, control.nbias,
+   error=genrunfile (full_datafilename, control.filename, 3, control.rc,
+		     control.bias, control.dbias, control.nbias, control.bias_active,
 		     control.fb, control.dfb, control.nfb, 
 		     init_line1, init_line2);
    if (error != 0){
