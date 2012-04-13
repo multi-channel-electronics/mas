@@ -12,6 +12,11 @@
 $hw_subrack = "small";
 
 
+/* Set $hw_mux11d=1 if this system uses new-school SA+SQ1 muxes. */
+
+$hw_mux11d = 0;
+
+
 /* In $card_list, list all cards present in your MCE.  The order
  * probably doesn't matter.
  */
