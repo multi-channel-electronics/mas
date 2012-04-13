@@ -40,7 +40,11 @@ if ($hw_bac)
     mappings = (
 
 <?
-include "squids";
+if ($hw_mux11d)
+        include "squids_mux11d";
+else
+        include "squids";
+
 include "tes";
 include "heater";
 ?>

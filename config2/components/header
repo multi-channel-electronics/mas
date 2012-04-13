@@ -76,11 +76,13 @@ function fw_range($card, $min=NULL, $max=NULL) {
   return TRUE;
 }
 
-function map_array($prefix, $count, $card, $length) {
+function map_array($prefix, $count, $card, $length, $dest=NULL) {
   /* For fast SQ2 feedback.  Includes trailing command and line feed. */
   $output = "";
+  if ($dest==NULL)
+    $dest = $prefix;
   for ($i=0; $i<$count; $i++) {
-    $output .= "                {  name=\"{$prefix}{$i}\"; count={$length}; " .
+    $output .= "                {  name=\"{$dest}{$i}\"; count={$length}; " .
         "maps=( { start=0;count={$length};card=\"{$card}\";param=\"{$prefix}{$i}\";" .
         "offset=0; }); },\n";
   }

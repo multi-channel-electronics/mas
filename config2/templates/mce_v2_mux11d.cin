@@ -1,0 +1,97 @@
+<?php
+
+
+/*
+ *   MCE HARDWARE
+ */
+
+/* Set $hw_subrack based on whether your MCE has 3 ("small") or 5
+ * ("full") MDM connectors.
+ */
+
+$hw_subrack = "small";
+
+
+/* Set $hw_mux11d=1 if this system uses new-school SA+SQ1 muxes. */
+
+$hw_mux11d = 1;
+
+
+/* In $card_list, list all cards present in your MCE.  The order
+ * probably doesn't matter.
+ */
+
+$card_list = array("ac", "bc1", "bac", "bc3", "rc1", "rc2", "cc", "psc");
+
+
+/* In some cases we need to know what hardware revision the cards
+ * are. List here by card type.
+ */
+
+$hw_rev = array(
+	"bc" => "revD",
+);	
+
+
+/* The TES bias line configuration can vary widely.  It is specified 
+ * by setting $tes_para.  See mcewiki entry on "mce.cfg" for options.
+ *
+ * Some basic ones:
+ *   "classic"       one line from each bias card (rev D)
+ *   "small16"       on 3-MDM subracks, 16 lines from bc3 flux_fb[:16]
+ *   "none"          none
+ *   "map"           use map described by $tes_bias_count, $tes_bias_mapping.
+ */
+
+$tes_para = "small16";
+
+/* The tes_bias_count and tes_bias_mapping are used if $tes_para = "map". */
+
+$tes_bias_count = 0;
+$tes_bias_mapping = array (
+     /* args are mapping_start, mapping_count, card, param, param_offset */
+     /*	        array(0, 1, "bc2", "bias", 1) */);
+
+
+/* The "heater bias" mapping described below will not be available
+ * unless "heater" is added to the $virt_list array below. */
+
+$heater_count = 0;
+$heater_mapping = array(
+		/* args are mapping_start, mapping_count, card, param, param_offset */
+/*		array(0, 4, "bc1", "flux_fb", 16),
+		array(4, 4, "bc2", "flux_fb", 16) */);
+
+
+
+/*
+ *   MCE FIRMWARE
+ */
+
+/* Describe firmware revisions (doesn't have to be exact) */
+
+$fw_rev = array(
+	"cc" => 0x5000000,
+	"rc" => 0x5000000,
+	"bc" => 0x5000003,
+	"ac" => 0x5000000,
+);
+
+
+/*
+ *   VIRTUAL FUNCTIONS
+ */
+
+/* List of virtual cards to expose.  Probably doesn't need to be altered
+ * except to add "heater".
+ */
+
+$virt_list = array("rcs", "rca", "sys", "sa", "sq2", "sq1", "row", "tes");
+
+
+
+/* And execute. */
+
+include 'components/mce';
+
+?>
