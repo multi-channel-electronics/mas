@@ -26,6 +26,7 @@
 #define SA_FB    "fb"
 #define SQ2_FB   "fb"
 #define SQ1_FB   "fb_const"
+#define SA_FB_COL    "fb_col"
 #define SQ2_FB_COL   "fb_col"
 #define SQ2_FB_MUX   "enbl_mux"
 
@@ -54,6 +55,8 @@ void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
 			 const char *opmsg);
 int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
 		   mce_param_t* sq2fb_col, int col0, int n_col);
+int check_mux11d(mce_context_t* mce, mce_param_t* safb,
+		   mce_param_t* safb_col, int col0, int n_col);
 void duplicate_fill(i32 value, i32 *data, int count);
 
 void rerange(i32 *dest, i32 *src, int n_data,

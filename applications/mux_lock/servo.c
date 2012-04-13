@@ -206,6 +206,31 @@ int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
   return fast_sq2;
 }
 
+/* check_mux11d -- check for mux11d support.
+
+   Initializes safb and/or safb_col for use and returns 1 or 0
+   depending on whether mux11d appears to be enabled or not.
+ */
+
+int check_mux11d(mce_context_t* mce, mce_param_t* safb,
+		 mce_param_t* safb_col, int col0, int n_col)
+{
+  /* Just check for "sa fb_col0". */
+  int fb0_err = load_param_or_exit(mce, safb, SA_CARD, SA_FB_COL "0", 1);
+  if (fb0_err != 0) {
+    printf("Card does not appear to support fast-switching SA FB.\n");
+    return 0;
+  }
+
+  char tempbuf[MAXLINE];
+  for (int i=0; i<n_col; i++) {
+    sprintf(tempbuf, "%s%i", SA_FB_COL, i+col0);
+    load_param_or_exit(mce, safb_col+i, SA_CARD, tempbuf, 0);
+  }
+
+  return 1;
+}
+
 void duplicate_fill(i32 value, i32 *data, int count)
 {
   int i;
