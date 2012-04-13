@@ -13,7 +13,7 @@ CFLAGS += $(DEFS)
 
 # targets
 
-TARGETS = sq1servo sq2servo sq1servo_all sq1servo_sa
+TARGETS = sq1servo sq2servo sq1servo_all sq1servo_sa rs_servo
 
 OBJECTS = $(foreach d,$(TARGETS),$(d).o ) \
 	servo.o options.o
@@ -33,7 +33,7 @@ sq1servo_all: sq1servo_all.o servo.o options.o
 sq1servo_sa: sq1servo_sa.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-sq1servo_rs: sq1servo_rs.o servo.o options.o
+rs_servo: rs_servo.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 sq2servo: sq2servo.o servo.o options.o
