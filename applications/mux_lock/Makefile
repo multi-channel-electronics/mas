@@ -52,6 +52,10 @@ INSTALL_TARGET=sq1servo
 include $(MAKERULES)Makefile.install_rule
 INSTALL_TARGET=sq1servo_all
 include $(MAKERULES)Makefile.install_rule
+INSTALL_TARGET=sq1servo_sa
+include $(MAKERULES)Makefile.install_rule
+INSTALL_TARGET=rs_servo
+include $(MAKERULES)Makefile.install_rule
 INSTALL_TARGET=sq2servo
 include $(MAKERULES)Makefile.install_rule
 
