@@ -34,6 +34,12 @@ $CARD_ERRBITS = array(
   "cc"  => 0x00000038
 );
 
+/* Some default hw_rev values... implemented as needed */
+
+if (!key_exists("rc", $hw_rev))
+   $hw_rev["rc"] = "revF";
+if (!key_exists("bc", $hw_rev))
+   $hw_rev["bc"] = "revF";
 
 /* "sys" cards -- order and eligibility */
 
@@ -143,5 +149,7 @@ $fw_rev_cc_awg = fw_range("cc", $min=0x5000003);
 /* Does clock card firmware support remote configuration? */
 $fw_rev_cc_jtag = fw_range("cc", $min=0x5000005);
 
+/* Does RC support pterm decay bits? */
+$has_pterm = fw_range("rc", $min=0x5010009) && $hw_rev["rc"] >= "revE";
 
 ?>

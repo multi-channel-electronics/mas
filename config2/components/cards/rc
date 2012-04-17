@@ -134,7 +134,7 @@
                     id = 0xAD;
                 },
 <? } ?>
-<? if (fw_range("rc", $min=0x5010009)) { ?>
+<? if ($has_pterm) { ?>
 		{
 		    name = "pterm_decay_bits";
 		    id = 0x64;
