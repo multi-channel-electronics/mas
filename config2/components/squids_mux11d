@@ -57,17 +57,17 @@
             name = "sq1_mapping";
             parameters = (
 <? /* Expose fast switching on SQ1 BIAS */
-       echo map_array("fb_col", $num_columns, "bc2", 41, "bias_col");
+       echo map_array("fb_col", $num_columns, "bc1", 41, "bias_col",16,0);
 ?>
                 {
                     name = "enbl_mux";
                     count = <?=$num_columns?>;
-                    maps = ( { start=0; count=<?=$num_columns?>; card="bc2"; param="enbl_mux"; offset=0; } );
+                    maps = ( { start=0; count=<?=$num_columns?>; card="bc1"; param="enbl_mux"; offset=16; } );
                 },
                 {
                     name = "bias";
                     count = <?=$num_columns?>;
-                    maps = ( { start=0; count=<?=$num_columns?>; card="bc2"; param="flux_fb"; offset=0; } );
+                    maps = ( { start=0; count=<?=$num_columns?>; card="bc1"; param="flux_fb"; offset=16; } );
                 },
                 {
                     name = "fb_const";
