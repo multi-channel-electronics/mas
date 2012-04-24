@@ -72,27 +72,6 @@ typedef enum {
 #define MCECFG_COMPONENTS         "components"        /* Child of SYSTEM */
 
 
-/* Root configuration structure */
-
-typedef struct mceconfig {
-
-	int connected;
-
-	struct config_t cfg;
-
-	config_setting_t *parameter_sets;
-	config_setting_t *card_types;
-	config_setting_t *components;
-	config_setting_t *mappings;
-
-	int card_count;
-	int cardtype_count;
-	int paramset_count;
-	int mapping_count;
-
-} mceconfig_t;
-
-
 /* Structures for config file entry information  */
 
 typedef struct {

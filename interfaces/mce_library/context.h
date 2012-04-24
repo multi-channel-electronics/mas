@@ -11,6 +11,26 @@ struct maslog_struct {
     int fd;       // ha ha, it's just an int.
 };
 
+/* Root configuration structure */
+
+typedef struct mceconfig {
+
+	int connected;
+
+	struct config_t cfg;
+
+	config_setting_t *parameter_sets;
+	config_setting_t *card_types;
+	config_setting_t *components;
+	config_setting_t *mappings;
+
+	int card_count;
+	int cardtype_count;
+	int paramset_count;
+	int mapping_count;
+
+} mceconfig_t;
+
 /* Module information structure */
 
 typedef struct mcecmd {
