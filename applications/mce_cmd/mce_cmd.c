@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /*! \file mce_cmd.c
  *
  *  \brief Program to send commands to the MCE.
@@ -24,7 +27,7 @@
 #include "options.h"
 
 enum {
-	ENUM_COMMAND_LOW,	
+    ENUM_COMMAND_LOW,
 	COMMAND_RB,
 	COMMAND_WB,
 	COMMAND_REL,
@@ -69,53 +72,53 @@ enum {
 };   
 
 
-#define SEL_NO   (CMDTREE_SELECT | CMDTREE_NOCASE)
+#define SEL_NO   (MASCMDTREE_SELECT | MASCMDTREE_NOCASE)
 
-cmdtree_opt_t anything_opts[] = {
-	{ CMDTREE_INTEGER, "", 0, -1, 0, anything_opts },
-	{ CMDTREE_STRING , "", 0, -1, 0, anything_opts },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+mascmdtree_opt_t anything_opts[] = {
+    { MASCMDTREE_INTEGER, "", 0, -1, 0, anything_opts },
+    { MASCMDTREE_STRING , "", 0, -1, 0, anything_opts },
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
-cmdtree_opt_t integer_opts[] = {
-	{ CMDTREE_INTEGER   , "", 0, -1, 0, integer_opts },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+mascmdtree_opt_t integer_opts[] = {
+    { MASCMDTREE_INTEGER   , "", 0, -1, 0, integer_opts },
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
-cmdtree_opt_t string_opts[] = {
-	{ CMDTREE_STRING    , "", 0, -1, 0, string_opts },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+mascmdtree_opt_t string_opts[] = {
+    { MASCMDTREE_STRING    , "", 0, -1, 0, string_opts },
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
-cmdtree_opt_t command_placeholder_opts[] = {
-	{ CMDTREE_INTEGER   , "", 0, -1, 0, integer_opts },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
-};
-
-
-cmdtree_opt_t flat_args[] = {
-	{ CMDTREE_STRING | CMDTREE_ARGS, "filename", 0, -1, 0, flat_args+1 },
-	{ CMDTREE_STRING | CMDTREE_ARGS, "card"    , 0, -1, 0, NULL },
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+mascmdtree_opt_t command_placeholder_opts[] = {
+    { MASCMDTREE_INTEGER   , "", 0, -1, 0, integer_opts },
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
 
-cmdtree_opt_t fs_args[] = {
-	{ CMDTREE_STRING | CMDTREE_ARGS, "filename", 0, -1, 0, fs_args+1 },
-	{ CMDTREE_STRING | CMDTREE_ARGS, "card"    , 0, -1, 0, fs_args+2 },
-	{ CMDTREE_INTEGER| CMDTREE_ARGS, "interval", 0, -1, 0, NULL},
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
-};
-
-cmdtree_opt_t display_opts[] = {
-	{ SEL_NO, "DEF"     , 0, 0, SPECIAL_DEF     , NULL},
-	{ SEL_NO, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
-	{ SEL_NO, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
-	{ CMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+mascmdtree_opt_t flat_args[] = {
+    { MASCMDTREE_STRING | MASCMDTREE_ARGS, "filename", 0, -1, 0, flat_args+1 },
+    { MASCMDTREE_STRING | MASCMDTREE_ARGS, "card"    , 0, -1, 0, NULL },
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
 
-cmdtree_opt_t root_opts[] = {
+mascmdtree_opt_t fs_args[] = {
+    { MASCMDTREE_STRING | MASCMDTREE_ARGS, "filename", 0, -1, 0, fs_args+1 },
+    { MASCMDTREE_STRING | MASCMDTREE_ARGS, "card"    , 0, -1, 0, fs_args+2 },
+    { MASCMDTREE_INTEGER| MASCMDTREE_ARGS, "interval", 0, -1, 0, NULL},
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
+mascmdtree_opt_t display_opts[] = {
+    { SEL_NO, "DEF"     , 0, 0, SPECIAL_DEF     , NULL},
+    { SEL_NO, "DEC"     , 0, 0, SPECIAL_DEC     , NULL},
+    { SEL_NO, "HEX"     , 0, 0, SPECIAL_HEX     , NULL},
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
+};
+
+
+mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
 	{ SEL_NO, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
 /* 	{ SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts}, */
@@ -151,17 +154,17 @@ cmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
 	{ SEL_NO, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
 	{ SEL_NO, "##"      , 0,-1, SPECIAL_COMMENT , anything_opts},
-	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
+    { MASCMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
-	
+
 /* Table for decoding RC strings into bit sets */
-cmdtree_opt_t rc_list[] = {
+mascmdtree_opt_t rc_list[] = {
 	{ SEL_NO, "rc1", 0, 0, MCEDATA_RC1, NULL },
 	{ SEL_NO, "rc2", 0, 0, MCEDATA_RC2, NULL },
 	{ SEL_NO, "rc3", 0, 0, MCEDATA_RC3, NULL },
 	{ SEL_NO, "rc4", 0, 0, MCEDATA_RC4, NULL },
 	{ SEL_NO, "rcs", 0, 0, 0, NULL},
-	{ CMDTREE_TERMINATOR, "", 0,0,0, NULL},
+    { MASCMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 
 // Lazy old globals...
@@ -195,9 +198,10 @@ mce_param_t num_rows_reported;
 
 int  bit_count(int k);
 
-int  menuify_mceconfig(cmdtree_opt_t *opts);
+int  menuify_mceconfig(mascmdtree_opt_t *opts);
 
-int  process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg);
+int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
+        char *errmsg);
 
 int pathify_filename(char *dest, const char *src);
 
@@ -291,7 +295,7 @@ int  main(int argc, char **argv)
 	int done = 0;
 
 	while (!done) {
-		cmdtree_token_t args[NARGS];
+        mascmdtree_token_t args[NARGS];
 		size_t n = LINE_LEN;
 
 		// Set input semaphore, then check kill condition.
@@ -335,22 +339,22 @@ int  main(int argc, char **argv)
 
 		errmsg[0] = 0;
 		args[0].n = 0;
-		cmdtree_debug = 0;
+        mascmdtree_debug = 0;
 
-		err = cmdtree_tokenize(args, line, NARGS);
+        err = mascmdtree_tokenize(args, line, NARGS);
 		if (err) {
 			strcpy(errmsg, "could not tokenize");
 		}
 
 		if (!err) {
-			int count = cmdtree_select( args, root_opts, errmsg);
+            int count = mascmdtree_select( args, root_opts, errmsg);
 			
 			if (count < 0) {
 				err = -1;
 			} else if (count == 0) {
 				if (options.interactive || args->n > 0) {
-					cmdtree_list(errmsg, root_opts,
-						     "mce_cmd expects argument from [ ", " ", "]");
+                    mascmdtree_list(errmsg, root_opts,
+                            "mce_cmd expects argument from [ ", " ", "]");
 					err = -1;
 				}					
 			} else {
@@ -395,15 +399,15 @@ exit_now:
         m.name = _name; \
         m.min_args = min; \
         m.max_args = max; \
-        m.flags = CMDTREE_SELECT | CMDTREE_NOCASE; \
+        m.flags = MASCMDTREE_SELECT | MASCMDTREE_NOCASE; \
         m.sub_opts = opts; \
         m.user_cargo = (unsigned long)data;
 
 
-int menuify_mceconfig(cmdtree_opt_t *opts)
+int menuify_mceconfig(mascmdtree_opt_t *opts)
 {
-	cmdtree_opt_t *card_opts;
-	cmdtree_opt_t *para_opts;
+    mascmdtree_opt_t *card_opts;
+    mascmdtree_opt_t *para_opts;
 	char *string_table;
 	int i,j, error;
 	int n_cards = mceconfig_card_count(mce);
@@ -459,7 +463,9 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 
 	memcpy(card_opts+n_cards, integer_opts, sizeof(integer_opts));
 		
-	for (i=0; (opts[i].flags & CMDTREE_TYPE_MASK) != CMDTREE_TERMINATOR; i++) {
+    for (i = 0; (opts[i].flags & MASCMDTREE_TYPE_MASK) != MASCMDTREE_TERMINATOR;
+            i++)
+    {
 		if (opts[i].sub_opts == command_placeholder_opts)
 			opts[i].sub_opts = card_opts;
 	}
@@ -469,13 +475,13 @@ int menuify_mceconfig(cmdtree_opt_t *opts)
 
 int translate_card_string(char *s, char *errmsg)
 {
-	cmdtree_token_t rc_token;
-	if (cmdtree_tokenize(&rc_token, s, 1) != 0) {
+    mascmdtree_token_t rc_token;
+    if (mascmdtree_tokenize(&rc_token, s, 1) != 0) {
 		sprintf(errmsg, "invalid readout specification string\n");
 		return -1;
 	}
 			
-	if (cmdtree_select(&rc_token, rc_list, errmsg) <= 0)
+    if (mascmdtree_select(&rc_token, rc_list, errmsg) <= 0)
 		return -1;
 
 	return rc_token.value;
@@ -580,7 +586,8 @@ int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
 
 
 
-int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
+int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
+        char *errmsg)
 {
 	int ret_val = 0;
 	int err = 0;
@@ -602,40 +609,40 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 		// Token[2] is the param
 		// Token[3+] are the data
 
-		// Allow integer values for card and para.
-		int raw_mode = (tokens[1].type != CMDTREE_SELECT) ||
-			(tokens[2].type != CMDTREE_SELECT);
+        // Allow integer values for card and para.
+        int raw_mode = (tokens[1].type != MASCMDTREE_SELECT) ||
+            (tokens[2].type != MASCMDTREE_SELECT);
 		card_mul = 1;
 		to_read = 0;
 
 		if (!raw_mode) {
 			char card_word[MCE_SHORT];
 			char para_word[MCE_SHORT];
-			cmdtree_token_word(card_word, tokens+1);
-			cmdtree_token_word(para_word, tokens+2);
+            mascmdtree_token_word(card_word, tokens+1);
+            mascmdtree_token_word(para_word, tokens+2);
 			if (mcecmd_load_param(mce, &mcep, card_word, para_word)) {
 				sprintf(errmsg, "Could not load parameter '%s %s'",
 					card_word, para_word);
 				return -1;
 			}
 		} else {
-			if ( tokens[1].type == CMDTREE_SELECT ) {
-				mceconfig_cfg_card ((config_setting_t*)tokens[1].data,
-						    &mcep.card);
+            if ( tokens[1].type == MASCMDTREE_SELECT ) {
+                mceconfig_cfg_card ((config_setting_t*)tokens[1].data,
+                        &mcep.card);
 			} else {
 				mcep.card.id[0] = tokens[1].value;
 				mcep.card.card_count = 1;
 			}
 			mcep.param.id = tokens[2].value;
 			mcep.param.count = tokens[3].value;
-			mcep.card.card_count =
-				( tokens[4].type == CMDTREE_INTEGER  ?
-				  tokens[4].value : 1 );
+            mcep.card.card_count =
+                ( tokens[4].type == MASCMDTREE_INTEGER  ?
+                  tokens[4].value : 1 );
 		}
 
-		if (to_read == 0 && tokens[3].type == CMDTREE_INTEGER) {
+        if (to_read == 0 && tokens[3].type == MASCMDTREE_INTEGER) {
 			to_read = tokens[3].value;
-			if (tokens[4].type == CMDTREE_INTEGER) {
+            if (tokens[4].type == MASCMDTREE_INTEGER) {
 				card_mul = tokens[4].value;
 			}
 		}
@@ -726,176 +733,175 @@ int process_command(cmdtree_opt_t *opts, cmdtree_token_t *tokens, char *errmsg)
 	} else {
 
 		switch(tokens[0].value) {
+            case SPECIAL_HELP:
+/*              mascmdtree_list(errmsg, root_opts, */
+/*                      "MCE commands: [ ", " ", "]"); */
+                break;
 
-		case SPECIAL_HELP:
-/* 			cmdtree_list(errmsg, root_opts, */
-/* 				     "MCE commands: [ ", " ", "]"); */
-			break;
+            case SPECIAL_ACQ:
+                options.acq_frames = tokens[1].value;
+                if ((err=mcedata_acq_go(acq, options.acq_frames)) != 0) {
+                    sprintf(errmsg, "%s\n", mcelib_error_string(err));
+                    ret_val = -1;
+                }
+                break;
 
-		case SPECIAL_ACQ:
-			options.acq_frames = tokens[1].value;
-			if ((err=mcedata_acq_go(acq, options.acq_frames)) != 0) {
-				sprintf(errmsg, "%s\n", mcelib_error_string(err));
-				ret_val = -1;
-			}
-			break;
+            case SPECIAL_ACQ_CONFIG:
+                /* Args: filename, card */
 
-		case SPECIAL_ACQ_CONFIG:
-			/* Args: filename, card */
+                /* Assemble file name using any path override */
+                mascmdtree_token_word( s, tokens+1 );
+                pathify_filename(options.acq_filename, s);
 
-			/* Assemble file name using any path override */
-			cmdtree_token_word( s, tokens+1 );
-			pathify_filename(options.acq_filename, s);
+                /* Decode card name */
+                mascmdtree_token_word( s, tokens+2 );
+                options.acq_cards = translate_card_string(s, errmsg);
+                if (options.acq_cards < 0) {
+                    ret_val = -1;
+                    break;
+                }
 
-			/* Decode card name */
-			cmdtree_token_word( s, tokens+2 );
-			options.acq_cards = translate_card_string(s, errmsg);
-			if (options.acq_cards < 0) {
-				ret_val = -1;
-				break;
-			}
+                ret_val = prepare_outfile(errmsg, SPECIAL_ACQ_CONFIG);
+                break;
 
-			ret_val = prepare_outfile(errmsg, SPECIAL_ACQ_CONFIG);
-			break;
+            case SPECIAL_ACQ_CONFIG_FS:
+                /* Args: filename, card, interval */
 
-		case SPECIAL_ACQ_CONFIG_FS:
-			/* Args: filename, card, interval */
+                /* Assemble file name using any path override */
+                mascmdtree_token_word( s, tokens+1 );
+                pathify_filename(options.acq_filename, s);
 
-			/* Assemble file name using any path override */
-			cmdtree_token_word( s, tokens+1 );
-			pathify_filename(options.acq_filename, s);
+                /* Decode card name */
+                mascmdtree_token_word( s, tokens+2 );
+                options.acq_cards = translate_card_string(s, errmsg);
+                if (options.acq_cards < 0) {
+                    ret_val = -1;
+                    break;
+                }
 
-			/* Decode card name */
-			cmdtree_token_word( s, tokens+2 );
-			options.acq_cards = translate_card_string(s, errmsg);
-			if (options.acq_cards < 0) {
-				ret_val = -1;
-				break;
-			}
+                /* Store acquisition interval */
+                options.acq_interval = tokens[3].value;
 
-			/* Store acquisition interval */
-			options.acq_interval = tokens[3].value;
+                ret_val = prepare_outfile(errmsg, SPECIAL_ACQ_CONFIG_FS);
+                break;
 
-			ret_val = prepare_outfile(errmsg, SPECIAL_ACQ_CONFIG_FS);
-			break;
+            case SPECIAL_ACQ_CONFIG_DIRFILE:
+            case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
+                /* Args: filename, card[, interval ] */
 
-		case SPECIAL_ACQ_CONFIG_DIRFILE:
-		case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
-			/* Args: filename, card[, interval ] */
+                /* Assemble file name using any path override */
+                mascmdtree_token_word( s, tokens+1 );
+                pathify_filename(options.acq_filename, s);
 
-			/* Assemble file name using any path override */
-			cmdtree_token_word( s, tokens+1 );
-			pathify_filename(options.acq_filename, s);
+                /* Decode card name */
+                mascmdtree_token_word( s, tokens+2 );
+                options.acq_cards = translate_card_string(s, errmsg);
+                if (options.acq_cards < 0) {
+                    ret_val = -1;
+                    break;
+                }
 
-			/* Decode card name */
-			cmdtree_token_word( s, tokens+2 );
-			options.acq_cards = translate_card_string(s, errmsg);
-			if (options.acq_cards < 0) {
-				ret_val = -1;
-				break;
-			}
+                if (tokens[0].value == SPECIAL_ACQ_CONFIG_DIRFILESEQ)
+                    options.acq_interval = tokens[3].value;
 
-			if (tokens[0].value == SPECIAL_ACQ_CONFIG_DIRFILESEQ)
-				options.acq_interval = tokens[3].value;
-			
-			ret_val = prepare_outfile(errmsg, tokens[0].value);
-			break;
+                ret_val = prepare_outfile(errmsg, tokens[0].value);
+                break;
 
-		case SPECIAL_ACQ_FLUSH:
-			if (acq->storage->flush != NULL) {
-				acq->storage->flush(acq);
-			}
-			break;
+            case SPECIAL_ACQ_FLUSH:
+                if (acq->storage->flush != NULL) {
+                    acq->storage->flush(acq);
+                }
+                break;
 
-		case SPECIAL_ACQ_PATH:
-			cmdtree_token_word( options.acq_path, tokens+1 );
-			if (options.acq_path[0] != 0 && 
-			    options.acq_path[strlen(options.acq_path)-1] != '/') {
-				strcat(options.acq_path, "/");
-			}
-			break;
+            case SPECIAL_ACQ_PATH:
+                mascmdtree_token_word( options.acq_path, tokens+1 );
+                if (options.acq_path[0] != 0 && 
+                        options.acq_path[strlen(options.acq_path)-1] != '/') {
+                    strcat(options.acq_path, "/");
+                }
+                break;
 
-		case SPECIAL_LOCK_QUERY:
-			errmsg += sprintf(errmsg, "%i", mcedata_lock_query(mce));
-			break;
-			
-		case SPECIAL_LOCK_RESET:
-			ret_val = mcedata_lock_reset(mce);
-			break;
+            case SPECIAL_LOCK_QUERY:
+                errmsg += sprintf(errmsg, "%i", mcedata_lock_query(mce));
+                break;
 
-		case SPECIAL_LOCK_DOWN:
-			ret_val = mcedata_lock_down(mce);
-			if (ret_val != 0) {
-				errmsg += sprintf(errmsg, "could not get data lock.\n");
-			}
-			break;
+            case SPECIAL_LOCK_RESET:
+                ret_val = mcedata_lock_reset(mce);
+                break;
 
-		case SPECIAL_LOCK_UP:
-			ret_val = mcedata_lock_up(mce);
-			break;
+            case SPECIAL_LOCK_DOWN:
+                ret_val = mcedata_lock_down(mce);
+                if (ret_val != 0) {
+                    errmsg += sprintf(errmsg, "could not get data lock.\n");
+                }
+                break;
 
-		case SPECIAL_QT_ENABLE:
-			ret_val = mcedata_qt_enable(mce, tokens[1].value);
-			break;
+            case SPECIAL_LOCK_UP:
+                ret_val = mcedata_lock_up(mce);
+                break;
 
-		case SPECIAL_QT_CONFIG:
-			ret_val = mcedata_qt_setup(mce, tokens[1].value);
-			break;
+            case SPECIAL_QT_ENABLE:
+                ret_val = mcedata_qt_enable(mce, tokens[1].value);
+                break;
 
-		case SPECIAL_MRESET:
-			ret_val = mcecmd_hardware_reset(mce);
-			break;
+            case SPECIAL_QT_CONFIG:
+                ret_val = mcedata_qt_setup(mce, tokens[1].value);
+                break;
 
-		case SPECIAL_DRESET:
-			ret_val = mcecmd_interface_reset(mce);
-			break;
+            case SPECIAL_MRESET:
+                ret_val = mcecmd_hardware_reset(mce);
+                break;
 
-		case SPECIAL_REPLY_LOCK:
-			ret_val = mcecmd_lock_replies(mce, 1);
-			break;
+            case SPECIAL_DRESET:
+                ret_val = mcecmd_interface_reset(mce);
+                break;
 
-		case SPECIAL_REPLY_UNLOCK:
-			ret_val = mcecmd_lock_replies(mce, 0);
-			break;
+            case SPECIAL_REPLY_LOCK:
+                ret_val = mcecmd_lock_replies(mce, 1);
+                break;
 
-/* 		case SPECIAL_CLEAR: */
-/* 			ret_val = mcecmd_reset(mce, tokens[1].value, tokens[2].value); */
-/* 			break; */
+            case SPECIAL_REPLY_UNLOCK:
+                ret_val = mcecmd_lock_replies(mce, 0);
+                break;
 
-		case SPECIAL_FAKESTOP:
-			ret_val = mcedata_fake_stopframe(mce);
-			break;
+/*          case SPECIAL_CLEAR: */
+/*              ret_val = mcecmd_reset(mce, tokens[1].value, tokens[2].value);*/
+/*              break; */
 
-		case SPECIAL_EMPTY:
-			ret_val = mcedata_empty_data(mce);
-			break;
+            case SPECIAL_FAKESTOP:
+                ret_val = mcedata_fake_stopframe(mce);
+                break;
 
-		case SPECIAL_SLEEP:
-			usleep(tokens[1].value);
-			break;
+            case SPECIAL_EMPTY:
+                ret_val = mcedata_empty_data(mce);
+                break;
 
-		case SPECIAL_COMMENT:
-			break;
+            case SPECIAL_SLEEP:
+                usleep(tokens[1].value);
+                break;
 
-		case SPECIAL_FRAME:
-			ret_val = mcedata_set_datasize(mce, tokens[1].value);
-			if (ret_val != 0) {
-				sprintf(errmsg, "mce_library error %i", ret_val);
-			}
-			break;
+            case SPECIAL_COMMENT:
+                break;
 
-		case SPECIAL_DISPLAY:
-			options.display = tokens[1].value;
-			break;
+            case SPECIAL_FRAME:
+                ret_val = mcedata_set_datasize(mce, tokens[1].value);
+                if (ret_val != 0) {
+                    sprintf(errmsg, "mce_library error %i", ret_val);
+                }
+                break;
 
-		case SPECIAL_ECHO:
-			options.echo = tokens[1].value;
-			break;
+            case SPECIAL_DISPLAY:
+                options.display = tokens[1].value;
+                break;
 
-		default:
-			sprintf(errmsg, "command not implemented");
-			ret_val = -1;
-		}
+            case SPECIAL_ECHO:
+                options.echo = tokens[1].value;
+                break;
+
+            default:
+                sprintf(errmsg, "command not implemented");
+                ret_val = -1;
+        }
 	}
 
 	return ret_val;

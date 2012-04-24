@@ -8,6 +8,7 @@ LIBNAME = lib$(MCELIB)
 OBJECTS = \
 					acq.o \
 					cmd.o \
+					cmdtree.o \
 					config.o \
 					context.o \
 					data.o \

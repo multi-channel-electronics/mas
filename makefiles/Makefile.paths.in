@@ -6,7 +6,6 @@ MAS_INCLUDE_F=$(BASE)include/
 # Library locations
 MCELIB_F=$(MAS_INTERFACES)mce_library/
 DSPLIB_F=$(MAS_INTERFACES)dsp_library/
-MASMISC_F=$(MAS_INTERFACES)misc/
 
 MCELIB=mcecmd
 DSPLIB=mcedsp
