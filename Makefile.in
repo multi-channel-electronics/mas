@@ -38,13 +38,13 @@ endif
 default: all
 
 all: $(all_deps)
-	for d in $(all_dirs); do make -C $$d || exit 1; done
+	for d in $(all_dirs); do ${MAKE} -C $$d || exit 1; done
 
 clean: $(clean_deps)
-	for d in $(clean_dirs); do make -C $$d clean || exit 1; done
+	for d in $(clean_dirs); do ${MAKE} -C $$d clean || exit 1; done
 
 install: $(install_deps)
-	for d in $(install_dirs); do make -C $$d install || exit 1; done
+	for d in $(install_dirs); do ${MAKE} -C $$d install || exit 1; done
 
 .PHONY: default all clean install
 
@@ -103,12 +103,12 @@ defaults/config.h.in: configure.in
 # Supporting targets; driver needs some hand-holding...
 
 make_driver:
-	cd driver; make
+	cd driver && ${MAKE}
 
 clean_driver:
-	cd driver; make clean
+	cd driver && ${MAKE} clean
 
 install_driver:
-	cd driver; make install
+	cd driver && ${MAKE} install
 
 .PHONY: make_driver clean_driver install_driver

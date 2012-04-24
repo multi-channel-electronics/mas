@@ -6,7 +6,7 @@ include $(BASE)Makefile.children
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
 
-LIBRARY=$(DSP_LIBS) $(MCE_LIBS)
+LIBRARY=$(MCE_LIBS)
 
 CFLAGS += -DVERSION_STRING="$(REPO_VER)"
 

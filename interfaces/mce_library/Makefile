@@ -16,6 +16,8 @@ OBJECTS = \
 					data_thread.o \
 					defaults.o \
 					dirfile.o \
+					dsp_errors.o \
+					dsp_library.o \
 					errors.o \
 					files.o \
 					frame_manip.o \
