@@ -12,7 +12,7 @@ LIBRARY=
 CFLAGS += $(DEFS)
 
 OBJECTS = ramp.o options.o main.o
-HEADERS = ramp.h options.h
+HEADERS = ramp.h options.h $(LIBHEADERS)
 
 CC=gcc
 
@@ -20,7 +20,7 @@ CC=gcc
 
 all: mce_ramp
 
-mce_ramp: $(OBJECTS) $(HEADERS)
+mce_ramp: $(OBJECTS) $(HEADERS) $(LIBDEP)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)

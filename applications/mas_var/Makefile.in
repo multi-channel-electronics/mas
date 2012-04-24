@@ -18,11 +18,11 @@ CFLAGS += $(DEFS)
 # targets
 
 OBJECTS = mas_var.o
-HEADERS = ../../defaults/config.h
+HEADERS = ../../defaults/config.h $(LIBHEADERS)
 
 all: Makefile mas_var
 
-mas_var: $(OBJECTS)
+mas_var: $(OBJECTS) $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)

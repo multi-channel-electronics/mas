@@ -10,11 +10,11 @@ include $(MAKERULES)Makefile.version
 TARGETS = mce_state peek
 
 OBJECTS = mce_state.o peek.o
-HEADERS = 
+HEADERS = $(LIBHEADERS)
 
 all: $(TARGETS)
 
-%: %.o
+%: %.o $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(MCE_LIBS)
 
 $(OBJECTS): $(HEADERS)

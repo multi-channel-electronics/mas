@@ -16,12 +16,12 @@ all: $(TARGET)
 .c.o:
 	gcc $(CFLAGS) -c -I. $<
 
-$(TARGET) : $(OBJS)
+$(TARGET) : $(OBJS) $(LIBDEP)
 	gcc $(OBJS) -o $(TARGET) $(LIB)
 
 jamstub.o: jamstub.c jamport.h jamexprt.h jam_mce.h ../../defaults/config.h
 
-jam_mce.o: jam_mce.c jam_mce.h ../../defaults/config.h
+jam_mce.o: jam_mce.c jam_mce.h ../../defaults/config.h $(LIBHEADERS)
 
 jamexec.o: jamexec.c jamport.h jamexprt.h jamdefs.h jamexec.h jamutil.h \
 	jamexp.h jamsym.h jamstack.h jamheap.h jamarray.h jamjtag.h

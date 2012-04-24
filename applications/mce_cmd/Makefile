@@ -14,11 +14,11 @@ CFLAGS += $(DEFS)
 # targets
 
 OBJECTS = mce_cmd.o options.o
-HEADERS = options.h cmd.h ../../defaults/config.h
+HEADERS = options.h cmd.h ../../defaults/config.h $(LIBHEADERS)
 
 all: mce_cmd
 
-mce_cmd: mce_cmd.o options.o
+mce_cmd: mce_cmd.o options.o $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)

@@ -14,11 +14,11 @@ CFLAGS += $(DEFS)
 # targets
 
 OBJECTS = mas_mon.o
-HEADERS = 
+HEADERS = $(LIBHEADERS)
 
 all: mas_mon
 
-mas_mon: mas_mon.o
+mas_mon: mas_mon.o $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)

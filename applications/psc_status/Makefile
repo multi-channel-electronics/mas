@@ -15,13 +15,13 @@ CFLAGS += $(DEFS)
 
 TARGETS = psc_status 
 OBJECTS = psc_status.o options.o
-HEADERS = psc_status.h options.h ../../defaults/config.h
+HEADERS = psc_status.h options.h ../../defaults/config.h $(LIBHEADERS)
 
 all: $(TARGETS)
 
 $(OBJECTS): $(HEADERS)
 
-psc_status: psc_status.o options.o
+psc_status: psc_status.o options.o $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 

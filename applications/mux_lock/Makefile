@@ -15,19 +15,19 @@ CFLAGS += $(DEFS)
 
 TARGETS = sq1servo   sq2servo   sq1servo_all
 OBJECTS = sq1servo.o sq2servo.o servo.o options.o
-HEADERS = servo.h servo_err.h options.h ../../defaults/config.h
+HEADERS = servo.h servo_err.h options.h ../../defaults/config.h $(LIBHEADERS)
 
 all: $(TARGETS)
 
 $(OBJECTS): $(HEADERS)
 
-sq1servo: sq1servo.o servo.o options.o
+sq1servo: sq1servo.o servo.o options.o $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-sq1servo_all: sq1servo_all.o servo.o options.o
+sq1servo_all: sq1servo_all.o servo.o options.o $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-sq2servo: sq2servo.o servo.o options.o
+sq2servo: sq2servo.o servo.o options.o $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 .c.o: 	$(HEADERS)

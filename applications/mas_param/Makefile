@@ -21,13 +21,14 @@ OBJECTS = main.o \
 					masconfig.o \
 					options.o
 
-HEADERS = mas_param.h get.h crawl.h bash.h csh.h idl.h ../../defaults/config.h
+HEADERS = mas_param.h get.h crawl.h bash.h csh.h idl.h ../../defaults/config.h \
+					$(LIBHEADERS)
 
 # targets
 
 all: mas_param
 
-mas_param: $(OBJECTS)
+mas_param: $(OBJECTS) $(LIBDEP)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)

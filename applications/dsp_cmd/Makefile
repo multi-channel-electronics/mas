@@ -14,7 +14,7 @@ CFLAGS += -DVERSION_STRING="$(REPO_VER)"
 
 all: dsp_cmd
 
-dsp_cmd: dsp_cmd.o
+dsp_cmd: dsp_cmd.o $(LIBDEP) $(LIBHEADERS)
 	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY)
 
 tidy:

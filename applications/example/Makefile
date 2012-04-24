@@ -3,7 +3,7 @@
 default: all
 
 CC=gcc
-LIB=-L/usr/local/lib -lmcecmd -lconfig -lmaslog -lpthread
+LIB=-L/usr/local/lib -lmce -lconfig -lpthread
 
 # -std=c99 lets us define vars anywhere...
 CFLAGS=-Wall -std=c99 -I/usr/local/include

@@ -5,7 +5,7 @@ include ../Makefile.children
 LIBRARY = $(MCE_LIBS)
 
 SOURCE = logger.c main.c init.c
-HEADER = logger.h init.h
+HEADER = logger.h init.h $(LIBHEADERS)
 
 CFLAGS += $(DEFS)
 
@@ -17,10 +17,10 @@ SCRIPT := maslog
 
 all: $(LOGAPP) $(CLIENT)
 
-$(LOGAPP): $(SOURCE) $(HEADER) $(SOCK)
+$(LOGAPP): $(SOURCE) $(HEADER) $(SOCK) $(LIBDEP)
 	$(CC) $(CFLAGS) $(SOURCE) -o$@ $(SOCK) $(LIBRARY)
 
-$(CLIENT): client.c
+$(CLIENT): client.c $(LIBDEP)
 	$(CC) $(CFLAGS) $< -o$@ $(LIBRARY)
 
 tidy:
