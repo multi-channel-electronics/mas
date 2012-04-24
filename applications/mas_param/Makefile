@@ -7,11 +7,20 @@ VER_TARGET := .
 include $(MAKERULES)Makefile.version
 DEFS = -DVERSION_STRING="$(REPO_VER)"
 
-LIBRARY=$(MCE_LIBS) $(CONFIG_LIBS) $(MASMISC_F)masconfig.o
+LIBRARY=$(MCE_LIBS) $(CONFIG_LIBS)
 
 CFLAGS += $(DEFS)
 
-OBJECTS = main.o options.o get.o crawl.o bash.o csh.o idl.o info.o
+OBJECTS = main.o \
+					bash.o \
+					crawl.o \
+					csh.o \
+					get.o \
+					idl.o \
+					info.o \
+					masconfig.o \
+					options.o
+
 HEADERS = mas_param.h get.h crawl.h bash.h csh.h idl.h ../../defaults/config.h
 
 # targets
