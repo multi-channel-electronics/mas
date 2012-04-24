@@ -13,21 +13,18 @@
 
 /* Logging levels, passed to maslog_print; messages are only logged if
  *  their level meets or exceeds the server logging threshold */
-#define LOGGER_DRIVER    0
-#define LOGGER_DETAIL    1
-#define LOGGER_INFO      2
-#define LOGGER_ALWAYS    3
+#define MASLOG_DRIVER    0
+#define MASLOG_DETAIL    1
+#define MASLOG_INFO      2
+#define MASLOG_ALWAYS    3
 
-struct maslog_struct {
-	int fd;       // ha ha, it's just an int.
-};
-
+struct maslog_struct;
 typedef struct maslog_struct maslog_t;
 
 int maslog_close(maslog_t *logger);
 int maslog_print(maslog_t *logger, const char *str);
 int maslog_print_level(maslog_t *logger, const char *str, int level);
 int maslog_write(maslog_t *logger, const char *buf, int size);
-int maslog_connect(maslog_t *logger, char *config_file, char *name);
+maslog_t *maslog_connect(char *config_file, char *name);
 
 #endif

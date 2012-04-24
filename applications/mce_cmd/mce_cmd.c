@@ -69,7 +69,7 @@ enum {
 	SPECIAL_HEX,
 	SPECIAL_ECHO,
 	ENUM_SPECIAL_HIGH,
-};   
+};
 
 
 #define SEL_NO   (MASCMDTREE_SELECT | MASCMDTREE_NOCASE)
@@ -121,8 +121,8 @@ mascmdtree_opt_t display_opts[] = {
 mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
 	{ SEL_NO, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
-/* 	{ SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts}, */
-/* 	{ SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts}, */
+/*  { SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts}, */
+/*    SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts}, */
 	{ SEL_NO, "RRA"     , 4, 4, COMMAND_RRA, command_placeholder_opts},
 	{ SEL_NO, "WRA"     , 4,-1, COMMAND_WRA, command_placeholder_opts},
 	{ SEL_NO, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
@@ -135,11 +135,13 @@ mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
 	{ SEL_NO, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
 	{ SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
- 	{ SEL_NO, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
- 	{ SEL_NO, "ACQ_CONFIG_DIRFILE", 2, 2, SPECIAL_ACQ_CONFIG_DIRFILE, flat_args},
- 	{ SEL_NO, "ACQ_CONFIG_DIRFILE_FS", 3, 3, SPECIAL_ACQ_CONFIG_DIRFILESEQ, fs_args},
- 	{ SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
- 	{ SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
+    { SEL_NO, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
+    { SEL_NO, "ACQ_CONFIG_DIRFILE", 2, 2, SPECIAL_ACQ_CONFIG_DIRFILE,
+        flat_args},
+    { SEL_NO, "ACQ_CONFIG_DIRFILE_FS", 3, 3, SPECIAL_ACQ_CONFIG_DIRFILESEQ,
+        fs_args},
+    { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
+    { SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
 	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
 	{ SEL_NO, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
@@ -257,7 +259,7 @@ int  main(int argc, char **argv)
 		err = ERR_MCE;
 		goto exit_now;
 	}
-	
+
 	if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
 		fprintf(ferr, "Could not load MCE config file '%s'.\n",
 			options.hardware_file);
@@ -266,7 +268,7 @@ int  main(int argc, char **argv)
 	}
 
 	// Log!
-	maslog_connect( &options.logger, options.masconfig_file, "mce_cmd" );
+    options.logger = maslog_connect(options.masconfig_file, "mce_cmd");
 
 	menuify_mceconfig(root_opts);
 
@@ -277,14 +279,14 @@ int  main(int argc, char **argv)
 			fprintf(ferr, "could not open batch file '%s'\n",
 				options.batch_file);
 			sprintf(msg, "failed to read script '%s'\n", options.batch_file);
-			maslog_print( &options.logger, msg );
+            maslog_print(options.logger, msg);
 			err = ERR_MCE;
 			goto exit_now;
 		}
 		sprintf(msg, "reading commands from '%s'\n", options.batch_file);
-		maslog_print( &options.logger, msg );
+        maslog_print(options.logger, msg);
 	}
-				
+
 	// Install signal handler for Ctrl-C and normal kill
 	signal(SIGTERM, die);
 	signal(SIGINT, die);
@@ -327,7 +329,7 @@ int  main(int argc, char **argv)
 
 		// Clear input semaphore; SIGs now will just set kill_switch
 		input_switch = 0;
-		
+
 		if (options.no_prefix)
 			premsg[0] = 0;
 		else
@@ -348,7 +350,7 @@ int  main(int argc, char **argv)
 
 		if (!err) {
             int count = mascmdtree_select( args, root_opts, errmsg);
-			
+
 			if (count < 0) {
 				err = -1;
 			} else if (count == 0) {
@@ -356,25 +358,25 @@ int  main(int argc, char **argv)
                     mascmdtree_list(errmsg, root_opts,
                             "mce_cmd expects argument from [ ", " ", "]");
 					err = -1;
-				}					
+				}
 			} else {
- 				err = process_command(root_opts, args, errmsg);
+				err = process_command(root_opts, args, errmsg);
 				if (err==0) err = 1;
 			}
-		}				
+		}
 
 		if (err > 0) {
 			if (*errmsg == 0) {
 				if (!options.nonzero_only)
 					printf("%sok\n", premsg);
-			} else 
+            } else
 				printf("%sok : %s\n", premsg, errmsg);
 		} else if (err < 0) {
 			printf("%serror : %s\n", premsg, errmsg);
 			if (!options.interactive) {
 				sprintf(msg, "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
 					line_count, line, -err, errmsg);
-				maslog_print(&options.logger, msg);
+                maslog_print(options.logger, msg);
 				done = 1;
 			}
 		}
@@ -412,7 +414,7 @@ int menuify_mceconfig(mascmdtree_opt_t *opts)
 	int i,j, error;
 	int n_cards = mceconfig_card_count(mce);
 	int n_params = 0;
-	
+
 	// Count parameters
 	for (i=0; i<n_cards; i++) {
 		card_t card;
@@ -428,7 +430,7 @@ int menuify_mceconfig(mascmdtree_opt_t *opts)
 		}
 		n_params += error;
 	}
-	
+
 	string_table = malloc((n_params+n_cards)*MCE_SHORT);
 	card_opts = malloc((n_params + 3 * n_cards + 2)*sizeof(*card_opts));
 	para_opts = card_opts + n_cards + 2;
@@ -447,7 +449,7 @@ int menuify_mceconfig(mascmdtree_opt_t *opts)
 		FILL_MENU( card_opts[i], string_table, 1, -1, card.cfg, para_opts );
 		strcpy(string_table, card.name);
 		string_table += strlen(string_table) + 1;
-		
+
 		count = mceconfig_card_paramcount(mce, &card);
 		for (j=0; j<count; j++) {
 			mceconfig_card_param(mce, &card, j, &p);
@@ -462,7 +464,7 @@ int menuify_mceconfig(mascmdtree_opt_t *opts)
 	}
 
 	memcpy(card_opts+n_cards, integer_opts, sizeof(integer_opts));
-		
+
     for (i = 0; (opts[i].flags & MASCMDTREE_TYPE_MASK) != MASCMDTREE_TERMINATOR;
             i++)
     {
@@ -480,7 +482,7 @@ int translate_card_string(char *s, char *errmsg)
 		sprintf(errmsg, "invalid readout specification string\n");
 		return -1;
 	}
-			
+
     if (mascmdtree_select(&rc_token, rc_list, errmsg) <= 0)
 		return -1;
 
@@ -522,7 +524,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 		storage = mcedata_flatfile_create(options.acq_filename);
 		if (storage == NULL) {
 			sprintf(errmsg, "Could not create flatfile");
-			return -1; 
+            return -1;
 		}
 		break;
 
@@ -540,7 +542,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 		storage = mcedata_dirfile_create(options.acq_filename, 0);
 		if (storage == NULL) {
 			sprintf(errmsg, "Could not create flatfile");
-			return -1; 
+            return -1;
 		}
 		break;
 
@@ -550,7 +552,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 						    FS_DIGITS, 0);
 		if (storage == NULL) {
 			sprintf(errmsg, "Could not create flatfile");
-			return -1; 
+            return -1;
 		}
 		break;
 
@@ -558,7 +560,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 		sprintf(errmsg, "Unimplemented storage type.");
 		return -1;
 	}
-	
+
 	// Initialize the acquisition system
 	if ((error=mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage)) != 0) {
 		sprintf(errmsg, "Could not configure acquisition: %s",
@@ -573,7 +575,7 @@ int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
 {
 	int i;
 	int offset = 0;
-	int hex = (options.display == SPECIAL_HEX || 
+    int hex = (options.display == SPECIAL_HEX ||
 		   ( options.display == SPECIAL_DEF &&
 		     p->param.flags & MCE_PARAM_HEX ) );
 
@@ -599,9 +601,9 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 
 	errmsg[0] = 0;
 
-	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW && 
-			  tokens[0].value < ENUM_COMMAND_HIGH);
-	
+    int is_command = (tokens[0].value >= ENUM_COMMAND_LOW &&
+            tokens[0].value < ENUM_COMMAND_HIGH);
+
 	if (is_command) {
 
 		// Token[0] is the command (RB, WB, etc.)
@@ -648,7 +650,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 		}
 
 		switch( tokens[0].value ) {
-		
+
 		case COMMAND_RS:
 			err = mcecmd_reset(mce, &mcep);
 			break;
@@ -704,13 +706,13 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 
 			err = mcecmd_write_block(mce, &mcep, to_write, buf);
 			break;
-			
+
 		case COMMAND_WEL:
 			err = mcecmd_write_element(mce, &mcep,
 						tokens[3].value,
 						tokens[4].value);
 			break;
-			
+
 		case COMMAND_WRA:
 			index = tokens[3].value;
 			to_write = tokens[4].n;
@@ -719,17 +721,17 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 
 			err = mcecmd_write_range(mce, &mcep, index, buf, to_write);
 			break;
-			
+
 		default:
 			sprintf(errmsg, "command not implemented");
 			return -1;
 		}
-		
+
 		if (err!=0 && errmsg[0] == 0) {
 			sprintf(errmsg, "mce library error -%#08x : %s", -err,
 				mcelib_error_string(err));
 			ret_val = -1;
-		} 
+        }
 	} else {
 
 		switch(tokens[0].value) {
@@ -815,7 +817,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 
             case SPECIAL_ACQ_PATH:
                 mascmdtree_token_word( options.acq_path, tokens+1 );
-                if (options.acq_path[0] != 0 && 
+                if (options.acq_path[0] != 0 &&
                         options.acq_path[strlen(options.acq_path)-1] != '/') {
                     strcat(options.acq_path, "/");
                 }
@@ -929,7 +931,7 @@ int pathify_filename(char *dest, const char *src)
 
 	// Otherwise, concat.
 	strcpy(dest, options.acq_path);
-	
+
 	if (dest[len-1] != '/')
 		strcat(dest, "/");
 	strcat(dest, src);

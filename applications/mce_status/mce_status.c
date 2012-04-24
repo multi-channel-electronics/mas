@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /*! \file mce_status.c
  *
  *  \brief Program to read and record the status of the MCE.
@@ -31,27 +34,28 @@ int crawl_festival(crawler_t *crawler);
 
 int main(int argc, char **argv)
 {
-	maslog_t logger;
+    maslog_t *logger;
 	char msg[MCE_LONG];
 
-	if (process_options(&options, argc, argv))
-		error_log_exit(&logger, "invalid arguments", 2);
+	if (process_options(&options, argc, argv)) {
+        fprintf(stderr, "invalid arguments");
+        exit(2);
+    }
 
-	maslog_connect( &logger, options.config_file, "mce_status" );
+    logger = maslog_connect(options.config_file, "mce_status");
 	sprintf(msg, "initiated with hardware config '%s'", options.hardware_file);
-	maslog_print( &logger, msg );
+    maslog_print(logger, msg);
 	
 	// Connect to MCE
 	if ((options.context = mcelib_create(options.fibre_card))==NULL) {
-		error_log_exit(&logger,
-			       "failed to create mce library structure", 3);
+        error_log_exit(logger, "failed to create mce library structure", 3);
 	}
 
 
 	if (mcecmd_open(options.context, options.device_file) != 0) {
 		sprintf(msg, "Could not open mce device '%s'\n",
 			options.device_file);
-		error_log_exit(&logger, msg, 3);
+        error_log_exit(logger, msg, 3);
 	}
 
 	// Load configuration
@@ -59,7 +63,7 @@ int main(int argc, char **argv)
 			   options.hardware_file, "hardware")!=0) {
 		sprintf(msg, "Could not load MCE config file '%s'.\n",
 			options.hardware_file);
-		error_log_exit(&logger, msg, 3);
+        error_log_exit(logger, msg, 3);
 	}
 
 
@@ -86,10 +90,10 @@ int main(int argc, char **argv)
 	}
 
 	// Loop through cards and parameters
-	if (crawl_festival(&crawler) != 0)
-		error_log_exit(&logger, "failed commands", 3);
+    if (crawl_festival(&crawler) != 0)
+        error_log_exit(logger, "failed commands", 3);
 	
-	maslog_print(&logger, "successful");
+    maslog_print(logger, "successful");
 	return 0;
 }
 

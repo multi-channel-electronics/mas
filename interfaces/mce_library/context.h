@@ -7,6 +7,10 @@
 #include <mce_library.h>
 #include <libmaslog.h>
 
+struct maslog_struct {
+    int fd;       // ha ha, it's just an int.
+};
+
 /* Module information structure */
 
 typedef struct mcecmd {
@@ -43,7 +47,7 @@ struct mce_context {
   mcecmd_t    cmd;
   mcedata_t   data;
   mceconfig_t config;
-  maslog_t maslog;
+  maslog_t *maslog;
 
 };
 
@@ -54,7 +58,6 @@ struct mce_context {
 #define  C_cmd          context->cmd
 #define  C_data         context->data
 #define  C_config       context->config
-#define  C_maslog       (context->maslog)
 
 #define  C_cmd_check    if (!C_cmd.connected)    return -MCE_ERR_NEED_CMD
 #define  C_data_check   if (!C_data.connected)   return -MCE_ERR_NEED_DATA

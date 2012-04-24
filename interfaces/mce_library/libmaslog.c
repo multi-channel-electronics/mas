@@ -20,12 +20,6 @@
 
 
 static
-int destroy_exit(struct config_t *cfg, int error) {
-	config_destroy(cfg);
-	return error;
-}
-
-static
 int get_string(char *dest,
 	       config_setting_t *parent, const char *name)
 {
@@ -41,24 +35,18 @@ int get_string(char *dest,
 }
 
 
-int maslog_connect(maslog_t *logger, char *config_file, char *name)
+maslog_t *maslog_connect(char *config_file, char *name)
 {
 	struct config_t cfg;
 	config_init(&cfg);
-
-	if (logger==NULL) {
-		fprintf(stderr, "%s: Null maslog_t pointer!\n", __func__);
-		return -1;
-	}
-
-	logger->fd = 0;
+    maslog_t *logger;
 
 	if (config_file!=NULL) {
 		if (!config_read_file(&cfg, config_file)) {
 			fprintf(stderr,
 				"%s: Could not read config file '%s'\n", __func__,
 				config_file);
-			return -1;
+			return NULL;
 		}
 	} else {
         char *ptr = mcelib_default_masfile();
@@ -67,7 +55,7 @@ int maslog_connect(maslog_t *logger, char *config_file, char *name)
         else if (!config_read_file(&cfg, ptr)) {
 			fprintf(stderr, "%s: Could not read default configfile '%s'\n",
                     __func__, ptr);
-			return -1;
+			return NULL;
 		}
         free(ptr);
 	}
@@ -75,34 +63,42 @@ int maslog_connect(maslog_t *logger, char *config_file, char *name)
 	config_setting_t *client = config_lookup(&cfg, CONFIG_CLIENT);
 	
 	char address[SOCKS_STR];
-	if (get_string(address, client, CONFIG_LOGADDR)!=0)
-		return destroy_exit(&cfg, -2);
+	if (get_string(address, client, CONFIG_LOGADDR)!=0) {
+        config_destroy(&cfg);
+        return NULL;
+    }
+
+    config_destroy(&cfg);
 
 	int sock = massock_connect(address, -1);
 	if (sock<0) {
 		fprintf(stderr, "%s: could not connect to logger at %s\n", __func__,
 			address);
-		return destroy_exit(&cfg, -3);
+        return NULL;
 	}
 
 	// Ignore pipe signals, we'll handle the errors (right?)
 	signal(SIGPIPE, SIG_IGN);
 
 	char cmd[SOCKS_STR];
-	sprintf(cmd, "%c%s%s", '0'+LOGGER_ALWAYS, CLIENT_NAME, name);
+	sprintf(cmd, "%c%s%s", '0'+MASLOG_ALWAYS, CLIENT_NAME, name);
 	int sent = send(sock, cmd, strlen(cmd)+1, 0);
 	if (sent != strlen(cmd)+1) {
 		fprintf(stderr, "%s: failed to send client name\n", __func__);
 	}
 
+    logger = (maslog_t*)malloc(sizeof(struct maslog_struct));
+    if (logger == NULL)
+        return NULL;
+
 	logger->fd = sock;
 
-	return destroy_exit(&cfg, 0);
+    return logger;
 }
 
 int maslog_print(maslog_t *logger, const char *str)
 {
-	return maslog_print_level(logger, str, LOGGER_ALWAYS);
+	return maslog_print_level(logger, str, MASLOG_ALWAYS);
 }
 
 int maslog_print_level(maslog_t *logger, const char *str, int level)
@@ -155,15 +151,20 @@ int maslog_write(maslog_t *logger, const char *buf, int size)
 
 int maslog_close(maslog_t *logger)
 {
-	if (logger==NULL || logger->fd<=0) return -1;
+    if (logger == NULL)
+        return -1;
+    
+    if (logger->fd <= 0) {
+        free(logger);
+        return -1;
+    }
 
-	int fd = logger->fd;
-	logger->fd = 0;
+    int ret = close(logger->fd);
 
-	int ret = close(fd);
-	if (ret!=0) {
-		fprintf(stderr, "%s: close error, errno=%i\n", __func__, ret);
-	}
+    if (ret)
+        fprintf(stderr, "%s: close error, errno=%i\n", __func__, ret);
+    else
+        free(logger);
 
-	return ret;
+    return ret;
 }

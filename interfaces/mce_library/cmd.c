@@ -22,9 +22,9 @@
 #include "virtual.h"
 #include "manip.h"
 
-#define LOG_LEVEL_CMD     LOGGER_DETAIL
-#define LOG_LEVEL_REP_OK  LOGGER_DETAIL
-#define LOG_LEVEL_REP_ER  LOGGER_INFO
+#define LOG_LEVEL_CMD     MASLOG_DETAIL
+#define LOG_LEVEL_REP_OK  MASLOG_DETAIL
+#define LOG_LEVEL_REP_ER  MASLOG_INFO
 
 
 inline int get_last_error(mce_context_t *context)
@@ -154,7 +154,7 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 	char errstr[MCE_LONG];
 	C_cmd_check;
 
-	log_data(&C_maslog, (u32*)cmd + 2, 62, 2, "command",
+	log_data(context->maslog, (u32*)cmd + 2, 62, 2, "command",
 		 LOG_LEVEL_CMD);
 
 	/* Loop the attempts to protect against very rare partial
@@ -165,7 +165,7 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 		err = mcecmd_send_command_now(context, cmd);
 		if (err<0) {
 			sprintf(errstr, "command not sent, error %#x.", -err);
-			maslog_print_level(&C_maslog, errstr, LOGGER_INFO);
+			maslog_print_level(context->maslog, errstr, MASLOG_INFO);
 			memset(rep, 0, sizeof(*rep));
 			return err;
 		}
@@ -174,7 +174,7 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 		if (err != 0) {
 			sprintf(errstr, "reply [communication error] %s",
 				mcelib_error_string(err));
-			maslog_print_level(&C_maslog, errstr, LOG_LEVEL_REP_ER);
+			maslog_print_level(context->maslog, errstr, LOG_LEVEL_REP_ER);
 			return err;
 		}
 
@@ -189,32 +189,32 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 	switch (-err) {
 
 	case MCE_ERR_CHKSUM:
-		log_data(&C_maslog, (u32*)rep, 60, 2,
+		log_data(context->maslog, (u32*)rep, 60, 2,
 			 "reply [checksum error] ",
 			 LOG_LEVEL_REP_ER);
 		break;
 
 	case MCE_ERR_FAILURE:
-		log_data(&C_maslog, (u32*)rep, 60, 2,
+		log_data(context->maslog, (u32*)rep, 60, 2,
 			 "reply [command failed] ",
 			 LOG_LEVEL_REP_ER);
 		break;
 
 	case MCE_ERR_REPLY:
-		log_data(&C_maslog, (u32*)rep, 60, 2,
+		log_data(context->maslog, (u32*)rep, 60, 2,
 			 "reply [consistency error] ",
 			 LOG_LEVEL_REP_ER);
 		break;
 
 	case 0:
-		log_data(&C_maslog, (u32*)rep, 60, 2, "reply  ",
+		log_data(context->maslog, (u32*)rep, 60, 2, "reply  ",
 			 LOG_LEVEL_REP_OK);
 		break;
 
 	default:
 		sprintf(errstr, "reply [strange error '%s'] ",
 			mcelib_error_string(err));
-		log_data(&C_maslog, (u32*)rep, 60, 2,
+		log_data(context->maslog, (u32*)rep, 60, 2,
 			 errstr, LOG_LEVEL_REP_ER);
 	}
 
