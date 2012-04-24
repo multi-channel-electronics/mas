@@ -74,7 +74,7 @@ clean: kversion_clean
 	-rm -rf *.o *~ core version.h \
 		.depend .*.cmd *.mod.c .tmp_versions Module.symvers
 ifeq ($(FAKEMCE),yes)
-	make -C $(FAKEMCE_DIR) clean
+	${MAKE} -C $(FAKEMCE_DIR) clean
 endif #FAKEMCE=1
 
 
