@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /* Helper routines for paths &c. */
 #include <stdlib.h>
 #include <stdio.h>
@@ -131,7 +134,9 @@ char *mcelib_default_hardwarefile(int card)
 
 char *mcelib_default_masfile(void)
 {
-  return mcelib_shell_expand(DEFAULT_MASFILE, -1);
+    if (getenv("MCE_MAS_CFG"))
+        return mcelib_shell_expand(NULL, "${MCE_MAS_CFG}");
+    return mcelib_shell_expand(DEFAULT_MASFILE, -1);
 }
 
 /* device node names */
