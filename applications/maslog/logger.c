@@ -239,7 +239,7 @@ int log_client_process(params_t *p, int client_idx)
 {
 	CHECKPTR;
 
-	client_t *l_client = p->listener.clients + client_idx;
+	massock_client_t *l_client = p->listener.clients + client_idx;
 
 	//Check for complete commands;
 	char *buf   = l_client->recv_buf;

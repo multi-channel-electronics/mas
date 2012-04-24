@@ -28,7 +28,7 @@ struct mce_context {
 	mcecmd_t    cmd;
 	mcedata_t   data;
 	mceconfig_t config;
-	logger_t logger;
+	maslog_t logger;
 
 };
 

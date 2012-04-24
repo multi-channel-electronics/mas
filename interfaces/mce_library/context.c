@@ -24,7 +24,7 @@ mce_context_t* mcelib_create(int fibre_card)
 #else
   ptr = strdup("lib_mce");
 #endif
-	logger_connect(&c->logger, NULL, ptr);
+	maslog_connect(&c->logger, NULL, ptr);
   free(ptr);
 
 	c->cmd.connected = 0;
@@ -43,7 +43,7 @@ void mcelib_destroy(mce_context_t* context)
 	mcedata_close(context);
 	mcecmd_close(context);
 
-	logger_close(&context->logger);
+	maslog_close(&context->logger);
 
 	free(context);
 }

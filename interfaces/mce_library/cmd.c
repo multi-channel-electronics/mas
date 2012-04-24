@@ -31,7 +31,7 @@ inline int get_last_error(mce_context_t *context)
 }
 
 
-int log_data( logger_t *logger,
+int log_data( maslog_t *logger,
 	      u32 *buffer, int count, int min_raw, char *msg,
 	      int level)
 {
@@ -62,7 +62,7 @@ int log_data( logger_t *logger,
 			s += sprintf(s, " %08x", buffer[idx++]);
 	}
 
-	return logger_print_level(logger, out, level);
+	return maslog_print_level(logger, out, level);
 }
 
 
@@ -163,7 +163,7 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 		err = mcecmd_send_command_now(context, cmd);
 		if (err<0) {
 			sprintf(errstr, "command not sent, error %#x.", -err);
-			logger_print_level(&C_logger, errstr, LOGGER_INFO);
+			maslog_print_level(&C_logger, errstr, LOGGER_INFO);
 			memset(rep, 0, sizeof(*rep));
 			return err;
 		}
@@ -172,7 +172,7 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 		if (err != 0) {
 			sprintf(errstr, "reply [communication error] %s",
 				mcelib_error_string(err));
-			logger_print_level(&C_logger, errstr, LOG_LEVEL_REP_ER);
+			maslog_print_level(&C_logger, errstr, LOG_LEVEL_REP_ER);
 			return err;
 		}
 

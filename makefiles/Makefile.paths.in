@@ -6,12 +6,10 @@ MAS_INCLUDE_F=$(BASE)include/
 # Library locations
 MCELIB_F=$(MAS_INTERFACES)mce_library/
 DSPLIB_F=$(MAS_INTERFACES)dsp_library/
-LOGLIB_F=$(MAS_INTERFACES)log_library/
 MASMISC_F=$(MAS_INTERFACES)misc/
 
 MCELIB=mcecmd
 DSPLIB=mcedsp
-LOGLIB=maslog
 
 LIBS = @LIBS@
 SHARED = @SHARED@
@@ -20,22 +18,19 @@ CONFIG_LIBS = @LIBCONFIG_ARGS@
 
 ifeq ($(SHARED), yes)
 LIB_SUFFIX=.so
-LOG_EXTRA =
 else
 LIB_SUFFIX=.a
-LOG_EXTRA =
 endif
 
 # Special includes
 PYTHON_INC = @PYTHON_DIR@
 
 # Linking arguments, including libconfig
-LOG_LIBS = -L$(LOGLIB_F) -l$(LOGLIB) $(LOG_EXTRA)
 ifeq ($(SHARED), yes)
-MCE_EXTRA = -Wl,--rpath-link=$(LOGLIB_F) $(LOG_EXTRA)
+MCE_EXTRA =
 DSP_EXTRA = -Wl,--rpath-link=$(MCELIB_F) $(MCE_EXTRA)
 else
-MCE_EXTRA = $(CONFIG_LIBS) $(LOG_LIBS)
+MCE_EXTRA = $(CONFIG_LIBS)
 DSP_EXTRA =
 endif
 MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) $(LIBS)

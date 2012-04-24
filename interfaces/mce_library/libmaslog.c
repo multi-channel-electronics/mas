@@ -24,8 +24,6 @@ int destroy_exit(struct config_t *cfg, int error) {
 	return error;
 }
 
-#define SUBNAME "logger_connect: "
-
 static
 int get_string(char *dest,
 	       config_setting_t *parent, const char *name)
@@ -33,9 +31,8 @@ int get_string(char *dest,
 	config_setting_t *set =
 		config_setting_get_member(parent, name);
 	if (set==NULL) {
-		fprintf(stderr, SUBNAME
-			"key '%s' not found in config file\n",
-			name);
+		fprintf(stderr, "%s: key '%s' not found in config file\n", __func__,
+                name);
 		return -1;
 	}
 	strcpy(dest, config_setting_get_string(set));
@@ -43,13 +40,13 @@ int get_string(char *dest,
 }
 
 
-int logger_connect(logger_t *logger, char *config_file, char *name)
+int maslog_connect(maslog_t *logger, char *config_file, char *name)
 {
 	struct config_t cfg;
 	config_init(&cfg);
 
 	if (logger==NULL) {
-		fprintf(stderr, SUBNAME "Null logger_t pointer!\n");
+		fprintf(stderr, "%s: Null maslog_t pointer!\n", __func__);
 		return -1;
 	}
 
@@ -58,7 +55,7 @@ int logger_connect(logger_t *logger, char *config_file, char *name)
 	if (config_file!=NULL) {
 		if (!config_read_file(&cfg, config_file)) {
 			fprintf(stderr,
-				SUBNAME "Could not read config file '%s'\n",
+				"%s: Could not read config file '%s'\n", __func__,
 				config_file);
 			return -1;
 		}
@@ -67,8 +64,8 @@ int logger_connect(logger_t *logger, char *config_file, char *name)
         if (ptr == NULL)
             fprintf(stderr, "Unable to obtain path to default configfile!\n");
         else if (!config_read_file(&cfg, ptr)) {
-			fprintf(stderr, SUBNAME
-				"Could not read default configfile '%s'\n", ptr);
+			fprintf(stderr, "%s: Could not read default configfile '%s'\n",
+                    __func__, ptr);
 			return -1;
 		}
         free(ptr);
@@ -80,9 +77,9 @@ int logger_connect(logger_t *logger, char *config_file, char *name)
 	if (get_string(address, client, CONFIG_LOGADDR)!=0)
 		return destroy_exit(&cfg, -2);
 
-	int sock = connect_to_addr(address);
+	int sock = massock_connect(address, -1);
 	if (sock<0) {
-		fprintf(stderr, SUBNAME "could not connect to logger at %s\n",
+		fprintf(stderr, "%s: could not connect to logger at %s\n", __func__,
 			address);
 		return destroy_exit(&cfg, -3);
 	}
@@ -94,7 +91,7 @@ int logger_connect(logger_t *logger, char *config_file, char *name)
 	sprintf(cmd, "%c%s%s", '0'+LOGGER_ALWAYS, CLIENT_NAME, name);
 	int sent = send(sock, cmd, strlen(cmd)+1, 0);
 	if (sent != strlen(cmd)+1) {
-		fprintf(stderr, SUBNAME "failed to send client name\n");
+		fprintf(stderr, "%s: failed to send client name\n", __func__);
 	}
 
 	logger->fd = sock;
@@ -102,16 +99,12 @@ int logger_connect(logger_t *logger, char *config_file, char *name)
 	return destroy_exit(&cfg, 0);
 }
 
-#undef SUBNAME
-
-#define SUBNAME "logger_print: "
-
-int logger_print(logger_t *logger, const char *str)
+int maslog_print(maslog_t *logger, const char *str)
 {
-	return logger_print_level(logger, str, LOGGER_ALWAYS);
+	return maslog_print_level(logger, str, LOGGER_ALWAYS);
 }
 
-int logger_print_level(logger_t *logger, const char *str, int level)
+int maslog_print_level(maslog_t *logger, const char *str, int level)
 {
 	if (logger==NULL || logger->fd<=0) return -1;
 
@@ -130,45 +123,36 @@ int logger_print_level(logger_t *logger, const char *str, int level)
 	int sent = send(logger->fd, packet, idx, 0);
 	if (sent != idx) {
 		if (sent==0) {
-			fprintf(stderr, SUBNAME "connection closed, "
-				"no further logging.\n");
-			logger_close(logger);
+			fprintf(stderr, "%s: connection closed, no further logging.\n",
+                    __func__);
+			maslog_close(logger);
 		} else if (sent<0) {
-			fprintf(stderr, SUBNAME "pipe error, errno=%i, "
-				"no further logging.\n", errno);
-			logger_close(logger);
+			fprintf(stderr, "%s: pipe error, errno=%i, no further logging.\n",
+                    __func__, errno);
+			maslog_close(logger);
 		} else {
-			fprintf(stderr, SUBNAME "partial send, "
-				"logging will continue.\n");
+			fprintf(stderr, "%s: partial send, logging will continue.\n",
+                    __func__);
 		}
 	}
 	return (logger->fd > 0) ? 0 : -1;
 }
 
-#undef SUBNAME
-
-#define SUBNAME "logger_write: "
-
-int logger_write(logger_t *logger, const char *buf, int size)
+int maslog_write(maslog_t *logger, const char *buf, int size)
 {
 	if (logger==NULL || logger->fd<=0) return -1;
 	
 	int sent = send(logger->fd, buf, size, 0);
 	if (sent != size) {
-		fprintf(stderr, SUBNAME "logging failed, (send error %i/%i)\n",
+		fprintf(stderr, "%s: logging failed, (send error %i/%i)\n", __func__,
 			sent, size);
-		logger_close(logger);
+		maslog_close(logger);
 		return -1;
 	}
 	return 0;
 }
 
-#undef SUBNAME
-
-
-#define SUBNAME "logger_close: "
-
-int logger_close(logger_t *logger)
+int maslog_close(maslog_t *logger)
 {
 	if (logger==NULL || logger->fd<=0) return -1;
 
@@ -177,10 +161,8 @@ int logger_close(logger_t *logger)
 
 	int ret = close(fd);
 	if (ret!=0) {
-		fprintf(stderr, SUBNAME "close error, errno=%i\n", ret);
+		fprintf(stderr, "%s: close error, errno=%i\n", __func__, ret);
 	}
 
 	return ret;
 }
-
-#undef SUBNAME

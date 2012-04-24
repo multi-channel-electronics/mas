@@ -25,21 +25,21 @@ options_t options = {
 };
 
 
-void error_log_exit(logger_t* logger, const char *msg, int error);
+void error_log_exit(maslog_t* logger, const char *msg, int error);
 
 int crawl_festival(crawler_t *crawler);
 
 int main(int argc, char **argv)
 {
-	logger_t logger;
+	maslog_t logger;
 	char msg[MCE_LONG];
 
 	if (process_options(&options, argc, argv))
 		error_log_exit(&logger, "invalid arguments", 2);
 
-	logger_connect( &logger, options.config_file, "mce_status" );
+	maslog_connect( &logger, options.config_file, "mce_status" );
 	sprintf(msg, "initiated with hardware config '%s'", options.hardware_file);
-	logger_print( &logger, msg );
+	maslog_print( &logger, msg );
 	
 	// Connect to MCE
 	if ((options.context = mcelib_create(options.fibre_card))==NULL) {
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 	if (crawl_festival(&crawler) != 0)
 		error_log_exit(&logger, "failed commands", 3);
 	
-	logger_print(&logger, "successful");
+	maslog_print(&logger, "successful");
 	return 0;
 }
 
@@ -134,9 +134,9 @@ int crawl_festival(crawler_t *crawler)
 	return 0;
 }
 
-void error_log_exit(logger_t* logger, const char *msg, int error)
+void error_log_exit(maslog_t* logger, const char *msg, int error)
 {
-	logger_print(logger, msg);
+	maslog_print(logger, msg);
 	fprintf(stderr, "%s", msg);
 	exit(error);
 }

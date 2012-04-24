@@ -262,7 +262,7 @@ int  main(int argc, char **argv)
 	}
 
 	// Log!
-	logger_connect( &options.logger, options.masconfig_file, "mce_cmd" );
+	maslog_connect( &options.logger, options.masconfig_file, "mce_cmd" );
 
 	menuify_mceconfig(root_opts);
 
@@ -273,12 +273,12 @@ int  main(int argc, char **argv)
 			fprintf(ferr, "could not open batch file '%s'\n",
 				options.batch_file);
 			sprintf(msg, "failed to read script '%s'\n", options.batch_file);
-			logger_print( &options.logger, msg );
+			maslog_print( &options.logger, msg );
 			err = ERR_MCE;
 			goto exit_now;
 		}
 		sprintf(msg, "reading commands from '%s'\n", options.batch_file);
-		logger_print( &options.logger, msg );
+		maslog_print( &options.logger, msg );
 	}
 				
 	// Install signal handler for Ctrl-C and normal kill
@@ -370,7 +370,7 @@ int  main(int argc, char **argv)
 			if (!options.interactive) {
 				sprintf(msg, "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
 					line_count, line, -err, errmsg);
-				logger_print(&options.logger, msg);
+				maslog_print(&options.logger, msg);
 				done = 1;
 			}
 		}

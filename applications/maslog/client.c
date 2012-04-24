@@ -10,13 +10,13 @@
 
 int main(int argc, char **argv) {
 
-	logger_t logger;
+	maslog_t logger;
 
 	int ret = 0;
 	if (argc>1)
-		ret = logger_connect(&logger, argv[1], "notes");
+		ret = maslog_connect(&logger, argv[1], "notes");
 	else 
-		ret = logger_connect(&logger, NULL, "notes");
+		ret = maslog_connect(&logger, NULL, "notes");
 
 	if (ret<0)
 		exit(1);
@@ -30,11 +30,11 @@ int main(int argc, char **argv) {
 			if (line[nout]!=0) line[nout]=0;
 			if (line[nout-1]=='\n')
 				line[--nout]=0;
-			logger_print(&logger, line);
+			maslog_print(&logger, line);
 		}
 	}
 
-	logger_close(&logger);
+	maslog_close(&logger);
 
 	return 0;
 }

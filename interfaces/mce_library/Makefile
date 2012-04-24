@@ -5,10 +5,24 @@ include $(BASE)Makefile.children
 
 LIBNAME = lib$(MCELIB)
 
-OBJECTS = context.o errors.o defaults.o \
-	cmd.o packet.o virtual.o manip.o \
-	data.o acq.o data_thread.o files.o frame_manip.o \
-	dirfile.o config.o data_mode.o
+OBJECTS = \
+					acq.o \
+					cmd.o \
+					config.o \
+					context.o \
+					data.o \
+					data_mode.o \
+					data_thread.o \
+					defaults.o \
+					dirfile.o \
+					errors.o \
+					files.o \
+					frame_manip.o \
+					libmaslog.o \
+					manip.o \
+					packet.o \
+					socks.o \
+					virtual.o
 
 HEADERS = data_thread.h virtual.h manip.h ../../defaults/config.h
 
@@ -22,7 +36,7 @@ include $(MAKERULES)Makefile.install_rule_lib
 install: install__$(LIBNAME)
 
 $(LIBNAME).so : $(OBJECTS) version.h
-	$(LD) -shared -o $@ $(OBJECTS) -lc -lpthread $(LOG_LIBS) $(CONFIG_LIBS)
+	$(LD) -shared -o $@ $(OBJECTS) -lc -lpthread $(CONFIG_LIBS)
 
 $(LIBNAME).a : $(OBJECTS) version.h
 	$(AR) rs $@ $(OBJECTS)

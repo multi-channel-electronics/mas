@@ -11,23 +11,23 @@
    /usr/local/lib to /etc/ld.so.conf .
 */
 
-/* Logging levels, passed to logger_print; messages are only logged if
+/* Logging levels, passed to maslog_print; messages are only logged if
  *  their level meets or exceeds the server logging threshold */
 #define LOGGER_DRIVER    0
 #define LOGGER_DETAIL    1
 #define LOGGER_INFO      2
 #define LOGGER_ALWAYS    3
 
-struct logger_struct {
+struct maslog_struct {
 	int fd;       // ha ha, it's just an int.
 };
 
-typedef struct logger_struct logger_t;
+typedef struct maslog_struct maslog_t;
 
-int logger_close(logger_t *logger);
-int logger_print(logger_t *logger, const char *str);
-int logger_print_level(logger_t *logger, const char *str, int level);
-int logger_write(logger_t *logger, const char *buf, int size);
-int logger_connect(logger_t *logger, char *config_file, char *name);
+int maslog_close(maslog_t *logger);
+int maslog_print(maslog_t *logger, const char *str);
+int maslog_print_level(maslog_t *logger, const char *str, int level);
+int maslog_write(maslog_t *logger, const char *buf, int size);
+int maslog_connect(maslog_t *logger, char *config_file, char *name);
 
 #endif

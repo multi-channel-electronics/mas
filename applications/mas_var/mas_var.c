@@ -269,9 +269,9 @@ int main(int argc, char **argv)
         break;
       case OPT_LIBS:
 #ifdef SHARED
-        printf("-L%s/lib -lmcedsp -lmcecmd -lmaslog\n", MAS_PREFIX);
+        printf("-L%s/lib -lmcedsp -lmcecmd\n", MAS_PREFIX);
 #else
-        printf("-L%s/lib -lmcedsp -lmcecmd -lmaslog %s\n", MAS_PREFIX,
+        printf("-L%s/lib -lmcedsp -lmcecmd %s\n", MAS_PREFIX,
             MCE_STATIC_LIBS);
 #endif
         break;

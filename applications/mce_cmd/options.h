@@ -37,7 +37,7 @@ typedef struct {
 	int acq_frames;
 	int acq_interval;
 
-	logger_t logger;
+	maslog_t logger;
 
 } options_t;
 
