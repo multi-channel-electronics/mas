@@ -10,7 +10,8 @@
 #include "mce/defaults.h"
 #include <libconfig.h>
 
-#include "libmaslog.h"
+#include "context.h"
+#include <libmaslog.h>
 
 #define CONFIG_CLIENT "log_client"
 #define CONFIG_LOGADDR "log_address"

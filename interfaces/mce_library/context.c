@@ -1,8 +1,11 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <string.h>
-#include <mce_library.h>
 #include <mce/defaults.h>
 
+#include "context.h"
 #include "version.h"
 #include "../defaults/config.h"
 
@@ -14,7 +17,7 @@ mce_context_t* mcelib_create(int fibre_card)
 
 	if (c == NULL) return c;
 
-  if (fibre_card == MCE_DEFAULT_CARD)
+  if (fibre_card == MCE_DEFAULT_MCE)
     c->fibre_card = mcelib_default_fibre_card();
   else
     c->fibre_card = fibre_card;
@@ -24,7 +27,7 @@ mce_context_t* mcelib_create(int fibre_card)
 #else
   ptr = strdup("lib_mce");
 #endif
-	maslog_connect(&c->logger, NULL, ptr);
+	maslog_connect(&c->maslog, NULL, ptr);
   free(ptr);
 
 	c->cmd.connected = 0;
@@ -43,7 +46,7 @@ void mcelib_destroy(mce_context_t* context)
 	mcedata_close(context);
 	mcecmd_close(context);
 
-	maslog_close(&context->logger);
+	maslog_close(&context->maslog);
 
 	free(context);
 }

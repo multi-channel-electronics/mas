@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -9,12 +12,12 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-#include "mce_library.h"
 #include "mce/defaults.h"
 #include <mce/data_ioctl.h>
 
 /* Local header files */
 
+#include "context.h"
 #include "data_thread.h"
 
 /* #define LOG_LEVEL_CMD     LOGGER_DETAIL */

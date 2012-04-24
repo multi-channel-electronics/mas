@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /*! \file mce_state.c
  *
  *  \brief Test mce_driver state handling.
@@ -13,8 +16,8 @@
 
 int  main(int argc, char **argv)
 {
-	mce_context_t *mce1 = mcelib_create(MCE_DEFAULT_CARD);
-	mce_context_t *mce2 = mcelib_create(MCE_DEFAULT_CARD);
+	mce_context_t *mce1 = mcelib_create(MCE_DEFAULT_MCE);
+	mce_context_t *mce2 = mcelib_create(MCE_DEFAULT_MCE);
 
 	// Connect command module.
 	char device[] = "/dev/mce_cmd0";

@@ -1,7 +1,9 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MCE_LIBRARY_H_
 #define _MCE_LIBRARY_H_
 
-#include <libmaslog.h>
 #include <mce/types.h>
 #include <mce/mce_errors.h>
 
@@ -15,26 +17,13 @@
 struct mce_context;
 typedef struct mce_context mce_context_t;
 
+#include <libmaslog.h>
 #include <mceconfig.h>
 #include <mcecmd.h>
 #include <mcedata.h>
 
-
-/* Context structure associates connections on the three modules. */
-
-struct mce_context {
-
-  int fibre_card;
-	mcecmd_t    cmd;
-	mcedata_t   data;
-	mceconfig_t config;
-	maslog_t logger;
-
-};
-
-
 /* Creation / destruction of context structure */
-#define MCE_DEFAULT_CARD (-1)
+#define MCE_DEFAULT_MCE (-1)
 mce_context_t* mcelib_create(int fibre_card);
 void mcelib_destroy(mce_context_t* context);
 
@@ -43,20 +32,5 @@ void mcelib_destroy(mce_context_t* context);
 
 char* mcelib_error_string(int error);
 char* mcelib_version();
-
-/* Macros for easy dereferencing of mce_context_t* context into cmd,
-   data, and config members, and to check for connections of each
-   type. */
-
-#define  C_cmd          context->cmd
-#define  C_data         context->data
-#define  C_config       context->config
-#define  C_logger       (context->logger)
-
-#define  C_cmd_check    if (!C_cmd.connected)    return -MCE_ERR_NEED_CMD
-#define  C_data_check   if (!C_data.connected)   return -MCE_ERR_NEED_DATA
-#define  C_config_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
-#define  C_logger_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
-
 
 #endif

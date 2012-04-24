@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /******************************************************
   mcedata.h - header file for MCE API, data module
 
@@ -22,26 +25,6 @@
 #include <mce/frame.h>
 #include <mce/acq.h>
 #include <mce/data_mode.h>
-
-/* Module information structure */
-
-typedef struct mcedata {
-
-	int connected;
-	int fd;
-
-	char dev_name[MCE_LONG];
-	char errstr[MCE_LONG];
-
-	void *map;
-	int map_size;
-} mcedata_t;
-
-
-
-
-#define MCEDATA_PACKET_MAX 4096 /* Maximum frame size in dwords */
-
 
 /* Data connection */
 

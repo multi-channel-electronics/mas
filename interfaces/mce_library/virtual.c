@@ -1,6 +1,9 @@
-#include <mce_library.h>
-
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <string.h>
+
+#include "context.h"
 #include "virtual.h"
 
 int mcecmd_write_virtual(mce_context_t* context, const mce_param_t* param,

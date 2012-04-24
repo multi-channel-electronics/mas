@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -8,9 +11,9 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <mce_library.h>
 #include <mce/data_ioctl.h>
 
+#include "context.h"
 #include "data_thread.h"
 #include "frame_manip.h"
 

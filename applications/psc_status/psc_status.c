@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /****************************************************************************
  * psc_status.c : utility to parse the reply to 'rb psc psc_status' command    
  *                as conformed by rev. 2.3 of psuc firmware and
@@ -27,7 +30,7 @@ int main (int argc, char **argv){
    /* Define default MAS options */
    option_t options = {
      .config_file = NULL,
-     .fibre_card = MCE_DEFAULT_CARD,
+     .fibre_card = MCE_DEFAULT_MCE,
      .hardware_file = NULL,
      .read_stdin = 0,
    };

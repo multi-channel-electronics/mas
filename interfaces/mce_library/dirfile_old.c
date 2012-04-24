@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _GNU_SOURCE
 
 /* Dirfile storage module */
@@ -6,7 +9,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include <mce_library.h>
+#include "context.h"
 
 /* Method: data buffers for all channels. */
 

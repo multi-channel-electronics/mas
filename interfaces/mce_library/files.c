@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _GNU_SOURCE
 
 /* File sequencing, flat file, ram-based data handling modules */
@@ -7,7 +10,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <mce_library.h>
+#include "context.h"
 
 // #define FILEOPS_BASIC
 

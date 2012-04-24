@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _XOPEN_SOURCE 500
 
 #include <stdlib.h>
@@ -36,7 +39,7 @@ int main(int argc, char **argv)
 	char *dev = NULL;
 	char ts[1024];
 	time_t t;
-  int fibre_card = MCE_DEFAULT_CARD;
+  int fibre_card = MCE_DEFAULT_MCE;
 
 #if MULTICARD
   if (argc > 1) {
