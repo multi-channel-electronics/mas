@@ -27,7 +27,8 @@ OBJECTS = \
 					socks.o \
 					virtual.o
 
-HEADERS = context.h data_thread.h virtual.h manip.h ../../defaults/config.h
+HEADERS = context.h data_thread.h virtual.h manip.h ../../defaults/config.h \
+					$(LIBHEADERS)
 
 REPO_VERSION=$(shell svnversion)
 

@@ -18,7 +18,7 @@ HEADERS =
 all: raw_acq
 
 raw_acq: raw_acq.o $(LIBDEP) $(LIBHEADERS)
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+	$(CC) $(CFLAGS) raw_acq.o -o raw_acq $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)
 
