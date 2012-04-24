@@ -1,6 +1,6 @@
 
 # Don't make example dir by default, it's not really in our build system
-SUB_DIRS = dsp_cmd dsp_status mas_config mas_mon mas_param maslog mce_cmd \
+SUB_DIRS = dsp_cmd dsp_status mas_mon mas_param mas_var maslog mce_cmd \
 	mce_jam mce_ramp mce_status mux_lock psc_status raw_acq testing
 
 sub-dirs:

@@ -17,12 +17,12 @@ CFLAGS += $(DEFS)
 
 # targets
 
-OBJECTS = mas_config.o
+OBJECTS = mas_var.o
 HEADERS = ../../defaults/config.h
 
-all: Makefile mas_config
+all: Makefile mas_var
 
-mas_config: $(OBJECTS)
+mas_var: $(OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)
@@ -31,14 +31,14 @@ tidy:
 	rm -f *~ *.o
 
 clean:	tidy
-	rm -f mas_config
+	rm -f mas_var
 
-# Make the install__mas_config rule
-INSTALL_TARGET=mas_config
+# Make the install__mas_var rule
+INSTALL_TARGET=mas_var
 include $(MAKERULES)Makefile.install_rule
 
-install: install__mas_config
+install: install__mas_var
 
 .PRECIOUS: Makefile
 Makefile: ../../config.status Makefile.in
-	cd ../.. && $(MAKE) applications/mas_config/Makefile
+	cd ../.. && $(MAKE) applications/mas_var/Makefile

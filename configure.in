@@ -348,7 +348,7 @@ dnl MCE script default defaults.  These are declared late for help munging
 dnl reasons
 m4_divert_once([HELP_VAR], [[
 The following variables may be set to influence the values computed for
-environmental variables returned by mas_config.  They may be overridden later
+environmental variables returned by mas_var.  They may be overridden later
 by the user by creating environmental variables MASDEFAULT_<foo> for the default
 to the MAS_<foo> environemntal variable.  Unlike shell variables, these may
 contain references to other MAS_<foo> variables, which will be multiply expanded
@@ -370,7 +370,7 @@ dnl Write.
 
 AC_CONFIG_HEADERS([defaults/config.h])
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([applications/mas_config/Makefile])
+AC_CONFIG_FILES([applications/mas_var/Makefile])
 AC_CONFIG_FILES([config2/Makefile])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])

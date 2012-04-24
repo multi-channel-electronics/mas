@@ -56,7 +56,7 @@ static char *strip_path(const char *var)
 
 void __attribute__((noreturn)) Usage(int ret)
 {
-  printf("Usage: mas_config [OPTION]... [PARAMETER]...\n"
+  printf("Usage: mas_var [OPTION]... [PARAMETER]...\n"
       "\nOptions:\n"
 #if MULTICARD
       "  -n <card>         report values for the specified fibre card\n"
@@ -138,7 +138,7 @@ void __attribute__((noreturn)) Usage(int ret)
       "the\n"
       "                      environment)\n"
       "  --user            the MAS username\n"
-      "  --version         the mas_config version\n"
+      "  --version         the mas_var version\n"
       "\nIf -q is not specified, multiple parameters may be given.  The value "
       "of each\nparameter will be reported on standard output, one per line, "
       "in the order\nspecified.\n");
