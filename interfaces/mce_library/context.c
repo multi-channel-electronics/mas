@@ -12,7 +12,6 @@
 
 mce_context_t* mcelib_create(int fibre_card)
 {
-    char *ptr;
 	mce_context_t* c = (mce_context_t*)malloc(sizeof(mce_context_t));
 
 	if (c == NULL) return c;
@@ -22,14 +21,7 @@ mce_context_t* mcelib_create(int fibre_card)
     else
         c->fibre_card = fibre_card;
 
-#if MULTICARD
-    ptr = mcelib_shell_expand(c, "lib_mce[${MAS_CARD}]");
-#else
-    ptr = strdup("lib_mce");
-#endif
-    c->maslog = maslog_connect(NULL, ptr);
-    free(ptr);
-
+    c->maslog = NULL;
 	c->cmd.connected = 0;
 	c->data.connected = 0;
 	c->config.connected = 0;

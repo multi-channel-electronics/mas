@@ -86,6 +86,17 @@ int mcecmd_open (mce_context_t *context)
 	// Most applications using this library will want to read their own replies...
 	mcecmd_lock_replies(context, 1);
 
+    /* connect to the logger, if necessary */
+    if (context->maslog == NULL) {
+#if MULTICARD
+        char ptr[20];
+        sprintf(ptr, "lib_mce[%u]", (unsigned)context->fibre_card);
+        context->maslog = maslog_connect(NULL, ptr);
+#else
+        context->maslog = maslog_connect(NULL, "lib_mce");
+#endif
+    }
+
 	C_cmd.connected = 1;
 	strcpy(C_cmd.dev_name, dev_name);
 
