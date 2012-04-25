@@ -98,13 +98,6 @@ int process_options(options_t* options, int argc, char **argv)
             return -1;
         }
     }
-    if (options->hardware_file == NULL) {
-        options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
-        if (options->hardware_file == NULL) {
-            fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
-            return -1;
-        }
-    }
 
 	return 0;
 }

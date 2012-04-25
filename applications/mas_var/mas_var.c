@@ -21,7 +21,7 @@ typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_MULTICARD, OPT_PREFIX,
 
 #define OPT_DEFAULT(x) \
       case OPT_MAS_ ## x: \
-        ptr = mcelib_shell_expand("${MASDEFAULT_" #x "}", fibre_card); \
+        ptr = mcelib_shell_expand(mce, "${MASDEFAULT_" #x "}"); \
         puts(ptr); \
         free(ptr); \
         break
@@ -249,6 +249,11 @@ int main(int argc, char **argv)
     }
   }
 
+  /* create a library context */
+  mce_context_t *mce = mcelib_create(fibre_card);
+  if (mce == NULL)
+      return 1;
+
   /* ensure MAS_PREFIX is correct */
   setenv("MAS_PREFIX", MAS_PREFIX, 1);
 
@@ -285,12 +290,12 @@ int main(int argc, char **argv)
         free(ptr);
         break;
       case OPT_HARDWARE_FILE:
-        ptr = mcelib_default_hardwarefile(fibre_card);
+        ptr = mcelib_default_hardwarefile(mce);
         puts(ptr);
         free(ptr);
         break;
       case OPT_EXPERIMENT_FILE:
-        ptr = mcelib_default_experimentfile(fibre_card);
+        ptr = mcelib_default_experimentfile(mce);
         puts(ptr);
         free(ptr);
         break;
@@ -341,8 +346,8 @@ int main(int argc, char **argv)
           setenv("PATH", parg[i], 1);
         }
 
-        ptr = mcelib_shell_expand("${PATH}:${MAS_BIN}:${MAS_SCRIPT}:"
-            "${MAS_TEST_SUITE}", -1);
+        ptr = mcelib_shell_expand(mce, "${PATH}:${MAS_BIN}:${MAS_SCRIPT}:"
+            "${MAS_TEST_SUITE}");
         puts(ptr);
         free(ptr);
         break;
@@ -355,8 +360,8 @@ int main(int argc, char **argv)
         if (parg[i])
           setenv("PYTHONPATH", parg[i], 1);
 
-        ptr = mcelib_shell_expand("${PYTHONPATH}:${MAS_PYTHON}:" MAS_PREFIX
-            "/python", -1);
+        ptr = mcelib_shell_expand(mce, "${PYTHONPATH}:${MAS_PYTHON}:" MAS_PREFIX
+            "/python");
         puts(ptr);
         free(ptr);
         break;

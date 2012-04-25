@@ -1,9 +1,14 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
 
+#include <mce_library.h>
+#include <mce/defaults.h>
 #include "mas_param.h"
 #include "masconfig.h"
 
@@ -20,6 +25,18 @@ int main(int argc, char **argv)
 
 	if (process_options(&options, argc, argv))
 		return 1;
+
+    /* get default config file name, if necessary */
+    if (options.source_file == NULL) {
+        mce_context_t *mce = mcelib_create(options.fibre_card);
+        options.source_file = mcelib_default_experimentfile(mce);
+        if (options.source_file == NULL) {
+            fprintf(stderr,
+                    "Unable to obtain path to default experiment.cfg!\n");
+            return 1;
+        }
+        mcelib_destroy(mce);
+    }
 
 	// Load the target config file
 	if (mas_load(options.source_file, &cfg) != 0)

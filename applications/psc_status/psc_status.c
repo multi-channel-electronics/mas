@@ -13,6 +13,7 @@
 #include <string.h>
 #include <float.h>
 #include <mce_library.h>
+#include <mce/defaults.h>
 #include "options.h"
 #include "psc_status.h"
 
@@ -44,6 +45,14 @@ int main (int argc, char **argv){
      mce_context_t *mce = mcelib_create(options.fibre_card);
 
      // Load MCE hardware inforamtion
+     if (options.hardware_file == NULL) {
+         options.hardware_file = mcelib_default_hardwarefile(mce);
+         if (options.hardware_file == NULL) {
+             fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
+             return -1;
+         }
+     }
+
      if (mceconfig_open(mce, options.hardware_file, NULL) != 0) {
        fprintf(stderr, "Failed to open %s as hardware configuration file.\n",
            options.config_file);

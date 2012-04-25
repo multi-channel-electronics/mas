@@ -56,7 +56,7 @@ int st_index(const string_table_t *st, const char *name);
 "\nOptions:\n"\
 USAGE_OPTION_N \
 "  -s <source file>       config file to parse.  Default:\n"\
-"                           %s\n"\
+"                           ${MAS_DATA}/experiment.cfg\n"\
 "  -f <output filename>   filename for output (stdout/source file by default)\n"\
 "\n"\
 "  -v                     print version string and exit\n"\
@@ -64,10 +64,8 @@ USAGE_OPTION_N \
 
 void usage(void)
 {
-  const char * dflt_exp_cfg =
-    mcelib_default_experimentfile(-1);
-  printf(USAGE_MESSAGE, dflt_exp_cfg);
-  exit(1);
+    puts(USAGE_MESSAGE);
+    exit(1);
 }
 
 int process_options(options_t* options, int argc, char **argv)
@@ -201,13 +199,6 @@ int process_options(options_t* options, int argc, char **argv)
         options->config_file = mcelib_default_masfile();
         if (options->config_file == NULL) {
             fprintf(stderr, "Unable to obtain path to default mas.cfg!\n");
-            return -1;
-        }
-    }
-    if (options->source_file == NULL) {
-        options->source_file = mcelib_default_experimentfile(options->fibre_card);
-        if (options->source_file == NULL) {
-            fprintf(stderr, "Unable to obtain path to default experiment.cfg!\n");
             return -1;
         }
     }

@@ -6,7 +6,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <mce/defaults.h>
 
 #include "options.h"
 
@@ -119,15 +118,6 @@ int process_options(options_t *options, int argc, char **argv)
 			fprintf(stderr, "Unimplemented option '-%c'!\n", option);
 		}
 	}
-
-	/* set fibre card defaults */
-    if (options->hardware_file == NULL) {
-        options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
-        if (options->hardware_file == NULL) {
-            fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
-            return -1;
-        }
-    }
 
 	// Check for stragglers (these are files we should be reading...)
 	if (optind < argc) {

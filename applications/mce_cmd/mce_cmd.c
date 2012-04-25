@@ -22,6 +22,7 @@
 
 #include <mce/cmdtree.h>
 #include <mce/data_ioctl.h>
+#include <mce/defaults.h>
 
 #include "cmd.h"
 #include "options.h"
@@ -258,330 +259,339 @@ int  main(int argc, char **argv)
 		goto exit_now;
 	}
 
-	if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
-		fprintf(ferr, "Could not load MCE config file '%s'.\n",
-			options.hardware_file);
-		err = ERR_MCE;
-		goto exit_now;
-	}
+    /* set fibre card defaults */
+    if (options.hardware_file == NULL) {
+        options.hardware_file = mcelib_default_hardwarefile(mce);
+        if (options.hardware_file == NULL) {
+            fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
+            return -1;
+        }
+    }
 
-	// Log!
+    if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
+        fprintf(ferr, "Could not load MCE config file '%s'.\n",
+                options.hardware_file);
+        err = ERR_MCE;
+        goto exit_now;
+    }
+
+    // Log!
     options.logger = maslog_connect(options.masconfig_file, "mce_cmd");
 
-	menuify_mceconfig(root_opts);
+    menuify_mceconfig(root_opts);
 
-	//Open batch file, if given
-	if (options.batch_now) {
-		fin = fopen(options.batch_file, "r");
-		if (fin==NULL) {
-			fprintf(ferr, "could not open batch file '%s'\n",
-				options.batch_file);
-			sprintf(msg, "failed to read script '%s'\n", options.batch_file);
+    //Open batch file, if given
+    if (options.batch_now) {
+        fin = fopen(options.batch_file, "r");
+        if (fin==NULL) {
+            fprintf(ferr, "could not open batch file '%s'\n",
+                    options.batch_file);
+            sprintf(msg, "failed to read script '%s'\n", options.batch_file);
             maslog_print(options.logger, msg);
-			err = ERR_MCE;
-			goto exit_now;
-		}
-		sprintf(msg, "reading commands from '%s'\n", options.batch_file);
+            err = ERR_MCE;
+            goto exit_now;
+        }
+        sprintf(msg, "reading commands from '%s'\n", options.batch_file);
         maslog_print(options.logger, msg);
-	}
+    }
 
-	// Install signal handler for Ctrl-C and normal kill
-	signal(SIGTERM, die);
-	signal(SIGINT, die);
+    // Install signal handler for Ctrl-C and normal kill
+    signal(SIGTERM, die);
+    signal(SIGINT, die);
 
-	char errmsg[1024] = "";
-	char premsg[1024] = "";
-	int line_count = 0;
-	int done = 0;
+    char errmsg[1024] = "";
+    char premsg[1024] = "";
+    int line_count = 0;
+    int done = 0;
 
-	while (!done) {
+    while (!done) {
         mascmdtree_token_t args[NARGS];
-		size_t n = LINE_LEN;
+        size_t n = LINE_LEN;
 
-		// Set input semaphore, then check kill condition.
-		input_switch = 1;
-		if (kill_switch) break;
+        // Set input semaphore, then check kill condition.
+        input_switch = 1;
+        if (kill_switch) break;
 
-		if ( options.cmds_now > 0 ) {
-			line = options.cmd_set[options.cmds_idx++];
-			done = (options.cmds_idx == options.cmds_now);
-		} else {
-			if (options.use_readline) {
-				line = readline("");
-				if (line == NULL)
-					break;
-				strcpy(line_buffer, line);
-				add_history(line);
-				free(line);
-				line = line_buffer;
-			} else {
-				line = line_buffer;
-				int ret = getline(&line, &n, fin);
-				if (ret == -1 || n==0 || feof(fin)) break;
-			}
+        if ( options.cmds_now > 0 ) {
+            line = options.cmd_set[options.cmds_idx++];
+            done = (options.cmds_idx == options.cmds_now);
+        } else {
+            if (options.use_readline) {
+                line = readline("");
+                if (line == NULL)
+                    break;
+                strcpy(line_buffer, line);
+                add_history(line);
+                free(line);
+                line = line_buffer;
+            } else {
+                line = line_buffer;
+                int ret = getline(&line, &n, fin);
+                if (ret == -1 || n==0 || feof(fin)) break;
+            }
 
-			n = strlen(line);
-			if (line[n-1]=='\n') line[--n]=0;
-			line_count++;
-		}
+            n = strlen(line);
+            if (line[n-1]=='\n') line[--n]=0;
+            line_count++;
+        }
 
-		// Clear input semaphore; SIGs now will just set kill_switch
-		input_switch = 0;
+        // Clear input semaphore; SIGs now will just set kill_switch
+        input_switch = 0;
 
-		if (options.no_prefix)
-			premsg[0] = 0;
-		else
-			sprintf(premsg, "Line %3i : ", line_count);
+        if (options.no_prefix)
+            premsg[0] = 0;
+        else
+            sprintf(premsg, "Line %3i : ", line_count);
 
-		if (options.echo) {
-			printf("Cmd  %3i : %s\n", line_count, line);
-		}
+        if (options.echo) {
+            printf("Cmd  %3i : %s\n", line_count, line);
+        }
 
-		errmsg[0] = 0;
-		args[0].n = 0;
+        errmsg[0] = 0;
+        args[0].n = 0;
         mascmdtree_debug = 0;
 
         err = mascmdtree_tokenize(args, line, NARGS);
-		if (err) {
-			strcpy(errmsg, "could not tokenize");
-		}
+        if (err) {
+            strcpy(errmsg, "could not tokenize");
+        }
 
-		if (!err) {
+        if (!err) {
             int count = mascmdtree_select( args, root_opts, errmsg);
 
-			if (count < 0) {
-				err = -1;
-			} else if (count == 0) {
-				if (options.interactive || args->n > 0) {
+            if (count < 0) {
+                err = -1;
+            } else if (count == 0) {
+                if (options.interactive || args->n > 0) {
                     mascmdtree_list(errmsg, root_opts,
                             "mce_cmd expects argument from [ ", " ", "]");
-					err = -1;
-				}
-			} else {
-				err = process_command(root_opts, args, errmsg);
-				if (err==0) err = 1;
-			}
-		}
+                    err = -1;
+                }
+            } else {
+                err = process_command(root_opts, args, errmsg);
+                if (err==0) err = 1;
+            }
+        }
 
-		if (err > 0) {
-			if (*errmsg == 0) {
-				if (!options.nonzero_only)
-					printf("%sok\n", premsg);
+        if (err > 0) {
+            if (*errmsg == 0) {
+                if (!options.nonzero_only)
+                    printf("%sok\n", premsg);
             } else
-				printf("%sok : %s\n", premsg, errmsg);
-		} else if (err < 0) {
-			printf("%serror : %s\n", premsg, errmsg);
-			if (!options.interactive) {
-				sprintf(msg, "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
-					line_count, line, -err, errmsg);
+                printf("%sok : %s\n", premsg, errmsg);
+        } else if (err < 0) {
+            printf("%serror : %s\n", premsg, errmsg);
+            if (!options.interactive) {
+                sprintf(msg, "tried (line %i): '%s' ; failed (code -%#x): '%s'\n",
+                        line_count, line, -err, errmsg);
                 maslog_print(options.logger, msg);
-				done = 1;
-			}
-		}
-	}
+                done = 1;
+            }
+        }
+    }
 
-	if (!options.nonzero_only)
-		printf("Processed %i lines, exiting.\n", line_count);
+    if (!options.nonzero_only)
+        printf("Processed %i lines, exiting.\n", line_count);
 
 exit_now:
-	// Clean up acq!
-	if (acq != NULL)
-		mcedata_acq_destroy(acq);
+    // Clean up acq!
+    if (acq != NULL)
+        mcedata_acq_destroy(acq);
 
-	if (line_buffer!=NULL) free(line_buffer);
+    if (line_buffer!=NULL) free(line_buffer);
 
-	mcelib_destroy(mce);
+    mcelib_destroy(mce);
 
-	return (err>=0) ? 0 : 1;
+    return (err>=0) ? 0 : 1;
 }
 
 #define FILL_MENU(m, _name, min, max, data, opts ) \
-        m.name = _name; \
-        m.min_args = min; \
-        m.max_args = max; \
-        m.flags = MASCMDTREE_SELECT | MASCMDTREE_NOCASE; \
-        m.sub_opts = opts; \
-        m.user_cargo = (unsigned long)data;
+    m.name = _name; \
+m.min_args = min; \
+m.max_args = max; \
+m.flags = MASCMDTREE_SELECT | MASCMDTREE_NOCASE; \
+m.sub_opts = opts; \
+m.user_cargo = (unsigned long)data;
 
 
 int menuify_mceconfig(mascmdtree_opt_t *opts)
 {
     mascmdtree_opt_t *card_opts;
     mascmdtree_opt_t *para_opts;
-	char *string_table;
-	int i,j, error;
-	int n_cards = mceconfig_card_count(mce);
-	int n_params = 0;
+    char *string_table;
+    int i,j, error;
+    int n_cards = mceconfig_card_count(mce);
+    int n_params = 0;
 
-	// Count parameters
-	for (i=0; i<n_cards; i++) {
-		card_t card;
-		if (mceconfig_card(mce, i, &card)) {
-			fprintf(stderr, "Problem loading card data at index %i\n", i);
-			return -1;
-		}
+    // Count parameters
+    for (i=0; i<n_cards; i++) {
+        card_t card;
+        if (mceconfig_card(mce, i, &card)) {
+            fprintf(stderr, "Problem loading card data at index %i\n", i);
+            return -1;
+        }
 
-		error = mceconfig_card_paramcount(mce, &card);
-		if (error < 0) {
-			fprintf(stderr, "Problem counting parameters of '%s'\n", card.name);
-			return -1;
-		}
-		n_params += error;
-	}
+        error = mceconfig_card_paramcount(mce, &card);
+        if (error < 0) {
+            fprintf(stderr, "Problem counting parameters of '%s'\n", card.name);
+            return -1;
+        }
+        n_params += error;
+    }
 
-	string_table = malloc((n_params+n_cards)*MCE_SHORT);
-	card_opts = malloc((n_params + 3 * n_cards + 2)*sizeof(*card_opts));
-	para_opts = card_opts + n_cards + 2;
+    string_table = malloc((n_params+n_cards)*MCE_SHORT);
+    card_opts = malloc((n_params + 3 * n_cards + 2)*sizeof(*card_opts));
+    para_opts = card_opts + n_cards + 2;
 
-	for (i=0; i<n_cards; i++) {
-		card_t card;
-		param_t p;
-		int count;
+    for (i=0; i<n_cards; i++) {
+        card_t card;
+        param_t p;
+        int count;
 
-		if (mceconfig_card(mce, i, &card)) {
-			fprintf(stderr, "Problem loading card data at index %i\n", i);
-			return -1;
-		}
+        if (mceconfig_card(mce, i, &card)) {
+            fprintf(stderr, "Problem loading card data at index %i\n", i);
+            return -1;
+        }
 
-		// Fill out menu entry for card
-		FILL_MENU( card_opts[i], string_table, 1, -1, card.cfg, para_opts );
-		strcpy(string_table, card.name);
-		string_table += strlen(string_table) + 1;
+        // Fill out menu entry for card
+        FILL_MENU( card_opts[i], string_table, 1, -1, card.cfg, para_opts );
+        strcpy(string_table, card.name);
+        string_table += strlen(string_table) + 1;
 
-		count = mceconfig_card_paramcount(mce, &card);
-		for (j=0; j<count; j++) {
-			mceconfig_card_param(mce, &card, j, &p);
-			FILL_MENU( (*para_opts), string_table, 0, -1, p.cfg, integer_opts);
-			para_opts++;
-			strcpy(string_table, p.name);
-			string_table += strlen(string_table) + 1;
-		}
+        count = mceconfig_card_paramcount(mce, &card);
+        for (j=0; j<count; j++) {
+            mceconfig_card_param(mce, &card, j, &p);
+            FILL_MENU( (*para_opts), string_table, 0, -1, p.cfg, integer_opts);
+            para_opts++;
+            strcpy(string_table, p.name);
+            string_table += strlen(string_table) + 1;
+        }
 
-		memcpy(para_opts, integer_opts, sizeof(integer_opts));
-		para_opts += 2;
-	}
+        memcpy(para_opts, integer_opts, sizeof(integer_opts));
+        para_opts += 2;
+    }
 
-	memcpy(card_opts+n_cards, integer_opts, sizeof(integer_opts));
+    memcpy(card_opts+n_cards, integer_opts, sizeof(integer_opts));
 
     for (i = 0; (opts[i].flags & MASCMDTREE_TYPE_MASK) != MASCMDTREE_TERMINATOR;
             i++)
     {
-		if (opts[i].sub_opts == command_placeholder_opts)
-			opts[i].sub_opts = card_opts;
-	}
+        if (opts[i].sub_opts == command_placeholder_opts)
+            opts[i].sub_opts = card_opts;
+    }
 
-	return 0;
+    return 0;
 }
 
 int translate_card_string(char *s, char *errmsg)
 {
     mascmdtree_token_t rc_token;
     if (mascmdtree_tokenize(&rc_token, s, 1) != 0) {
-		sprintf(errmsg, "invalid readout specification string\n");
-		return -1;
-	}
+        sprintf(errmsg, "invalid readout specification string\n");
+        return -1;
+    }
 
     if (mascmdtree_select(&rc_token, rc_list, errmsg) <= 0)
-		return -1;
+        return -1;
 
-	return rc_token.value;
+    return rc_token.value;
 }
 
 int bit_count(int k)
 {
-	int i = 32;
-	int count = 0;
-	while (i-- > 0) {
-		count += (k&1);
-		k = k >> 1;
-	}
-	return count;
+    int i = 32;
+    int count = 0;
+    while (i-- > 0) {
+        count += (k&1);
+        k = k >> 1;
+    }
+    return count;
 }
 
 int prepare_outfile(char *errmsg, int storage_option)
 {
-	int error;
-	mcedata_storage_t* storage;
+    int error;
+    mcedata_storage_t* storage;
 
-	// Cleanup last acq
-	if (acq != NULL) {
-		mcedata_acq_destroy(acq);
-		acq = NULL;
-	}
+    // Cleanup last acq
+    if (acq != NULL) {
+        mcedata_acq_destroy(acq);
+        acq = NULL;
+    }
 
-	acq = (mce_acq_t*)malloc(sizeof(mce_acq_t));
-	if (acq == NULL) {
-		sprintf(errmsg, "Failed to allocate memory for mce_acq_t structure!\n");
-		return -1;
-	}
+    acq = (mce_acq_t*)malloc(sizeof(mce_acq_t));
+    if (acq == NULL) {
+        sprintf(errmsg, "Failed to allocate memory for mce_acq_t structure!\n");
+        return -1;
+    }
 
-	// Setup storage-specific handler
-	switch(storage_option) {
+    // Setup storage-specific handler
+    switch(storage_option) {
 
-	case SPECIAL_ACQ_CONFIG:
-		storage = mcedata_flatfile_create(options.acq_filename);
-		if (storage == NULL) {
-			sprintf(errmsg, "Could not create flatfile");
+        case SPECIAL_ACQ_CONFIG:
+            storage = mcedata_flatfile_create(options.acq_filename);
+            if (storage == NULL) {
+                sprintf(errmsg, "Could not create flatfile");
+                return -1;
+            }
+            break;
+
+        case SPECIAL_ACQ_CONFIG_FS:
+            storage = mcedata_fileseq_create(options.acq_filename,
+                    options.acq_interval,
+                    FS_DIGITS);
+            if (storage == NULL) {
+                sprintf(errmsg, "Could not set up file sequencer");
+                return -1;
+            }
+            break;
+
+        case SPECIAL_ACQ_CONFIG_DIRFILE:
+            storage = mcedata_dirfile_create(options.acq_filename, 0);
+            if (storage == NULL) {
+                sprintf(errmsg, "Could not create flatfile");
+                return -1;
+            }
+            break;
+
+        case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
+            storage = mcedata_dirfileseq_create(options.acq_filename,
+                    options.acq_interval,
+                    FS_DIGITS, 0);
+            if (storage == NULL) {
+                sprintf(errmsg, "Could not create flatfile");
+                return -1;
+            }
+            break;
+
+        default:
+            sprintf(errmsg, "Unimplemented storage type.");
             return -1;
-		}
-		break;
+    }
 
-	case SPECIAL_ACQ_CONFIG_FS:
-		storage = mcedata_fileseq_create(options.acq_filename,
-						 options.acq_interval,
-						 FS_DIGITS);
-		if (storage == NULL) {
-			sprintf(errmsg, "Could not set up file sequencer");
-			return -1;
-		}
-		break;
+    // Initialize the acquisition system
+    if ((error=mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage)) != 0) {
+        sprintf(errmsg, "Could not configure acquisition: %s",
+                mcelib_error_string(error));
+        return -1;
+    }
 
-	case SPECIAL_ACQ_CONFIG_DIRFILE:
-		storage = mcedata_dirfile_create(options.acq_filename, 0);
-		if (storage == NULL) {
-			sprintf(errmsg, "Could not create flatfile");
-            return -1;
-		}
-		break;
-
-	case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
-		storage = mcedata_dirfileseq_create(options.acq_filename,
-						    options.acq_interval,
-						    FS_DIGITS, 0);
-		if (storage == NULL) {
-			sprintf(errmsg, "Could not create flatfile");
-            return -1;
-		}
-		break;
-
-	default:
-		sprintf(errmsg, "Unimplemented storage type.");
-		return -1;
-	}
-
-	// Initialize the acquisition system
-	if ((error=mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage)) != 0) {
-		sprintf(errmsg, "Could not configure acquisition: %s",
-			mcelib_error_string(error));
-		return -1;
-	}
-
-	return 0;
+    return 0;
 }
 
 int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
 {
-	int i;
-	int offset = 0;
+    int i;
+    int offset = 0;
     int hex = (options.display == SPECIAL_HEX ||
-		   ( options.display == SPECIAL_DEF &&
-		     p->param.flags & MCE_PARAM_HEX ) );
+            ( options.display == SPECIAL_DEF &&
+              p->param.flags & MCE_PARAM_HEX ) );
 
-	for (i=0; i<count ; i++) {
-		if (hex) offset += sprintf(dest + offset, "%#x ", buf[i]);
-		else     offset += sprintf(dest + offset, "%i ", buf[i]);
-	}
-	return offset;
+    for (i=0; i<count ; i++) {
+        if (hex) offset += sprintf(dest + offset, "%#x ", buf[i]);
+        else     offset += sprintf(dest + offset, "%i ", buf[i]);
+    }
+    return offset;
 }
 
 
@@ -589,153 +599,153 @@ int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
 int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
         char *errmsg)
 {
-	int ret_val = 0;
-	int err = 0;
-	int i;
-	mce_param_t mcep;
-	int to_read, to_request, to_write, card_mul, index;
-	u32 buf[DATA_SIZE];
-	char s[LINE_LEN];
+    int ret_val = 0;
+    int err = 0;
+    int i;
+    mce_param_t mcep;
+    int to_read, to_request, to_write, card_mul, index;
+    u32 buf[DATA_SIZE];
+    char s[LINE_LEN];
 
-	errmsg[0] = 0;
+    errmsg[0] = 0;
 
     int is_command = (tokens[0].value >= ENUM_COMMAND_LOW &&
             tokens[0].value < ENUM_COMMAND_HIGH);
 
-	if (is_command) {
+    if (is_command) {
 
-		// Token[0] is the command (RB, WB, etc.)
-		// Token[1] is the card
-		// Token[2] is the param
-		// Token[3+] are the data
+        // Token[0] is the command (RB, WB, etc.)
+        // Token[1] is the card
+        // Token[2] is the param
+        // Token[3+] are the data
 
         // Allow integer values for card and para.
         int raw_mode = (tokens[1].type != MASCMDTREE_SELECT) ||
             (tokens[2].type != MASCMDTREE_SELECT);
-		card_mul = 1;
-		to_read = 0;
+        card_mul = 1;
+        to_read = 0;
 
-		if (!raw_mode) {
-			char card_word[MCE_SHORT];
-			char para_word[MCE_SHORT];
+        if (!raw_mode) {
+            char card_word[MCE_SHORT];
+            char para_word[MCE_SHORT];
             mascmdtree_token_word(card_word, tokens+1);
             mascmdtree_token_word(para_word, tokens+2);
-			if (mcecmd_load_param(mce, &mcep, card_word, para_word)) {
-				sprintf(errmsg, "Could not load parameter '%s %s'",
-					card_word, para_word);
-				return -1;
-			}
-		} else {
+            if (mcecmd_load_param(mce, &mcep, card_word, para_word)) {
+                sprintf(errmsg, "Could not load parameter '%s %s'",
+                        card_word, para_word);
+                return -1;
+            }
+        } else {
             if ( tokens[1].type == MASCMDTREE_SELECT ) {
                 mceconfig_cfg_card ((config_setting_t*)tokens[1].data,
                         &mcep.card);
-			} else {
-				mcep.card.id[0] = tokens[1].value;
-				mcep.card.card_count = 1;
-			}
-			mcep.param.id = tokens[2].value;
-			mcep.param.count = tokens[3].value;
+            } else {
+                mcep.card.id[0] = tokens[1].value;
+                mcep.card.card_count = 1;
+            }
+            mcep.param.id = tokens[2].value;
+            mcep.param.count = tokens[3].value;
             mcep.card.card_count =
                 ( tokens[4].type == MASCMDTREE_INTEGER  ?
                   tokens[4].value : 1 );
-		}
+        }
 
         if (to_read == 0 && tokens[3].type == MASCMDTREE_INTEGER) {
-			to_read = tokens[3].value;
+            to_read = tokens[3].value;
             if (tokens[4].type == MASCMDTREE_INTEGER) {
-				card_mul = tokens[4].value;
-			}
-		}
-
-		switch( tokens[0].value ) {
-
-		case COMMAND_RS:
-			err = mcecmd_reset(mce, &mcep);
-			break;
-
-		case COMMAND_GO:
-
-      // If you get here, your data just accumulates
-      //  in the driver's buffer, /dev/mce_data0, assuming that
-      //  the frame size has been set correctly.
-      err = mcecmd_start_application(mce, &mcep);
-			break;
-
-		case COMMAND_ST:
-			err = mcecmd_stop_application(mce, &mcep);
-			break;
-
-		case COMMAND_RB:
-			to_request = -1;
-			to_read = mcecmd_read_size(&mcep, to_request);
-			err = mcecmd_read_block(mce, &mcep, to_request, buf);
-			if (err) break;
-
-			errmsg += data_string(errmsg, buf, to_read, &mcep);
-
-			break;
-
-		case COMMAND_REL:
-			to_request = -1;
-			to_read = mcecmd_read_size(&mcep, to_request);
-			err = mcecmd_read_element(mce, &mcep,
-						  tokens[3].value, buf);
-			if (err) break;
-
-			errmsg += data_string(errmsg, buf, to_read, &mcep);
-
-			break;
-
-		case COMMAND_RRA:
-			index = tokens[3].value;
-			to_request = tokens[4].value;
-			to_read = mcecmd_read_size(&mcep, to_request);
-			err = mcecmd_read_range(mce, &mcep, index, buf, to_request);
-			if (err) break;
-
-			errmsg += data_string(errmsg, buf, to_read, &mcep);
-
-			break;
-
-		case COMMAND_WB:
-			to_write = tokens[3].n;
-			for (i=0; i<tokens[3].n && i<NARGS; i++)
-				buf[i] = tokens[3+i].value;
-
-			err = mcecmd_write_block(mce, &mcep, to_write, buf);
-			break;
-
-		case COMMAND_WEL:
-			err = mcecmd_write_element(mce, &mcep,
-						tokens[3].value,
-						tokens[4].value);
-			break;
-
-		case COMMAND_WRA:
-			index = tokens[3].value;
-			to_write = tokens[4].n;
-			for (i=0; i<to_write && i<NARGS; i++)
-				buf[i] = tokens[4+i].value;
-
-			err = mcecmd_write_range(mce, &mcep, index, buf, to_write);
-			break;
-
-		default:
-			sprintf(errmsg, "command not implemented");
-			return -1;
-		}
-
-		if (err!=0 && errmsg[0] == 0) {
-			sprintf(errmsg, "mce library error -%#08x : %s", -err,
-				mcelib_error_string(err));
-			ret_val = -1;
+                card_mul = tokens[4].value;
+            }
         }
-	} else {
 
-		switch(tokens[0].value) {
+        switch( tokens[0].value ) {
+
+            case COMMAND_RS:
+                err = mcecmd_reset(mce, &mcep);
+                break;
+
+            case COMMAND_GO:
+
+                // If you get here, your data just accumulates
+                //  in the driver's buffer, /dev/mce_data0, assuming that
+                //  the frame size has been set correctly.
+                err = mcecmd_start_application(mce, &mcep);
+                break;
+
+            case COMMAND_ST:
+                err = mcecmd_stop_application(mce, &mcep);
+                break;
+
+            case COMMAND_RB:
+                to_request = -1;
+                to_read = mcecmd_read_size(&mcep, to_request);
+                err = mcecmd_read_block(mce, &mcep, to_request, buf);
+                if (err) break;
+
+                errmsg += data_string(errmsg, buf, to_read, &mcep);
+
+                break;
+
+            case COMMAND_REL:
+                to_request = -1;
+                to_read = mcecmd_read_size(&mcep, to_request);
+                err = mcecmd_read_element(mce, &mcep,
+                        tokens[3].value, buf);
+                if (err) break;
+
+                errmsg += data_string(errmsg, buf, to_read, &mcep);
+
+                break;
+
+            case COMMAND_RRA:
+                index = tokens[3].value;
+                to_request = tokens[4].value;
+                to_read = mcecmd_read_size(&mcep, to_request);
+                err = mcecmd_read_range(mce, &mcep, index, buf, to_request);
+                if (err) break;
+
+                errmsg += data_string(errmsg, buf, to_read, &mcep);
+
+                break;
+
+            case COMMAND_WB:
+                to_write = tokens[3].n;
+                for (i=0; i<tokens[3].n && i<NARGS; i++)
+                    buf[i] = tokens[3+i].value;
+
+                err = mcecmd_write_block(mce, &mcep, to_write, buf);
+                break;
+
+            case COMMAND_WEL:
+                err = mcecmd_write_element(mce, &mcep,
+                        tokens[3].value,
+                        tokens[4].value);
+                break;
+
+            case COMMAND_WRA:
+                index = tokens[3].value;
+                to_write = tokens[4].n;
+                for (i=0; i<to_write && i<NARGS; i++)
+                    buf[i] = tokens[4+i].value;
+
+                err = mcecmd_write_range(mce, &mcep, index, buf, to_write);
+                break;
+
+            default:
+                sprintf(errmsg, "command not implemented");
+                return -1;
+        }
+
+        if (err!=0 && errmsg[0] == 0) {
+            sprintf(errmsg, "mce library error -%#08x : %s", -err,
+                    mcelib_error_string(err));
+            ret_val = -1;
+        }
+    } else {
+
+        switch(tokens[0].value) {
             case SPECIAL_HELP:
-/*              mascmdtree_list(errmsg, root_opts, */
-/*                      "MCE commands: [ ", " ", "]"); */
+                /*              mascmdtree_list(errmsg, root_opts, */
+                /*                      "MCE commands: [ ", " ", "]"); */
                 break;
 
             case SPECIAL_ACQ:
@@ -864,9 +874,9 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 ret_val = mcecmd_lock_replies(mce, 0);
                 break;
 
-/*          case SPECIAL_CLEAR: */
-/*              ret_val = mcecmd_reset(mce, tokens[1].value, tokens[2].value);*/
-/*              break; */
+                /*          case SPECIAL_CLEAR: */
+                /*              ret_val = mcecmd_reset(mce, tokens[1].value, tokens[2].value);*/
+                /*              break; */
 
             case SPECIAL_FAKESTOP:
                 ret_val = mcedata_fake_stopframe(mce);
@@ -902,59 +912,59 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 sprintf(errmsg, "command not implemented");
                 ret_val = -1;
         }
-	}
+    }
 
-	return ret_val;
+    return ret_val;
 }
 
 
 int get_int(char *card, int *card_id)
 {
-	char *end = card;
-	if (end==NULL || *end==0) return -1;
-	*card_id = strtol(card, &end, 0);
-	if (*end!=0) return -1;
-	return 0;
+    char *end = card;
+    if (end==NULL || *end==0) return -1;
+    *card_id = strtol(card, &end, 0);
+    if (*end!=0) return -1;
+    return 0;
 }
 
 int pathify_filename(char *dest, const char *src)
 {
-	char len = strlen(options.acq_path);
+    char len = strlen(options.acq_path);
 
-	// Initial '/' roots it...
-	if (src[0] == '/' || len == 0) {
-		strcpy(dest, src);
-		return 0;
-	}
+    // Initial '/' roots it...
+    if (src[0] == '/' || len == 0) {
+        strcpy(dest, src);
+        return 0;
+    }
 
-	// Otherwise, concat.
-	strcpy(dest, options.acq_path);
+    // Otherwise, concat.
+    strcpy(dest, options.acq_path);
 
-	if (dest[len-1] != '/')
-		strcat(dest, "/");
-	strcat(dest, src);
+    if (dest[len-1] != '/')
+        strcat(dest, "/");
+    strcat(dest, src);
 
-	return 0;
+    return 0;
 }
 
 void die(int sig)
 {
-	// If we're accepting input, just cleanup and exit.
-	if (input_switch) {
-		// Clean up acq!
-		if (acq != NULL)
-			mcedata_acq_destroy(acq);
-		exit(0);
-	} else {
-		switch (kill_switch++) {
-		case 1:
-			fprintf(stderr, "Your eagerness to exit has been noted. "
-				"Press Ctrl-C again to force quit.\n");
-			break;
-		case 2:
-			fprintf(stderr, "Killed inopportunely! mce_reset recommended!\n");
-			exit(1);
-		}
-	}
+    // If we're accepting input, just cleanup and exit.
+    if (input_switch) {
+        // Clean up acq!
+        if (acq != NULL)
+            mcedata_acq_destroy(acq);
+        exit(0);
+    } else {
+        switch (kill_switch++) {
+            case 1:
+                fprintf(stderr, "Your eagerness to exit has been noted. "
+                        "Press Ctrl-C again to force quit.\n");
+                break;
+            case 2:
+                fprintf(stderr, "Killed inopportunely! mce_reset recommended!\n");
+                exit(1);
+        }
+    }
 }
 

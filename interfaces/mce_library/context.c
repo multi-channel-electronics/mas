@@ -23,7 +23,7 @@ mce_context_t* mcelib_create(int fibre_card)
         c->fibre_card = fibre_card;
 
 #if MULTICARD
-    ptr = mcelib_shell_expand("lib_mce[${MAS_CARD}]", c->fibre_card);
+    ptr = mcelib_shell_expand(c, "lib_mce[${MAS_CARD}]");
 #else
     ptr = strdup("lib_mce");
 #endif

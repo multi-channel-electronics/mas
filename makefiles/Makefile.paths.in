@@ -33,7 +33,6 @@ MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) $(LIBS)
 LIBDEP=$(MCELIB_F)/lib$(MCELIB)$(LIB_SUFFIX)
 
 LIBHEADERS= $(MAS_INCLUDE_F)/libmaslog.h \
-			$(MAS_INCLUDE_F)/masconfig.h \
 			$(MAS_INCLUDE_F)/mce_library.h \
 			$(MAS_INCLUDE_F)/mcecmd.h \
 			$(MAS_INCLUDE_F)/mceconfig.h \

@@ -101,20 +101,6 @@ int process_options(option_t *options, int argc, char **argv)
   }
 
     /* set file defaults */
-  if (options->hardware_file == NULL) {
-      options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
-      if (options->hardware_file == NULL) {
-          fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
-          return -1;
-      }
-  }
-  if (options->experiment_file == NULL) {
-      options->experiment_file = mcelib_default_experimentfile(options->fibre_card);
-      if (options->experiment_file == NULL) {
-          fprintf(stderr, "Unable to obtain path to default experiment.cfg!\n");
-          return -1;
-      }
-  }
   if (options->config_file == NULL) {
       options->config_file = mcelib_default_masfile();
       if (options->config_file == NULL) {

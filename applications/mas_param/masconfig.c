@@ -1,13 +1,17 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <masconfig.h>
+#include "masconfig.h"
 
 /* File load and save */
 
 int mas_load(const char *filename, config_t *cfg)
 {
 	config_init(cfg);
+
 	if (config_read_file(cfg, filename) != CONFIG_TRUE) {
 		fprintf(stderr, "libconfig parsing error in '%s': line %i: '%s'\n",
 			filename, config_error_line(cfg), config_error_text(cfg));

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libconfig.h>
+#include <mce/defaults.h>
 #include "servo_err.h"
 #include "servo.h"
 #include "options.h"
@@ -93,6 +94,26 @@ mce_context_t* connect_mce_or_exit(option_t* options)
 
     mce_context_t* mce = mcelib_create(options->fibre_card);
   
+    /* get defaults */
+    if (options->hardware_file == NULL) {
+        options->hardware_file = mcelib_default_hardwarefile(mce);
+        if (options->hardware_file == NULL) {
+            sprintf(errmsg, "Unable to obtain path to default mce.cfg!\n");
+            ERRPRINT(errmsg);
+            exit(ERR_MCE_LCFG);
+        }
+    }
+
+    if (options->experiment_file == NULL) {
+        options->experiment_file = mcelib_default_experimentfile(mce);
+        if (options->experiment_file == NULL) {
+            sprintf(errmsg,
+                    "Unable to obtain path to default experiment.cfg!\n");
+            ERRPRINT(errmsg);
+            exit(ERR_MCE_LCFG);
+        }
+    }
+
     // Load MCE hardware information ("xml")
     if (mceconfig_open(mce, options->hardware_file, NULL) != 0) {
         sprintf(errmsg, "Failed to open %s as hardware configuration file.",

@@ -76,7 +76,7 @@ mce_context_t* mce_connect(int fibre_card)
 	mce_context_t *mce = mcelib_create(fibre_card);
 
 	// Load MCE config information ("xml")
-    ptr = mcelib_default_hardwarefile(fibre_card);
+    ptr = mcelib_default_hardwarefile(mce);
     if (ptr == NULL) {
         fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
         return NULL;
