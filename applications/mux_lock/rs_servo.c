@@ -217,6 +217,7 @@ int main(int argc, char **argv)
      for (i=0; i<control.column_n; i++) {
        control.target[i] = atoi(argv[9]);
        control.gain[i] = strtod(argv[11], &endptr);
+       control.sfb_init[i] = 0;
      }
 
      control.bias_active = 1;
@@ -302,24 +303,15 @@ int main(int argc, char **argv)
    sprintf(outfile, "%s%s.bias", datadir, control.filename);
    bias_out = fopen(outfile, "a");
 
-   if (options.argument_opts) {
-     /* Start with 0 */
-     duplicate_fill(0, temparr, control.column_n);
-     /*prepare a line of init values for runfile*/
-     for (j=0; j<control.column_n; j++ )
-       for (i=0; i<control.rows; i++)
-	 safb[j][i] = temparr[j];
-   } else {
-     // Initialize servo output
-     for (j=0; j<control.column_n; j++)
-       for (i=0; i<control.rows; i++) 
-	 safb[j][i] = control.sfb_init[j];
-   }
+   /* Initialize servo output */
+   for (snum=0; snum<control.column_n; snum++)
+     for (r=0; r<control.rows; r++) 
+       safb[snum][r] = control.sfb_init[snum];
 
    /*prepare a line of init values for runfile*/
    sprintf(init_line1, "<safb.init>");
    for (j=0; j<control.column_n; j++ )
-     sprintf(init_line1 + strlen(init_line1), " %d", temparr[j]);
+     sprintf(init_line1 + strlen(init_line1), " %d", safb[j][0]);
 
    /** generate a runfile **/
    sprintf(init_line2, "<super_servo> 1");

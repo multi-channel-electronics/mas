@@ -311,27 +311,21 @@ int main(int argc, char **argv)
 
    if (options.argument_opts) {
      /* Get starting SQ2 feedback values  from a file called sq2fb.init*/
-     load_initfile(datadir, "sq2fb.init", control.column_0, control.column_n, temparr);
+     load_initfile(datadir, "sq2fb.init", control.column_0, control.column_n,
+		   control.sfb_init);
      /*prepare a line of init values for runfile*/
      sprintf(init_line1, "<sq2fb.init> ");
-     for (j=0; j<control.column_n; j++ ) {
-       for (i=0; i<control.rows; i++)
-	 sq2fb[j][i] = temparr[j];
-       sprintf(tempbuf, "%d ", temparr[j]);
-       strcat(init_line1, tempbuf);
-     }
-   } else {
-     init_line1[0]='\0';
-     // Initialize servo output
-     for (j=0; j<control.column_n; j++)
-       for (i=0; i<control.rows; i++) 
-	 sq2fb[j][i] = control.sfb_init[j];
    }
+
+   // Initialize servo output
+   for (j=0; j<control.column_n; j++)
+     for (i=0; i<control.rows; i++) 
+       sq2fb[j][i] = control.sfb_init[j];
 
    /*prepare a line of init values for runfile*/
    sprintf(init_line1, "<sq2fb.init>");
    for (j=0; j<control.column_n; j++ )
-     sprintf(init_line1 + strlen(init_line1), " %d", temparr[j]);
+     sprintf(init_line1 + strlen(init_line1), " %d", sq2fb[j][0]);
 
    /** generate a runfile **/
    sprintf(init_line2, "<super_servo> 1");

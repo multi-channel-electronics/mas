@@ -20,6 +20,9 @@ OBJECTS = $(foreach d,$(TARGETS),$(d).o ) \
 
 HEADERS = servo.h servo_err.h options.h ../../defaults/config.h
 
+.c.o :
+	$(CC) -c $(CFLAGS) $< -o $@
+
 $(OBJECTS): $(HEADERS)
 
 all: $(TARGETS)
@@ -38,8 +41,6 @@ rs_servo: rs_servo.o servo.o options.o
 
 sq2servo: sq2servo.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
-
-.c.o: 	$(HEADERS)
 
 tidy:
 	rm -f *~ *.o
