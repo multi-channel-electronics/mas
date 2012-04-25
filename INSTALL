@@ -1,0 +1,150 @@
+HOW TO BUILD AND INSTALL MAS:
+=============================
+
+The following procedure outlines the default situation.  Further details are
+available on the MCE wiki:
+
+    http://e-mode.phas.ubc.ca/mcewiki/index.php/MAS_OS_setup
+
+0.  Makefile.svn
+----------------
+
+MAS uses autoconf for some basic configuration stuff. After checking out MAS
+from the SVN repository the /first/ time, you need to bootstrap the autoconf
+process. To simplify this, the Makefile.svn file will automate the process.
+From the MAS source folder run
+
+     make -f Makefile.svn
+
+If successful, this will create the "./configure" script. This step is only
+required on fresh check-outs of the repository. If you already have a
+./configure script, even if it's out of date, you can skip this step. (After
+having been bootstrapped the first time, the build system is smart enough to
+know when it needs to regenerate itself.)
+
+Note: this procedure requires autoconf. If it's not installed, install it with:
+
+     sudo apt-get install autoconf
+
+
+
+1.  ./configure
+---------------
+
+Once the configure script exists, run it to generate the build system (ie. the
+Makefiles). The biggest thing you usually need to tell it is what the basic
+username and group should be for mce data. Also, there are a few options for the
+driver and some stupid python stuff.
+
+From the MAS source folder, run
+
+    ./configure
+
+Some useful options:
+
+   --disable-driver        suppress driver compilation/installation
+   --disable-bigphysarea   compile driver without bigphysarea support
+   --disable-config2       suppress mas.cfg and mce.cfg generation/installation
+   --with-user=USER        set default MCE user
+   --with-group=GROUP      set default MCE group
+   --with-kernel-dir=DIR   set kernel build directory (typically automatically
+                                determined)
+   --enable-multicard      build a version of MAS which can drive multiple
+                                fibre cards.  (See
+
+               http://e-mode.phas.ubc.ca/mcewiki/index.php/Multicard_MAS
+
+                                for details).
+
+Run
+
+    ./configure --help
+
+for a full list. When running, configure will complain if it cannot find
+something, and even suggest what package you need to install.
+
+
+
+2.  mce.cfg
+-----------
+
+After running configure, but before running make, you must specify a template
+file (mce.cin) which will be used to generate the hardware configuration file
+(mce.cfg). Full details of this procedure are given in the mce.cfg page, but
+briefly:
+
+  1) copy an appropriate template from config2/templates to config2/mce.cin
+
+  2) edit the config2/mce.cin file to describe your MCE. 
+
+The configuration file will be installed automatically when make install is run
+below. This entire step can be skipped if you passed --disable-config2 to
+configure above, but note that MAS will not function without mce.cfg and
+mas.cfg installed.
+
+
+
+3.  make
+--------
+
+This often works.
+
+    make clean; make
+
+4.  Test the driver
+-------------------
+
+It is wise to test that the driver does not kill your machine before installing
+it to load on boot. After compiling do:
+
+    cd driver
+    sudo ./reload
+
+This will load the driver, which should then try to talk to the SDSU PCI card if
+it is installed. Note that since "reload" first unloads the driver if it is
+present, and then loads the driver from the current folder, it may report an
+"ERROR" message if the first step fails, even though the driver is successfully
+loaded. The definitive way to check that the driver is loaded is
+
+    cat /proc/mce_dsp
+
+If this file does not exist, the driver isn't loaded. If the cat prints out a
+bunch of low-level driver information, you're in good shape.
+
+5.  sudo make install
+---------------------
+
+If you're satisfied that the driver works, install the whole thing. Go back up
+to the MAS base folder and run
+
+    sudo make install
+
+This will do the following:
+
+  * install the kernel driver, driver/mce_dsp.ko, into
+      /lib/modules/$(uname -r)/kernel/drivers/misc/, and re-scan the module
+      dependencies.
+
+  * install the MAS binaries from applications/ and the scripts from script/
+      into /usr/mce/bin
+
+  * install the MAS udev ruleset scripts/91-mas.rules into /etc/udev/rules.d/.
+      These udev rules will ensure that the mce_dsp module is loaded and the
+      MAS device nodes are created at boot time. You can get udev to run these
+      rules immediately, which will result in /dev being populated with the mce
+      devices, by running: 
+
+          sudo udevadm trigger
+
+      or else, you can make the nodes yourself by running mas_mknodes. 
+
+  * install the mas logging daemon script /etc/init.d/mas init script. The
+      driver can then be started/restarted as desired through this script: 
+
+          /etc/init.d/mas restart
+
+      The driver will automatically be set to load on boot. To disable this,
+      remove the symbolic link "/etc/rc2.d/S99mas". 
+
+  * install the hardware configuration file, config2/mce.cfg, and the MAS
+      configuration file, config2/mas.cfg to /etc/mce/. 
