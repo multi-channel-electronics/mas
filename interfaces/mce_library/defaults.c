@@ -110,7 +110,7 @@ char *mcelib_shell_expand(const char* input, int card)
   return ptr;
 }
 
-int mcelib_default_fibre_card(void)
+int mcelib_default_mce(void)
 {
 #if !MULTICARD
   return 0;

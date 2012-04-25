@@ -6,7 +6,7 @@
  * NULL on error; to use the default fibre card, pass card=-1 */
 char *mcelib_shell_expand(const char* input, int card);
 
-int mcelib_default_fibre_card(void);
+int mcelib_default_mce(void);
 
 /* generic path expansionny, stuff.  The caller must check that the
  * pointer returned by these functions isn't NULL. */

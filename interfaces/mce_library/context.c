@@ -12,23 +12,23 @@
 
 mce_context_t* mcelib_create(int fibre_card)
 {
-  char *ptr;
+    char *ptr;
 	mce_context_t* c = (mce_context_t*)malloc(sizeof(mce_context_t));
 
 	if (c == NULL) return c;
 
-  if (fibre_card == MCE_DEFAULT_MCE)
-    c->fibre_card = mcelib_default_fibre_card();
-  else
-    c->fibre_card = fibre_card;
+    if (fibre_card == MCE_DEFAULT_MCE)
+        c->fibre_card = mcelib_default_mce();
+    else
+        c->fibre_card = fibre_card;
 
 #if MULTICARD
-  ptr = mcelib_shell_expand("lib_mce[${MAS_CARD}]", c->fibre_card);
+    ptr = mcelib_shell_expand("lib_mce[${MAS_CARD}]", c->fibre_card);
 #else
-  ptr = strdup("lib_mce");
+    ptr = strdup("lib_mce");
 #endif
-	c->maslog = maslog_connect(NULL, ptr);
-  free(ptr);
+    c->maslog = maslog_connect(NULL, ptr);
+    free(ptr);
 
 	c->cmd.connected = 0;
 	c->data.connected = 0;

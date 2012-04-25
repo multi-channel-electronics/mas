@@ -297,7 +297,7 @@ int main(int argc, char **argv)
       case OPT_FIBRE_CARD:
 #if MULTICARD
         if (fibre_card == -1)
-          printf("%i\n", mcelib_default_fibre_card());
+          printf("%i\n", mcelib_default_mce());
         else
           printf("%i\n", fibre_card);
 #else
