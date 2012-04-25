@@ -86,27 +86,17 @@ mce_context_t* mce_connect(int fibre_card)
 	}
     free(ptr);
 
-	// Connect to an mce_cmd device.
-    ptr = mcelib_cmd_device(fibre_card);
-    if (ptr == NULL) {
-        fprintf(stderr, "Unable to obtain path to default command device!\n");
+    // Connect to an mce_cmd device.
+    if (mcecmd_open(mce) != 0) {
+        fprintf(stderr, "Failed to open CMD device.\n");
         return NULL;
-    } else if (mcecmd_open(mce, ptr) != 0) {
-		fprintf(stderr, "Failed to open %s.\n", ptr);
-		return NULL;
-	}
-    free(ptr);
+    }
 
-	// Open data device
-    ptr = mcelib_data_device(fibre_card);
-    if (ptr == NULL) {
-        fprintf(stderr, "Unable to obtain path to default data device!\n");
+    // Open data device
+    if (mcedata_open(mce) != 0) {
+        fprintf(stderr, "Could not open DATA device.\n");
         return NULL;
-    } else if (mcedata_open(mce, ptr) != 0) {
-		fprintf(stderr, "Could not open '%s'\n", ptr);
-		return NULL;
-	}
-    free(ptr);
+    }
 
 	return mce;
 }

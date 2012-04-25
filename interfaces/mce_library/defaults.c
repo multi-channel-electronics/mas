@@ -138,14 +138,3 @@ char *mcelib_default_masfile(void)
         return mcelib_shell_expand("${MCE_MAS_CFG}", -1);
     return mcelib_shell_expand(DEFAULT_MASFILE, -1);
 }
-
-/* device node names */
-char *mcelib_cmd_device(int card)
-{
-  return mcelib_shell_expand(DEFAULT_CMD_DEVICE, card);
-}
-
-char *mcelib_data_device(int card)
-{
-  return mcelib_shell_expand(DEFAULT_DATA_DEVICE, card);
-}

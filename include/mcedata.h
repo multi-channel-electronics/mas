@@ -28,7 +28,7 @@
 
 /* Data connection */
 
-int mcedata_open(mce_context_t *context, const char *dev_name);
+int mcedata_open(mce_context_t *context);
 int mcedata_close(mce_context_t *context);
 
 

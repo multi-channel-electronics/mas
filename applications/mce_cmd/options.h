@@ -25,7 +25,6 @@ typedef struct {
 	int  cmds_now;
 	int  cmds_idx;
 
-	char *data_device;
 	char *hardware_file;
 	char *masconfig_file;
 

@@ -27,23 +27,19 @@
 
 /* Data connection */
 
-int mcedata_open(mce_context_t *context, const char *dev_name)
+int mcedata_open(mce_context_t *context)
 {
 	void *map;
 	int map_size;
+    char dev_name[21];
 
 	if (C_data.connected)
     mcedata_close(context);
 
-  /* use default data device */
-  if (dev_name == NULL)
-    dev_name = mcelib_data_device(-1);
-
-	if (strlen(dev_name)>=MCE_LONG-1)
-		return -MCE_ERR_BOUNDS;
-
-	C_data.fd = open(dev_name, O_RDWR);
-	if (C_data.fd<0) return -MCE_ERR_DEVICE;
+    sprintf(dev_name, "/dev/mce_data%u", (unsigned)context->fibre_card);
+    C_data.fd = open(dev_name, O_RDWR);
+    if (C_data.fd<0)
+        return -MCE_ERR_DEVICE;
 
 	// Non-blocking reads allow us to timeout
 	/* Hey!  This makes single go (and thus ramp) very slow!! */

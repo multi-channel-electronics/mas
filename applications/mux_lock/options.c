@@ -101,10 +101,6 @@ int process_options(option_t *options, int argc, char **argv)
   }
 
     /* set file defaults */
-  if ((options->data_device = mcelib_data_device(options->fibre_card)) == NULL) {
-      fprintf(stderr, "Unable to obtain path to default data device!\n");
-      return -1;
-  }
   if (options->hardware_file == NULL) {
       options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
       if (options->hardware_file == NULL) {

@@ -14,7 +14,4 @@ char *mcelib_default_experimentfile(int card);
 char *mcelib_default_hardwarefile(int card);
 char *mcelib_default_masfile(void);
 
-/* the same with device node names */
-char *mcelib_cmd_device(int card);
-char *mcelib_data_device(int card);
 #endif

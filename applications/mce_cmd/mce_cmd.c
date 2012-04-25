@@ -250,11 +250,10 @@ int  main(int argc, char **argv)
         fprintf(ferr, "Could not open CMD device\n");
 		err = ERR_MCE;
 		goto exit_now;
-	}
+    }
 
-	if (mcedata_open(mce, options.data_device) != 0) {
-		fprintf(ferr, "Could not open data device '%s'.\n",
-			options.data_device);
+    if (mcedata_open(mce) != 0) {
+        fprintf(ferr, "Could not open DATA device\n");
 		err = ERR_MCE;
 		goto exit_now;
 	}

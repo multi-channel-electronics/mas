@@ -36,25 +36,19 @@ int main(int argc, char **argv)
 	int last_usage = -1;
 	mce_context_t *mce;
 	int barlen = 40;
-	char *dev = NULL;
 	char ts[1024];
 	time_t t;
-  int fibre_card = MCE_DEFAULT_MCE;
+    int fibre_card = MCE_DEFAULT_MCE;
 
 #if MULTICARD
-  if (argc > 1) {
-    fibre_card = atoi[1];
-    dev = mcelib_data_device(fibre_card);
-  }
+    if (argc > 1)
+        fibre_card = atoi[1];
 #endif
 
-	if ((mce=mcelib_create(fibre_card))==NULL || (mcedata_open(mce, dev)!=0)) {
-    if (dev == NULL)
-      fprintf(stderr, "%s: failed to connect default data device\n", argv[0]);
-    else
-      fprintf(stderr, "%s: failed to connect data device %s\n", argv[0], dev);
-		exit(1);
-	}
+    if ((mce=mcelib_create(fibre_card))==NULL || (mcedata_open(mce) !=0 )) {
+        fprintf(stderr, "%s: failed to connect DATA device\n", argv[0]);
+        exit(1);
+    }
 
 	while (1) {
 		mcedata_buffer_query(mce, &head, &tail, &count);

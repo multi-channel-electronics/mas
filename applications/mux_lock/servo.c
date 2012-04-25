@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,32 +89,33 @@ FILE *runfile;
 
 mce_context_t* connect_mce_or_exit(option_t* options)
 {
-  char errmsg[1024];
+    char errmsg[1024];
 
-  mce_context_t* mce = mcelib_create(options->fibre_card);
+    mce_context_t* mce = mcelib_create(options->fibre_card);
   
-  // Load MCE hardware information ("xml")
-  if (mceconfig_open(mce, options->hardware_file, NULL) != 0) {
-    sprintf(errmsg, "Failed to open %s as hardware configuration file.", options->config_file);
-    ERRPRINT(errmsg);
-    exit(ERR_MCE_LCFG);
-  }
+    // Load MCE hardware information ("xml")
+    if (mceconfig_open(mce, options->hardware_file, NULL) != 0) {
+        sprintf(errmsg, "Failed to open %s as hardware configuration file.",
+                options->config_file);
+        ERRPRINT(errmsg);
+        exit(ERR_MCE_LCFG);
+    }
   
-  // Connect to an mce_cmd device.
-  if (mcecmd_open(mce)) {
-    sprintf(errmsg, "Failed to open CMD device\n");
-    ERRPRINT(errmsg);
-    exit(ERR_MCE_OPEN);
-  }
+    // Connect to an mce_cmd device.
+    if (mcecmd_open(mce)) {
+        sprintf(errmsg, "Failed to open CMD device.\n");
+        ERRPRINT(errmsg);
+        exit(ERR_MCE_OPEN);
+    }
 
-   // Open data device
-   if (mcedata_open(mce, options->data_device) != 0) {
-     sprintf(errmsg, "Failed to open %s as data device.", options->data_device);
-     ERRPRINT(errmsg);
-     exit(ERR_MCE_DATA);
-   }
+    // Open data device
+    if (mcedata_open(mce) != 0) {
+        sprintf(errmsg, "Failed to open DATA device.\n");
+        ERRPRINT(errmsg);
+        exit(ERR_MCE_DATA);
+    }
 
-   return mce;
+    return mce;
 }
 
 
