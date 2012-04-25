@@ -50,10 +50,9 @@ int main (int argc, char **argv){
        return 2;
      }
      // connect to an mce_cmd device 
-     if (mcecmd_open(mce, options.cmd_device)) {
-       fprintf(stderr, "Failed to open %s as command device.\n",
-           options.cmd_device);
-       return 3;     
+     if (mcecmd_open(mce)) {
+         fprintf(stderr, "Failed to open CMD device.\n");
+         return 3;     
      }
 
      // Lookup MCE parameters, or exit with error message

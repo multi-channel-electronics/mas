@@ -99,12 +99,10 @@ void initialize_mce(int frequency)
 			exit(1);
 		}
     free(ptr);
-    ptr = mcelib_cmd_device(fibre_card);
-		if (mcecmd_open(mce, ptr) != 0) {
-			fprintf(stderr, "Failed to open %s.\n", ptr);
+    if (mcecmd_open(mce) != 0) {
+      fprintf(stderr, "Failed to open CMD device\n");
 			exit(1);
 		}
-    free(ptr);
 	}
 
 	// Look up parameters

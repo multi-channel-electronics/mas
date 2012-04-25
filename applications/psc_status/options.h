@@ -6,7 +6,6 @@
 typedef struct {
 
   char *config_file;
-  char *cmd_device;
   char *data_device;
   char *hardware_file;
 

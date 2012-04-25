@@ -20,11 +20,9 @@ int  main(int argc, char **argv)
 	mce_context_t *mce2 = mcelib_create(MCE_DEFAULT_MCE);
 
 	// Connect command module.
-	char device[] = "/dev/mce_cmd0";
 	char hardware[] = "/etc/mce/mce.cfg";
-	if (mcecmd_open(mce1, device) || mcecmd_open(mce2, device)) {
-		fprintf(stderr, "Could not open mce device '%s'\n",
-			device);
+    if (mcecmd_open(mce1) || mcecmd_open(mce2)) {
+        fprintf(stderr, "Could not open CMD device\n");
 		exit(1);
 	}
 	if (mceconfig_open(mce1, hardware, NULL) || mceconfig_open(mce2, hardware, NULL)) {

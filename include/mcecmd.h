@@ -31,7 +31,7 @@
 
 /* Connection management */
 
-int mcecmd_open (mce_context_t *context, char *dev_name);
+int mcecmd_open (mce_context_t *context);
 
 int mcecmd_close(mce_context_t *context);
 

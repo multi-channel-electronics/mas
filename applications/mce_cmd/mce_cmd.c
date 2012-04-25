@@ -246,9 +246,8 @@ int  main(int argc, char **argv)
 
 	// Connect command, data, and configuration modules.
 
-	if (mcecmd_open(mce, options.cmd_device) != 0) {
-		fprintf(ferr, "Could not open mce device '%s'\n",
-			options.cmd_device);
+    if (mcecmd_open(mce) != 0) {
+        fprintf(ferr, "Could not open CMD device\n");
 		err = ERR_MCE;
 		goto exit_now;
 	}

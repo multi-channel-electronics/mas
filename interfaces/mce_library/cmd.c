@@ -27,15 +27,14 @@
 #define LOG_LEVEL_REP_ER  MASLOG_INFO
 
 
-inline int get_last_error(mce_context_t *context)
+static inline int get_last_error(mce_context_t *context)
 {
 	return ioctl(C_cmd.fd, MCEDEV_IOCT_LAST_ERROR);
 }
 
 
-int log_data( maslog_t *logger,
-	      u32 *buffer, int count, int min_raw, char *msg,
-	      int level)
+static int log_data(maslog_t *logger, u32 *buffer, int count, int min_raw,
+        char *msg, int level)
 {
 	char out[2048];
 	char *s = out + sprintf(out, "%s", msg);
@@ -68,15 +67,17 @@ int log_data( maslog_t *logger,
 }
 
 
-int mcecmd_open (mce_context_t *context, char *dev_name)
+int mcecmd_open (mce_context_t *context)
 {
-	if (C_cmd.connected) mcecmd_close(context);
+    char dev_name[20];
 
-	if (strlen(dev_name)>=MCE_LONG-1)
-		return -MCE_ERR_BOUNDS;
+    if (C_cmd.connected)
+        mcecmd_close(context);
 
-	C_cmd.fd = open(dev_name, O_RDWR);
-	if (C_cmd.fd<0) return -MCE_ERR_DEVICE;
+    sprintf(dev_name, "/dev/mce_cmd%u", (unsigned)context->fibre_card);
+    C_cmd.fd = open(dev_name, O_RDWR);
+    if (C_cmd.fd < 0)
+        return -MCE_ERR_DEVICE;
 
 	// Set up connection to prevent outstanding replies after release
 	ioctl(C_cmd.fd, MCEDEV_IOCT_SET,

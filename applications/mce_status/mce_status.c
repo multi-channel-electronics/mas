@@ -52,9 +52,8 @@ int main(int argc, char **argv)
 	}
 
 
-	if (mcecmd_open(options.context, options.device_file) != 0) {
-		sprintf(msg, "Could not open mce device '%s'\n",
-			options.device_file);
+    if (mcecmd_open(options.context) != 0) {
+        sprintf(msg, "Could not open CMD device\n");
         error_log_exit(logger, msg, 3);
 	}
 

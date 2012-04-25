@@ -16,7 +16,6 @@ enum { CRAWLER_DAS = 0,
 
 typedef struct {
 	int fibre_card;
-	char *device_file;
 	char *config_file;
 	char *hardware_file;
 	char output_path[MCE_LONG];

@@ -98,8 +98,8 @@ mce_context_t* connect_mce_or_exit(option_t* options)
   }
   
   // Connect to an mce_cmd device.
-  if (mcecmd_open(mce, options->cmd_device)) {
-    sprintf(errmsg, "Failed to open %s as command device.", options->cmd_device);
+  if (mcecmd_open(mce)) {
+    sprintf(errmsg, "Failed to open CMD device\n");
     ERRPRINT(errmsg);
     exit(ERR_MCE_OPEN);
   }

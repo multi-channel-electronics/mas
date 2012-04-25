@@ -125,10 +125,6 @@ int process_options(options_t *options, int argc, char **argv)
         fprintf(stderr, "Unable to obtain path to default data device!\n");
         return -1;
     }
-    if ((options->cmd_device = mcelib_cmd_device(options->fibre_card)) == NULL) {
-        fprintf(stderr, "Unable to obtain path to default command device!\n");
-        return -1;
-    }
     if (options->hardware_file == NULL) {
         options->hardware_file = mcelib_default_hardwarefile(options->fibre_card);
         if (options->hardware_file == NULL) {
