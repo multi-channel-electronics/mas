@@ -149,8 +149,3 @@ char *mcelib_data_device(int card)
 {
   return mcelib_shell_expand(DEFAULT_DATA_DEVICE, card);
 }
-
-char *mcelib_dsp_device(int card)
-{
-  return mcelib_shell_expand(DEFAULT_DSP_DEVICE, card);
-}

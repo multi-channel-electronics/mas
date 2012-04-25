@@ -59,16 +59,20 @@ typedef struct mcedata {
 
 #define MCEDATA_PACKET_MAX 4096 /* Maximum frame size in dwords */
 
+typedef struct mcedsp {
+	int opened;
+	int fd;
+} mcedsp_t;
+
 /* Context structure associates connections on the three modules. */
 
 struct mce_context {
-
-  int fibre_card;
-  mcecmd_t    cmd;
-  mcedata_t   data;
-  mceconfig_t config;
-  maslog_t *maslog;
-
+    int fibre_card;
+    mcecmd_t    cmd;
+    mcedata_t   data;
+    mceconfig_t config;
+    maslog_t   *maslog;
+    mcedsp_t    dsp;
 };
 
 /* Macros for easy dereferencing of mce_context_t context into cmd,

@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /***************************
 
   API for SDSU DSP for MCE
@@ -13,276 +16,222 @@
 
 #include <stdio.h>
 
+#include "context.h"
 #include <mcedsp.h>
 #include <mce/dsp_errors.h>
 #include <mce/dsp_ioctl.h>
 #include <mce/defaults.h>
 
-#define PATH_LENGTH
-
-struct dsp_context {
-	int opened;
-	int fd;
-	char dev_name[PATH_LENGTH];
-};
-
-#define MAX_CONS 16
-
-struct dsp_context cons[MAX_CONS];
-int n_cons = 0;
-
-inline int handle_in_bounds(int handle) {
-	return (handle>=0) && (handle<MAX_CONS);
+static inline int mem_type_valid(dsp_memory_code mem) {
+    return (mem==DSP_MEMX) || (mem==DSP_MEMY) || (mem==DSP_MEMP);
 }
 
-inline int mem_type_valid(dsp_memory_code mem) {
-	return (mem==DSP_MEMX) || (mem==DSP_MEMY) || (mem==DSP_MEMP);
-}
-
-#define CHECK_HANDLE(hndl) if (!handle_in_bounds(hndl)) \
-                                   return -DSP_ERR_HANDLE
-#define CHECK_OPEN(hndl)   if (!cons[hndl].opened) \
+#define CHECK_OPEN(cntx)   if (!cntx->dsp.opened) \
                                    return -DSP_ERR_DEVICE
 #define CHECK_MEM_TYPE(mt) if (!mem_type_valid(mt)) \
                                    return -DSP_ERR_MEMTYPE
 #define CHECK_WORD(w)      if (w & ~0xffffff) \
                                    return -DSP_ERR_BOUNDS;
 
-int count_users() {
-	int i;
-	int count=0;
-	for (i=0; i<MAX_CONS; i++)
-		if (cons[i].opened) count++;
-	return count;
-}
-
-int dsp_open(char *dev_name)
+int mcedsp_open(mce_context_t *context)
 {
-	int handle, fd;
-  int clean_dev_name = 0;
+    int fd;
+    char dev_name[20];
+    sprintf(dev_name, "/dev/mce_dsp%u", (unsigned)context->fibre_card);
 
-  if (dev_name == NULL) {
-    dev_name = mcelib_dsp_device(-1);
-    clean_dev_name = 1;
-  }
+    fd = open(dev_name, O_RDWR);
+    if (fd < 0)
+        return -DSP_ERR_DEVICE;
 
-	for (handle=0; handle<MAX_CONS; handle++) {
-		if (!cons[handle].opened)
-			break;
-	}  
-	CHECK_HANDLE(handle);
-	if (strlen(dev_name) >= PATH_LENGTH - 1) {
-    if (clean_dev_name)
-        free(dev_name);
-    return -DSP_ERR_BOUNDS;
-  }
+    context->dsp.fd = fd;
+    context->dsp.opened = 1;
 
-	fd = open(dev_name, O_RDWR);
-	if (fd < 0) {
-    if (clean_dev_name)
-      free(dev_name);
-    return -DSP_ERR_DEVICE;
-  }
-
-	cons[handle].fd = fd;
-	cons[handle].opened = 1;
-	strcpy(cons[handle].dev_name, dev_name);
-
-	return handle;
+    return 0;
 }
 
 
-int dsp_close(int handle)
+int mcedsp_close(mce_context_t *context)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
+    CHECK_OPEN(context);
 
-	if (close(cons[handle].fd)<0) return -DSP_ERR_DEVICE;
-	cons[handle].opened = 0;
-	cons[handle].fd = -1;
+    if (close(context->dsp.fd) < 0)
+        return -DSP_ERR_DEVICE;
 
-	return 0;
+    context->dsp.opened = 0;
+    context->dsp.fd = -1;
+
+    return 0;
 }
 
 
 /* IOCTL wrappers */
 
-int dsp_ioctl(int handle, unsigned int iocmd, unsigned long arg)
+int mcedsp_ioctl(mce_context_t *context, unsigned int iocmd, unsigned long arg)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-
-	return ioctl(cons[handle].fd, iocmd, arg);
+    return ioctl(context->dsp.fd, iocmd, arg);
 }
 
 
-int dsp_reset_flags(int handle)
+int mcedsp_reset_flags(mce_context_t *context)
 {
-	return dsp_ioctl(handle, DSPDEV_IOCT_RESET, 0);
+    return mcedsp_ioctl(context, DSPDEV_IOCT_RESET, 0);
 }
 
-int dsp_error(int handle)
+int mcedsp_error(mce_context_t *context)
 {
-	return dsp_ioctl(handle, DSPDEV_IOCT_ERROR, 0);
+    return mcedsp_ioctl(context, DSPDEV_IOCT_ERROR, 0);
 }
 
-int dsp_speak(int handle, unsigned long arg)
+int mcedsp_speak(mce_context_t *context, unsigned long arg)
 {
-	return dsp_ioctl(handle, DSPDEV_IOCT_SPEAK, arg);
+    return mcedsp_ioctl(context, DSPDEV_IOCT_SPEAK, arg);
 }
-
 
 
 /* COMMAND FUNCTIONALITY (wraps write, read) */
 
-int dsp_send_command_now(int handle, dsp_command *cmd)
+int mcedsp_send_command_now(mce_context_t *context, dsp_command *cmd)
 {
-	if ( sizeof(*cmd) != write(cons[handle].fd, cmd, sizeof(*cmd)) )
-		return ioctl(cons[handle].fd, DSPDEV_IOCT_ERROR);
+    if (sizeof(*cmd) != write(context->dsp.fd, cmd, sizeof(*cmd)))
+        return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR);
 
-	dsp_message msg;
+    dsp_message msg;
   
-	if ( sizeof(msg) != read(cons[handle].fd, &msg, sizeof(msg)) )
-		return ioctl(cons[handle].fd, DSPDEV_IOCT_ERROR);
+    if (sizeof(msg) != read(context->dsp.fd, &msg, sizeof(msg)))
+        return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR);
 
-	if ( msg.type != DSP_REP ) return -DSP_ERR_UNKNOWN;
-	if ( msg.command != cmd->command ) return -DSP_ERR_REPLY;
-	if ( msg.reply != DSP_ACK ) return -DSP_ERR_FAILURE;
+    if (msg.type != DSP_REP)
+        return -DSP_ERR_UNKNOWN;
+    if (msg.command != cmd->command)
+        return -DSP_ERR_REPLY;
+    if (msg.reply != DSP_ACK)
+        return -DSP_ERR_FAILURE;
     
-	return (int) (msg.data & DSP_DATAMASK);
+    return (int)(msg.data & DSP_DATAMASK);
 }
 
 
-int dsp_send_command(int handle, dsp_command *cmd)
+int mcedsp_send_command(mce_context_t *context, dsp_command *cmd)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
+    CHECK_OPEN(context);
 
-	return dsp_send_command_now(handle, cmd);
+    return mcedsp_send_command_now(context, cmd);
 }
 
-int dsp_version(int handle)
+int mcedsp_version(mce_context_t *context)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
+    CHECK_OPEN(context);
   
-	dsp_command cmd = {DSP_VER, {0, 0, 0 }};
-	return dsp_send_command_now(handle, &cmd);
+    dsp_command cmd = {DSP_VER, {0, 0, 0 }};
+    return mcedsp_send_command_now(context, &cmd);
 }
 
 
 
-int dsp_read_word(int handle, dsp_memory_code mem, int address)
+int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-	CHECK_MEM_TYPE(mem);
+    CHECK_OPEN(context);
+    CHECK_MEM_TYPE(mem);
   
-	dsp_command cmd = {DSP_RDM, {mem, address, 0 }};
-	return dsp_send_command_now(handle, &cmd);
+    dsp_command cmd = {DSP_RDM, {mem, address, 0 }};
+    return mcedsp_send_command_now(context, &cmd);
 }
 
-int dsp_read_word_X(int handle, int address)
+int mcedsp_read_word_X(mce_context_t *context, int address)
 {
-	return dsp_read_word(handle, DSP_MEMX, address);
+    return mcedsp_read_word(context, DSP_MEMX, address);
 }
 
-int dsp_read_word_Y(int handle, int address)
+int mcedsp_read_word_Y(mce_context_t *context, int address)
 {
-	return dsp_read_word(handle, DSP_MEMY, address);
+    return mcedsp_read_word(context, DSP_MEMY, address);
 }
 
-int dsp_read_word_P(int handle, int address)
+int mcedsp_read_word_P(mce_context_t *context, int address)
 {
-	return dsp_read_word(handle, DSP_MEMP, address);
+    return mcedsp_read_word(context, DSP_MEMP, address);
 }
 
 
 
-int dsp_write_word(int handle, dsp_memory_code mem, int address, u32 value)
+int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
+        u32 value)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-	CHECK_MEM_TYPE(mem);
-	CHECK_WORD(value);
+    CHECK_OPEN(context);
+    CHECK_MEM_TYPE(mem);
+    CHECK_WORD(value);
   
-	dsp_command cmd = {DSP_WRM, {mem, address, value}};
-	return dsp_send_command_now(handle, &cmd);
+    dsp_command cmd = {DSP_WRM, {mem, address, value}};
+    return mcedsp_send_command_now(context, &cmd);
 }
 
-int dsp_write_word_X(int handle, int address, u32 value)
+int mcedsp_write_word_X(mce_context_t *context, int address, u32 value)
 {
-	return dsp_write_word(handle, DSP_MEMX, address, value);
+    return mcedsp_write_word(context, DSP_MEMX, address, value);
 }
 
-int dsp_write_word_Y(int handle, int address, u32 value)
+int mcedsp_write_word_Y(mce_context_t *context, int address, u32 value)
 {
-	return dsp_write_word(handle, DSP_MEMY, address, value);
+    return mcedsp_write_word(context, DSP_MEMY, address, value);
 }
 
-int dsp_write_word_P(int handle, int address, u32 value)
+int mcedsp_write_word_P(mce_context_t *context, int address, u32 value)
 {
-	return dsp_write_word(handle, DSP_MEMP, address, value);
+    return mcedsp_write_word(context, DSP_MEMP, address, value);
 }
 
-
-int dsp_reset(int handle)
+int mcedsp_reset(mce_context_t *context)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
+    CHECK_OPEN(context);
   
-	dsp_command cmd = {
-		command : DSP_RST,
-	};
+    dsp_command cmd = {
+        .command = DSP_RST,
+    };
 
-	return dsp_send_command_now(handle, &cmd);
+    return mcedsp_send_command_now(context, &cmd);
 }
 
-int dsp_start_application(int handle, int data)
+int mcedsp_start_application(mce_context_t *context, int data)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-	CHECK_WORD(data);
+    CHECK_OPEN(context);
+    CHECK_WORD(data);
   
-	dsp_command cmd = {DSP_GOA, {data,0,0} };
-	return dsp_send_command_now(handle, &cmd);
+    dsp_command cmd = {DSP_GOA, {data,0,0} };
+    return mcedsp_send_command_now(context, &cmd);
 }
 
-int dsp_stop_application(int handle)
+int mcedsp_stop_application(mce_context_t *context)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
+    CHECK_OPEN(context);
   
-	dsp_command cmd = {
-		command : DSP_STP,
-	};
-	return dsp_send_command_now(handle, &cmd);
+    dsp_command cmd = {
+        .command = DSP_STP,
+    };
+    return mcedsp_send_command_now(context, &cmd);
 }
 
-int dsp_reset_mce(int handle)
+int mcedsp_reset_mce(mce_context_t *context)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-	
-	dsp_command cmd = {
-		command: DSP_RCO,
-	};
-	return dsp_send_command_now(handle, &cmd);
+    CHECK_OPEN(context);
+
+    dsp_command cmd = {
+        .command = DSP_RCO,
+    };
+    return mcedsp_send_command_now(context, &cmd);
 }
 
-int dsp_qt_set(int handle, int var, int arg1, int arg2)
+int mcedsp_qt_set(mce_context_t *context, int var, int arg1, int arg2)
 {
-	CHECK_HANDLE(handle);
-	CHECK_OPEN(handle);
-	
-	dsp_command cmd = {
-		command: DSP_QTS,
-		args: {var, arg1, arg2},
-	};
-	return dsp_send_command_now(handle, &cmd);
+    CHECK_OPEN(context);
+
+    dsp_command cmd = {
+        .command = DSP_QTS,
+        .args = {var, arg1, arg2},
+    };
+    return mcedsp_send_command_now(context, &cmd);
 }
 
-int dsp_atomem(char *mem_type) {
+int mcedsp_atomem(char *mem_type) {
 	if (strlen(mem_type) != 1) return -DSP_ERR_MEMTYPE;
 
 	switch (toupper(mem_type[0])) {
@@ -300,7 +249,7 @@ int dsp_atomem(char *mem_type) {
 	return -DSP_ERR_MEMTYPE;
 }
 
-char *dsp_memtoa(int mem) {
+char *mcedsp_memtoa(int mem) {
 
 	switch (mem) {
 

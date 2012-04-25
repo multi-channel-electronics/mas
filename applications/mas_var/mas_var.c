@@ -9,7 +9,7 @@
 #define OPT_HELP 1000
 typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_MULTICARD, OPT_PREFIX,
   OPT_LIBS, OPT_CFLAGS, OPT_MASFILE, OPT_HARDWARE_FILE, OPT_EXPERIMENT_FILE,
-  OPT_FIBRE_CARD, OPT_CMD_DEVICE, OPT_DATA_DEVICE, OPT_DSP_DEVICE,
+  OPT_FIBRE_CARD, OPT_CMD_DEVICE, OPT_DATA_DEVICE,
   OPT_BIGPHYS, OPT_FAKEMCE, OPT_MAX_FIBRE_CARD, OPT_USER, OPT_GROUP,
   OPT_MAS_DATA, OPT_MAS_DATA_ROOT, OPT_MAS_TEMPLATE, OPT_MAS_BIN, OPT_MAS_TEMP,
   OPT_MAS_SCRIPT, OPT_MAS_IDL, OPT_MAS_PYTHON, OPT_MAS_TEST_SUITE,
@@ -162,7 +162,6 @@ int main(int argc, char **argv)
     { "fibre-card", 0, NULL, OPT_FIBRE_CARD },
     { "cmd-device", 0, NULL, OPT_CMD_DEVICE },
     { "data-device", 0, NULL, OPT_DATA_DEVICE },
-    { "dsp-device", 0, NULL, OPT_DSP_DEVICE },
     { "bigphys", 0, NULL, OPT_BIGPHYS },
     { "fakemce", 0, NULL, OPT_FAKEMCE },
     { "max-fibre-card", 0, NULL, OPT_MAX_FIBRE_CARD },
@@ -310,11 +309,6 @@ int main(int argc, char **argv)
         break;
       case OPT_DATA_DEVICE:
         ptr = mcelib_data_device(fibre_card);
-        puts(ptr);
-        free(ptr);
-        break;
-      case OPT_DSP_DEVICE:
-        ptr = mcelib_dsp_device(fibre_card);
         puts(ptr);
         free(ptr);
         break;

@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MCEDSP_H_
 #define _MCEDSP_H_
 
@@ -10,6 +13,7 @@
 
 /* dsp.h defines the structures used by the dsp driver */
 
+#include <mce_library.h>
 #include <mce/dsp.h>
 
 
@@ -29,8 +33,8 @@
    be closed when a session is finished.
 */
 
-int dsp_open(char *dev_name);
-int dsp_close(int handle);
+int mcedsp_open(mce_context_t *context);
+int mcedsp_close(mce_context_t *context);
 
 
 /*
@@ -40,46 +44,46 @@ int dsp_close(int handle);
    The memory type (dsp_memory_code) is defined in dsp.h.
 */
 
-int dsp_send_command(int handle, dsp_command *cmd);
+int mcedsp_send_command(mce_context_t *context, dsp_command *cmd);
 
 
-int dsp_read_word(int handle, dsp_memory_code mem, int address);
-int dsp_read_word_X(int handle, int address);
-int dsp_read_word_Y(int handle, int address);
-int dsp_read_word_P(int handle, int address);
+int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address);
+int mcedsp_read_word_X(mce_context_t *context, int address);
+int mcedsp_read_word_Y(mce_context_t *context, int address);
+int mcedsp_read_word_P(mce_context_t *context, int address);
 
-int dsp_write_word(int handle, dsp_memory_code mem, int address, u32 value);
-int dsp_write_word_X(int handle, int address, u32 value);
-int dsp_write_word_Y(int handle, int address, u32 value);
-int dsp_write_word_P(int handle, int address, u32 value);
+int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
+        u32 value);
+int mcedsp_write_word_X(mce_context_t *context, int address, u32 value);
+int mcedsp_write_word_Y(mce_context_t *context, int address, u32 value);
+int mcedsp_write_word_P(mce_context_t *context, int address, u32 value);
 
-int dsp_version(int handle);
+int mcedsp_version(mce_context_t *context);
 
-int dsp_reset(int handle);
+int mcedsp_reset(mce_context_t *context);
 
-int dsp_start_application(int handle, int data);
+int mcedsp_start_application(mce_context_t *context, int data);
 
-int dsp_stop_application(int handle);
+int mcedsp_stop_application(mce_context_t *context);
 
-int dsp_reset_mce(int handle);
+int mcedsp_reset_mce(mce_context_t *context);
 
-int dsp_qt_set(int handle, int var, int arg1, int arg2);
+int mcedsp_qt_set(mce_context_t *context, int var, int arg1, int arg2);
 
-int dsp_ioctl(int handle, unsigned int iocmd, unsigned long arg);
+int mcedsp_ioctl(mce_context_t *context, unsigned int iocmd, unsigned long arg);
 
-int dsp_reset_flags(int handle);
+int mcedsp_reset_flags(mce_context_t *context);
 
-int dsp_error(int handle);
+int mcedsp_error(mce_context_t *context);
 
-int dsp_speak(int handle, unsigned long arg);
-
-
-int dsp_atomem(char *mem_type);
-
-char *dsp_memtoa(int mem);
+int mcedsp_speak(mce_context_t *context, unsigned long arg);
 
 
-char *dsp_error_string(int error);
+int mcedsp_atomem(char *mem_type);
+
+char *mcedsp_memtoa(int mem);
+
+char *mcedsp_error_string(int error);
 
 
 #endif
