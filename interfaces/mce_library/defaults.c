@@ -135,7 +135,7 @@ char *mcelib_default_hardwarefile(int card)
 char *mcelib_default_masfile(void)
 {
     if (getenv("MCE_MAS_CFG"))
-        return mcelib_shell_expand(NULL, "${MCE_MAS_CFG}");
+        return mcelib_shell_expand("${MCE_MAS_CFG}", -1);
     return mcelib_shell_expand(DEFAULT_MASFILE, -1);
 }
 
