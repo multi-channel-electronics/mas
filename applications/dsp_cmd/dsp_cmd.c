@@ -148,7 +148,7 @@ int main(int argc, char **argv)
 		       PROGRAM_NAME, VERSION_STRING);
 	}
 
-    mce = mcelib_create(options.fibre_card);
+    mce = mcelib_create(options.fibre_card, NULL);
     if (mce == NULL) {
         fprintf(stderr, "Error creating context for card %i\n",
                 options.fibre_card);

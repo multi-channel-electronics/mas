@@ -1,0 +1,75 @@
+/* Global MAS configuration */
+
+mas:
+{
+  /* Path defaults:
+   *
+   * etcdir: the directory containing the hardware config files (mce*.cfg).
+   *         If this is not specified, MAS will search for hardware config
+   *         files in the directory containing *this* mas.cfg file.  May be
+   *         overridden at runtime via the MAS_ETC environmental variable.
+   *
+   */
+  etcdir = "<?php echo $etc_dir?>";
+
+  /* masroot: the location of the MCE Scripts tree.  May be overridden at
+   *          runtime via the MAS_ROOT environmental variable.
+   *
+   *     Additionally, various subdirectories under this directory may be
+   *     overridden separately via environmental variables:
+   *
+   *         ${MAS_ROOT}/idl        -> ${MAS_IDL}
+   *         ${MAS_ROOT}/python     -> ${MAS_PYTHON}
+   *         ${MAS_ROOT}/script     -> ${MAS_SCRIPT}
+   *         ${MAS_ROOT}/template   -> ${MAS_TEMPLATE}
+   *         ${MAS_ROOT}/test_suite -> ${MAS_TEST_SUITE}
+   *
+   */
+  masroot = "<?php echo $mas_root?>";
+
+  /* tmpdir: the temporary directory to be used by MAS and MCE Script.  If
+   *         not specified, /tmp is used.  May be overridden at runtime via the
+   *         MAS_TEMP environmental variable.
+   *
+   */
+  tmpdir = "<?php echo $mas_temp?>";
+
+  /* dataroot: the base directory for data acquired by MAS and MCE Script.  This
+<?php if ($n_cards > 1) { ?>
+   *           should be an array of strings, one per supported fibre card.
+   *           If not specified, /data/mce# is used, with # replaced by the
+   *           device number.  This may be overridden at runtime via the
+<?php } else { ?>
+   *           is a one-element string array.  If not specified, /data/cryo
+   *           is used.   This may be overridden at runtime via the
+<?php } ?>
+   *           MAS_DATA_ROOT environmental variable; in this case it is often
+   *           necessary to set the MAS_DATA environmental variable as well: see
+   *           datadir, below.
+   *
+   */
+<?php if ($n_cards > 1) { ?>
+  dataroot = [
+<?php
+    for ($i = 0; $i < $n_cards; ++$i) {
+      if ($i != 0) {
+          echo ",";
+      }
+      echo "\n            /* MCE device #$i */ \"$data_root$i\"";
+  }
+?>
+
+  ];
+<?php } else { ?>
+  dataroot = [ "<?php echo $data_root ?>" ];
+<?php } ?>
+
+  /* datadir: the subdirectory under dataroot above into which data is actually
+   *          written.  If not specified, current_data is used.  The full data
+   *          directory (ie. "$data_root/$data_dir") may be overridden at
+   *          runtime via the MAS_DATA environmental variable.
+   *
+   */
+  datadir = "<?php echo $data_dir?>";
+};
+

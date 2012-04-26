@@ -17,10 +17,10 @@ HEADERS =
 
 all: raw_acq
 
-raw_acq: raw_acq.o $(LIBDEP) $(LIBHEADERS)
-	$(CC) $(CFLAGS) raw_acq.o -o raw_acq $(LIBRARY)
+raw_acq: raw_acq.o $(LIBDEP)
+	$(CC) $(LDFLAGS) raw_acq.o -o raw_acq $(LIBRARY)
 
-$(OBJECTS): $(HEADERS)
+$(OBJECTS): $(HEADERS) $(LIBHEADERS)
 
 tidy:
 	rm -f *~ *.o

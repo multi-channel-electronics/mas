@@ -58,7 +58,7 @@ static int total_txs = 0;
 static int reads = 0;
 static int writes = 0;
 mce_param_t par_addrs[N_PARAM];
-int fibre_card = -1;
+int fibre_card = MCE_DEFAULT_MCE;
 
 /* For smart packing of bits */
 
@@ -92,7 +92,7 @@ void initialize_mce(int frequency)
 
 	// Get context and load hardware config
 	if (mce == NULL) {
-		mce = mcelib_create(fibre_card);
+    mce = mcelib_create(fibre_card, NULL);
     ptr = mcelib_default_hardwarefile(mce);
 		if (mceconfig_open(mce, ptr, NULL) != 0) {
 			fprintf(stderr, "Failed to load MCE configuration file %s.\n", ptr);

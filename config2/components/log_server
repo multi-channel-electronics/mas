@@ -1,0 +1,45 @@
+/* Configuration information for MAS logging server */
+
+log_server:
+{
+
+  log_address = "<?php echo $log_address?>";
+
+<?php if ($n_cards > 1) {
+  $log_file = $data_root . "0/$data_dir/log"; ?>
+  /* In multicard configurations, the global data below are used for cards with
+   * no corresponding data in the log_list below.
+   */
+<?php } else {
+  $log_file = "$data_root/$data_dir/log";
+} ?>
+  log_file = "<?php echo $log_file ?>";
+
+  daemon = 1;
+
+  level = <?php echo $log_level?>;
+
+<?php /* extra loggers for multicard MAS */
+  if ($n_cards > 1) {
+?>
+  /* Per-card server configuration.  For a given card number, only the first
+   * entry in this list with that card number is considered.  The values above
+   * serve as defaults.
+   */
+  log_list = (
+<?php
+  for ($i = 0; $i < $n_cards; ++$i) { ?>
+    {
+      card = <?php echo $i?>;
+      log_file = "<?php echo $data_root . "$i/$data_dir" ?>/log";
+//    daemon = 1;
+//    level = <?php echo $log_level?>;
+    }<?php echo ($i < $n_cards - 1) ? ",\n" : "\n"?>
+<?php } ?>
+  );
+<?php
+  }
+
+?>
+};
+

@@ -54,6 +54,7 @@ int st_index(const string_table_t *st, const char *name);
 "  set <param> [datum]...  set the value of variable <param>\n"\
 "  full                    output full type and data for all params\n"\
 "\nOptions:\n"\
+"  -m <mas config>        choose a particular mas config file.\n"\
 USAGE_OPTION_N \
 "  -s <source file>       config file to parse.  Default:\n"\
 "                           ${MAS_DATA}/experiment.cfg\n"\

@@ -42,15 +42,17 @@ int main(int argc, char **argv)
         exit(2);
     }
 
-    logger = maslog_connect(options.config_file, "mce_status");
-	sprintf(msg, "initiated with hardware config '%s'", options.config_file);
-    maslog_print(logger, msg);
-	
-	// Connect to MCE
-	if ((options.context = mcelib_create(options.fibre_card))==NULL) {
-        error_log_exit(logger, "failed to create mce library structure", 3);
-	}
+    // Connect to MCE
+    if ((options.context = mcelib_create(options.fibre_card,
+                    options.config_file)) == NULL)
+    {
+        fprintf(stderr, "failed to initialise MAS.\n");
+        return 3;
+    }
 
+    logger = maslog_connect(options.config_file, "mce_status");
+    sprintf(msg, "initiated with hardware config '%s'", options.config_file);
+    maslog_print(logger, msg);
 
     if (mcecmd_open(options.context) != 0) {
         sprintf(msg, "Could not open CMD device\n");

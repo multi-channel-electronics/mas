@@ -19,8 +19,8 @@ _mce_library.so: mce_library_wrap.o
 
 mce_library_wrap.o: mce_library_wrap.c ../defaults/config.h
 
-mce_library_wrap.c: mce_library.i
-	swig -python $^
+mce_library_wrap.c: mce_library.i $(LIBHEADERS)
+	swig -python mce_library.i
 
 tidy:
 	rm -f *.o *~ *_wrap.c

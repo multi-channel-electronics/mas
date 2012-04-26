@@ -36,12 +36,12 @@ fi
 # Allow the user to suppress driver compile / install.
 
 AC_ARG_ENABLE([driver],
-			[AS_HELP_STRING([--disable-driver],
-			[disable driver compilation and installation])],
+              [AS_HELP_STRING([--disable-driver],
+                              [disable driver compilation and installation])],
             [DO_MAS_DRIVER=$enableval], [DO_MAS_DRIVER=yes])
 AC_ARG_WITH([driver],
-			[AS_HELP_STRING([--without-driver],
-			[deprecated: use --disable-driver instead])],
+            [AS_HELP_STRING([--without-driver],
+                            [deprecated: use --disable-driver instead])],
       [AC_MSG_WARN([--with-driver and --without-driver are deprecated, ]
       [use --enable-driver or --disable-driver instead.])
       DO_MAS_DRIVER=$withval], [])
@@ -63,6 +63,7 @@ AC_ARG_ENABLE([multicard],
                    
 AC_DEFINE_UNQUOTED(MAX_FIBRE_CARD, [$MAX_FIBRE_CARD],
           [ Define to the total allowable number of fibre cards. ])
+AC_SUBST([MAX_FIBRE_CARD])
 if test $MAX_FIBRE_CARD -eq 1; then
   FIRST_MCE_CIN="mce.cin"
   MCE_CFG_LIST="mce.cfg"
@@ -87,70 +88,22 @@ AC_DEFINE_UNQUOTED(MULTICARD, [$MULTICARD],
 
 dnl Some defaults.
 
-AC_ARG_VAR([DEFAULT_CMD_DEVICE], [the default command device ]
-[(/dev/mce_cmd${MAS_CARD} is used if not specified)])
-if test -z "$DEFAULT_CMD_DEVICE"; then
-	DEFAULT_CMD_DEVICE="/dev/mce_cmd\${MAS_CARD}"
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_CMD_DEVICE], ["$DEFAULT_CMD_DEVICE"],
-				   [ Define to the default command device. ])
-
-AC_ARG_VAR([DEFAULT_DATA_DEVICE], [the default data device ]
-[(/dev/mce_data${MAS_CARD} is used if not specified)])
-if test -z "$DEFAULT_DATA_DEVICE"; then
-	DEFAULT_DATA_DEVICE="/dev/mce_data\${MAS_CARD}"
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_DATA_DEVICE], ["$DEFAULT_DATA_DEVICE"],
-				   [ Define to the default data device format. ])
-
-AC_ARG_VAR([DEFAULT_DSP_DEVICE], [the default dsp device ]
-[(/dev/mce_dsp${MAS_CARD} is used if not specified)])
-if test -z "$DEFAULT_DSP_DEVICE"; then
-	DEFAULT_DSP_DEVICE="/dev/mce_dsp\${MAS_CARD}"
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_DSP_DEVICE], ["$DEFAULT_DSP_DEVICE"],
-				   [ Define to the default dsp device format. ])
-
-AC_ARG_VAR([DEFAULT_EXPERIMENTFILE],
-		   [the default experiment configuration file ]
-		   [($][{MAS_DATA}/experiment.cfg is used if not specified)])
-if test -z "$DEFAULT_EXPERIMENTFILE"; then
-	DEFAULT_EXPERIMENTFILE="\${MAS_DATA}/experiment.cfg"
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_EXPERIMENTFILE], ["$DEFAULT_EXPERIMENTFILE"],
-				   [ Define to the default experiment configuration file. ])
-
-AC_ARG_VAR([DEFAULT_FIBRE_CARD],
-		   [the default fibre card number (0 is used if not specified)])
+AC_ARG_VAR([DEFAULT_MCE],
+           [the default fibre card number (0 is used if not specified)])
 if test -z "$DEFAULT_FIBRE_CARD"; then
-	DEFAULT_FIBRE_CARD=0
+  DEFAULT_MCE=0
 fi
-AC_DEFINE_UNQUOTED([DEFAULT_FIBRE_CARD], [$DEFAULT_FIBRE_CARD],
-				   [ Define to the number of the default fibre card. ])
-
-AC_ARG_VAR([DEFAULT_HARDWAREFILE],
-		   [the default hardware configuration filename format specifier used by ]
-       [single card MAS.  (/etc/mce/mce.cfg is used if not specified, or ]
-       [/etc/mce/mce${MAS_CARD}.cfg, in the case of Multicard MAS)])
-if test -z "$DEFAULT_HARDWAREFILE"; then
-  if test $MAX_FIBRE_CARD -eq 1; then
-    DEFAULT_HARDWAREFILE="/etc/mce/mce.cfg"
-  else
-    DEFAULT_HARDWAREFILE="/etc/mce/mce\${MAS_CARD}.cfg"
-  fi
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_HARDWAREFILE], ["$DEFAULT_HARDWAREFILE"],
-                   [ Define to the default hardware configuration file. ])
-
+AC_DEFINE_UNQUOTED([DEFAULT_MCE], [$DEFAULT_MCE],
+                   [ Define to the number of the default fibre card. ])
 
 AC_ARG_VAR([DEFAULT_MASFILE],
-		   [the default MAS configuration file (/etc/mce/mas.cfg is used if ]
-		   [not specified)])
+           [the default MAS configuration file (/etc/mce/mas.cfg is used if ]
+           [not specified)])
 if test -z "$DEFAULT_MASFILE"; then
-	DEFAULT_MASFILE="/etc/mce/mas.cfg"
+  DEFAULT_MASFILE="/etc/mce/mas.cfg"
 fi
 AC_DEFINE_UNQUOTED([DEFAULT_MASFILE], ["$DEFAULT_MASFILE"],
-				   [ Define to the default MAS configuration file. ])
+                   [ Define to the default MAS configuration file. ])
 
 
 # Some driver options.
@@ -234,8 +187,8 @@ fi
 KERNEL_DIR=/lib/modules/`uname -r`/
 AC_ARG_WITH([kernel-dir],
             [AS_HELP_STRING([--with-kernel-dir=DIR],
-							[set the target kernel source tree to DIR ]
-							[(e.g. $KERNEL_DIR)])],
+                            [set the target kernel source tree to DIR ]
+                            [(e.g. $KERNEL_DIR)])],
             [KERNEL_DIR=$withval], [])
 AC_SUBST(KERNEL_DIR)
 
@@ -247,7 +200,7 @@ PYTHON_DIR=/usr/include/python${PYTHON_VERSION}/
 AC_ARG_WITH([python],
             [AS_HELP_STRING([--with-python=(PATH|yes|no)],
                             [enable/disable swig/python compilation and ]
-							[installation, PATH default is $PYTHON_DIR])],
+                            [installation, PATH default is $PYTHON_DIR])],
             [PYTHON_DIR=$withval])
 AC_SUBST(PYTHON_DIR)
 DO_MAS_SWIG=yes
@@ -294,7 +247,7 @@ AC_SUBST(LIBCONFIG_ARGS)
 
 AC_CHECK_LIB([config], [config_init], ,
              [AC_MSG_FAILURE([could not find libconfig, ]
-			 [please install it from www.hyperrealm.com/libconfig/!])],
+             [please install it from www.hyperrealm.com/libconfig/!])],
              "$LIBCONFIG_ARGS" )
 
 
@@ -328,7 +281,7 @@ BIGPHYS_H=${KERNEL_DIR}/build/include/linux/bigphysarea.h
 AC_CHECK_HEADER([$BIGPHYS_H],
                 [],
                 [AC_MSG_FAILURE([could not find bigphysarea.h in the ]
-				[kernel build tree; perhaps you want --without-bigphysarea])])
+                [kernel build tree; perhaps you want --without-bigphysarea])])
 fi
 
 
@@ -340,31 +293,69 @@ if test "$PYTHON_DIR" != "no"; then
       AC_MSG_FAILURE([please install swig package or pass --without-python.])
    AC_CHECK_HEADER([$PYTHON_DIR/Python.h], ,
                    [AC_MSG_FAILURE([could not find Python.h; perhaps you want ]
-				   [--with-python=... or you need to install python-dev])])
+                   [--with-python=... or you need to install python-dev])])
 fi
 
 
-dnl MCE script default defaults.  These are declared late for help munging
-dnl reasons
-m4_divert_once([HELP_VAR], [[
-The following variables may be set to influence the values computed for
-environmental variables returned by mas_var.  They may be overridden later
-by the user by creating environmental variables MASDEFAULT_<foo> for the default
-to the MAS_<foo> environemntal variable.  Unlike shell variables, these may
-contain references to other MAS_<foo> variables, which will be multiply expanded
-as needed.  Note: the value of MAS_ROOT is not specified here, but done instead
-by mce_script itself.
-]])
+dnl Paths
+AC_ARG_WITH([etc-dir], [AS_HELP_STRING([--with-etc-dir=DIR],
+           [the default location of the hardware config files.  (/etc/mce is ]
+           [used if not specified.)])], [MAS_ETCDIR="${withval}"],
+           [MAS_ETCDIR="no"])
+if test "x$MAS_ETCDIR" = "xno"; then
+  MAS_ETCDIR="/etc/mce"
+fi
+AC_SUBST([MAS_ETCDIR])
 
-MAS_DEFAULT_VAR([BIN], [${MAS_PREFIX}/bin])
-MAS_DEFAULT_VAR([DATA], [${MAS_DATA_ROOT}/current_data])
-MAS_DEFAULT_VAR([DATA_ROOT], [/data/cryo], [/data/cryo${MAS_CARD}])
-MAS_DEFAULT_VAR([IDL], [${MAS_ROOT}/idl])
-MAS_DEFAULT_VAR([PYTHON], [${MAS_ROOT}/python])
-MAS_DEFAULT_VAR([SCRIPT], [${MAS_ROOT}/script])
-MAS_DEFAULT_VAR([TEMP], [/tmp])
-MAS_DEFAULT_VAR([TEMPLATE], [${MAS_ROOT}/template])
-MAS_DEFAULT_VAR([TEST_SUITE], [${MAS_ROOT}/test_suite])
+AC_ARG_WITH([mas-root], [AS_HELP_STRING([--with-mas-root=DIR],
+            [the default location of the MCE Script tree. ]
+            [(PREFIX/mce_script is used if not specified.)])],
+            [MAS_ROOTDIR="\"${withval}\""], [MAS_ROOTDIR="no"])
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_ROOTDIR" = "xno"; then
+  MAS_ROOTDIR="\$prefix . \"/mce_script\""
+fi
+AC_SUBST([MAS_ROOTDIR])
+
+AC_ARG_WITH([mas-temp], [AS_HELP_STRING([--with-mas-temp=DIR],
+            [the temporary directory for use by MAS and MCE Script. ]
+            [(/tmp is used if not specified.)])],
+            [MAS_TEMPDIR="${withval}"], [MAS_TEMPDIR="no"])
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_TEMPDIR" = "xno"; then
+  MAS_TEMPDIR="/tmp";
+fi
+AC_SUBST([MAS_TEMPDIR])
+
+AC_ARG_WITH([data-root], [AS_HELP_STRING([--with-data-root=DIR],
+            [the base data directory used by MAS and MCE Script.  For ]
+            [multicard MAS, an integer fibre card number will be appended to ]
+            [DIR.  (For multicard MAS, "/data/mce" is used if not specified. ]
+            [For single-card MAS, "/data/cryo" is used for backwards ]
+            [compatibility.)])],
+            [MAS_DATAROOT="${withval}"], [MAS_DATAROOT="no"])
+if test "x$MAS_DATAROOT" = "xno"; then
+  if test $MAX_FIBRE_CARD -eq 1; then
+    MAS_DATAROOT="/data/cryo"
+  else
+    MAS_DATAROOT="/data/mce"
+  fi
+fi
+AC_SUBST([MAS_DATAROOT])
+
+
+
+
+AC_ARG_WITH([mas-data], [AS_HELP_STRING([--with-mas-data=SUBDIR],
+            [the subdirectory under DATA_ROOT (see --with-data-root above) ]
+            [in which data is actually written. ("current_data" is used if not ]
+            [specified.)])], [MAS_DATADIR="${withval}"], [MAS_DATADIR="no"])
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_DATADIR" = "xno"; then
+  MAS_DATADIR="current_data";
+fi
+AC_SUBST([MAS_DATADIR])
+
 
 dnl Write.
 
@@ -372,6 +363,7 @@ AC_CONFIG_HEADERS([defaults/config.h])
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([applications/mas_var/Makefile])
 AC_CONFIG_FILES([config2/Makefile])
+AC_CONFIG_FILES([config2/mas.cin])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
 AC_CONFIG_FILES([scripts/mas scripts/mas_mknodes],

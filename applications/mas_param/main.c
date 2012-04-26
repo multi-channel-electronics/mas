@@ -15,7 +15,7 @@
 options_t options = {
 	.mode = MODE_IDLE,
 	.format = FORMAT_BASH,
-	.fibre_card = -1
+    .fibre_card = MCE_DEFAULT_MCE
 };
 
 int main(int argc, char **argv)
@@ -28,7 +28,8 @@ int main(int argc, char **argv)
 
     /* get default config file name, if necessary */
     if (options.source_file == NULL) {
-        mce_context_t *mce = mcelib_create(options.fibre_card);
+        mce_context_t *mce = mcelib_create(options.fibre_card,
+                options.config_file);
         options.source_file = mcelib_default_experimentfile(mce);
         if (options.source_file == NULL) {
             fprintf(stderr,

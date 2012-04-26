@@ -127,7 +127,7 @@ int mcecmd_lock_replies(mce_context_t *context, int lock)
 	} else {
 		// Don't do that.
 		err = ioctl(C_cmd.fd, MCEDEV_IOCT_SET, flags & ~MCEDEV_CLOSED_CHANNEL);
-	}		
+    }
 	return err;
 }
 
@@ -135,7 +135,7 @@ int mcecmd_lock_replies(mce_context_t *context, int lock)
 /* Basic device write/read routines */
 
 int mcecmd_send_command_now(mce_context_t* context, mce_command *cmd)
-{	
+{
 	int error = write(C_cmd.fd, cmd, sizeof(*cmd));
 	if (error < 0) {
 		return -MCE_ERR_DEVICE;
@@ -251,8 +251,8 @@ int mcecmd_write_block(mce_context_t* context, const mce_param_t *param,
 int mcecmd_read_block(mce_context_t* context, const mce_param_t *param,
 		      int count, u32 *data)
 {
-	// Boring... 
-	return mcecmd_read_range(context, param, 0, data, count);
+    // Boring...
+    return mcecmd_read_range(context, param, 0, data, count);
 }
 
 #define QUICK_FILL(cmd, card, para, n) {		\
@@ -270,7 +270,7 @@ int mcecmd_send_command_simple(mce_context_t* context, int card_id, int para_id,
 	cmd.checksum = mcecmd_cmd_checksum(&cmd);
 
 	mce_reply rep;
-	
+
 	return mcecmd_send_command(context, &cmd, &rep);
 }
 
@@ -333,7 +333,7 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 	int i;
 
 	C_cmd_check;
-	 
+
 	if (count < 0)
 		count = param->param.count - data_index;
 
@@ -343,7 +343,7 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 	// Redirect Virtual cards, though virtual system will recurse here
 	if (param->card.nature == MCE_NATURE_VIRTUAL)
 		return mcecmd_write_virtual(context, param, data_index, data, count);
-	
+
 	// Separate writes for each target card.
 	for (i=0; i<param->card.card_count; i++) {
 		mce_reply rep;
@@ -351,7 +351,7 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 
 		// Read any leading data in the block
 		if (data_index != 0) {
-			error = mcecmd_load_command(&cmd, MCE_RB, 
+            error = mcecmd_load_command(&cmd, MCE_RB,
 						    param->card.id[i], param->param.id,
 						    data_index, 0, block);
 			if (error) return error;
@@ -371,7 +371,7 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 			param->card.id[i], param->param.id,
 			count+data_index, count+data_index, block);
 		if (error) return error;
-		
+
 		error = mcecmd_send_command(context, &cmd, &rep);
 		if (error) return error;
 	}
@@ -391,11 +391,11 @@ int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
 	// Redirect Virtual cards, though virtual system will recurse here
 	if (param->card.nature == MCE_NATURE_VIRTUAL)
 		return mcecmd_read_virtual(context, param, data_index, data, count);
-	
+
 	for (i=0; i<param->card.card_count; i++) {
 		mce_command cmd;
 		mce_reply rep;
-		error = mcecmd_load_command(&cmd, MCE_RB, 
+        error = mcecmd_load_command(&cmd, MCE_RB,
 					 param->card.id[i], param->param.id,
 					 count+data_index, 0, NULL);
 		if (error) return error;
@@ -406,7 +406,7 @@ int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
 		// I guess the data must be valid then.
 		memcpy(data+i*count, rep.data+data_index, count*sizeof(u32));
 	}
-	
+
 	// Post-process the reply data before returning?
 	mcecmd_postread_manip(param, data, count);
 
@@ -437,9 +437,9 @@ int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
 
 	do {
 		error = mcecmd_write_block(context, param, count, data);
-		
+
 		if (error) return error;
-		
+
 		error = mcecmd_read_block(context, param, count, readback);
 		if (error) return error;
 

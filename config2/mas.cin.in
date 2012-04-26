@@ -1,0 +1,26 @@
+<?php
+
+/* install prefix */
+$prefix = "@prefix@";
+
+/* The network host and port for the logger daemon */
+$log_address = "localhost:7884";
+
+/* The log level */
+$log_level   = 1;
+
+/* number of supported fibre cards */
+$n_cards = @MAX_FIBRE_CARD@;
+
+/* directories */
+$etc_dir = "@MAS_ETCDIR@";
+$mas_root = @MAS_ROOTDIR@;
+$mas_temp = "@MAS_TEMPDIR@";
+$data_root = "@MAS_DATAROOT@";
+$data_dir = "@MAS_DATADIR@";
+
+/* And execute. */
+
+include 'components/mas';
+
+?>

@@ -14,65 +14,74 @@ struct maslog_struct {
 /* Root configuration structure */
 
 typedef struct mceconfig {
+    int connected;
 
-	int connected;
+    struct config_t cfg;
 
-	struct config_t cfg;
+    config_setting_t *parameter_sets;
+    config_setting_t *card_types;
+    config_setting_t *components;
+    config_setting_t *mappings;
 
-	config_setting_t *parameter_sets;
-	config_setting_t *card_types;
-	config_setting_t *components;
-	config_setting_t *mappings;
-
-	int card_count;
-	int cardtype_count;
-	int paramset_count;
-	int mapping_count;
-
+    int card_count;
+    int cardtype_count;
+    int paramset_count;
+    int mapping_count;
 } mceconfig_t;
 
 /* Module information structure */
 
 typedef struct mcecmd {
+    int connected;
+    int fd;
 
-	int connected;
-	int fd;
-
-	char dev_name[MCE_LONG];
-	char errstr[MCE_LONG];
-
+    char dev_name[MCE_LONG];
+    char errstr[MCE_LONG];
 } mcecmd_t;
 
 /* Module information structure */
 
 typedef struct mcedata {
+    int connected;
+    int fd;
 
-	int connected;
-	int fd;
+    char dev_name[MCE_LONG];
+    char errstr[MCE_LONG];
 
-	char dev_name[MCE_LONG];
-	char errstr[MCE_LONG];
-
-	void *map;
-	int map_size;
+    void *map;
+    int map_size;
 } mcedata_t;
 
 #define MCEDATA_PACKET_MAX 4096 /* Maximum frame size in dwords */
 
 typedef struct mcedsp {
-	int opened;
-	int fd;
+    int opened;
+    int fd;
 } mcedsp_t;
 
 /* Context structure associates connections on the three modules. */
 
 struct mce_context {
-    int fibre_card;
-    mcecmd_t    cmd;
-    mcedata_t   data;
-    mceconfig_t config;
-    maslog_t   *maslog;
-    mcedsp_t    dsp;
+    mcecmd_t          cmd;            /* command subsystem */
+    mcedata_t         data;           /* data subsystem */
+    mcedsp_t          dsp;            /* dsp subsystem */
+    mceconfig_t       config;         /* hardware config subsystem */
+    maslog_t         *maslog;         /* maslog subsystem */
+
+    struct config_t  *mas_cfg;        /* MAS configuration */
+    int               fibre_card;     /* logical fibre card number */
+
+    char             *data_root;      /* the base data directory */
+    char             *data_dir;       /* DATA_ROOT/current_data, or whatever */
+    char             *data_subdir;    /* "current_data", or whatever */
+    char             *etc_dir;        /* location of the mce.cfg files */
+    char             *mas_root;       /* ${MAS_ROOT} */
+    char             *idl_dir;        /* ${MAS_IDL} */
+    char             *python_dir;     /* ${MAS_PYTHON} */
+    char             *script_dir;     /* ${MAS_SCRIPT} */
+    char             *template_dir;   /* ${MAS_TEMPLATE} */
+    char             *temp_dir;       /* ${MAS_TEMP} */
+    char             *test_dir;       /* ${MAS_TEST_SUITE} */
 };
 
 /* Macros for easy dereferencing of mce_context_t context into cmd,

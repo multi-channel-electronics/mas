@@ -1,0 +1,9 @@
+/* Configuration file for MAS */
+
+<?php
+include "mas_config";
+
+include "log_client";
+
+include "log_server";
+?>

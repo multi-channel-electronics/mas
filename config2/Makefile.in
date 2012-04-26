@@ -3,16 +3,21 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
+ifeq ($(MAKE_CONFIG2),yes)
 SOURCE = @MCE_CIN_LIST@
-TARGET = @MCE_CFG_LIST@
-FIRST_MCE_CIN = @FIRST_MCE_CIN@
 MULTICARD = @MULTICARD@
+MCE_LIST = @MCE_CFG_LIST@
 
 ifeq ($(MULTICARD),1)
 	INSTALL_MCE=install-multimce
 else
 	INSTALL_MCE=install-mce
 endif
+endif
+
+MAS_ETCDIR=@MAS_ETCDIR@
+TARGET = $(MCE_LIST) mas.cfg
+FIRST_MCE_CIN = @FIRST_MCE_CIN@
 
 all: Makefile $(TARGET)
 
@@ -35,78 +40,81 @@ $(SOURCE) :
 		echo "  WARNING: $@ does not exist... skipping production of $$base.cfg"; \
 	fi
 
-/etc/mce:
-	install --group=$(MAS_GROUP) --mode=775 -d /etc/mce
+$(MAS_ETCDIR):
+	install --group=$(MAS_GROUP) --mode=775 -d $(MAS_ETCDIR)
 
 install: install-mas $(INSTALL_MCE)
 
-install-mas: /etc/mce mas.cfg
-	@if [ -f /etc/mce/mas.cfg ]; then \
-		if ! diff -q mas.cfg /etc/mce/mas.cfg > /dev/null; then \
+install-mas: ${MAS_ETCDIR} mas.cfg
+	@if [ -f ${MAS_ETCDIR}/mas.cfg ]; then \
+		if ! diff -q mas.cfg ${MAS_ETCDIR}/mas.cfg > /dev/null; then \
 			echo; \
-			echo "  WARNING: /etc/mce/mas.cfg already exists, not overwriting."; \
-			echo "  To install the new mas.cfg; delete /etc/mce/mas.cfg first."; \
+			echo "  WARNING: ${MAS_ETCDIR}/mas.cfg already exists, not overwriting.";\
+			echo "  To install the new mas.cfg; delete ${MAS_ETCDIR}/mas.cfg first.";\
 		else \
-			echo "skipping install of /etc/mce/mas.cfg (unchanged)"; \
+			echo "skipping install of ${MAS_ETCDIR}/mas.cfg (unchanged)"; \
 		fi; \
 	else \
-		echo "installing /etc/mce/mas.cfg"; \
-		install --group=$(MAS_GROUP) --mode=664 mas.cfg /etc/mce/; \
+		echo "installing ${MAS_ETCDIR}/mas.cfg"; \
+		install --group=$(MAS_GROUP) --mode=664 mas.cfg ${MAS_ETCDIR}/; \
 	fi
 
-install-mce: /etc/mce mce.cfg
-	@if [ -f /etc/mce/mce.cfg ]; then \
-		if ! diff -q mce.cfg /etc/mce/mce.cfg > /dev/null; then \
+install-mce: ${MAS_ETCDIR} mce.cfg
+	@if [ -f ${MAS_ETCDIR}/mce.cfg ]; then \
+		if ! diff -q mce.cfg ${MAS_ETCDIR}/mce.cfg > /dev/null; then \
 			echo; \
-			echo "  WARNING: /etc/mce/mce.cfg already exists, not overwriting."; \
-			echo "  To install the new mce.cfg; delete /etc/mce/mce.cfg first."; \
+			echo "  WARNING: ${MAS_ETCDIR}/mce.cfg already exists, not overwriting.";\
+			echo "  To install the new mce.cfg; delete ${MAS_ETCDIR}/mce.cfg first.";\
 		else \
-			echo "skipping install of /etc/mce/mce.cfg (unchanged)"; \
+			echo "skipping install of ${MAS_ETCDIR}/mce.cfg (unchanged)"; \
 		fi; \
 	else \
-		echo "installing /etc/mce/mce.cfg"; \
-		install --group=$(MAS_GROUP) --mode=664 mce.cfg /etc/mce/; \
+		echo "installing ${MAS_ETCDIR}/mce.cfg"; \
+		install --group=$(MAS_GROUP) --mode=664 mce.cfg ${MAS_ETCDIR}/; \
 	fi
 
-# First, if /etc/mce/mce.cfg is a regular file but /etc/mce/mce0.cfg doesn't
-#   exist, we rename mce.cfg to mce0.cfg.
-# Second, if /etc/mce/mce.cfg exists and is not a regular file, we complain,
-#   otherwise, if it doesn't exist we create the symlink
+# First, if ${MAS_ETCDIR}/mce.cfg is a regular file but ${MAS_ETCDIR}/mce0.cfg
+#   doesn't exist, we rename mce.cfg to mce0.cfg.
+# Second, if ${MAS_ETCDIR}/mce.cfg exists and is not a regular file, we
+#   complain, otherwise, if it doesn't exist we create the symlink
 # Third, we go through our list of mce#.cfg; and install them if they exist,
 #   taking care to not overwrite existing files.
-install-multimce: /etc/mce mce0.cfg
-	@if [ -f /etc/mce/mce.cfg -a ! -e /etc/mce/mce0.cfg ]; then \
-		echo "moving /etc/mce/mce.cfg to /etc/mce/mce0.cfg"; \
-		mv /etc/mce/mce.cfg /etc/mce/mce0.cfg; \
+install-multimce: ${MAS_ETCDIR} mce0.cfg
+	@if [ -f ${MAS_ETCDIR}/mce.cfg -a ! -e ${MAS_ETCDIR}/mce0.cfg ]; then \
+		echo "moving ${MAS_ETCDIR}/mce.cfg to ${MAS_ETCDIR}/mce0.cfg"; \
+		mv ${MAS_ETCDIR}/mce.cfg ${MAS_ETCDIR}/mce0.cfg; \
 	fi
-	@if [ -e /etc/mce/mce.cfg -a \( ! -h /etc/mce/mce.cfg \
-				-o "`readlink /etc/mce/mce.cfg`" != mce0.cfg \) ]; then \
+	@if [ -e ${MAS_ETCDIR}/mce.cfg -a \( ! -h ${MAS_ETCDIR}/mce.cfg \
+				-o "`readlink ${MAS_ETCDIR}/mce.cfg`" != mce0.cfg \) ]; then \
 		echo; \
-		echo "  WARNING: /etc/mce/mce.cfg should be a symlink pointing to"; \
-		echo "  /etc/mce/mce0.cfg; but it appears to be something else."; \
+		echo "  WARNING: ${MAS_ETCDIR}/mce.cfg should be a symlink pointing to"; \
+		echo "  ${MAS_ETCDIR}/mce0.cfg; but it appears to be something else."; \
 		echo "  Check your configuration."; \
-	elif [ ! -h /etc/mce/mce.cfg ]; then \
-		echo "creating symlink /etc/mce/mce.cfg -> mce0.cfg"; \
-		ln -s mce0.cfg /etc/mce/mce.cfg; \
+	elif [ ! -h ${MAS_ETCDIR}/mce.cfg ]; then \
+		echo "creating symlink ${MAS_ETCDIR}/mce.cfg -> mce0.cfg"; \
+		ln -s mce0.cfg ${MAS_ETCDIR}/mce.cfg; \
 	fi
 	@for x in $(TARGET); do \
 		if [ -f $$x ]; then \
-			if [ -f /etc/mce/$$x ]; then \
-				if ! diff -q $$x /etc/mce/$$x > /dev/null; then \
+			if [ -f ${MAS_ETCDIR}/$$x ]; then \
+				if ! diff -q $$x ${MAS_ETCDIR}/$$x > /dev/null; then \
 					echo; \
-					echo "  WARNING: /etc/mce/$$x already exists, not overwriting."; \
-					echo "  To install the new $$x; delete /etc/mce/$$x first."; \
+					echo "  WARNING: ${MAS_ETCDIR}/$$x already exists, not overwriting.";\
+					echo "  To install the new $$x; delete ${MAS_ETCDIR}/$$x first."; \
 				else \
-					echo "skipping install of /etc/mce/$$x (unchanged)"; \
+					echo "skipping install of ${MAS_ETCDIR}/$$x (unchanged)"; \
 				fi; \
 			else \
-				echo "installing /etc/mce/$$x"; \
-				install --group=$(MAS_GROUP) --mode=664 $$x /etc/mce/; \
+				echo "installing ${MAS_ETCDIR}/$$x"; \
+				install --group=$(MAS_GROUP) --mode=664 $$x ${MAS_ETCDIR}/; \
 			fi; \
 		fi; \
 	done
 
 .PHONY: install install-mas install-mce clean all default
+
+mas.cin: mas.cin.in
+	( cd .. && make config2/mas.cin )
 
 clean:
 	rm -f $(TARGET)

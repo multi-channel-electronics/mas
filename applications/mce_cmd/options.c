@@ -25,7 +25,8 @@
 "  -r                     don't use readline on stdin (faster input in scripts)\n"\
 "\n"\
 USAGE_OPTION_N \
-"  -c <config file>       choose a particular mce config file\n"\
+"  -c <file>              choose a particular mce config file (mce.cfg)\n"\
+"  -m <file>              choose a particular MAS config file (mas.cfg)\n"\
 "  -f <batch file>        run commands from file instead of stdin\n"\
 "  -X \"cmd string\"        execute this command and exit (these can be stacked)\n"\
 "  -o <directory>         data file path\n"\
@@ -42,7 +43,7 @@ int process_options(options_t *options, int argc, char **argv)
 {
 	char *s = NULL;
 	int option;
-	while ( (option = getopt(argc, argv, "?X:c:ef:hin:o:pqrvx")) >=0)
+    while ((option = getopt(argc, argv, "?X:c:ef:him:n:o:pqrvx")) >= 0)
 	{
 
 		switch(option) {
@@ -78,6 +79,12 @@ int process_options(options_t *options, int argc, char **argv)
                 free(options->hardware_file);
 			options->hardware_file = strdup(optarg);
 			break;
+
+        case 'm':
+            if (options->masconfig_file)
+                free(options->masconfig_file);
+            options->masconfig_file = strdup(optarg);
+            break;
 
 		case 'o':
 			strcpy(options->acq_path, optarg);
