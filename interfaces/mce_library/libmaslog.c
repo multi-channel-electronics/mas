@@ -5,7 +5,10 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <string.h>
+
 #include "mce/socks.h"
 #include "mce/defaults.h"
 #include <libconfig.h>
@@ -56,7 +59,8 @@ maslog_t *maslog_connect(mce_context_t *context, char *name)
 	signal(SIGPIPE, SIG_IGN);
 
 	char cmd[SOCKS_STR];
-	sprintf(cmd, "%c%s%s", '0'+MASLOG_ALWAYS, CLIENT_NAME, name);
+    sprintf(cmd, "%c%s%s[%u/%li]", '0'+MASLOG_ALWAYS, CLIENT_NAME, name,
+            (unsigned)context->fibre_card, (long)getpid());
 	int sent = send(sock, cmd, strlen(cmd)+1, 0);
 	if (sent != strlen(cmd)+1) {
 		fprintf(stderr, "%s: failed to send client name\n", __func__);

@@ -87,15 +87,8 @@ int mcecmd_open (mce_context_t *context)
 	mcecmd_lock_replies(context, 1);
 
     /* connect to the logger, if necessary */
-    if (context->maslog == NULL) {
-#if MULTICARD
-        char ptr[20];
-        sprintf(ptr, "lib_mce[%u]", (unsigned)context->fibre_card);
-        context->maslog = maslog_connect(NULL, ptr);
-#else
-        context->maslog = maslog_connect(NULL, "lib_mce");
-#endif
-    }
+    if (context->maslog == NULL)
+        context->maslog = maslog_connect(context, "lib_mce");
 
 	C_cmd.connected = 1;
 	strcpy(C_cmd.dev_name, dev_name);
