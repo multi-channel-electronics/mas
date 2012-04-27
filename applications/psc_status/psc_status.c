@@ -47,14 +47,6 @@ int main (int argc, char **argv)
                 options.config_file);
 
         // Load MCE hardware inforamtion
-        if (options.hardware_file == NULL) {
-            options.hardware_file = mcelib_default_hardwarefile(mce);
-            if (options.hardware_file == NULL) {
-                fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
-                return -1;
-            }
-        }
-
         if (mceconfig_open(mce, options.hardware_file, NULL) != 0) {
             fprintf(stderr,
                     "Failed to open %s as hardware configuration file.\n",

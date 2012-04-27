@@ -70,21 +70,14 @@ void print_u32(u32 *data, int count)
 
 mce_context_t* mce_connect(int fibre_card)
 {
-    char *ptr;
+    // Get a library context structure (cheap)
+    mce_context_t *mce = mcelib_create(fibre_card, NULL);
 
-	// Get a library context structure (cheap)
-	mce_context_t *mce = mcelib_create(fibre_card, NULL);
-
-	// Load MCE config information ("xml")
-    ptr = mcelib_default_hardwarefile(mce);
-    if (ptr == NULL) {
-        fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
+    // Load MCE config information ("xml")
+    if (mceconfig_open(mce, NULL, NULL) != 0) {
+        fprintf(stderr, "Failed to load MCE configuration file.\n");
         return NULL;
-    } else if (mceconfig_open(mce, ptr, NULL) != 0) {
-		fprintf(stderr, "Failed to load MCE configuration file %s.\n", ptr);
-		return NULL;
-	}
-    free(ptr);
+    }
 
     // Connect to an mce_cmd device.
     if (mcecmd_open(mce) != 0) {
@@ -98,7 +91,7 @@ mce_context_t* mce_connect(int fibre_card)
         return NULL;
     }
 
-	return mce;
+    return mce;
 }
 
 int main(int argc, char **argv)

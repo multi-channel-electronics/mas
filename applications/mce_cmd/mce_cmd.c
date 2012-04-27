@@ -261,15 +261,6 @@ int  main(int argc, char **argv)
 		goto exit_now;
 	}
 
-    /* set fibre card defaults */
-    if (options.hardware_file == NULL) {
-        options.hardware_file = mcelib_default_hardwarefile(mce);
-        if (options.hardware_file == NULL) {
-            fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
-            return -1;
-        }
-    }
-
     if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
         fprintf(ferr, "Could not load MCE config file '%s'.\n",
                 options.hardware_file);

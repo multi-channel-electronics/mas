@@ -15,6 +15,7 @@ struct maslog_struct {
 
 typedef struct mceconfig {
     int connected;
+    char *filename;
 
     struct config_t cfg;
 

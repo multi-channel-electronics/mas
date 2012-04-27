@@ -97,15 +97,6 @@ mce_context_t* connect_mce_or_exit(option_t* options)
             options->config_file);
 
     /* get defaults */
-    if (options->hardware_file == NULL) {
-        options->hardware_file = mcelib_default_hardwarefile(mce);
-        if (options->hardware_file == NULL) {
-            sprintf(errmsg, "Unable to obtain path to default mce.cfg!\n");
-            ERRPRINT(errmsg);
-            exit(ERR_MCE_LCFG);
-        }
-    }
-
     if (options->experiment_file == NULL) {
         options->experiment_file = mcelib_default_experimentfile(mce);
         if (options->experiment_file == NULL) {

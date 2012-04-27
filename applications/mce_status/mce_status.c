@@ -59,14 +59,6 @@ int main(int argc, char **argv)
         error_log_exit(logger, msg, 3);
 	}
 
-    if (options.hardware_file == NULL) {
-        options.hardware_file = mcelib_default_hardwarefile(options.context);
-        if (options.hardware_file == NULL) {
-            fprintf(stderr, "Unable to obtain path to default mce.cfg!\n");
-            return -1;
-        }
-    }
-
     // Load configuration
     if (mceconfig_open(options.context, 
                 options.hardware_file, "hardware")!=0) {

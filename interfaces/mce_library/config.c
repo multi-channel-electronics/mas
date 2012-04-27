@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 #include "context.h"
-   
+#include <mce/defaults.h>
 
 /* Local prototypes... */
 
@@ -19,7 +19,7 @@ get_setting(const config_setting_t *parent, const char *name);
 static int
 get_string(char *dest, const config_setting_t *parent, const char *name);
 
-static int 
+static int
 get_int(int *dest, const config_setting_t *parent, const char *name);
 
 /* Unused
@@ -95,20 +95,31 @@ int mceconfig_open(mce_context_t* context,
 	const char* key = MCECFG_HARDWARE;
 	struct config_t *cfg = &C_config.cfg;
 
-	config_init(cfg);
-	if (!config_read_file(cfg, filename)) {
-		fprintf(stderr, "config_read_file '%s': line %i: %s\n",
-			filename, config_error_line(cfg),
-			config_error_text(cfg));
+    /* Get default hardware file, if necessary */
+    if (filename == NULL)
+        context->config.filename = mcelib_default_hardwarefile(context);
+    else
+        context->config.filename = strdup(filename);
+
+    if (context->config.filename == NULL) {
+        fprintf(stderr, "error setting hardware config file path.\n");
+        return -1;
+    }
+
+    config_init(cfg);
+    if (!config_read_file(cfg, context->config.filename)) {
+        fprintf(stderr, "config_read_file '%s': line %i: %s\n",
+                context->config.filename, config_error_line(cfg),
+                config_error_text(cfg));
 		return -1;
 	}
-		
+
 	//Find hardware group
 	if (keyname != NULL) key = keyname;
 	config_setting_t *hardware = config_lookup(cfg, key);
 	if (hardware == NULL) {
-		fprintf(stderr, "Could not find key '%s' in file '%s'.\n",
-			key, filename);
+        fprintf(stderr, "Could not find key '%s' in file '%s'.\n",
+                key, context->config.filename);
 		return 1;
 	}
 
@@ -138,8 +149,9 @@ int mceconfig_open(mce_context_t* context,
 int mceconfig_close(mce_context_t* context)
 {
 	C_config_check;
-	
+
 	config_destroy(&C_config.cfg);
+    free(context->config.filename);
 	C_config.connected = 0;
 
 	return 0;
@@ -258,7 +270,7 @@ int mceconfig_card_mapping(const mce_context_t* context,
 	return mceconfig_cfg_mapping(cfg, m);
 }
 
-int mceconfig_mapping_param(const mce_context_t* context, 
+int mceconfig_mapping_param(const mce_context_t* context,
 			    const mapping_t *m,
 			    int index,
 			    param_t *p)
@@ -266,16 +278,16 @@ int mceconfig_mapping_param(const mce_context_t* context,
 	config_setting_t *list =
 		config_setting_get_member(m->cfg, "parameters");
 	if (list==NULL) return -1;
-	
+
 	// Seek index
 	config_setting_t *cfg = config_setting_get_elem(list, index);
 	if (cfg==NULL) return -1;
-	
+
 	// Copy p data for user
 	return mceconfig_cfg_param(cfg, p);
 }
 
-int mceconfig_param_maprange(const mce_context_t* context, 
+int mceconfig_param_maprange(const mce_context_t* context,
 			     const param_t *p,
 			     int index,
 			     maprange_t *mr)
@@ -283,11 +295,11 @@ int mceconfig_param_maprange(const mce_context_t* context,
 	config_setting_t *list =
 		config_setting_get_member(p->cfg, "maps");
 	if (list==NULL) return -1;
-	
+
 	// Seek index
 	config_setting_t *cfg = config_setting_get_elem(list, index);
 	if (cfg==NULL) return -1;
-	
+
 	// Copy p data for user
 	return mceconfig_cfg_maprange(cfg, mr);
 }
@@ -313,7 +325,7 @@ int mceconfig_card_cardtype(const mce_context_t* context,
 	return mceconfig_cfg_cardtype(cfg, ct);
 }
 
-int mceconfig_cardtype_paramset(const mce_context_t* context, 
+int mceconfig_cardtype_paramset(const mce_context_t* context,
 				const cardtype_t *ct,
 				int index,
 				paramset_t *ps)
@@ -323,14 +335,14 @@ int mceconfig_cardtype_paramset(const mce_context_t* context,
 		return -1;
 
 	// Find parameter set called child_name
-	config_setting_t *cfg = 
+    config_setting_t *cfg =
 		get_setting_by_name(C_config.parameter_sets, child_name);
 	if (cfg==NULL) return -1;
 
 	return mceconfig_cfg_paramset(cfg, ps);
 }
 
-int mceconfig_paramset_param(const mce_context_t* context, 
+int mceconfig_paramset_param(const mce_context_t* context,
 			     const paramset_t *ps,
 			     int index,
 			     param_t *p)
@@ -338,11 +350,11 @@ int mceconfig_paramset_param(const mce_context_t* context,
 	config_setting_t *list =
 		config_setting_get_member(ps->cfg, "parameters");
 	if (list==NULL) return -1;
-	
+
 	// Seek index
 	config_setting_t *cfg = config_setting_get_elem(list, index);
 	if (cfg==NULL) return -1;
-	
+
 	// Copy p data for user
 	return mceconfig_cfg_param(cfg, p);
 }
@@ -362,7 +374,7 @@ int mceconfig_card_param(const mce_context_t *context,
 	case MCE_NATURE_PHYSICAL:
 
 		if (mceconfig_card_cardtype(context, c, &ct)) return -3;
-		
+
 		for (i=0; i < ct.paramset_count; i++) {
 			if (mceconfig_cardtype_paramset(context, &ct, i, &ps))
 				return -4;
@@ -378,9 +390,9 @@ int mceconfig_card_param(const mce_context_t *context,
 	case MCE_NATURE_VIRTUAL:
 
 		if (mceconfig_card_mapping(context, c, &m)) return -3;
-		
+
 		return mceconfig_mapping_param(context, &m, index, p);
-		
+
 	default:
 		fprintf(stderr, "Unhandled card nature!\n");
 		return -1;
@@ -416,7 +428,7 @@ int mceconfig_card_paramcount(const mce_context_t *context,
 		if (mceconfig_card_mapping(context, c, &m)) return -3;
 		count += m.param_count;
 		break;
-		
+
 	default:
 		fprintf(stderr, "Unhandled card nature!\n");
 		return -1;
@@ -443,12 +455,12 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 	c->card_count = 0;
 	c->flags = 0;
 	int status = 1;
-	
+
 	// Update from key, maybe
 	if (cfg == NULL) return -1;
 
 	get_string(c->name, cfg, "name");
-	
+
 	int nature = MCE_NATURE_PHYSICAL;
 	char nature_s[MCE_SHORT];
 	if ((get_string(nature_s, cfg, "nature") == 0) &&
@@ -481,9 +493,9 @@ int mceconfig_cfg_card(const config_setting_t *cfg, card_t *c)
 		fprintf(stderr, "Unhandled card nature '%s'!\n", nature_s);
 		return -1;
 	}
-	
+
 	get_int(&status, cfg, "status");
-	c->flags |= 
+    c->flags |=
 		( status ? MCE_PARAM_STAT : 0 );
 
 	return 0;
@@ -548,7 +560,7 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	int hex    = 0;
 	int wr_only= 0;
 	int rd_only= 0;
-	
+
 	get_string(p->name, cfg, "name");
 	get_int(&p->id, cfg, "id");
 	get_int(&p->count, cfg, "count");
@@ -567,7 +579,7 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	// Maybe this is a mapped parameter...
 	p->maps = config_setting_get_member(cfg, "maps");
 	if (p->maps != NULL) {
-		p->flags |= MCE_PARAM_MAPPED;		
+        p->flags |= MCE_PARAM_MAPPED;
 		p->map_count = config_setting_length(p->maps);
 	}
 
@@ -590,13 +602,13 @@ int mceconfig_cfg_param(const config_setting_t *cfg, param_t *p)
 	get_int(&wr_only, cfg, "write_only");
 	get_int(&rd_only, cfg, "read_only");
 
-	p->flags |= 
+    p->flags |=
 		(status  ? MCE_PARAM_STAT   : 0) |
 		(sign    ? MCE_PARAM_SIGNED : 0) |
 		(hex     ? MCE_PARAM_HEX    : 0) |
 		(wr_only ? MCE_PARAM_WONLY  : 0) |
 		(rd_only ? MCE_PARAM_RONLY  : 0);
-		
+
 	return 0;
 }
 
@@ -666,7 +678,7 @@ int mceconfig_lookup(const mce_context_t* context,
 	C_config_check;
 
 	if ((p==NULL) || (c==NULL)) return -1;
-	
+
 	p->flags = 0;
 
 	if (mceconfig_lookup_card(context, card_name, c)) return -2;
@@ -676,11 +688,11 @@ int mceconfig_lookup(const mce_context_t* context,
 	case MCE_NATURE_PHYSICAL:
 
 		if (mceconfig_card_cardtype(context, c, &ct)) return -3;
-		
+
 		for (index=0; index < ct.paramset_count; index++) {
 			if (mceconfig_cardtype_paramset(context, &ct, index, &ps))
 				return -4;
-			
+
 			if (mceconfig_lookup_param(context, &ps, para_name, p)==0)
 				return 0;
 		}
@@ -689,7 +701,7 @@ int mceconfig_lookup(const mce_context_t* context,
 	case MCE_NATURE_VIRTUAL:
 
 		if (mceconfig_card_mapping(context, c, &m)) return -3;
-		
+
 		config_setting_t *pcfg = get_setting(m.cfg, "parameters");
 		if (pcfg == NULL) return -2;
 
@@ -700,12 +712,12 @@ int mceconfig_lookup(const mce_context_t* context,
 			return -1;
 
 		return 0;
-		
+
 	default:
 		fprintf(stderr, "Unhandled card nature!\n");
 		return -1;
 	}
-			    
+
 	return -5;
 }
 
@@ -868,7 +880,7 @@ int st_get_id(const string_table_t *st, const char *name, int *id)
 {
 	int index = st_index(st, name);
 	if (index < 0) return -1;
-	
+
 	*id = st[index].id;
 	return 0;
 }
