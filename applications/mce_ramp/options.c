@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,8 +16,6 @@
 "  -P <string> <repeat>   new output string (associated to last -V)\n"\
 "  -s                     output a status block describing the ramp instead of the ramp itself\n"\
 "\n"\
-"  -d <device file>       choose a particular mce device\n"\
-"  -c <config file>       choose a particular mce config file\n"\
 "  -f <batch file>        run commands from file instead of stdin\n"\
 ""
 
@@ -27,7 +28,7 @@ int process_options(options_t *options, int argc, char **argv)
 	value_t* value = NULL;
 	operation_t* operation = NULL;
 
-	while ( (option = getopt(argc, argv, "?hf:c:d:o:M:L:VPs")) >=0) {
+    while ((option = getopt(argc, argv, "?hf:o:M:L:VPs")) >= 0) {
 
 		switch(option) {
 		case '?':
@@ -35,15 +36,6 @@ int process_options(options_t *options, int argc, char **argv)
 			printf(USAGE_MESSAGE,
 			       argv[0]);
 			return -1;
-/*
-		case 'c':
-			strcpy(options->config_file, optarg);
-			break;
-
-		case 'd':
-			strcpy(options->cmd_device, optarg);
-			break;
-*/
 		case 'o':
 			options->output_file_now = 1;
 			strcpy(options->output_file, optarg);
