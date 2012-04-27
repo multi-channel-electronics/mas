@@ -195,15 +195,6 @@ int process_options(options_t* options, int argc, char **argv)
 		return -1;
 	}
 
-    // Set defaults
-    if (options->config_file == NULL) {
-        options->config_file = mcelib_default_masfile();
-        if (options->config_file == NULL) {
-            fprintf(stderr, "Unable to obtain path to default mas.cfg!\n");
-            return -1;
-        }
-    }
-
 	return 0;
 }
 
