@@ -12,16 +12,22 @@
 #define LINE 1024
 
 int main(int argc, char **argv) {
+    mce_context_t *context;
     maslog_t *logger;
 
     if (argc > 1) {
-        logger = maslog_connect(argv[1], "notes");
+        context = mcelib_create(MCE_DEFAULT_MCE, argv[1]);
     } else {
-        logger = maslog_connect(NULL, "notes");
+        context = mcelib_create(MCE_DEFAULT_MCE, NULL);
     }
+    
+    if (context == NULL)
+        exit(1);
 
-  if (logger == NULL)
-      exit(1);
+    logger = maslog_connect(context, "notes");
+
+    if (logger == NULL)
+        exit(1);
 
 	char *line = (char*)malloc(LINE);
 

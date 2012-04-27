@@ -50,7 +50,7 @@ int main(int argc, char **argv)
         return 3;
     }
 
-    logger = maslog_connect(options.config_file, "mce_status");
+    logger = maslog_connect(options.context, "mce_status");
     sprintf(msg, "initiated with hardware config '%s'", options.config_file);
     maslog_print(logger, msg);
 

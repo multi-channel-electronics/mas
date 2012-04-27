@@ -278,7 +278,7 @@ int  main(int argc, char **argv)
     }
 
     // Log!
-    options.logger = maslog_connect(options.masconfig_file, "mce_cmd");
+    options.logger = maslog_connect(mce, "mce_cmd");
 
     menuify_mceconfig(root_opts);
 

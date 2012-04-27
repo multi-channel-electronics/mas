@@ -35,40 +35,15 @@ int get_string(char *dest,
 }
 
 
-maslog_t *maslog_connect(char *config_file, char *name)
+maslog_t *maslog_connect(mce_context_t *context, char *name)
 {
-	struct config_t cfg;
-	config_init(&cfg);
     maslog_t *logger;
 
-	if (config_file!=NULL) {
-		if (!config_read_file(&cfg, config_file)) {
-			fprintf(stderr,
-				"%s: Could not read config file '%s'\n", __func__,
-				config_file);
-			return NULL;
-		}
-	} else {
-        char *ptr = mcelib_default_masfile();
-        if (ptr == NULL)
-            fprintf(stderr, "Unable to obtain path to default configfile!\n");
-        else if (!config_read_file(&cfg, ptr)) {
-			fprintf(stderr, "%s: Could not read default configfile '%s'\n",
-                    __func__, ptr);
-			return NULL;
-		}
-        free(ptr);
-	}
+    config_setting_t *client = config_lookup(context->mas_cfg, CONFIG_CLIENT);
 
-	config_setting_t *client = config_lookup(&cfg, CONFIG_CLIENT);
-	
 	char address[SOCKS_STR];
-	if (get_string(address, client, CONFIG_LOGADDR)!=0) {
-        config_destroy(&cfg);
+    if (get_string(address, client, CONFIG_LOGADDR)!=0)
         return NULL;
-    }
-
-    config_destroy(&cfg);
 
 	int sock = massock_connect(address, -1);
 	if (sock<0) {
@@ -138,7 +113,7 @@ int maslog_print_level(maslog_t *logger, const char *str, int level)
 int maslog_write(maslog_t *logger, const char *buf, int size)
 {
 	if (logger==NULL || logger->fd<=0) return -1;
-	
+
 	int sent = send(logger->fd, buf, size, 0);
 	if (sent != size) {
 		fprintf(stderr, "%s: logging failed, (send error %i/%i)\n", __func__,
@@ -153,7 +128,7 @@ int maslog_close(maslog_t *logger)
 {
     if (logger == NULL)
         return -1;
-    
+
     if (logger->fd <= 0) {
         free(logger);
         return -1;
