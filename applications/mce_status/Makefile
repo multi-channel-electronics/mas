@@ -22,9 +22,7 @@ all: mce_status
 mce_status: $(OBJECTS) $(HEADERS) $(LIBDEP)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LIBRARY)
 
-options.o: $(HEADERS)
-
-mce_status.o: $(HEADERS)
+$(OBJECTS): $(HEADERS)
 
 tidy:
 	rm -f *~ *.o
