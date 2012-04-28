@@ -8,9 +8,10 @@
 
 #include "init.h"
 
-#define OPT "f:o:F:D:h"
+#define OPT "f:m:o:F:D:h"
 #define USAGE_OPT \
-"  -f cfgfile        use alternate configuration file\n" \
+"  -f mascfg         deprecated; use -m\n" \
+"  -m mascfg         use alternate configuration file\n" \
 "  -o outfile        log to outfile instead of default\n" \
 "  -F [0 | 1]        enable/disable flushing after each log\n" \
 "  -D [0 | 1]        enable/disable daemon mode\n"
@@ -19,8 +20,8 @@ static char *get_config_file(int argc, char **argv)
 {
 	optind = 0;
 	int option;
-	while ( (option = getopt(argc, argv, OPT )) >=0) {
-		if (option=='f')
+	while ((option = getopt(argc, argv, OPT)) >= 0) {
+        if (option == 'f' || option == 'm')
 			return strdup(optarg);
 	}
 	return NULL;
@@ -167,6 +168,7 @@ int process_options(params_t *p, int argc, char **argv)
 			return -1;
 
 		case 'f':
+        case 'm':
 			//Preloaded, ignore.
 			break;
 

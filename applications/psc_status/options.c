@@ -25,62 +25,64 @@
 #define USAGE_MESSAGE "" \
 "  Initial options (MAS config):\n" \
 USAGE_OPTION_N \
-"        -w <hardware file>      override default hardware configuration file\n"\
+"        -c <hardware file>      override default hardware configuration file\n"\
 "        -m <MAS config file>    override default MAS configuration file\n"\
+"        -w <file>               deprecated; use -c instead\n"\
 "        -i                      read psc_status as ascii from stdin (no MCE)\n"\
 ""
 
 int process_options(option_t *options, int argc, char **argv)
 {
 #if MULTICARD
-  char *s;
+    char *s;
 #endif
-  int option;
-  // Note the "+" at the beginning of the options string forces the
-  // first non-option string to return a -1, which is what we want.
-  while ( (option = getopt(argc, argv, "+?hm:n:w:i0123456789")) >=0) {
+    int option;
+    // Note the "+" at the beginning of the options string forces the
+    // first non-option string to return a -1, which is what we want.
+    while ( (option = getopt(argc, argv, "+?c:hm:n:w:i0123456789")) >=0) {
 
-    switch(option) {
-    case '?':
-    case 'h':
-      printf(USAGE_MESSAGE);
-      return -1;
+        switch(option) {
+            case '?':
+            case 'h':
+                printf(USAGE_MESSAGE);
+                return -1;
 
-    case 'n':
+            case 'n':
 #if MULTICARD
-      options->fibre_card = (int)strtol(optarg, &s, 10);
-      if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
-          fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
-          return -1;
-      }
+                options->fibre_card = (int)strtol(optarg, &s, 10);
+                if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
+                    fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+                    return -1;
+                }
 #endif
-      break;
+                break;
 
-    case 'm':
-      if (options->config_file)
-        free(options->config_file);
-      options->config_file = strdup(optarg);
-      break;
+            case 'm':
+                if (options->config_file)
+                    free(options->config_file);
+                options->config_file = strdup(optarg);
+                break;
 
-    case 'w':
-      if (options->hardware_file)
-        free(options->hardware_file);
-      options->hardware_file = strdup(optarg);
-      break;
+            case 'c':
+            case 'w':
+                if (options->hardware_file)
+                    free(options->hardware_file);
+                options->hardware_file = strdup(optarg);
+                break;
 
-    case 'i':
-      options->read_stdin = 1;
-      break;
+            case 'i':
+                options->read_stdin = 1;
+                break;
 
-    case '0' ... '9':
-      //It's a number! Get out of here!
-      optind--;
-      break;
+            case '0' ... '9':
+                //It's a number! Get out of here!
+                optind--;
+                break;
 
-    default:
-      printf("Unimplemented option '-%c'!\n", option);
+            default:
+                printf("Unimplemented option '-%c'!\n", option);
+        }
     }
-  }
 
-  return optind;
+    return optind;
 }

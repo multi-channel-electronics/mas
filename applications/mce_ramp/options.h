@@ -9,8 +9,6 @@ typedef struct {
 	char output_file[LINE_LEN];
 	int  output_file_now;
 
-	char data_device[LINE_LEN];
-	char cmd_device[LINE_LEN];
 	char config_file[LINE_LEN];
 
 	int status_block;
