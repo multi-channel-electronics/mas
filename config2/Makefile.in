@@ -3,6 +3,8 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
+MAKE_CONFIG2 = @DO_CONFIG2@
+
 ifeq ($(MAKE_CONFIG2),yes)
 SOURCE = @MCE_CIN_LIST@
 MULTICARD = @MULTICARD@
