@@ -6,12 +6,6 @@
 #include <mce_library.h>
 
 
-/* Default device, config files */
-
-#define CMD_DEVICE "/dev/mce_cmd0"
-#define CONFIG_FILE "/etc/mce/mce.cfg"
-
-
 /* Our buffer size */
 
 #define SIZE 256
@@ -37,19 +31,18 @@ int main()
 	  Initialization example
 	*/
 
-	// Get a library context structure (cheap)
-	mce_context_t *mce = mcelib_create();
+	// Get a library context structure for the default configuration
+	mce_context_t *mce = mcelib_create(MCE_DEFAULT_MCE, NULL);
 
-	// Load MCE config information ("xml")
-	if (mceconfig_open(mce, CONFIG_FILE, NULL) != 0) {
-		fprintf(stderr, "Failed to load MCE configuration file %s.\n",
-			CONFIG_FILE);
+	// Load the default MCE config information ("xml")
+	if (mceconfig_open(mce, NULL, NULL) != 0) {
+		fprintf(stderr, "Failed to load default MCE configuration file.\n");
 		return 1;
 	}
 
-	// Connect to an mce_cmd device.
-	if (mcecmd_open(mce, CMD_DEVICE) != 0) {
-		fprintf(stderr, "Failed to open %s.\n", CMD_DEVICE);;
+	// Connect to the mce_cmd device.
+	if (mcecmd_open(mce) != 0) {
+		fprintf(stderr, "Failed to connect to CMD subsystem.\n");
 		return 1;
 	}
 
