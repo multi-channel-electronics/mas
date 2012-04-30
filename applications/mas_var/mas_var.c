@@ -17,7 +17,7 @@ typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_MULTICARD, OPT_PREFIX,
     OPT_GROUP, OPT_MAS_DATA, OPT_MAS_DATA_ROOT, OPT_MAS_TEMPLATE, OPT_MAS_BIN,
     OPT_MAS_TEMP, OPT_MAS_SCRIPT, OPT_MAS_IDL, OPT_MAS_PYTHON, OPT_MAS_ETC,
     OPT_MAS_TEST_SUITE, OPT_PATH_BASE, OPT_PATH, OPT_PYTHONPATH, OPT_MAS_ROOT,
-    OPT_PYTHONPATH_BASE
+    OPT_PYTHONPATH_BASE, OPT_MAS_CONFIG
 } parm_t;
 
 static char *strip_path(mce_context_t *mce, const char *var)
@@ -80,12 +80,17 @@ static void setup_env(const char *argv0, int devnum, mce_context_t *mce,
     const char *mas_test_suite;
 
     /* mas_var */
+    mas_bin = mcelib_lookup_dir(mce, MAS_DIR_BIN);
+
     if (argv0[0] == '/') {
         say_env(csh, "MAS_VAR", "%s", argv0);
     } else {
         char *mas_var = realpath(argv0, NULL);
-        say_env(csh, "MAS_VAR", "%s", mas_var);
-        free(mas_var);
+        if (mas_var) {
+            say_env(csh, "MAS_VAR", "%s", mas_var);
+            free(mas_var);
+        } else
+            say_env(csh, "MAS_VAR", "%s/mas_var", mas_bin);
     }
 
     /* device number */
@@ -98,8 +103,8 @@ static void setup_env(const char *argv0, int devnum, mce_context_t *mce,
     say_env(csh, "MAS_ROOT", "%s", mcelib_lookup_dir(mce, MAS_DIR_ROOT));
     puts("");
 
-    mas_bin = mcelib_lookup_dir(mce, MAS_DIR_BIN);
     say_env(csh, "MAS_BIN", "%s", mas_bin);
+    say_env(csh, "MAS_CONFIG", "%s", mcelib_lookup_dir(mce, MAS_DIR_CONFIG));
     say_env(csh, "MAS_TEMP", "%s", mcelib_lookup_dir(mce, MAS_DIR_TEMP));
     say_env(csh, "MAS_DATA_ROOT", "%s", mcelib_lookup_dir(mce,
                 MAS_DIR_DATA_ROOT));
@@ -188,14 +193,14 @@ void __attribute__((noreturn)) Usage(int ret)
             "                      environment)\n"
             "  --cflags          cc(1) options needed to complile against the "
             "MAS libraries\n"
-            "  --cmd-device      the full path of the MCE command device\n"
+            "  --config-dir      the location of the MCE config files "
+            "(MAS_CONFIG in the\n"
+            "                      environment)\n"
             "  --config-file     the full path of the MAS configuration file\n"
-            "  --data-device     the full path of the MCE data device\n"
             "  --data-dir        the current data directory (MAS_DATA in the"
             "environment)\n"
             "  --data-root       the root data directory (MAS_DATA_ROOT in the "
             "environment)\n"
-            "  --dsp-device      the full path of the MCE dsp device\n"
             "  --etc-dir         the directory containing the hardware "
             "description files\n"
             "                      (MAS_ETC in the environment.)\n"
@@ -315,6 +320,7 @@ int main(int argc, char **argv)
         { "pythonpath-base", 0, NULL, OPT_PYTHONPATH_BASE },
         { "etc-dir", 0, NULL, OPT_MAS_ETC },
         { "mas-root", 0, NULL, OPT_MAS_ROOT },
+        { "config-dir", 0, NULL, OPT_MAS_CONFIG },
         { NULL, 0, NULL, 0 }
     };
     int option, fibre_card = MCE_DEFAULT_MCE;
@@ -334,9 +340,11 @@ int main(int argc, char **argv)
             do_env = 1;
         } else if (option == 'e') {
             /* delete the variables */
+            unsetenv("MAS_VAR");
             unsetenv("MAS_MCE_DEV");
             unsetenv("MAS_ROOT");
             unsetenv("MAS_BIN");
+            unsetenv("MAS_CONFIG");
             unsetenv("MAS_TEMP");
             unsetenv("MAS_DATA_ROOT");
             unsetenv("MAS_DATA");
@@ -564,6 +572,7 @@ int main(int argc, char **argv)
         break
 
                 OPT_DEFAULT(BIN);
+                OPT_DEFAULT(CONFIG);
                 OPT_DEFAULT(DATA);
                 OPT_DEFAULT(DATA_ROOT);
                 OPT_DEFAULT(ETC);

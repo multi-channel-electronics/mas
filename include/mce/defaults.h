@@ -14,15 +14,16 @@ char *mcelib_shell_expand(mce_context_t *context, const char* input);
  */
 #define MAS_DIR_ETC          0
 #define MAS_DIR_BIN          1
-#define MAS_DIR_DATA         2
-#define MAS_DIR_DATA_ROOT    3
-#define MAS_DIR_IDL          4
-#define MAS_DIR_PYTHON       5
-#define MAS_DIR_ROOT         6
-#define MAS_DIR_SCRIPT       7
-#define MAS_DIR_TEMP         8
-#define MAS_DIR_TEMPLATE     9
-#define MAS_DIR_TEST_SUITE  10
+#define MAS_DIR_CONFIG       2
+#define MAS_DIR_DATA         3
+#define MAS_DIR_DATA_ROOT    4
+#define MAS_DIR_IDL          5
+#define MAS_DIR_PYTHON       6
+#define MAS_DIR_ROOT         7
+#define MAS_DIR_SCRIPT       8
+#define MAS_DIR_TEMP         9
+#define MAS_DIR_TEMPLATE    10
+#define MAS_DIR_TEST_SUITE  11
 const char *mcelib_lookup_dir(mce_context_t *context, int index);
 
 /* return the default fibre card number */

@@ -14,6 +14,7 @@ $n_cards = @MAX_FIBRE_CARD@;
 
 /* directories */
 $etc_dir = "@MAS_ETCDIR@";
+$conf_dir = @MAS_CONFDIR@;
 $mas_root = @MAS_ROOTDIR@;
 $mas_temp = "@MAS_TEMPDIR@";
 $data_root = "@MAS_DATAROOT@";

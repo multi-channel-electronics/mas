@@ -132,6 +132,11 @@ const char *mcelib_lookup_dir(mce_context_t *context, int index)
             if (dir == NULL)
                 dir = MAS_PREFIX "/bin";
             break;
+        case MAS_DIR_CONFIG:
+            dir = getenv("MAS_CONFIG");
+            if (dir == NULL)
+                dir = context->config_dir;
+            break;
         case MAS_DIR_DATA:
             dir = getenv("MAS_DATA");
             if (dir == NULL) {
@@ -159,8 +164,8 @@ const char *mcelib_lookup_dir(mce_context_t *context, int index)
             if (dir == NULL) {
                 const char *masroot = mcelib_lookup_dir(context, MAS_DIR_ROOT);
                 free(context->idl_dir);
-                dir = context->idl_dir = malloc(strlen(masroot) + 5);
-                sprintf(context->idl_dir, "%s/idl", masroot);
+                dir = context->idl_dir = malloc(strlen(masroot) + 9);
+                sprintf(context->idl_dir, "%s/idl_pro", masroot);
             }
             break;
         case MAS_DIR_PYTHON:
@@ -210,8 +215,8 @@ const char *mcelib_lookup_dir(mce_context_t *context, int index)
             }
             break;
         default:
-            fprintf(stderr, "mcelib: can't find directory #%i in %s\n", index,
-                    __func__);
+            fprintf(stderr, "mcelib: ERROR: can't find directory #%i in %s\n",
+                    index, __func__);
     }
 
     return dir;

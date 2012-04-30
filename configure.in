@@ -317,11 +317,20 @@ if test "x$MAS_ROOTDIR" = "xno"; then
 fi
 AC_SUBST([MAS_ROOTDIR])
 
+AC_ARG_WITH([mas-config], [AS_HELP_STRING([--with-mas-config=DIR],
+            [the default MCE Script configuration directory. ]
+            [(PREFIX/config is used if not specified.)])],
+            [MAS_CONFDIR="\"${withval}\""], [MAS_CONFDIR="no"])
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_CONFDIR" = "xno"; then
+  MAS_CONFDIR="\$prefix . \"/config\""
+fi
+AC_SUBST([MAS_CONFDIR])
+
 AC_ARG_WITH([mas-temp], [AS_HELP_STRING([--with-mas-temp=DIR],
             [the temporary directory for use by MAS and MCE Script. ]
             [(/tmp is used if not specified.)])],
             [MAS_TEMPDIR="${withval}"], [MAS_TEMPDIR="no"])
-#(there is some embedded php syntax happening here...)
 if test "x$MAS_TEMPDIR" = "xno"; then
   MAS_TEMPDIR="/tmp";
 fi

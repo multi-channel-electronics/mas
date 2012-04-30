@@ -72,16 +72,19 @@ struct mce_context {
     struct config_t  *mas_cfg;        /* MAS configuration */
     int               fibre_card;     /* logical fibre card number */
 
+    char             *config_dir;     /* $(MAS_CONFIG} */
     char             *data_root;      /* the base data directory */
-    char             *data_dir;       /* DATA_ROOT/current_data, or whatever */
     char             *data_subdir;    /* "current_data", or whatever */
     char             *etc_dir;        /* location of the mce.cfg files */
     char             *mas_root;       /* ${MAS_ROOT} */
+    char             *temp_dir;       /* ${MAS_TEMP} */
+
+    /* these are here for proper memory management */
+    char             *data_dir;       /* ${MAS_DATA} */
     char             *idl_dir;        /* ${MAS_IDL} */
     char             *python_dir;     /* ${MAS_PYTHON} */
     char             *script_dir;     /* ${MAS_SCRIPT} */
     char             *template_dir;   /* ${MAS_TEMPLATE} */
-    char             *temp_dir;       /* ${MAS_TEMP} */
     char             *test_dir;       /* ${MAS_TEST_SUITE} */
 };
 

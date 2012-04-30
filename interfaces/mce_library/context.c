@@ -24,6 +24,9 @@ static char *get_default_dir(config_setting_t *masconfig, const char *name,
     if ((config_item = config_setting_get_member(masconfig, name)) == NULL
             || (config_setting_type(config_item) != CONFIG_TYPE_STRING))
     {
+        fprintf(stderr, "mcelib: Warning: Missing required variable `%s' in "
+                "MAS configuration.\n"
+                "mcelib: Warning: Using configuration defaults.\n", name);
         if (def == NULL)
             return NULL;
         return strdup(def);
@@ -82,6 +85,7 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config)
                 "mcelib: Warning: Using configuration defaults.\n");
     else
         c->etc_dir = get_default_dir(masconfig, "etcdir", NULL);
+
     /* etc dir (the location of mce*.cfg) */
     if (c->etc_dir == NULL) {
         /* if etcdir is not specified, MAS assumes the hardware config files
@@ -122,6 +126,7 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config)
                     c->fibre_card));
 
     /* other dirs */
+    c->config_dir = get_default_dir(masconfig, "confdir", MAS_PREFIX "/config");
     c->temp_dir =  get_default_dir(masconfig, "tmpdir", "/tmp");
     c->data_subdir = get_default_dir(masconfig, "datadir", "current_data");
     c->mas_root = get_default_dir(masconfig, "masroot",
@@ -145,6 +150,7 @@ void mcelib_destroy(mce_context_t* context)
     config_destroy(context->mas_cfg);
     free(context->mas_cfg);
 
+    free(context->config_dir);
     free(context->etc_dir);
     free(context->data_dir);
     free(context->data_subdir);

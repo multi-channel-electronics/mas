@@ -13,12 +13,13 @@ mas:
   etcdir = "<?php echo $etc_dir?>";
 
   /* masroot: the location of the MCE Scripts tree.  May be overridden at
-   *          runtime via the MAS_ROOT environmental variable.
+   *          runtime via the MAS_ROOT environmental variable.  If this is
+   *          not specified here, MAS_PREFIX/mce_script is used as a default.
    *
    *     Additionally, various subdirectories under this directory may be
    *     overridden separately via environmental variables:
    *
-   *         ${MAS_ROOT}/idl        -> ${MAS_IDL}
+   *         ${MAS_ROOT}/idl_pro    -> ${MAS_IDL}
    *         ${MAS_ROOT}/python     -> ${MAS_PYTHON}
    *         ${MAS_ROOT}/script     -> ${MAS_SCRIPT}
    *         ${MAS_ROOT}/template   -> ${MAS_TEMPLATE}
@@ -26,6 +27,14 @@ mas:
    *
    */
   masroot = "<?php echo $mas_root?>";
+
+  /* confdir: the directory containing the site-specific configuration.
+   *          May be overridden at runtime via the MAS_CONFIG environmental
+   *          variable.  If this is not specified here, MAS_PREFIX/config is
+   *          used as a default.
+   *
+   */
+  confdir = "<?php echo $conf_dir?>";
 
   /* tmpdir: the temporary directory to be used by MAS and MCE Script.  If
    *         not specified, /tmp is used.  May be overridden at runtime via the
