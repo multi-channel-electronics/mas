@@ -3,7 +3,27 @@
 
 # This module exposes mce_context_t as an mce object.
 
+import os
+import subprocess
 from mce_library import *
+
+def mas_var(param, noenv=0):
+    try:
+        mas_var = os.environ['MAS_VAR']
+    except KeyError:
+        print "MAS_VAR not found in the environment."
+        raise
+
+    if noenv:
+        args = [mas_var, "-e", "--" + param]
+    else:
+        args = [mas_var, "--" + param]
+
+    proc = subprocess.Popen(args, stdout = subprocess.PIPE)
+    value,stderr = proc.communicate()
+    if proc.returncode:
+        return None
+    return value.rstrip()
 
 class MCEError(Exception):
     """
@@ -304,14 +324,3 @@ class mce:
         u32_to_i32(ii.cast(), d.cast(), count)
 
         return ii
-
-
-#class MCEData:
-
-#    def __init__(self):
-
-
-#    def load_flatfile(self, filename):
-
-
-#    def 
