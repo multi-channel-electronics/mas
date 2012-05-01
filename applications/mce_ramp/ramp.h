@@ -1,6 +1,8 @@
 #ifndef _RAMP_H_
 #define _RAMP_H_
 
+#include "../../defaults/config.h"
+
 /* Structure!
 
    - Set of nested loops.  Only one loop per level.

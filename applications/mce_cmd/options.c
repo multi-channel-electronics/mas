@@ -9,7 +9,7 @@
 
 #include "options.h"
 
-#if MAX_FIBRE_CARD == 1
+#if !MULTICARD
 #  define USAGE_OPTION_N "  -n <card number>       ignored\n"
 #else
 #  define USAGE_OPTION_N "  -n <card number>       use the specified fibre card\n"
@@ -111,15 +111,18 @@ int process_options(options_t *options, int argc, char **argv)
 			options->version_only = 1;
 			break;
 
-		case 'n':
+        case 'n':
 #if MULTICARD
-			options->fibre_card = (int)strtol(optarg, &s, 10);
-			if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
-				fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
-				return -1;
-			}
+            options->fibre_card = (int)strtol(optarg, &s, 10);
+            if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0 ||
+                    options->fibre_card >= MAX_FIBRE_CARD)
+            {
+                fprintf(stderr, "%s: invalid fibre card number: %s\n", argv[0],
+                        optarg);
+                return -1;
+            }
 #endif
-			break;
+            break;
 
 		default:
 			fprintf(stderr, "Unimplemented option '-%c'!\n", option);

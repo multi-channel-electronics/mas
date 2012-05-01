@@ -8,7 +8,6 @@
 #include <unistd.h>
 
 #include <mce_library.h>
-#include <mce/defaults.h>
 #include "mas_param.h"
 #include "masconfig.h"
 

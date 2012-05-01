@@ -1,6 +1,11 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <mce_library.h>
 
 #include "ramp.h"
 #include "options.h"
@@ -9,6 +14,7 @@ int main(int argc, char** argv)
 {
 	options_t options;
 	memset(&options, 0, sizeof(options));
+    options.fibre_card = MCE_DEFAULT_MCE;
 
 	char ambles[MAX_AMBLES][LINE_LEN];
 

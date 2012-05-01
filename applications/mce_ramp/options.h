@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _OPTIONS_H_
 #define _OPTIONS_H_
 
@@ -9,7 +12,8 @@ typedef struct {
 	char output_file[LINE_LEN];
 	int  output_file_now;
 
-	char config_file[LINE_LEN];
+    char *mas_file;
+    int fibre_card;
 
 	int status_block;
 

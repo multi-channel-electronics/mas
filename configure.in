@@ -17,8 +17,8 @@ AC_PROG_CC
 AC_PROG_LN_S
 
 dnl Allow the user to suppress doing the config2 stuff
-AC_ARG_ENABLE([config2], [AS_HELP_STRING([--disable-config2],
-              [disable building or installing mce.cfg and mas.cfg])],
+AC_ARG_ENABLE([mce-cfg], [AS_HELP_STRING([--disable-mce-cfg],
+              [disable building or installing mce.cfg file(s)])],
               [DO_CONFIG2=$enableval], [DO_CONFIG2=yes])
 AC_SUBST(DO_CONFIG2)
 
@@ -55,8 +55,8 @@ AC_ARG_ENABLE([multicard],
               [ (ie. the default behaviour: multicard support disabled).])],
               [
                case "${enableval}" in
-                 (0|no) MAX_FIBRE_CARD=1 ;;
-                 (1|2|3|4|5|6|7|8|9) MAX_FIBRE_CARD="${enableval}" ;;
+                 (0|1|no) MAX_FIBRE_CARD=1 ;;
+                 (2|3|4|5|6|7|8|9) MAX_FIBRE_CARD="${enableval}" ;;
                  (*) MAX_FIBRE_CARD=2 ;;
                esac
                ], [MAX_FIBRE_CARD=1])
@@ -340,8 +340,8 @@ AC_ARG_WITH([data-root], [AS_HELP_STRING([--with-data-root=DIR],
             [the base data directory used by MAS and MCE Script.  For ]
             [multicard MAS, an integer fibre card number will be appended to ]
             [DIR.  (For multicard MAS, "/data/mce" is used if not specified. ]
-            [For single-card MAS, "/data/cryo" is used for backwards ]
-            [compatibility.)])],
+            [For single-card MAS, "/data/cryo" is used if not specified for ]
+            [backwards compatibility.)])],
             [MAS_DATAROOT="${withval}"], [MAS_DATAROOT="no"])
 if test "x$MAS_DATAROOT" = "xno"; then
   if test $MAX_FIBRE_CARD -eq 1; then

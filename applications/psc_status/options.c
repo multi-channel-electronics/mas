@@ -50,8 +50,11 @@ int process_options(option_t *options, int argc, char **argv)
             case 'n':
 #if MULTICARD
                 options->fibre_card = (int)strtol(optarg, &s, 10);
-                if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0) {
-                    fprintf(stderr, "%s: invalid fibre card number\n", argv[0]);
+                if (*optarg == '\0' || *s != '\0' || options->fibre_card < 0 ||
+                        options->fibre_card >= MAX_FIBRE_CARD)
+                {
+                    fprintf(stderr, "%s: invalid fibre card number: %s\n",
+                            argv[0], optarg);
                     return -1;
                 }
 #endif
