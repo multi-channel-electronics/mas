@@ -77,7 +77,7 @@ int mcelib_default_mce(void)
 #if !MULTICARD
     return 0;
 #else
-    const char *ptr = getenv("MAS_CARD");
+    const char *ptr = getenv("MAS_MCE_DEV");
     return (ptr == NULL) ?  DEFAULT_MCE : atoi(ptr);
 #endif
 }

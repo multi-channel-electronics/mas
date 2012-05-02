@@ -14,7 +14,7 @@ CC=gcc
 
 all: _mce_library.so
 
-_mce_library.so: mce_library_wrap.o
+_mce_library.so: mce_library_wrap.o $(LIBDEP)
 	ld -shared -fPIC -fno-stack-protector -o $@ $^ $(LIBRARY)
 
 mce_library_wrap.o: mce_library_wrap.c ../defaults/config.h
