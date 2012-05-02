@@ -167,7 +167,7 @@ class mce:
 
     def __init__(self, fibre_card=None):
         if (fibre_card == None):
-          self.__fibre_card__ = mcelib_default_fibre_card()
+          self.__fibre_card__ = mcelib_default_mce()
         else:
           self.__fibre_card__ = fibre_card
         self.context = mcelib_create(self.__fibre_card__)
