@@ -165,31 +165,25 @@ class mce:
     Object representing an MCE.
     """
 
-    def __init__(self, fibre_card=None):
+    def __init__(self, fibre_card=None, mas_file=None):
         if (fibre_card == None):
-          self.__fibre_card__ = mcelib_default_mce()
+          self.__fibre_card__ = -1
         else:
           self.__fibre_card__ = fibre_card
-        self.context = mcelib_create(self.__fibre_card__)
+        self.__mas_file__ = mas_file
+        self.context = mcelib_create(self.__fibre_card__, mas_file)
         self.open()
 
-    def open(self, cmd_file=None, data_file=None, config_file=None,
-             fibre_card=None):
+    def open(self, config_file=None, fibre_card=None):
         if (fibre_card != None):
             self.__fibre_card__ = fibre_card
-        if (cmd_file == None):
-            cmd_file = mcelib_cmd_device(self.__fibre_card__)
-        if (data_file == None):
-            data_file = mcelib_data_device(self.__fibre_card__)
         if (config_file == None):
-            config_file = mcelib_default_hardwarefile(self.__fibre_card__)
+            config_file = mcelib_default_hardwarefile(self.context)
 
-        self.__cmd_file__ = cmd_file
-        self.__data_file__ = data_file
         self.__config_file__ = config_file
 
-        mcecmd_open(self.context, cmd_file)
-        mcedata_open(self.context, data_file)
+        mcecmd_open(self.context)
+        mcedata_open(self.context)
         mceconfig_open(self.context, config_file, "hardware")
 
     def lookup(self, card, para):
