@@ -811,7 +811,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 break;
 
             case SPECIAL_ACQ_FLUSH:
-                if (acq->storage->flush != NULL) {
+                if (acq && acq->storage->flush != NULL) {
                     acq->storage->flush(acq);
                 }
                 break;
