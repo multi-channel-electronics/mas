@@ -242,10 +242,12 @@ void rerange(i32 *dest, i32 *src, int n_data,
 int load_initfile(const char *datadir, const char *filename, int start, int count, int *dest)
 {
     FILE *fd;
-    char fullname[MAXLINE] = "";
+    char fullname[MAXLINE];
     char line[MAXLINE];
-    if (datadir != NULL) strcat(fullname, datadir);
-    strcat(fullname, filename);
+    if (datadir == NULL)
+        strcpy(fullname, filename);
+    else
+        snprintf(fullname, MAXLINE, "%s/%s", datadir, filename);
 
     if ( (fd=fopen(fullname, "r")) == NULL) {
         ERRPRINT("failed to open init values file:\n");
