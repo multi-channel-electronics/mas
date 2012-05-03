@@ -13,10 +13,11 @@ $hw_subrack = "small";
 
 
 /* In $card_list, list all cards present in your MCE.  The order
- * probably doesn't matter.
+ * probably doesn't matter.  If you have a biasing address card (BAC),
+ * replace "bc2" with "bac" here.
  */
 
-$card_list = array("ac", "bc1", "bac", "bc3", "rc1", "rc2", "cc", "psc");
+$card_list = array("ac", "bc1", "bc2", "bc3", "rc1", "rc2", "cc", "psc");
 
 
 /* In some cases we need to know what hardware revision the cards
@@ -34,6 +35,7 @@ $hw_rev = array(
  * Some basic ones:
  *   "classic"       one line from each bias card (rev D)
  *   "small16"       on 3-MDM subracks, 16 lines from bc3 flux_fb[:16]
+ *   "small_2bc"     on 3-MDM subracks modified for only two bias cards
  *   "none"          none
  *   "map"           use map described by $tes_bias_count, $tes_bias_mapping.
  */
