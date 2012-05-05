@@ -22,28 +22,28 @@ typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_MULTICARD, OPT_PREFIX,
 
 static char *strip_path(mce_context_t *mce, const char *var)
 {
-  char *path_in = getenv(var);
-  const char *mas_root = mcelib_lookup_dir(mce, MAS_DIR_ROOT);
-  size_t mas_root_len = 0;
-  char *path_out;
-  char *elem;
+    char *path_in = getenv(var);
+    const char *mas_root = mcelib_lookup_dir(mce, MAS_DIR_ROOT);
+    size_t mas_root_len = 0;
+    char *path_out;
+    char *elem;
 
-  if (path_in == NULL || path_in[0] == 0)
-    return strdup("");
+    if (path_in == NULL || path_in[0] == 0)
+        return strdup("");
 
-  if (mas_root)
-    mas_root_len = strlen(mas_root);
+    if (mas_root)
+        mas_root_len = strlen(mas_root);
 
-  path_out = malloc(strlen(path_in));
-  path_out[0] = 0;
+    path_out = malloc(strlen(path_in) + 2);
+    path_out[0] = 0;
 
-  for (elem = strtok(path_in, ":"); elem != NULL; elem = strtok(NULL, ":")) {
-    if (strncmp(elem, MAS_PREFIX, sizeof(MAS_PREFIX) - 1) == 0)
-      ; /* found prefix */
-    else if (mas_root && strncmp(elem, mas_root, mas_root_len) == 0)
-      ; /* found MAS_ROOT */
-    else
-      strcat(strcat(path_out, elem), ":");
+    for (elem = strtok(path_in, ":"); elem != NULL; elem = strtok(NULL, ":")) {
+        if (strncmp(elem, MAS_PREFIX, sizeof(MAS_PREFIX) - 1) == 0)
+            ; /* found prefix */
+        else if (mas_root && strncmp(elem, mas_root, mas_root_len) == 0)
+            ; /* found MAS_ROOT */
+        else
+            strcat(strcat(path_out, elem), ":");
   }
 
   /* strip trailing : */
