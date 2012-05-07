@@ -93,7 +93,7 @@ void initialize_mce(int frequency)
 
 	// Get context and load hardware config
 	if (mce == NULL) {
-        mce = mcelib_create(fibre_card, NULL);
+        mce = mcelib_create(fibre_card, NULL, 0);
         if (mceconfig_open(mce, NULL, NULL) != 0) {
             fprintf(stderr, "Failed to load MCE configuration file.\n");
             exit(1);

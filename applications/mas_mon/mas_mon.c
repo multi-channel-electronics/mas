@@ -45,7 +45,7 @@ int main(int argc, char **argv)
         fibre_card = atoi[1];
 #endif
 
-    if ((mce = mcelib_create(fibre_card, NULL)) == NULL ||
+    if ((mce = mcelib_create(fibre_card, NULL, 0)) == NULL ||
             (mcedata_open(mce) !=0))
     {
         fprintf(stderr, "%s: failed to connect DATA device\n", argv[0]);

@@ -22,10 +22,14 @@ typedef struct mce_context mce_context_t;
 #include <mcecmd.h>
 #include <mcedata.h>
 
+/* mcelib flags */
+#define MCELIB_QUIET  0x1   /* suppress warning message */
+
 /* Creation / destruction of context structure */
 #define MCE_DEFAULT_MCE (-1)
 #define MCE_NULL_MCE (-2)
-mce_context_t* mcelib_create(int fibre_card, const char *mas_config);
+mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
+        unsigned int flags);
 void mcelib_destroy(mce_context_t* context);
 
 

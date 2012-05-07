@@ -149,9 +149,9 @@ static void setup_env(const char *argv0, int devnum, mce_context_t *mce,
 void __attribute__((noreturn)) Usage(int ret)
 {
     printf("Usage:\n"
-            "  mas_var [ -e ] [ -m FILE ] [ -n # ] { -c | -s }\n"
-            "  mas_var [ -e ] [ -m FILE ] [ -n # ] [PARAMETER]...\n"
-            "  mas_var [ -e ] [ -m FILE ] [ -n # ] -q [PARAMETER]\n"
+            "  mas_var [ -e ] [ -m FILE ] [ -n # ] [ -Q ] { -c | -s }\n"
+            "  mas_var [ -e ] [ -m FILE ] [ -n # ] [ -Q ] [PARAMETER]...\n"
+            "  mas_var [ -e ] [ -m FILE ] [ -n # ] [ -Q ] -q [PARAMETER]\n"
             "\nOptions:\n"
             "  -c                print C shell commands for regularising the "
             "environment for\n"
@@ -168,6 +168,7 @@ void __attribute__((noreturn)) Usage(int ret)
 #else
             "  -n <card>         ignored\n"
 #endif
+            "  -Q                quiet: don't write warnings.\n"
             "  -q                instead of reporting the value on standard "
             "output, exit with\n"
             "                      non-zero status if the first parameter is "
@@ -326,7 +327,7 @@ int main(int argc, char **argv)
     int option, fibre_card = MCE_DEFAULT_MCE;
     parm_t plist[MAX_PARAM];
     const char *parg[MAX_PARAM];
-    int i, np = 0;
+    int i, quiet = 0, np = 0;
     int do_env = -1;
     int boolean = 0;
     char *ptr, *ptr_in;
@@ -335,7 +336,7 @@ int main(int argc, char **argv)
     const char *mas_path2;
     const char *mas_path3;
 
-    while ((option = getopt_long(argc, argv, "cem:n:qs", opts, NULL)) >=0) {
+    while ((option = getopt_long(argc, argv, "cem:n:Qqs", opts, NULL)) >=0) {
         if (option == 'c') {
             do_env = 1;
         } else if (option == 'e') {
@@ -365,6 +366,8 @@ int main(int argc, char **argv)
             if (mas_cfg)
                 free(mas_cfg);
             mas_cfg = strdup(optarg);
+        } else if (option == 'Q') {
+            quiet = MCELIB_QUIET;
         } else if (option == 'q') {
             boolean = 1;
         } else if (option == 's') {
@@ -386,7 +389,7 @@ int main(int argc, char **argv)
 
     /* Shell commands */
     if (do_env != -1) {
-        mce_context_t *mce = mcelib_create(fibre_card, mas_cfg);
+        mce_context_t *mce = mcelib_create(fibre_card, mas_cfg, MCELIB_QUIET);
         if (mce == NULL)
             return 1;
         setup_env(argv[0], fibre_card, mce, do_env);
@@ -426,7 +429,7 @@ int main(int argc, char **argv)
     }
 
     /* create a library context */
-    mce_context_t *mce = mcelib_create(fibre_card, mas_cfg);
+    mce_context_t *mce = mcelib_create(fibre_card, mas_cfg, quiet);
     if (mce == NULL)
         return 1;
 

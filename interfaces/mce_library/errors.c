@@ -1,4 +1,28 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
+#include <stdio.h>
+#include <stdarg.h>
+
 #include "mce/mce_errors.h"
+#include "context.h"
+
+int mcelib_warning(const mce_context_t *c, const char *fmt, ...)
+{
+    va_list ap;
+    int ret;
+
+    if (c->flags & MCELIB_QUIET)
+        return 0;
+
+    fputs("mcelib: Warning: ", stderr);
+    va_start(ap, fmt);
+    ret = vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    fputc('\n', stderr);
+
+    return ret;
+}
 
 char *mcelib_error_string(int error)
 {

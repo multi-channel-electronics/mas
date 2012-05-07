@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     /* get default config file name, if necessary */
     if (options.source_file == NULL) {
         mce_context_t *mce = mcelib_create(options.fibre_card,
-                options.config_file);
+                options.config_file, MCELIB_QUIET);
         options.source_file = mcelib_default_experimentfile(mce);
         if (options.source_file == NULL) {
             fprintf(stderr,

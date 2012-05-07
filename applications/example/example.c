@@ -32,7 +32,7 @@ int main()
 	*/
 
 	// Get a library context structure for the default configuration
-	mce_context_t *mce = mcelib_create(MCE_DEFAULT_MCE, NULL);
+	mce_context_t *mce = mcelib_create(MCE_DEFAULT_MCE, NULL, 0);
 
 	// Load the default MCE config information ("xml")
 	if (mceconfig_open(mce, NULL, NULL) != 0) {

@@ -69,6 +69,7 @@ struct mce_context {
     mceconfig_t       config;         /* hardware config subsystem */
     maslog_t         *maslog;         /* maslog subsystem */
 
+    unsigned int      flags;          /* MCELIB public flags */
     struct config_t  *mas_cfg;        /* MAS configuration */
     int               fibre_card;     /* logical fibre card number */
 
@@ -101,5 +102,7 @@ struct mce_context {
 #define  C_config_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
 #define  C_maslog_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
 
+int mcelib_warning(const mce_context_t *context, const char *fmt, ...)
+    __attribute__ ((format (printf, 2, 3)));
 
 #endif

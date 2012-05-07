@@ -42,6 +42,11 @@ maslog_t *maslog_connect(mce_context_t *context, char *name)
 {
     maslog_t *logger;
 
+    if (context->mas_cfg == NULL) {
+        fprintf(stderr, "mcelib: No mas.cfg found.\n");
+        return NULL;
+    }
+
     config_setting_t *client = config_lookup(context->mas_cfg, CONFIG_CLIENT);
 
 	char address[SOCKS_STR];

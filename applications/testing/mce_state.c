@@ -16,8 +16,8 @@
 
 int  main(int argc, char **argv)
 {
-    mce_context_t *mce1 = mcelib_create(MCE_DEFAULT_MCE, NULL);
-    mce_context_t *mce2 = mcelib_create(MCE_DEFAULT_MCE, NULL);
+    mce_context_t *mce1 = mcelib_create(MCE_DEFAULT_MCE, NULL, 0);
+    mce_context_t *mce2 = mcelib_create(MCE_DEFAULT_MCE, NULL, 0);
 
 	// Connect command module.
 	char hardware[] = "/etc/mce/mce.cfg";

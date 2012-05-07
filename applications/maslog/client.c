@@ -16,9 +16,9 @@ int main(int argc, char **argv) {
     maslog_t *logger;
 
     if (argc > 1) {
-        context = mcelib_create(MCE_DEFAULT_MCE, argv[1]);
+        context = mcelib_create(MCE_DEFAULT_MCE, argv[1], 0);
     } else {
-        context = mcelib_create(MCE_DEFAULT_MCE, NULL);
+        context = mcelib_create(MCE_DEFAULT_MCE, NULL, 0);
     }
     
     if (context == NULL)

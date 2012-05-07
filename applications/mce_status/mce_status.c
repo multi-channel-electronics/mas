@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 
     // Connect to MCE
     if ((options.context = mcelib_create(options.fibre_card,
-                    options.config_file)) == NULL)
+                    options.config_file, 0)) == NULL)
     {
         fprintf(stderr, "failed to initialise MAS.\n");
         return 3;

@@ -30,8 +30,10 @@ MCE_EXTRA = $(CONFIG_LIBS)
 endif
 MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) $(LIBS)
 
+#the built library (for dependency tracking in Makefiles)
 LIBDEP=$(MCELIB_F)/lib$(MCELIB)$(LIB_SUFFIX)
 
+#header files (for dependency tracking in Makefiles)
 LIBHEADERS= $(MAS_INCLUDE_F)/libmaslog.h \
 			$(MAS_INCLUDE_F)/mce_library.h \
 			$(MAS_INCLUDE_F)/mcecmd.h \

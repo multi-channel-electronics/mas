@@ -239,8 +239,8 @@ int  main(int argc, char **argv)
 		goto exit_now;
 	}
 
-    if ((mce = mcelib_create(options.fibre_card,
-                    options.masconfig_file)) == NULL)
+    if ((mce = mcelib_create(options.fibre_card, options.masconfig_file,
+                    options.nonzero_only ? MCELIB_QUIET : 0)) == NULL)
     {
         fprintf(ferr, "Could not initialise MAS.\n");
 		err = ERR_MEM;

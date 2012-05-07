@@ -71,7 +71,7 @@ void print_u32(u32 *data, int count)
 mce_context_t* mce_connect(int fibre_card)
 {
     // Get a library context structure (cheap)
-    mce_context_t *mce = mcelib_create(fibre_card, NULL);
+    mce_context_t *mce = mcelib_create(fibre_card, NULL, 0);
 
     // Load MCE config information ("xml")
     if (mceconfig_open(mce, NULL, NULL) != 0) {

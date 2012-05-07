@@ -94,7 +94,7 @@ mce_context_t* connect_mce_or_exit(option_t* options)
     char errmsg[1024];
 
     mce_context_t* mce = mcelib_create(options->fibre_card,
-            options->config_file);
+            options->config_file, 0);
 
     /* get defaults */
     if (options->experiment_file == NULL) {
