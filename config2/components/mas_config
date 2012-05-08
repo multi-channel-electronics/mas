@@ -36,6 +36,18 @@ mas:
    */
   confdir = "<?php echo $conf_dir?>";
 
+  /* jamdir: the location of JAM files (firmware) for programming over fibre.
+   *         May be overridden at runtime via the MAS_JAM_DIR environmental
+<?php if ($n_cards > 1) { ?>
+   *         variable.  If this is not specified here, MAS_PREFIX/firmware is
+<?php } else { ?>
+   *         variable.  If this is not specified here, MAS_ROOT/firmware is
+   *         used as a default, if it exists; otherwise MAS_PREFIX/firmware is
+<?php } ?>
+   *         used as a default.
+   */
+  jamdir = "<?php echo $jam_dir?>";
+
   /* tmpdir: the temporary directory to be used by MAS and MCE Script.  If
    *         not specified, /tmp is used.  May be overridden at runtime via the
    *         MAS_TEMP environmental variable.

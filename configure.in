@@ -309,21 +309,59 @@ AC_SUBST([MAS_ETCDIR])
 
 AC_ARG_WITH([mas-root], [AS_HELP_STRING([--with-mas-root=DIR],
             [the default location of the MCE Script tree. ]
-            [(PREFIX/mce_script is used if not specified.)])],
-            [MAS_ROOTDIR="\"${withval}\""], [MAS_ROOTDIR="no"])
+            [("PREFIX/mce_script" is used if not specified.)])],
+            [MAS_ROOTDIR="${withval}"], [MAS_ROOTDIR="no"])
+
+AC_ARG_WITH([jam-dir], [AS_HELP_STRING([--with-jam-dir=DIR],
+            [the default location for JAM (firmware) files. ]
+            [(For multicard MAS, "PREFIX/firmware" is used if not specified. ]
+            [For single-card MAS, "MAS_ROOT/firmware" is used if present, ]
+            [otherwise "PREFIX/firmware" is used.)])],
+            [MAS_JAMDIR="${withval}"], [MAS_JAMDIR="no"])
+if test "x$MAS_JAMDIR" = "xno" -a $MAX_FIBRE_CARD -eq 1; then
+  # look for an existing $MAS_ROOT/firmware
+  if test "x$MAS_ROOTDIR" = "xno"; then
+    cat <<EOF >conftest.sh
+
+prefix=$prefix
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+echo \$prefix/mce_script
+EOF
+
+  else
+    mas_root=$MAS_ROOTDIR
+  fi
+  if test -d $mas_root/firmware; then
+    #(there is some embedded php syntax happening here...)
+    MAS_JAMDIR="\$mas_root . \"/firmware\""
+  fi
+fi
+
+#(there is some embedded php syntax happening here...)
+if test "x$MAS_JAMDIR" = "xno"; then
+  MAS_JAMDIR="\$prefix . \"/firmware\""
+else
+  MAS_JAMDIR="\"$MAS_JAMDIR\""
+fi
+AC_SUBST([MAS_JAMDIR])
+
 #(there is some embedded php syntax happening here...)
 if test "x$MAS_ROOTDIR" = "xno"; then
   MAS_ROOTDIR="\$prefix . \"/mce_script\""
+else
+  MAS_ROOTDIR="\"$MAS_ROOTDIR\""
 fi
 AC_SUBST([MAS_ROOTDIR])
 
 AC_ARG_WITH([mas-config], [AS_HELP_STRING([--with-mas-config=DIR],
             [the default MCE Script configuration directory. ]
             [(PREFIX/config is used if not specified.)])],
-            [MAS_CONFDIR="\"${withval}\""], [MAS_CONFDIR="no"])
+            [MAS_CONFDIR="${withval}"], [MAS_CONFDIR="no"])
 #(there is some embedded php syntax happening here...)
 if test "x$MAS_CONFDIR" = "xno"; then
   MAS_CONFDIR="\$prefix . \"/config\""
+else
+  MAS_CONFDIR="\"$MAS_CONFDIR\""
 fi
 AC_SUBST([MAS_CONFDIR])
 
@@ -352,14 +390,10 @@ if test "x$MAS_DATAROOT" = "xno"; then
 fi
 AC_SUBST([MAS_DATAROOT])
 
-
-
-
 AC_ARG_WITH([mas-data], [AS_HELP_STRING([--with-mas-data=SUBDIR],
             [the subdirectory under DATA_ROOT (see --with-data-root above) ]
             [in which data is actually written. ("current_data" is used if not ]
             [specified.)])], [MAS_DATADIR="${withval}"], [MAS_DATADIR="no"])
-#(there is some embedded php syntax happening here...)
 if test "x$MAS_DATADIR" = "xno"; then
   MAS_DATADIR="current_data";
 fi
@@ -396,10 +430,18 @@ if test $MAX_FIBRE_CARD -eq 1; then
 else
   echo "  Multicard support:       yes (max ${MAX_FIBRE_CARD} cards)"
 fi
-echo "  build mce.cfg/mas.cfg:   ${DO_CONFIG2}"
+echo "  build mce.cfg:           ${DO_CONFIG2}"
 echo "  MAS user/group:          ${MAS_USER}/${MAS_GROUP}"
+echo
+echo "  etc dir:                 \"${MAS_ETCDIR}\""
+echo "  config dir:              ${MAS_CONFDIR}"
+echo "  jam dir:                 ${MAS_JAMDIR}"
+echo "  mce_script dir:          ${MAS_ROOTDIR}"
+echo "  temp dir:                \"${MAS_TEMPDIR}\""
+echo "  data root:               \"${MAS_DATAROOT}\""
+echo "  data subdir:             \"${MAS_DATADIR}\""
 
-if test ! -f config2/$FIRST_MCE_CIN; then
+if test "x$DO_CONFIG2" != "xno" -a ! -f config2/$FIRST_MCE_CIN; then
   echo
   if test $MAX_FIBRE_CARD -eq 1; then
     echo "

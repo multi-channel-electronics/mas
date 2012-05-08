@@ -77,6 +77,7 @@ struct mce_context {
     char             *data_root;      /* the base data directory */
     char             *data_subdir;    /* "current_data", or whatever */
     char             *etc_dir;        /* location of the mce.cfg files */
+    char             *jam_dir;        /* ${MAS_JAM_DIR} */
     char             *mas_root;       /* ${MAS_ROOT} */
     char             *temp_dir;       /* ${MAS_TEMP} */
 

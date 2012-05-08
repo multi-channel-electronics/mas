@@ -168,6 +168,11 @@ const char *mcelib_lookup_dir(mce_context_t *context, int index)
                 sprintf(context->idl_dir, "%s/idl_pro", masroot);
             }
             break;
+        case MAS_DIR_JAM:
+            dir = getenv("MAS_JAM_DIR");
+            if (dir == NULL)
+                dir = context->jam_dir;
+            break;
         case MAS_DIR_PYTHON:
             dir = getenv("MAS_PYTHON");
             if (dir == NULL) {

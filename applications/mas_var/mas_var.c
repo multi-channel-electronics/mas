@@ -17,7 +17,7 @@ typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_MULTICARD, OPT_PREFIX,
     OPT_GROUP, OPT_MAS_DATA, OPT_MAS_DATA_ROOT, OPT_MAS_TEMPLATE, OPT_MAS_BIN,
     OPT_MAS_TEMP, OPT_MAS_SCRIPT, OPT_MAS_IDL, OPT_MAS_PYTHON, OPT_MAS_ETC,
     OPT_MAS_TEST_SUITE, OPT_PATH_BASE, OPT_PATH, OPT_PYTHONPATH, OPT_MAS_ROOT,
-    OPT_PYTHONPATH_BASE, OPT_MAS_CONFIG
+    OPT_PYTHONPATH_BASE, OPT_MAS_CONFIG, OPT_MAS_JAM
 } parm_t;
 
 static char *strip_path(mce_context_t *mce, const char *var)
@@ -105,6 +105,7 @@ static void setup_env(const char *argv0, int devnum, mce_context_t *mce,
 
     say_env(csh, "MAS_BIN", "%s", mas_bin);
     say_env(csh, "MAS_CONFIG", "%s", mcelib_lookup_dir(mce, MAS_DIR_CONFIG));
+    say_env(csh, "MAS_JAM_DIR", "%s", mcelib_lookup_dir(mce, MAS_DIR_JAM));
     say_env(csh, "MAS_TEMP", "%s", mcelib_lookup_dir(mce, MAS_DIR_TEMP));
     say_env(csh, "MAS_DATA_ROOT", "%s", mcelib_lookup_dir(mce,
                 MAS_DIR_DATA_ROOT));
@@ -215,6 +216,9 @@ void __attribute__((noreturn)) Usage(int ret)
             "file\n"
             "  --idl-dir         the MCE script IDL directory (MAS_IDL in the "
             "environment)\n"
+            "  --jam-dir         the location of the JAM firmware files "
+            "(MAS_JAM_DIR in the\n"
+            "                      environment)\n"
             "  --libs            ld(1) options needed to link to the MAS "
             "libraries\n"
             "  --mas-root        the base directory for the MCE script tree "
@@ -322,6 +326,7 @@ int main(int argc, char **argv)
         { "etc-dir", 0, NULL, OPT_MAS_ETC },
         { "mas-root", 0, NULL, OPT_MAS_ROOT },
         { "config-dir", 0, NULL, OPT_MAS_CONFIG },
+        { "jam-dir", 0, NULL, OPT_MAS_JAM },
         { NULL, 0, NULL, 0 }
     };
     int option, fibre_card = MCE_DEFAULT_MCE;
@@ -580,6 +585,7 @@ int main(int argc, char **argv)
                 OPT_DEFAULT(DATA_ROOT);
                 OPT_DEFAULT(ETC);
                 OPT_DEFAULT(IDL);
+                OPT_DEFAULT(JAM);
                 OPT_DEFAULT(PYTHON);
                 OPT_DEFAULT(ROOT);
                 OPT_DEFAULT(SCRIPT);

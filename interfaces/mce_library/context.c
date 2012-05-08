@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libgen.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <mce/defaults.h>
 
@@ -147,6 +149,34 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
     c->data_subdir = get_default_dir(c, masconfig, "datadir", "current_data");
     c->mas_root = get_default_dir(c, masconfig, "masroot",
             MAS_PREFIX "/mce_script");
+
+    /* jam dir */
+    c->jam_dir = get_default_dir(c, masconfig, "jamdir",
+#if MULTICARD
+            MAS_PREFIX "/firmware"
+#else
+            NULL
+#endif
+            );
+
+#if ! MULTICARD
+    /* in the single card case, we use MAS_ROOT/firmware if it exists for
+     * backwards compatibility
+     */
+    if (c->jam_dir == NULL) {
+        struct stat *statbuf;
+
+        c->jam_dir = malloc(strlen(c->mas_root) + sizeof("/firmware") + 1);
+        sprintf(c->jam_dir, "%s/firmware", c->mas_root);
+
+        /* does it exist and is it a directory? */
+        if (stat(c->jam_dir, &statbuf) || !S_ISDIR(statbuf.st_mode)) {
+            free(c->jam_dir);
+            c->jam_dir = strdup(MAS_PREFIX "/firmware");
+        }
+    }
+#endif
+
     free(mas_cfg);
 
     return c;

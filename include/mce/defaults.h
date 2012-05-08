@@ -24,6 +24,7 @@ char *mcelib_shell_expand(mce_context_t *context, const char* input);
 #define MAS_DIR_TEMP         9
 #define MAS_DIR_TEMPLATE    10
 #define MAS_DIR_TEST_SUITE  11
+#define MAS_DIR_JAM         12
 const char *mcelib_lookup_dir(mce_context_t *context, int index);
 
 /* return the default fibre card number */
