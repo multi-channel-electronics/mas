@@ -49,7 +49,7 @@ install: install-mas $(INSTALL_MCE)
 
 install-mas: ${MAS_ETCDIR} mas.cfg
 	@if [ -f ${MAS_ETCDIR}/mas.cfg ]; then \
-		if ! diff -q mas.cfg ${MAS_ETCDIR}/mas.cfg > /dev/null; then \
+		if ! diff -bq mas.cfg ${MAS_ETCDIR}/mas.cfg > /dev/null; then \
 			echo; \
 			echo "  WARNING: ${MAS_ETCDIR}/mas.cfg already exists, not overwriting.";\
 			echo "  To install the new mas.cfg; delete ${MAS_ETCDIR}/mas.cfg first.";\
@@ -63,7 +63,7 @@ install-mas: ${MAS_ETCDIR} mas.cfg
 
 install-mce: ${MAS_ETCDIR} mce.cfg
 	@if [ -f ${MAS_ETCDIR}/mce.cfg ]; then \
-		if ! diff -q mce.cfg ${MAS_ETCDIR}/mce.cfg > /dev/null; then \
+		if ! diff -bq mce.cfg ${MAS_ETCDIR}/mce.cfg > /dev/null; then \
 			echo; \
 			echo "  WARNING: ${MAS_ETCDIR}/mce.cfg already exists, not overwriting.";\
 			echo "  To install the new mce.cfg; delete ${MAS_ETCDIR}/mce.cfg first.";\
@@ -96,10 +96,10 @@ install-multimce: ${MAS_ETCDIR} mce0.cfg
 		echo "creating symlink ${MAS_ETCDIR}/mce.cfg -> mce0.cfg"; \
 		ln -s mce0.cfg ${MAS_ETCDIR}/mce.cfg; \
 	fi
-	@for x in $(TARGET); do \
+	@for x in $(MCE_LIST); do \
 		if [ -f $$x ]; then \
 			if [ -f ${MAS_ETCDIR}/$$x ]; then \
-				if ! diff -q $$x ${MAS_ETCDIR}/$$x > /dev/null; then \
+				if ! diff -bq $$x ${MAS_ETCDIR}/$$x > /dev/null; then \
 					echo; \
 					echo "  WARNING: ${MAS_ETCDIR}/$$x already exists, not overwriting.";\
 					echo "  To install the new $$x; delete ${MAS_ETCDIR}/$$x first."; \
