@@ -147,13 +147,15 @@ class mce:
     Object representing an MCE.
     """
 
-    def __init__(self, fibre_card=None, mas_file=None):
+    def __init__(self, fibre_card=None, mas_file=None, quiet=False):
         if (fibre_card == None):
-          self.__fibre_card__ = -1
+            self.__fibre_card__ = -1
         else:
-          self.__fibre_card__ = fibre_card
+            self.__fibre_card__ = fibre_card
+        self.__mcelib_flags__ = MCELIB_QUIET if quiet else 0
         self.__mas_file__ = mas_file
-        self.context = mcelib_create(self.__fibre_card__, mas_file)
+        self.context = mcelib_create(self.__fibre_card__, mas_file,
+            self.__mcelib_flags__)
         self.open()
 
     def open(self, config_file=None, fibre_card=None):
