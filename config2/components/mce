@@ -1,13 +1,10 @@
-/*
-   Master template for MCE hardware config files.
-
-   For now this system supports:
-	- full and small sub-racks
-	- biasing address card
-	- 16 TES bias line configuration for small sub-racks
- */
-
 <?  include 'header';  ?>
+/*
+ *  MCE Hardware configuration file.
+ *
+ *  Subrack configuration:
+<?  include 'description'; ?>
+ */
 
 
 hardware:
@@ -28,7 +25,7 @@ include "cards/bc";
 include "cards/psc";
 include "cards/sys";
 if ($hw_bac)
-	include "cards/bac";
+include "cards/bac";
 ?>
 
         {

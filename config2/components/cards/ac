@@ -1,5 +1,3 @@
-/* Command description file - libconfig syntax */
-
         {
             name = "address commands";
 

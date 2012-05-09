@@ -1,5 +1,3 @@
-/* Command description file - libconfig syntax */
-
         {
             name = "bias commands";
 
@@ -14,8 +12,8 @@
                     name = "bias";
                     id = 0x21;
 <? if ($hw_12tes) { ?>
-      		    count = 12;
-		    op_xor = 0x8000;
+                    count = 12;
+                    op_xor = 0x8000;
 <? } ?>
                 }
 <? if ($hw_subrack == "small") { ?>
@@ -56,7 +54,7 @@
                     id = 0x23;
                 }
 */
-	      );
+              );
 
         }, // bias commands
 
@@ -68,17 +66,17 @@
                 {
                     name = "enbl_mux";
                     id = 0x05;
-		    count = 32;
+                    count = 32;
                 },
 <?
       $output = "";
       for ($i=0; $i<32; $i++) {
          $id = sprintf("0x%02X", 0xc0 + $i);
          $output .= "                " .
-	   "{ name = \"fb_col{$i}\"; id = {$id}; count = 41; },\n";
+           "{ name = \"fb_col{$i}\"; id = {$id}; count = 41; },\n";
       }
-      echo substr($output, 0, -2);
+      echo substr($output, 0, -2), "\n";
    } ?>
-	      );
+              );
 
         }, // bias-fast commands

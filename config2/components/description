@@ -1,0 +1,96 @@
+<?php
+
+/* print a descriptive summary of the mce configuration in the comment at the
+ * top of mce.cfg
+ */
+
+function fw_rev_triplet($card) {
+    global $fw_rev;
+    $major = $fw_rev[$card] >> 24;
+    $minor = ($fw_rev[$card] >> 16) & 0xff;
+    $rev   = $fw_rev[$card] & 0xffff;
+    return sprintf("%X.%X.%X", $major, $minor, $rev);
+}
+
+if ($hw_bac) {
+    $bacbc2 = "bac";
+} else {
+    $bacbc2 = "bc2";
+}
+
+if ($hw_subrack == "full") {
+  $card_candidates = array("ac", "bc1", $bacbc2, "bc3", "rc1", "rc2", "rc3",
+  "rc4", "cc", "psc");
+  echo " *  - Size: 72HP, 5MDM (v1) full size subrack\n";
+} else {
+  $card_candidates = array("ac", "bc1", $bacbc2, "bc3", "rc1", "rc2", "cc",
+  "psc");
+  echo " *  - Size: 48HP, 3MDM (v2) small subrack\n";
+}
+
+$missing_cards = "";
+foreach ($card_candidates as $candidate) {
+    if (! in_array($candidate, $card_list)) {
+        if ($missing_cards != "") {
+            $missing_cards .= ", ";
+        }
+        $missing_cards .= $candidate;
+    }
+}
+if ($missing_cards != "") echo " *  - Missing physical cards: $missing_cards\n";
+
+if ($hw_bac) echo " *  - Biasing address card (BAC) present\n";
+echo " *\n";
+
+echo " *  - TES mapping type: $tes_para\n";
+if (in_array("heater", $virt_list)) {
+    echo " *  - Heater virtual card: present\n";
+}
+echo " *  - Number of columns: $num_columns\n";
+echo " *\n";
+
+echo " *  - BC hardware revision:       " . $hw_rev["bc"] . "\n";
+echo " *  - RC hardware revision:       " . $hw_rev["rc"] . "\n";
+echo " *  - Latest supported AC fw_rev: " . fw_rev_triplet("ac") . "\n";
+echo " *  - Latest supported BC fw_rev: " . fw_rev_triplet("bc") . "\n";
+echo " *  - Latest supported RC fw_rev: " . fw_rev_triplet("rc") . "\n";
+echo " *  - Latest supported CC fw_rev: " . fw_rev_triplet("cc") . "\n";
+echo " *\n";
+
+/* AC features */
+
+/* Ha! there are none! */
+
+/* CC features */
+
+echo " *  - CC AWG support:                 " . ($fw_rev_cc_awg ? "yes" : "no")
+. "\n"; /* 0x5000003 */
+
+echo " *  - CC JTAG over fibre support:     " . ($fw_rev_cc_jtag ? "yes" : "no")
+. "\n"; /* 0x5000005 */
+
+echo " *  - CC ramp_step_phase support:     " . (fw_range("cc", $min=0x500000c)
+? "yes" : "no") .  "\n";
+
+echo " *\n";
+
+/* BC features */
+
+echo " *  - BC has 12 TES bias lines:       " . ($hw_12tes ? "yes" : "no")
+. "\n"; /* revE */
+echo " *  - BC fast-switching support:      " . ($fw_rev_bc_fast ? "yes" : "no")
+. "\n"; /* 0x5000002 */
+echo " *  - BC flux_fb modulation support:  " . (fw_range("bc", $min=0x5030000)
+? "yes" : "no") .  "\n";
+echo " *\n";
+
+/* RC features */
+
+echo " *  - RC integral clamp support:      " . (fw_range("rc", $min=0x500000d)
+? "yes" : "no") .  "\n";
+
+echo " *  - RC configurable filter support: " . (fw_range("rc", $min=0x5010000)
+? "yes" : "no") .  "\n";
+
+echo " *  - RC p-term decay support:        " . ($has_pterm ? "yes" : "no")
+. "\n"; /* 0x5010009 */

@@ -6,50 +6,109 @@
 
 <? if ($tes_para == "classic") { ?>
                     count = 3;
-                    maps = ( { start=0; count=1; card="bc1"; param="bias"; offset=0; },
-                             { start=1; count=1; card="bc2"; param="bias"; offset=0; },
-                             { start=2; count=1; card="bc3"; param="bias"; offset=0; } );
+                    maps = (
+                        {
+                            start = 0; count = 1; card = "bc1";
+                            param = "bias"; offset = 0;
+                        },
+                        {
+                            start = 1; count = 1; card = "bc2";
+                            param = "bias"; offset = 0;
+                        },
+                        {
+                            start = 2; count = 1; card = "bc3";
+                            param = "bias"; offset = 0;
+                        }
+                    );
 <? } elseif ($tes_para == "small16") { ?>
                     count = 16;
-                    maps = ( { start=0; count=16; card="bc3"; param="flux_fb"; offset=0; } );
+                    maps = (
+                        {
+                            start = 0; count = 16; card = "bc3";
+                            param = "flux_fb"; offset = 0;
+                        }
+                    );
 <? } elseif ($tes_para == "small_2bc") { ?>
                     count = 16;
-                    maps = ( { start=0; count=16; card="bc2"; param="flux_fb";
-                               offset=16; }
-                           );
+                    maps = (
+                        {
+                            start = 0; count = 16; card = "bc2";
+                            param = "flux_fb"; offset = 16;
+                        }
+                    );
 <? } elseif ($tes_para == "revF_32") { ?>
                     count = 32;
-                    maps = ( { start=0;  count=10; card="bc1"; param="bias"; offset=0;  },
-                             { start=10; count=10; card="bc2"; param="bias"; offset=0;  },
-                             { start=20; count=10; card="bc3"; param="bias"; offset=0;  },
-                             { start=30; count=1;  card="bc1"; param="bias"; offset=10; },
-                             { start=31; count=1;  card="bc2"; param="bias"; offset=11; } );
+                    maps = (
+                        {
+                            start = 0;  count = 10; card = "bc1";
+                            param = "bias"; offset = 0;
+                        },
+                        {
+                            start = 10; count = 10; card = "bc2";
+                            param = "bias"; offset = 0;
+                        },
+                        {
+                            start = 20; count = 10; card = "bc3";
+                            param = "bias"; offset = 0;
+                        },
+                        {
+                            start = 30; count = 1;  card = "bc1";
+                            param = "bias"; offset = 10;
+                        },
+                        {
+                            start = 31; count = 1;  card = "bc2";
+                            param = "bias"; offset = 11;
+                        }
+                    );
 <? } elseif ($tes_para == "bc1_f_24_31") { ?>
                     count = 8;
-                    maps = ( { start=0; count=8; card="bc1"; param="flux_fb"; offset=24; } );
+                    maps = (
+                        {
+                            start = 0; count = 8; card = "bc1";
+                            param = "flux_fb"; offset = 24;
+                        }
+                    );
 <? } elseif ($tes_para == "bc3_f_24_31") { ?>
                     count = 8;
-                    maps = ( { start=0; count=8; card="bc3"; param="flux_fb"; offset=24; } );
+                    maps = (
+                        {
+                            start = 0; count = 8; card = "bc3";
+                            param = "flux_fb"; offset = 24;
+                        }
+                    );
 <? } elseif ($tes_para == "bc2_fu_00_15") { ?>
                     count = 16;
-                    maps = ( { start=0; count=16; card="bc2"; param="flux_fb_upper"; offset=0; } );
+                    maps = (
+                        {
+                            start = 0; count = 16; card = "bc2";
+                            param = "flux_fb_upper"; offset = 0;
+                        }
+                    );
 <? } elseif ($tes_para == "none") { ?>
-	            count = 0;
-		    maps = ( { start=0; count=0; card=""; params=""; offset=0; } );
+                    count = 0;
+                    maps = (
+                        {
+                            start = 0; count = 0; card = "";
+                            params = ""; offset = 0;
+                        }
+                    );
 <? } elseif ($tes_para == "map") {
      if (!isset($tes_bias_mapping) || !isset($tes_bias_count)) {
        throw new Exception('Define $tes_para and $tes_bias_count for map.');
      }
 ?>
-		    count = <?=$tes_bias_count?>;
-                    maps = (   
+                    count = <?=$tes_bias_count?>;
+                    maps = (
 <? $s = "";
-   $indent = "                             ";
+   $indent = "                        ";
    foreach ($tes_bias_mapping as $map) {
-     $s .= $indent . "{ start=$map[0]; count=$map[1]; card=\"$map[2]\"; " .
-           "param=\"$map[3]\"; offset=$map[4]; },\n";
+     $s .=
+     $indent . "{\n" .
+     $indent . "    start = $map[0]; count = $map[1]; card = \"$map[2]\";\n" .
+     $indent . "    param = \"$map[3]\"; offset = $map[4];\n" .
+     $indent . "},\n";
    }
-   $s = substr($s, 0, -2);
+   $s = substr($s, 0, -2) . "\n";
    echo $s;
 ?>
                     );

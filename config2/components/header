@@ -60,16 +60,19 @@ $RC_LIST = array("rc1", "rc2", "rc3", "rc4");
 function rc_map($param) {
     global $rc_present, $RC_LIST;
     $out = "";
+    $indent = "                        ";
     foreach ($rc_present as $i => $ok) {
         if (! $ok) continue;
         $count = 8;
         $start = $i * 8;
-	$rc = $RC_LIST[$i];
-        $out .= "                             " .
-	  "{ start= {$start}; count={$count}; card=\"{$rc}\"; param=\"{$param}\"; offset=0; },\n";
+        $rc = $RC_LIST[$i];
+        $out .= $indent . "{\n" .
+        $indent . "    start = {$start}; count = {$count}; card = \"{$rc}\";\n"
+        . $indent . "    param = \"{$param}\"; offset = 0;\n" .
+        $indent . "},\n";
     }
-    // Remove final comma/linefeed
-    $out = substr($out,0,-2);
+    // Remove final comma
+    $out = substr($out,0,-2) . "\n";
     return $out;
 }
 
@@ -85,10 +88,19 @@ function fw_range($card, $min=NULL, $max=NULL) {
 function map_array($prefix, $count, $card, $length) {
   /* For fast SQ2 feedback.  Includes trailing command and line feed. */
   $output = "";
+  $indent = "                ";
   for ($i=0; $i<$count; $i++) {
-    $output .= "                {  name=\"{$prefix}{$i}\"; count={$length}; " .
-        "maps=( { start=0;count={$length};card=\"{$card}\";param=\"{$prefix}{$i}\";" .
-        "offset=0; }); },\n";
+    $output .= $indent . "{\n" .
+        $indent . "    name = \"{$prefix}{$i}\";\n" .
+        $indent . "    count = {$length};\n" .
+        $indent . "    maps = (\n" .
+        $indent . "        {\n" .
+        $indent . "            start = 0; count = {$length}; " .
+        "card = \"{$card}\";\n" .
+        $indent . "            param = \"{$prefix}{$i}\"; offset = 0;\n" .
+        $indent . "        }\n" .
+        $indent . "    );\n" .
+        $indent . "},\n";
   }
   return $output;
 }
@@ -127,7 +139,7 @@ foreach( $RC_LIST as $rc ) {
 /* Squid systems (bias card DAC sets) have width based on maximum RC
    number */
 
-foreach ($rc_present as $i => $ok) {	
+foreach ($rc_present as $i => $ok) {
   if ($ok) $num_columns = ($i+1)*8;
 }
 

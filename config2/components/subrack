@@ -1,11 +1,3 @@
-/* Card listing and parameter mappings - libconfig format
-
- This file describes a full sub-rack (AC, BC x 3, RC x 4, CC, PSC)
-
- Set BIASING_AC to substitute a BAC for BC2.
-
-*/
-
     system = {
         name = "mce";
 
@@ -30,9 +22,7 @@
                 card_type = "<?=$text?>";
                 id = ( <?=$id?> );
                 error_bits = <?=$ebits?>;
-            }
-<?    if ($comma)
-          echo ",\n";
+            }<?php if ($comma) echo ",\n";
    }
 
     dump_card_block("psc", "power supply card", True);
@@ -110,11 +100,11 @@
             },
 <? } ?>
             /* Terminator */
-	    {
-	        name = "dummy";
-		nature = "virtual";
-		mapping = "no_mapping";
-	    }
+            {
+                name = "dummy";
+                nature = "virtual";
+                mapping = "no_mapping";
+            }
         ); //components list
 
     }; // system

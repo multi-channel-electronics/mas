@@ -4,21 +4,26 @@
                 {
                     name = "fb";
                     count = <?=$num_columns?>;
-                    maps = ({ start= 0; count=<?=$num_columns?>; card="bc1"; param="flux_fb"; offset=0; });
+                    maps = (
+                        {
+                            start = 0; count = <?=$num_columns?>; card = "bc1";
+                            param = "flux_fb"; offset = 0;
+                        }
+                    );
                 },
                 {
                     name = "bias";
                     count = <?=$num_columns?>;
                     maps = (
 <? echo rc_map("sa_bias"); ?>
-   			   );
+                    );
                 },
                 {
                     name = "offset";
                     count = <?=$num_columns?>;
                     maps = (
 <? echo rc_map("offset"); ?>
-                           );
+                    );
                 }
             );
         },
@@ -36,7 +41,12 @@
                 {
                     name = "enbl_mux";
                     count = 1;
-                    maps = ( { start= 0; count=1; card="bac"; param="enbl_mux"; offset=0; } );
+                    maps = (
+                        {
+                            start = 0; count = 1; card = "bac";
+                            param = "enbl_mux"; offset = 0;
+                        }
+                    );
                 },
 <?   /* bac */
    } else {
@@ -48,13 +58,23 @@
                 {
                     name = "enbl_mux";
                     count = <?=$num_columns?>;
-                    maps = ( { start=0; count=<?=$num_columns?>; card="bc2"; param="enbl_mux"; offset=0; } );
+                    maps = (
+                        {
+                            start = 0; count = <?=$num_columns?>; card = "bc2";
+                            param = "enbl_mux"; offset = 0;
+                        }
+                    );
                 },
 <?   }  /* fw_rev_bc_fast */   ?>
                 {
                     name = "fb";
                     count = <?=$num_columns?>;
-                    maps = ( { start=0; count=<?=$num_columns?>; card="bc2"; param="flux_fb"; offset=0; } );
+                    maps = (
+                        {
+                            start = 0; count = <?=$num_columns?>; card = "bc2";
+                            param = "flux_fb"; offset = 0;
+                        }
+                    );
                 },
 <? } /* if bac */ ?>
 
@@ -63,13 +83,23 @@
                 {
                     name = "bias";
                     count = <?=$num_columns?>;
-                    maps = ( { start=0; count=<?=$num_columns?>; card="bc3"; param="flux_fb"; offset=0; } );
+                    maps = (
+                        {
+                            start = 0; count = <?=$num_columns?>; card = "bc3";
+                            param = "flux_fb"; offset = 0;
+                        }
+                    );
                 }
 <?    } else { ?>
                 {
                     name = "bias";
                     count = <?=$num_columns?>;
-                    maps = ( { start=0; count=<?=$num_columns?>; card="bc1"; param="flux_fb"; offset=16; } );
+                    maps = (
+                        {
+                            start = 0; count = <?=$num_columns?>; card = "bc1";
+                            param = "flux_fb"; offset = 16;
+                        }
+                    );
                 }
 <?    } ?>
             );
@@ -81,31 +111,41 @@
                 {
                     name = "bias";
                     count = 41;
-                    maps = ( { start= 0; count=41; card="ac"; param="on_bias"; offset=0; });
+                    maps = (
+                        {
+                            start = 0; count = 41; card = "ac";
+                            param = "on_bias"; offset = 0;
+                        }
+                    );
                 },
                 {
                     name = "bias_off";
                     count = 41;
-                    maps = ( { start= 0; count=41; card="ac"; param="off_bias"; offset=0; });
+                    maps = (
+                        {
+                            start = 0; count = 41; card = "ac";
+                            param = "off_bias"; offset = 0;
+                        }
+                    );
                 },
                 {
                     name = "fb_const";
                     count = <?=$num_columns?>;
                     maps = (
 <? echo rc_map("fb_const"); ?>
-                           );
+                    );
                 },
                 {
                     name = "servo_mode";
                     count = <?=$num_columns?>;
                     maps = (
 <? echo rc_map("servo_mode"); ?>
-                           );
+                    );
                 }
             );
         },
 
-	{
-	    name = "no_mapping";
-	    parameters = ();
-	},
+        {
+            name = "no_mapping";
+            parameters = ();
+        },
