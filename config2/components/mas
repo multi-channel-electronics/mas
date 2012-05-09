@@ -1,4 +1,11 @@
-/* Configuration file for MAS */
+/*
+ *  MAS Software configuration file.
+ *
+ *  Author: <?=`whoami`?>
+ *  Host  : <?=`hostname`?>
+ *  Origin: <?=`pwd`?>
+ *  Date  : <?=`date`?>
+ */
 
 <?php
 include "mas_config";

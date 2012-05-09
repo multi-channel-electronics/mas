@@ -2,6 +2,11 @@
 /*
  *  MCE Hardware configuration file.
  *
+ *  Author: <?=`whoami`?>
+ *  Host  : <?=`hostname`?>
+ *  Origin: <?=`pwd`?>
+ *  Date  : <?=`date`?>
+ *
  *  Subrack configuration:
 <?  include 'description'; ?>
  */

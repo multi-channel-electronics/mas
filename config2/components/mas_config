@@ -1,5 +1,3 @@
-/* Global MAS configuration */
-
 mas:
 {
   /* Path defaults:
