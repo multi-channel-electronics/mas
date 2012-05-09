@@ -44,6 +44,7 @@ include "cards/bac";
 <?
 include "squids";
 include "tes";
+if ($heater_virt)
 include "heater";
 ?>
 

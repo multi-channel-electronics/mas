@@ -149,6 +149,9 @@ foreach ($rc_present as $i => $ok) {
 /* Are we running with a biasing address card? */
 $hw_bac = in_array("bac", $card_list);
 
+/* Do we have a heater virtual card? */
+$heater_virt = in_array("heater", $virt_list);
+
 /* Are these 12-line TES bias cards? */
 $hw_12tes = $hw_rev["bc"] >= "revE";
 

@@ -92,7 +92,7 @@
                 mapping = "tes_mapping";
             },
 <? } ?>
-<? if (in_array("heater", $virt_list)) { ?>
+<? if ($heater_virt) { ?>
             {
                 name = "heater";
                 nature = "virtual";

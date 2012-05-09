@@ -43,7 +43,7 @@ if ($hw_bac) echo " *  - Biasing address card (BAC) present\n";
 echo " *\n";
 
 echo " *  - TES mapping type: $tes_para\n";
-if (in_array("heater", $virt_list)) {
+if ($heater_virt) {
     echo " *  - Heater virtual card: present\n";
 }
 echo " *  - Number of columns: $num_columns\n";
