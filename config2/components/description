@@ -78,8 +78,10 @@ echo " *\n";
 
 echo " *  - BC has 12 TES bias lines:       " . ($hw_12tes ? "yes" : "no")
 . "\n"; /* revE */
-echo " *  - BC fast-switching support:      " . ($fw_rev_bc_fast ? "yes" : "no")
-. "\n"; /* 0x5000002 */
+if (! $hw_bac) {
+  echo " *  - BC fast-switching support:      " .
+  ($fw_rev_bc_fast ? "yes" : "no") . "\n"; /* 0x5000002 */
+}
 echo " *  - BC flux_fb modulation support:  " . (fw_range("bc", $min=0x5030000)
 ? "yes" : "no") .  "\n";
 echo " *\n";
