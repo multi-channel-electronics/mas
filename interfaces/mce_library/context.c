@@ -164,7 +164,7 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
      * backwards compatibility
      */
     if (c->jam_dir == NULL) {
-        struct stat *statbuf;
+        struct stat statbuf;
 
         c->jam_dir = malloc(strlen(c->mas_root) + sizeof("/firmware") + 1);
         sprintf(c->jam_dir, "%s/firmware", c->mas_root);
