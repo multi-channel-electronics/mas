@@ -7,11 +7,9 @@ log_server:
 
   daemon = 1;
 
-<?php if ($n_cards > 1) {
-  $log_file = $data_root . "0/$data_dir/log"; ?>
-<?php } else {
-  $log_file = "$data_root/$data_dir/log";
-} ?>
+<?php
+  $log_file = $data_roots[0] . "/$data_dir/log";
+?>
 <?php if (0 * $n_cards > 1) { ?>
   /* In multicard configurations, the global data below are used for cards with
    * no corresponding data in the log_list below.

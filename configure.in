@@ -184,7 +184,7 @@ fi
 
 # Configure the kernel source directory.
 
-KERNEL_DIR=/lib/modules/`uname -r`/
+KERNEL_DIR=/lib/modules/`uname -r`
 AC_ARG_WITH([kernel-dir],
             [AS_HELP_STRING([--with-kernel-dir=DIR],
                             [set the target kernel source tree to DIR ]
@@ -376,10 +376,12 @@ AC_SUBST([MAS_TEMPDIR])
 
 AC_ARG_WITH([data-root], [AS_HELP_STRING([--with-data-root=DIR],
             [the base data directory used by MAS and MCE Script.  For ]
-            [multicard MAS, an integer fibre card number will be appended to ]
-            [DIR.  (For multicard MAS, "/data/mce" is used if not specified. ]
-            [For single-card MAS, "/data/cryo" is used if not specified for ]
-            [backwards compatibility.)])],
+            [multicard MAS, if DIR contains one or more commas (,) it's ] dnl'
+            [considered a list, otherwise, an integer fibre card number will ]
+            [be appended to DIR for each supported card.  (For multicard MAS, ]
+            ["/data/mce" is used if not specified.  For single-card MAS, ]
+            ["/data/cryo" is used if not specified for backwards ]
+            [compatibility.)])],
             [MAS_DATAROOT="${withval}"], [MAS_DATAROOT="no"])
 if test "x$MAS_DATAROOT" = "xno"; then
   if test $MAX_FIBRE_CARD -eq 1; then

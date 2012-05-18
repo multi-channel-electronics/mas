@@ -70,13 +70,18 @@ mas:
 <?php if ($n_cards > 1) { ?>
   dataroot = [
 <?php
-    for ($i = 0; $i < $n_cards; ++$i) {
-      if ($i != 0) {
-          echo ",";
-      }
-      echo "\n            /* MCE device #$i */ \"$data_root$i\"";
-  }
+    $i = 0;
+    foreach ($data_roots as $dir) {
+        if ($i != 0) {
+            echo ",";
+        } else {
+          $start = 0;
+        }
+        echo "\n            /* MCE device #$i */ \"$dir\"";
+        $i++;
+    }
 ?>
+
 
   ];
 <?php } else { ?>
