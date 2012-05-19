@@ -52,7 +52,8 @@ static char *strip_path(mce_context_t *mce, const char *var)
   return path_out;
 }
 
-static void __attribute__ ((format (printf, 3, 4))) say_env(int csh, const char *name, const char *style, ...)
+static void __attribute__ ((format (printf, 3, 4))) say_env(int csh,
+        const char *name, const char *style, ...)
 {
     va_list ap;
     char *fmt = malloc(strlen(style) + strlen(name) + 13);
@@ -69,8 +70,38 @@ static void __attribute__ ((format (printf, 3, 4))) say_env(int csh, const char 
     free(fmt);
 }
 
+static void __attribute__ ((format (printf, 4, 5))) maybe_say_env(int mini,
+        int csh, const char *name, const char *style, ...)
+{
+    /* in mini mode, unset this variable if not currently defined in the
+     * environment, otherwise say nothing */
+    if (mini) {
+        if (getenv(name) == NULL) {
+            if (csh) {
+                printf("unsetenv %s;\n", name);
+            } else {
+                printf("unset %s;\n", name);
+            }
+        }
+    } else {
+        va_list ap;
+        char *fmt = malloc(strlen(style) + strlen(name) + 13);
+
+        va_start(ap, style);
+
+        if (csh)
+            sprintf(fmt, "setenv %s \"%s\";\n", name, style);
+        else
+            sprintf(fmt, "export %s=\"%s\";\n", name, style);
+
+        vprintf(fmt, ap);
+        va_end(ap);
+        free(fmt);
+    }
+}
+
 static void setup_env(const char *argv0, int devnum, mce_context_t *mce,
-        int csh)
+        int mini, int csh)
 {
     char *path, *base;
 
@@ -100,28 +131,34 @@ static void setup_env(const char *argv0, int devnum, mce_context_t *mce,
         say_env(csh, "MAS_MCE_DEV", "%i", devnum);
 
     say_env(csh, "MAS_PREFIX", "%s", MAS_PREFIX);
-    say_env(csh, "MAS_ROOT", "%s", mcelib_lookup_dir(mce, MAS_DIR_ROOT));
+    maybe_say_env(mini, csh, "MAS_ROOT", "%s", mcelib_lookup_dir(mce,
+                MAS_DIR_ROOT));
     puts("");
 
-    say_env(csh, "MAS_BIN", "%s", mas_bin);
-    say_env(csh, "MAS_CONFIG", "%s", mcelib_lookup_dir(mce, MAS_DIR_CONFIG));
-    say_env(csh, "MAS_JAM_DIR", "%s", mcelib_lookup_dir(mce, MAS_DIR_JAM));
-    say_env(csh, "MAS_TEMP", "%s", mcelib_lookup_dir(mce, MAS_DIR_TEMP));
-    say_env(csh, "MAS_DATA_ROOT", "%s", mcelib_lookup_dir(mce,
+    maybe_say_env(mini, csh, "MAS_BIN", "%s", mas_bin);
+    maybe_say_env(mini, csh, "MAS_CONFIG", "%s", mcelib_lookup_dir(mce,
+                MAS_DIR_CONFIG));
+    maybe_say_env(mini, csh, "MAS_JAM_DIR", "%s", mcelib_lookup_dir(mce,
+                MAS_DIR_JAM));
+    maybe_say_env(mini, csh, "MAS_TEMP", "%s", mcelib_lookup_dir(mce,
+                MAS_DIR_TEMP));
+    maybe_say_env(mini, csh, "MAS_DATA_ROOT", "%s", mcelib_lookup_dir(mce,
                 MAS_DIR_DATA_ROOT));
-    say_env(csh, "MAS_DATA", "%s", mcelib_lookup_dir(mce, MAS_DIR_DATA));
+    maybe_say_env(mini, csh, "MAS_DATA", "%s", mcelib_lookup_dir(mce,
+                MAS_DIR_DATA));
     puts("");
 
     mas_script = mcelib_lookup_dir(mce, MAS_DIR_SCRIPT);
     mas_python = mcelib_lookup_dir(mce, MAS_DIR_PYTHON);
     mas_test_suite = mcelib_lookup_dir(mce, MAS_DIR_TEST_SUITE);
 
-    say_env(csh, "MAS_IDL", "%s", mcelib_lookup_dir(mce, MAS_DIR_IDL));
-    say_env(csh, "MAS_PYTHON", "%s", mas_python);
-    say_env(csh, "MAS_SCRIPT", "%s", mas_script);
-    say_env(csh, "MAS_TEMPLATE", "%s", mcelib_lookup_dir(mce,
+    maybe_say_env(mini, csh, "MAS_IDL", "%s", mcelib_lookup_dir(mce,
+                MAS_DIR_IDL));
+    maybe_say_env(mini, csh, "MAS_PYTHON", "%s", mas_python);
+    maybe_say_env(mini, csh, "MAS_SCRIPT", "%s", mas_script);
+    maybe_say_env(mini, csh, "MAS_TEMPLATE", "%s", mcelib_lookup_dir(mce,
                 MAS_DIR_TEMPLATE));
-    say_env(csh, "MAS_TEST_SUITE", "%s", mas_test_suite);
+    maybe_say_env(mini, csh, "MAS_TEST_SUITE", "%s", mas_test_suite);
     puts("");
 
 
@@ -150,7 +187,7 @@ static void setup_env(const char *argv0, int devnum, mce_context_t *mce,
 void __attribute__((noreturn)) Usage(int ret)
 {
     printf("Usage:\n"
-            "  mas_var [ -e ] [ -m FILE ] [ -n # ] [ -Q ] { -c | -s }\n"
+            "  mas_var [ -e ] [ -m FILE ] [ -n # ] [ -Q ] [ -x ] { -c | -s }\n"
             "  mas_var [ -e ] [ -m FILE ] [ -n # ] [ -Q ] [PARAMETER]...\n"
             "  mas_var [ -e ] [ -m FILE ] [ -n # ] [ -Q ] -q [PARAMETER]\n"
             "\nOptions:\n"
@@ -159,7 +196,11 @@ void __attribute__((noreturn)) Usage(int ret)
             "                      the specified (or default) MCE device. "
             "(See below for an\n"
             "                      example of use.)\n"
-            "  -e                ignore any MAS_... environment varaibles.\n"
+            "  -e                ignore any MAS_... environment varaibles."
+#if MULTICARD
+            " See also -x below."
+#endif
+            "\n"
             "  -m <file>         read MAS configuration from the specified "
             "file instead of\n"
             "                      the default mas.cfg (the one reported by "
@@ -183,6 +224,21 @@ void __attribute__((noreturn)) Usage(int ret)
             "                      environment for the specified (or default) "
             "MCE device.\n"
             "                      (See below for an example of use.)\n"
+#if MULTICARD
+            "  -x                when used with -c or -s, only define required "
+            "environmental\n"
+            "                      variables, specifically: MAS_MCE_DEV, "
+            "MAS_PREFIX, and\n"
+            "                      MAS_VAR, plus modified PATH and "
+            "PYTHONPATH.  If -e is also\n"
+            "                      specified, the commands output will remove "
+            "all other MAS\n"
+            "                      variables from the environment.  Ignored if "
+            "not used\n"
+            "                      with -c or -s.\n"
+#else
+            "  -x                ignored\n"
+#endif
             "  --help            display this help and exit\n"
             "\n"
 
@@ -334,6 +390,7 @@ int main(int argc, char **argv)
     const char *parg[MAX_PARAM];
     int i, quiet = 0, np = 0;
     int do_env = -1;
+    int mini_env = 0;
     int boolean = 0;
     char *ptr, *ptr_in;
     char *mas_cfg = NULL;
@@ -341,7 +398,7 @@ int main(int argc, char **argv)
     const char *mas_path2;
     const char *mas_path3;
 
-    while ((option = getopt_long(argc, argv, "cem:n:Qqs", opts, NULL)) >=0) {
+    while ((option = getopt_long(argc, argv, "cem:n:Qqsx", opts, NULL)) >=0) {
         if (option == 'c') {
             do_env = 1;
         } else if (option == 'e') {
@@ -377,6 +434,10 @@ int main(int argc, char **argv)
             boolean = 1;
         } else if (option == 's') {
             do_env = 0;
+        } else if (option == 'x') {
+#if MULTICARD
+            mini_env = 1;
+#endif
         } else if (option == '?')
             Usage(1);
         else if (option == OPT_HELP)
@@ -397,7 +458,7 @@ int main(int argc, char **argv)
         mce_context_t *mce = mcelib_create(fibre_card, mas_cfg, MCELIB_QUIET);
         if (mce == NULL)
             return 1;
-        setup_env(argv[0], fibre_card, mce, do_env);
+        setup_env(argv[0], fibre_card, mce, mini_env, do_env);
         return 0;
     }
 
