@@ -38,6 +38,9 @@ typedef struct {
 	int acq_frames;
 	int acq_interval;
 
+    char symlink[LINE_LEN];
+    char dirfile_include[LINE_LEN];
+
 	maslog_t *logger;
 
 } options_t;

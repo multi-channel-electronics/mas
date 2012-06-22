@@ -69,6 +69,9 @@ static int fileseq_cycle(mce_acq_t *acq, fileseq_t *f, int this_frame)
 		return -1;
 	}
 
+    /* Update the indirection, maybe */
+    mcelib_symlink(acq, f->filename);
+
 	return 0;
 }
 
@@ -150,6 +153,10 @@ static int flatfile_init(mce_acq_t *acq)
 			return -1;
 		}
 	}
+
+    /* Update the indirection, maybe */
+    mcelib_symlink(acq, f->filename);
+
 	return 0;
 }
 

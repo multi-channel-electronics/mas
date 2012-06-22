@@ -74,7 +74,7 @@ functionality. */
 		mcedata_storage_t* ramb; 
 		mce_acq_t acq;
 		ramb = mcedata_rambuff_create( frame_callback, (unsigned long)&f );
-		mcedata_acq_create(&acq, context, 0, cards, -1, ramb);
+        mcedata_acq_create(&acq, context, 0, cards, -1, ramb, NULL);
 		mcedata_acq_go(&acq, count);
 		mcedata_acq_destroy(&acq);
 		return 0;
@@ -92,7 +92,7 @@ functionality. */
 		mcedata_storage_t* ramb; 
 		mce_acq_t acq;
 		ramb = mcedata_rambuff_create( frame_callback, (unsigned long)&f );
-		mcedata_acq_create(&acq, context, 0, cards, -1, ramb);
+        mcedata_acq_create(&acq, context, 0, cards, -1, ramb, NULL);
 		mcedata_acq_go(&acq, count);
 		mcedata_acq_destroy(&acq);
 		return 0;

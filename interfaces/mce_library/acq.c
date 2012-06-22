@@ -47,8 +47,8 @@ static int load_ret_dat(mce_acq_t *acq, int cards);
 static int rcsflags_to_cards(int c);
 
 int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
-		       int options, int cards, int rows_reported,
-		       mcedata_storage_t *storage)
+        int options, int cards, int rows_reported,
+        mcedata_storage_t *storage, const char *symlink)
 {
 	int ret_val = 0;
 
@@ -69,6 +69,11 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	acq->options = options;
 	acq->context = context;
 	acq->storage = storage;
+
+    if (symlink && !*symlink)
+        acq->symlink = NULL;
+    else
+        acq->symlink = symlink;
 
 	// Lookup "rc# ret_dat" (go address) location or fail.
 	if (load_ret_dat(acq, cards) != 0)
@@ -579,4 +584,45 @@ static int rcsflags_to_cards(int c)
 	if (c & MCEDATA_RCSFLAG_RC3) out |= MCEDATA_RC3;
 	if (c & MCEDATA_RCSFLAG_RC4) out |= MCEDATA_RC4;
 	return out;
+}
+
+int mcelib_symlink(const mce_acq_t *acq, const char *target)
+{
+    char *tmp;
+
+    if (acq->symlink == NULL)
+        return 0;
+
+    size_t l = strlen(acq->symlink);
+
+    tmp = malloc(l + 7);
+
+    /* mktemp loop */
+    do {
+        strcpy(tmp, acq->symlink);
+        strcpy(tmp + l, "XXXXXX");
+
+        /* glibc-2.15 and earlier incorrectly mark mktemp with __wur [#13908] */
+        __attribute__((unused)) char *stupid_glibc = mktemp(tmp);
+
+        if (tmp[0] == 0)
+            break;
+        if (symlink(target, tmp) == 0)
+            break;
+    } while (errno == EEXIST);
+
+    if (errno) {
+        free(tmp);
+        return 1;
+    }
+
+    /* move the temporary symlink into place */
+    if (rename(tmp, acq->symlink)) {
+        unlink(tmp);
+        free(tmp);
+        return 1;
+    }
+    
+    free(tmp);
+    return 0;
 }

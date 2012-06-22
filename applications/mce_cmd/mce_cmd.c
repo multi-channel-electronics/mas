@@ -42,6 +42,7 @@ enum {
 	ENUM_SPECIAL_LOW,
 	SPECIAL_HELP,
 	SPECIAL_ACQ,
+    SPECIAL_ACQ_LINK,
 	SPECIAL_ACQ_PATH,
 	SPECIAL_ACQ_CONFIG,
 	SPECIAL_ACQ_CONFIG_FS,
@@ -103,7 +104,6 @@ mascmdtree_opt_t flat_args[] = {
     { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
-
 mascmdtree_opt_t fs_args[] = {
     { MASCMDTREE_STRING | MASCMDTREE_ARGS, "filename", 0, -1, 0, fs_args+1 },
     { MASCMDTREE_STRING | MASCMDTREE_ARGS, "card"    , 0, -1, 0, fs_args+2 },
@@ -123,7 +123,7 @@ mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
 	{ SEL_NO, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
 /*  { SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts}, */
-/*    SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts}, */
+/*  { SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts}, */
 	{ SEL_NO, "RRA"     , 4, 4, COMMAND_RRA, command_placeholder_opts},
 	{ SEL_NO, "WRA"     , 4,-1, COMMAND_WRA, command_placeholder_opts},
 	{ SEL_NO, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
@@ -141,6 +141,7 @@ mascmdtree_opt_t root_opts[] = {
         flat_args},
     { SEL_NO, "ACQ_CONFIG_DIRFILE_FS", 3, 3, SPECIAL_ACQ_CONFIG_DIRFILESEQ,
         fs_args},
+    { SEL_NO, "ACQ_LINK", 1, 1, SPECIAL_ACQ_LINK, string_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
     { SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
 	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
@@ -542,7 +543,7 @@ int prepare_outfile(char *errmsg, int storage_option)
         case SPECIAL_ACQ_CONFIG_DIRFILE:
             storage = mcedata_dirfile_create(options.acq_filename, 0);
             if (storage == NULL) {
-                sprintf(errmsg, "Could not create flatfile");
+                sprintf(errmsg, "Could not create dirfile");
                 return -1;
             }
             break;
@@ -552,7 +553,7 @@ int prepare_outfile(char *errmsg, int storage_option)
                     options.acq_interval,
                     FS_DIGITS, 0);
             if (storage == NULL) {
-                sprintf(errmsg, "Could not create flatfile");
+                sprintf(errmsg, "Could not create dirfile sequencer");
                 return -1;
             }
             break;
@@ -563,7 +564,9 @@ int prepare_outfile(char *errmsg, int storage_option)
     }
 
     // Initialize the acquisition system
-    if ((error=mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage)) != 0) {
+    if ((error = mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage,
+                    options.symlink)) != 0)
+    {
         sprintf(errmsg, "Could not configure acquisition: %s",
                 mcelib_error_string(error));
         return -1;
@@ -816,6 +819,11 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 }
                 break;
 
+            case SPECIAL_ACQ_LINK:
+                mascmdtree_token_word(s, tokens + 1);
+                pathify_filename(options.symlink, s);
+                break;
+
             case SPECIAL_ACQ_PATH:
                 mascmdtree_token_word( options.acq_path, tokens+1 );
                 if (options.acq_path[0] != 0 &&
@@ -823,7 +831,6 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                     strcat(options.acq_path, "/");
                 }
                 break;
-
             case SPECIAL_LOCK_QUERY:
                 errmsg += sprintf(errmsg, "%i", mcedata_lock_query(mce));
                 break;

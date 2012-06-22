@@ -91,7 +91,7 @@ mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
 
 int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
 		       int options, int cards, int rows_reported, 
-		       mcedata_storage_t* storage);
+		       mcedata_storage_t* storage, const char *symlink);
 
 int mcedata_acq_destroy(mce_acq_t *acq);
 

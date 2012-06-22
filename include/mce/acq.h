@@ -92,6 +92,8 @@ struct mce_acq_struct {
 	int last_n_frames;
 
 	frame_header_abstraction_t *header_description;
+
+  const char *symlink;
 	
 	int ready;
 };

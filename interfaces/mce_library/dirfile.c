@@ -393,7 +393,10 @@ static int dirfile_init(mce_acq_t *acq)
 		}
 	}
 
-	return 0;
+    /* Update the indirection, maybe */
+    mcelib_symlink(acq, f->basename);
+
+    return 0;
 }
 
 static int dirfile_cleanup(mce_acq_t *acq)

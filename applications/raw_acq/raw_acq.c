@@ -195,7 +195,7 @@ int main(int argc, char **argv)
 
 	// Setup an acquisition structure, associated with the rambuff.
 	mce_acq_t acq;
-	mcedata_acq_create(&acq, mce, 0, card, -1, ramb);
+    mcedata_acq_create(&acq, mce, 0, card, -1, ramb, NULL);
 
 	// Write data mode and trigger a capture
 	temp[0] = num_rows;
