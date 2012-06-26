@@ -49,6 +49,8 @@ enum {
 	SPECIAL_ACQ_CONFIG_DIRFILE,
 	SPECIAL_ACQ_CONFIG_DIRFILESEQ,
 	SPECIAL_ACQ_FLUSH,
+	SPECIAL_ACQ_MULTI_BEGIN,
+	SPECIAL_ACQ_MULTI_END,
 	SPECIAL_LOCK_QUERY,
 	SPECIAL_LOCK_RESET,
 	SPECIAL_LOCK_DOWN,
@@ -144,6 +146,8 @@ mascmdtree_opt_t root_opts[] = {
     { SEL_NO, "ACQ_LINK", 1, 1, SPECIAL_ACQ_LINK, string_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
     { SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
+    { SEL_NO, "ACQ_MULTI_BEGIN", 0, 0, SPECIAL_ACQ_MULTI_BEGIN, NULL},
+    { SEL_NO, "ACQ_MULTI_END", 0, 0, SPECIAL_ACQ_MULTI_END, NULL},
 	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
 	{ SEL_NO, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
@@ -195,7 +199,12 @@ options_t options = {
 int kill_switch = 0;
 int input_switch = 0;
 
-mce_acq_t* acq;
+
+/* For multisync output, acq_multisync = 1 and acq points to a
+ * multisync object. */
+
+int acq_multisync = 0;
+mce_acq_t* acq = NULL;
 
 mce_param_t ret_dat_s;
 mce_param_t num_rows_reported;
@@ -507,16 +516,33 @@ int prepare_outfile(char *errmsg, int storage_option)
     int error;
     mcedata_storage_t* storage;
 
-    // Cleanup last acq
-    if (acq != NULL) {
-        mcedata_acq_destroy(acq);
-        acq = NULL;
-    }
-
-    acq = (mce_acq_t*)malloc(sizeof(mce_acq_t));
-    if (acq == NULL) {
-        sprintf(errmsg, "Failed to allocate memory for mce_acq_t structure!\n");
-        return -1;
+    if (acq_multisync) {
+        // Just make sure it's allocated and initialized
+        if (acq == NULL) {
+            // Setup the main storage handler
+            acq = (mce_acq_t*)malloc(sizeof(mce_acq_t));
+            storage = mcedata_multisync_create(0);
+            if (acq == NULL || storage == NULL) {
+                sprintf(errmsg, "Failed to allocate memory for mce_acq_t structure!\n");
+                return -1;
+            }
+            error = mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage,
+                                       options.symlink);
+            if (error != 0) {
+                sprintf(errmsg, "Could not configure multisync acquisition: %s",
+                        mcelib_error_string(error));
+                return -1;
+            }
+        }
+    } else {
+        // If acq already exists, destroy and start over.
+        if (acq != NULL)
+            mcedata_acq_destroy(acq);
+        acq = (mce_acq_t*)malloc(sizeof(mce_acq_t));
+        if (acq == NULL) {
+            sprintf(errmsg, "Failed to allocate memory for mce_acq_t structure!\n");
+            return -1;
+        }
     }
 
     // Setup storage-specific handler
@@ -563,13 +589,22 @@ int prepare_outfile(char *errmsg, int storage_option)
             return -1;
     }
 
-    // Initialize the acquisition system
-    if ((error = mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage,
-                    options.symlink)) != 0)
-    {
-        sprintf(errmsg, "Could not configure acquisition: %s",
-                mcelib_error_string(error));
-        return -1;
+    if (acq_multisync) {
+        // In multisync, just add that storage to the container
+        error = mcedata_multisync_add(acq, storage);
+        if (error != 0) {
+            sprintf(errmsg, "Could not append acquisition to multisync.");
+            return -1;
+        }
+    } else {
+        // In non-multisync, initialize the acq now.
+        error = mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage,
+                                   options.symlink);
+        if (error != 0) {
+            sprintf(errmsg, "Could not configure acquisition: %s",
+                    mcelib_error_string(error));
+            return -1;
+        }
     }
 
     return 0;
@@ -831,6 +866,24 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                     strcat(options.acq_path, "/");
                 }
                 break;
+
+                
+                if (acq && acq->storage->flush != NULL) {
+                    acq->storage->flush(acq);
+                }
+                break;
+
+            case SPECIAL_ACQ_MULTI_BEGIN:
+            case SPECIAL_ACQ_MULTI_END:
+                // In either case, cleanup the last multisync
+                if (acq != NULL) {
+                    mcedata_acq_destroy(acq);
+                    acq = NULL;
+                }
+                // Put into multisync mode?
+                acq_multisync = (tokens[0].value == SPECIAL_ACQ_MULTI_BEGIN);
+                break;
+
             case SPECIAL_LOCK_QUERY:
                 errmsg += sprintf(errmsg, "%i", mcedata_lock_query(mce));
                 break;
