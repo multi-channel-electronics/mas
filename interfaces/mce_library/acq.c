@@ -115,13 +115,21 @@ int mcedata_acq_destroy(mce_acq_t *acq)
 	return 0;
 }
 
+mce_acq_t *mcedata_acq_duplicate(mce_acq_t *acq)
+{
+    mce_acq_t *acq_copy = (mce_acq_t *)malloc(sizeof(*acq));
+    if (acq_copy != NULL)
+        memcpy(acq_copy, acq, sizeof(*acq));
+    return acq_copy;
+}
+
 int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 {
 	int ret_val = 0;
 
 	// Assertion
 	if (acq==NULL || !acq->ready) {
-		fprintf(stderr, "mcedata_acq_go: acq structure null or not ready!\n");
+		fprintf(stderr, "mcedata_acq_go: acq structure (%p) null or not ready!\n", acq);
 		return -MCE_ERR_FRAME_UNKNOWN;
 	}			
 

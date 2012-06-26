@@ -94,9 +94,8 @@ mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
 
 mcedata_storage_t* mcedata_multisync_create(int options);
 
-int mcedata_multisync_add(mcedata_storage_t *storage,
+int mcedata_multisync_add(mce_acq_t *multisync_acq,
                           mcedata_storage_t *sync);
-
 
 
 int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
@@ -104,6 +103,8 @@ int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
 		       mcedata_storage_t* storage, const char *symlink);
 
 int mcedata_acq_destroy(mce_acq_t *acq);
+
+mce_acq_t *mcedata_acq_duplicate(mce_acq_t *acq);
 
 int mcedata_acq_go(mce_acq_t *acq, int n_frames);
 

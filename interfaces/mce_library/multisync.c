@@ -8,8 +8,13 @@
  * of data to multiple outputs (e.g. a flatfile and a rambuffer; a
  * flatfile and a dirfile.
  *
- * It basically just maintains a list of mce_storage_t objects, and
- * calls them in sequence for each storage action.
+ * It basically just maintains a list of mce_acq_t objects, and calls
+ * them in sequence for each storage action.
+ *
+ * Note that a superior interface would just pass around / store
+ * mce_storage_t objects, each of which would have a pointer to the
+ * parent acquisition structure.  That would be better, but would
+ * require changing the whole API.  Some day.
  */
 
 
@@ -32,7 +37,7 @@
 typedef struct multisync_struct {
     int max_syncs;
     int options[MAX_SYNCS];
-    mcedata_storage_t *syncs[MAX_SYNCS];
+    mce_acq_t *syncs[MAX_SYNCS];
 } multisync_t;
 
 
@@ -40,16 +45,16 @@ typedef struct multisync_struct {
 
 /* Use a template for all the ones that just want an mce_acq_t*: */
 
-#define DECLARE_MULTISYNC(MEMBER)                               \
+#define DECLARE_MULTISYNC(MEMBER) \
   static int multisync_ ## MEMBER(mce_acq_t* acq)               \
   {                                                             \
-	multisync_t *f = (multisync_t*)acq->storage->action_data;   \
+    multisync_t *f = (multisync_t*)acq->storage->action_data;   \
     int i, err = 0;                                             \
                                                                 \
     for (i=0; i<f->max_syncs && f->syncs[i] != NULL; i++) {     \
-        if (f->syncs[i]->MEMBER == NULL)                        \
+        if (f->syncs[i]->storage->MEMBER == NULL)               \
             continue;                                           \
-        err = f->syncs[i]->MEMBER(acq);                         \
+        err = f->syncs[i]->storage->MEMBER(f->syncs[i]);        \
         if (err != 0)                                           \
             break;                                              \
     }                                                           \
@@ -67,9 +72,9 @@ static int multisync_post_frame(mce_acq_t *acq, int frame_index, u32 *data)
     int i, err = 0;
 
     for (i=0; i<f->max_syncs && f->syncs[i] != NULL; i++) {
-        if (f->syncs[i]->post_frame == NULL)
+        if (f->syncs[i]->storage->post_frame == NULL)
             continue;
-        err = f->syncs[i]->post_frame(acq, frame_index, data);
+        err = f->syncs[i]->storage->post_frame(f->syncs[i], frame_index, data);
         if (err != 0)
             break;
     }
@@ -88,9 +93,12 @@ static int multisync_destructor(mcedata_storage_t *storage)
 
     // Perhaps this cascade of destruction should be optional.
     for (i=0; i<f->max_syncs && f->syncs[i] != NULL; i++) {
-        if (f->syncs[i]->destroy == NULL)
+        if (f->syncs[i]->storage->destroy == NULL)
             continue;
-        err = f->syncs[i]->destroy(storage);
+        err = f->syncs[i]->storage->destroy(f->syncs[i]->storage);
+        // Also free the acq structure (see _add function)
+        free(f->syncs[i]);
+        f->syncs[i] = NULL;
         if (err != 0)
             break;
     }
@@ -134,19 +142,27 @@ mcedata_storage_t* mcedata_multisync_create(int options)
 
 /* Allow user to add a sync. */
 
-int mcedata_multisync_add(mcedata_storage_t *storage,
+int mcedata_multisync_add(mce_acq_t *multisync_acq,
                           mcedata_storage_t *sync)
 {
-    int i;
-	multisync_t *f = (multisync_t*)storage->action_data;
+    int i, error = 0;
+	multisync_t *f = (multisync_t*)multisync_acq->storage->action_data;
     if (f == NULL)
         return -1;
 
     // Append this sync to the list.
     for (i=0; i < f->max_syncs; i++) {
         if (f->syncs[i] == NULL) {
-            f->syncs[i] = sync;
-            return 0;
+            // Duplicate the main acq, and replace the storage -- this is not ideal.
+            // Don't forget to free it later, but just the main pointer.  Blech.
+            mce_acq_t *acq = mcedata_acq_duplicate(multisync_acq);
+            if (acq == NULL)
+                return -1;
+            acq->storage = sync;
+            f->syncs[i] = acq;
+            if (sync->init != NULL)
+                error = sync->init(acq);
+            return error;
         }
     }
 
