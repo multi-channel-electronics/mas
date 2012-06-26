@@ -23,6 +23,7 @@ OBJECTS = \
 					frame_manip.o \
 					libmaslog.o \
 					manip.o \
+					multisync.o \
 					packet.o \
 					socks.o \
 					virtual.o

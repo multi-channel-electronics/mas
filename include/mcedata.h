@@ -89,6 +89,16 @@ mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options);
 mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
 					     int digits, int options);
 
+
+/* multisync storage class -- container for multiple storage objects */
+
+mcedata_storage_t* mcedata_multisync_create(int options);
+
+int mcedata_multisync_add(mcedata_storage_t *storage,
+                          mcedata_storage_t *sync);
+
+
+
 int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
 		       int options, int cards, int rows_reported, 
 		       mcedata_storage_t* storage, const char *symlink);
