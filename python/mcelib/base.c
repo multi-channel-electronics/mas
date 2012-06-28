@@ -146,11 +146,11 @@ static PyObject *trace(PyObject *self, PyObject *args)
 
 static PyObject *mce_connect(PyObject *self, PyObject *args) {
      int device_index = -1;
-     mce_context_t* mce = mcelib_create(device_index);
+     mce_context_t* mce = mcelib_create(device_index, "/etc/mce/mas.cfg", 0);
 
-     mcecmd_open(mce, mcelib_cmd_device(device_index));
-     mcedata_open(mce, mcelib_data_device(device_index));
-     mceconfig_open(mce, mcelib_default_hardwarefile(device_index), "hardware");
+     mcecmd_open(mce);
+     mcedata_open(mce);
+     mceconfig_open(mce, NULL, NULL);
 
      ptrobj* p = PyObject_New(ptrobj, &ptrobjType);
      p->p = mce;
@@ -297,7 +297,7 @@ static PyObject *mce_read_data(PyObject *self, PyObject *args)
 						       (unsigned long)&f );
      
      mce_acq_t acq;
-     mcedata_acq_create(&acq, mce, 0, cards, -1, ramb);
+     mcedata_acq_create(&acq, mce, 0, cards, -1, ramb, NULL);
      mcedata_acq_go(&acq, count);
      mcedata_acq_destroy(&acq);
 

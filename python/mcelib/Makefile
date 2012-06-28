@@ -1,23 +1,30 @@
+default: all
 
-CFLAGS += -Wall -fPIC -fno-stack-protector -fno-strict-aliasing
-CFLAGS +=  -I/usr/include/python2.6 -I/usr/mce/include
+BASE := ../../
+include $(BASE)Makefile.children
 
-LDFLAGS += -shared -fPIC
-LDLINK +=  -L/usr/mce/lib -lmcecmd -lmaslog -lmcedsp -lconfig
-
+# Module name
 MOD = pymce
-SOURCE = $(MOD)/__init__.py $(MOD)/basic.py
 
-default: $(SOURCE)
+# Source files
+SOURCE = $(MOD)/__init__.py $(MOD)/basic.py base.c
+
+all: build
+
+build: $(SOURCE) _default_setup.py
 	python setup.py build
 
 install: default
 	python setup.py install
 
-mcelib.so: base.o
-	$(LD) $(LDFLAGS) -o $@ $< $(LDLINK)
+_default_setup.py:
+	-rm _default_setup.py
+	echo lib = \"$(MCELIB) config\" >> $@
+	echo inc_dir = \"$(MAS_INCLUDE_F)\" >> $@
+	echo lib_dir = \"$(MCELIB_F)\" >> $@
 
 clean:
-	-rm *.o mcelib.so
 	-python setup.py clean
+	-rm -r build
+	-rm _default_setup.py
 	make -C $(MOD) clean
