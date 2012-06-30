@@ -50,6 +50,7 @@ typedef struct dirfile_struct {
 	int flush;
 
 	char basename[MCE_LONG];
+        const char *symlink;
 	char format[MCE_LONG];
 
 //	struct frame_header_abstraction frame_description;
@@ -394,7 +395,7 @@ static int dirfile_init(mce_acq_t *acq)
 	}
 
     /* Update the indirection, maybe */
-    mcelib_symlink(acq, f->basename);
+    mcelib_symlink(f->symlink, f->basename);
 
     return 0;
 }
@@ -482,7 +483,8 @@ mcedata_storage_t dirfile_actions = {
 };
 
 
-mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options)
+mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options,
+                                          const char *symlink)
 {
 	dirfile_t *f = (dirfile_t*)malloc(sizeof(dirfile_t));
 	mcedata_storage_t *storage =
@@ -495,7 +497,10 @@ mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options)
 
 	memset(f, 0, sizeof(*f));
 	strcpy(f->basename, basename);
-
+        if (symlink!=NULL && *symlink)
+            f->symlink = symlink;
+        else
+            f->symlink = NULL;
 	return storage;
 }
 
@@ -519,6 +524,7 @@ typedef struct dirfileseq_struct {
 	int next_switch;
 	int frame_count;
 	char format[MCE_LONG];
+	const char *symlink;
 } dirfileseq_t;
 
 
@@ -539,6 +545,7 @@ static int dirfileseq_cycle(mce_acq_t *acq, dirfileseq_t *f, int this_frame)
 	// Setup new filename and init dirfile
 	f->active_idx = new_idx;
 	sprintf(f->active_dirfile.basename, f->format, new_idx);
+    f->active_dirfile.symlink = f->symlink;
 	return dirfile_init(acq);
 }
 
@@ -591,9 +598,10 @@ mcedata_storage_t dirfileseq_actions = {
 };
 
 mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
-					     int digits, int options)
+                                             int digits, int options, const char *symlink)
 {
 	dirfileseq_t *f = (dirfileseq_t*)malloc(sizeof(dirfileseq_t));
+
 	mcedata_storage_t *storage =
 		(mcedata_storage_t*)malloc(sizeof(mcedata_storage_t));
 	if (f==NULL || storage==NULL) return NULL;
@@ -611,6 +619,11 @@ mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
 	// Produce format like "basename.%03i"
 	sprintf(f->format, "%s.%%0%ii", basename, f->digits);
 	
+        if (symlink!=NULL && *symlink)
+            f->symlink = symlink;
+        else
+            f->symlink = NULL;
+
 	return storage;
 }
 

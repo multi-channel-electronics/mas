@@ -105,6 +105,6 @@ struct mce_context {
 
 int mcelib_warning(const mce_context_t *context, const char *fmt, ...)
     __attribute__ ((format (printf, 2, 3)));
-int mcelib_symlink(const mce_acq_t *acq, const char *target);
+int mcelib_symlink(const char *symlink, const char *target);
 
 #endif

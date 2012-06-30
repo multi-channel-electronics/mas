@@ -249,7 +249,7 @@ int main ( int argc, char **argv )
    if (control.rc != 0)
      cards = 1<<(control.rc-1);
    mce_acq_t acq;
-   error = mcedata_acq_create(&acq, mce, 0, cards, control.rows, ramb, NULL);
+   error = mcedata_acq_create(&acq, mce, 0, cards, control.rows, ramb);
    if (error != 0) {
      sprintf(errmsg_temp, "acq_setup failed [%i]: %s\n", error, mcelib_error_string(error));
      ERRPRINT(errmsg_temp);

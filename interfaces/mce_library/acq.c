@@ -46,7 +46,7 @@ static int rcsflags_to_cards(int c);
 
 int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
         int options, int cards, int rows_reported,
-        mcedata_storage_t *storage, const char *symlink)
+        mcedata_storage_t *storage)
 {
 	int ret_val = 0;
 
@@ -69,11 +69,6 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	// Save frame size and other options
 	acq->frame_size = acq->rows * acq->cols * acq->n_cards + 
 		MCEDATA_HEADER + MCEDATA_FOOTER;
-
-    if (symlink && !*symlink)
-        acq->symlink = NULL;
-    else
-        acq->symlink = symlink;
 
 	// Lookup "cc ret_dat_s" (frame count) or fail
 	if ((ret_val=mcecmd_load_param(
@@ -593,21 +588,21 @@ static int rcsflags_to_cards(int c)
 	return out;
 }
 
-int mcelib_symlink(const mce_acq_t *acq, const char *target)
+int mcelib_symlink(const char *newpath, const char *target)
 {
     int err = 0;
     char *tmp;
 
-    if (acq->symlink == NULL)
+    if (newpath == NULL || newpath[0] == 0)
         return 0;
 
-    size_t l = strlen(acq->symlink);
+    size_t l = strlen(newpath);
 
     tmp = malloc(l + 7);
 
     /* mktemp loop */
     do {
-        strcpy(tmp, acq->symlink);
+        strcpy(tmp, newpath);
         strcpy(tmp + l, "XXXXXX");
 
         /* glibc-2.15 and earlier incorrectly mark mktemp with __wur [#13908] */
@@ -624,7 +619,7 @@ int mcelib_symlink(const mce_acq_t *acq, const char *target)
     }
 
     /* move the temporary symlink into place */
-    if (rename(tmp, acq->symlink)) {
+    if (rename(tmp, newpath)) {
         unlink(tmp);
         free(tmp);
         return 1;

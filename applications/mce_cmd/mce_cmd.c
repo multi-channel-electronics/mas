@@ -526,8 +526,7 @@ int prepare_outfile(char *errmsg, int storage_option)
                 sprintf(errmsg, "Failed to allocate memory for mce_acq_t structure!\n");
                 return -1;
             }
-            error = mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage,
-                                       options.symlink);
+            error = mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage);
             if (error != 0) {
                 sprintf(errmsg, "Could not configure multisync acquisition: %s",
                         mcelib_error_string(error));
@@ -549,7 +548,8 @@ int prepare_outfile(char *errmsg, int storage_option)
     switch(storage_option) {
 
         case SPECIAL_ACQ_CONFIG:
-            storage = mcedata_flatfile_create(options.acq_filename);
+            storage = mcedata_flatfile_create(options.acq_filename,
+                                              options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create flatfile");
                 return -1;
@@ -558,8 +558,9 @@ int prepare_outfile(char *errmsg, int storage_option)
 
         case SPECIAL_ACQ_CONFIG_FS:
             storage = mcedata_fileseq_create(options.acq_filename,
-                    options.acq_interval,
-                    FS_DIGITS);
+                                             options.acq_interval,
+                                             FS_DIGITS,
+                                             options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not set up file sequencer");
                 return -1;
@@ -567,7 +568,9 @@ int prepare_outfile(char *errmsg, int storage_option)
             break;
 
         case SPECIAL_ACQ_CONFIG_DIRFILE:
-            storage = mcedata_dirfile_create(options.acq_filename, 0);
+            printf("symlink %s\n", options.symlink);
+            storage = mcedata_dirfile_create(options.acq_filename, 0,
+                                             options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create dirfile");
                 return -1;
@@ -576,8 +579,8 @@ int prepare_outfile(char *errmsg, int storage_option)
 
         case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
             storage = mcedata_dirfileseq_create(options.acq_filename,
-                    options.acq_interval,
-                    FS_DIGITS, 0);
+                                                options.acq_interval, FS_DIGITS, 0,
+                                                options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create dirfile sequencer");
                 return -1;
@@ -598,8 +601,7 @@ int prepare_outfile(char *errmsg, int storage_option)
         }
     } else {
         // In non-multisync, initialize the acq now.
-        error = mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage,
-                                   options.symlink);
+        error = mcedata_acq_create(acq, mce, 0, options.acq_cards, -1, storage);
         if (error != 0) {
             sprintf(errmsg, "Could not configure acquisition: %s",
                     mcelib_error_string(error));

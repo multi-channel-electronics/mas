@@ -48,6 +48,7 @@ typedef struct fileseq_struct {
 	char filename[MCE_LONG];
 	FILE *fout;
 	char basename[MCE_LONG];
+        const char *symlink;
 	int interval;
 	int digits;
 	int next_switch;
@@ -69,8 +70,8 @@ static int fileseq_cycle(mce_acq_t *acq, fileseq_t *f, int this_frame)
 		return -1;
 	}
 
-    /* Update the indirection, maybe */
-    mcelib_symlink(acq, f->filename);
+        /* Update the indirection, maybe */
+        mcelib_symlink(f->symlink, f->filename);
 
 	return 0;
 }
@@ -133,6 +134,7 @@ mcedata_storage_t fileseq_actions = {
 typedef struct flatfile_struct {
 
 	char filename[MCE_LONG];
+        const char *symlink;
 	int frame_size;
 #ifdef FILEOPS_BASIC
 	int fd;
@@ -154,8 +156,8 @@ static int flatfile_init(mce_acq_t *acq)
 		}
 	}
 
-    /* Update the indirection, maybe */
-    mcelib_symlink(acq, f->filename);
+        /* Update the indirection, maybe */
+        mcelib_symlink(f->symlink, f->filename);
 
 	return 0;
 }
@@ -264,7 +266,8 @@ mcedata_storage_t rambuff_actions = {
 */
 
 
-mcedata_storage_t* mcedata_flatfile_create(const char *filename)
+mcedata_storage_t* mcedata_flatfile_create(const char *filename,
+                                           const char *symlink)
 {
 	flatfile_t *f = (flatfile_t*)malloc(sizeof(flatfile_t));
 	mcedata_storage_t *storage = (mcedata_storage_t*)malloc(sizeof(mcedata_storage_t));
@@ -276,6 +279,11 @@ mcedata_storage_t* mcedata_flatfile_create(const char *filename)
 
 	memset(f, 0, sizeof(*f));
 	FILE_CLEAR(f);
+
+        if (symlink!=NULL && *symlink)
+            f->symlink = symlink;
+        else
+            f->symlink = NULL;
 
 	strcpy(f->filename, filename);
 	return storage;
@@ -312,7 +320,7 @@ void mcedata_flatfile_destroy(mce_acq_t *acq)
 */
 
 mcedata_storage_t* mcedata_fileseq_create(const char *basename, int interval,
-					 int digits)
+                                          int digits, const char *symlink)
 {
 	fileseq_t *f = (fileseq_t*)malloc(sizeof(fileseq_t));
 	mcedata_storage_t *storage = (mcedata_storage_t*)malloc(sizeof(mcedata_storage_t));
@@ -332,6 +340,11 @@ mcedata_storage_t* mcedata_fileseq_create(const char *basename, int interval,
 
 	f->interval = interval;
 	
+        if (symlink!=NULL && *symlink)
+            f->symlink = symlink;
+        else
+            f->symlink = NULL;
+
 	return storage;
 }
 

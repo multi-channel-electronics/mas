@@ -65,7 +65,8 @@ mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
 
 /* flatfile: frames are stored in a single data file */
 
-mcedata_storage_t* mcedata_flatfile_create(const char *filename);
+mcedata_storage_t* mcedata_flatfile_create(const char *filename,
+                                           const char *symlink);
 
 //void mcedata_flatfile_destroy(mce_acq_t *acq);
 
@@ -73,7 +74,7 @@ mcedata_storage_t* mcedata_flatfile_create(const char *filename);
 /* fileseq: frames are stored in a set of files, numbered sequentially */
 
 mcedata_storage_t* mcedata_fileseq_create(const char *basename, int interval,
-					  int digits);
+                                          int digits, const char *symlink);
 
 //void mcedata_fileseq_destroy(mce_acq_t *acq);
 
@@ -84,10 +85,11 @@ mcedata_storage_t* mcedata_storage_destroy(mcedata_storage_t *storage);
 /* Acquisition sessions - once the mce_acq_t is ready, setup the
    acquisition and go. */
 
-mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options);
+mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options,
+    const char *symlink);
 
 mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
-					     int digits, int options);
+    int digits, int options, const char *symlink);
 
 
 /* multisync storage class -- container for multiple storage objects */
@@ -100,7 +102,7 @@ int mcedata_multisync_add(mce_acq_t *multisync_acq,
 
 int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
 		       int options, int cards, int rows_reported, 
-		       mcedata_storage_t* storage, const char *symlink);
+		       mcedata_storage_t* storage);
 
 int mcedata_acq_destroy(mce_acq_t *acq);
 

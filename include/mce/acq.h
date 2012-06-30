@@ -93,8 +93,6 @@ struct mce_acq_struct {
 
 	frame_header_abstraction_t *header_description;
 
-  const char *symlink;
-	
 	int ready;
 };
 
