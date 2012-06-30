@@ -48,7 +48,7 @@ typedef struct fileseq_struct {
 	char filename[MCE_LONG];
 	FILE *fout;
 	char basename[MCE_LONG];
-        const char *symlink;
+        char symlink[MCE_LONG];
 	int interval;
 	int digits;
 	int next_switch;
@@ -134,7 +134,7 @@ mcedata_storage_t fileseq_actions = {
 typedef struct flatfile_struct {
 
 	char filename[MCE_LONG];
-        const char *symlink;
+        char symlink[MCE_LONG];
 	int frame_size;
 #ifdef FILEOPS_BASIC
 	int fd;
@@ -280,10 +280,8 @@ mcedata_storage_t* mcedata_flatfile_create(const char *filename,
 	memset(f, 0, sizeof(*f));
 	FILE_CLEAR(f);
 
-        if (symlink!=NULL && *symlink)
-            f->symlink = symlink;
-        else
-            f->symlink = NULL;
+	if (symlink!=NULL)
+	    strcpy(f->symlink, symlink);
 
 	strcpy(f->filename, filename);
 	return storage;
@@ -340,10 +338,8 @@ mcedata_storage_t* mcedata_fileseq_create(const char *basename, int interval,
 
 	f->interval = interval;
 	
-        if (symlink!=NULL && *symlink)
-            f->symlink = symlink;
-        else
-            f->symlink = NULL;
+	if (symlink!=NULL)
+	    strcpy(f->symlink, symlink);
 
 	return storage;
 }
