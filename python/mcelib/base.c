@@ -1,6 +1,11 @@
 /* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  *      vim: sw=4 ts=4 et tw=80
  */
+
+/*
+  Python+numpy wrappers for libmce.
+*/
+
 #include <Python.h>
 #include <numpy/arrayobject.h>
 
@@ -8,8 +13,10 @@
 #include <mce/defaults.h>
 
 /*
-  Catch-all Python class for general MCE use.  Holds a generic C
-  pointer (mce_context_t*), or an mce_param_t.
+  ptrobj
+
+  Catch-all Python class for general MCE use.  Encapsulates a generic
+  C pointer (often a mce_context_t*), or an mce_param_t.
 */
 
 typedef struct {
@@ -25,7 +32,7 @@ ptrobjType = {
     "ptrobj",                  /* tp_name */
     sizeof(ptrobj),            /* tp_basicsize */
     0,                         /* tp_itemsize */
-    0, //     (destructor)CountDict_dealloc, /* tp_dealloc */
+    0,                         /* tp_dealloc */
     0,                         /* tp_print */
     0,                         /* tp_getattr */
     0,                         /* tp_setattr */
@@ -48,15 +55,15 @@ ptrobjType = {
     0,                         /* tp_weaklistoffset */
     0,                         /* tp_iter */
     0,                         /* tp_iternext */
-    0, //     CountDict_methods,         /* tp_methods */
-    0, //     CountDict_members,         /* tp_members */
+    0,                         /* tp_methods */
+    0,                         /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */
     0,                         /* tp_descr_get */
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
-    0, //     (initproc)CountDict_init,  /* tp_init */
+    0,                         /* tp_init */
     0,                         /* tp_alloc */
     0,                         /* tp_new */
 };
@@ -81,8 +88,10 @@ static ptrobj *ptrobj_new(void *item)
     return p;
 }
 
+
 /*
-  Struct and methods for converting between python sequences and u32 arrays.
+  Struct and methods for converting between python sequences and u32
+  arrays.  This is primarily used for MCE command and reply payloads.
 */
 
 #define DATALET_MAX 900
@@ -94,6 +103,7 @@ typedef struct {
 static int datalet_decode(PyObject *o, datalet *d)
 {
     // Convert a PySequence to array of u32.
+    // Returns 0 on failure, 1 on success.
     int i;
     int n = PySequence_Length(o);
     if (n >= DATALET_MAX)
@@ -119,9 +129,12 @@ static PyObject* datalet_to_list(const datalet *d)
 }
 
 
+/*
+  Uh, you can test things using this trace function.
+*/
+
 static PyObject *trace(PyObject *self, PyObject *args)
 {
-
     PyArrayObject *array;
     double sum;
     int i, n;
@@ -146,6 +159,15 @@ static PyObject *trace(PyObject *self, PyObject *args)
     return PyFloat_FromDouble(sum);
 }
 
+/*
+  MCE stuff
+*/
+
+/*
+  mce_connect()
+
+  Make a connection, return an mce_context_t.
+*/
 
 static PyObject *mce_connect(PyObject *self, PyObject *args) {
     int device_index = -1;
@@ -163,6 +185,12 @@ static PyObject *mce_connect(PyObject *self, PyObject *args) {
 
 /*
   lookup
+
+  This is just a helper for read, write, etc.  "ocard" and "oparam"
+  must both be integers (corresponding to physical card+param), or
+  both be strings (corresponding to whatever).
+
+  Returns ptrobj(mce_param_t) on success, NULL on failure.
 */
 
 static PyObject *lookup(mce_context_t *mce,
@@ -171,22 +199,27 @@ static PyObject *lookup(mce_context_t *mce,
 {
     ptrobj *o = ptrobj_new(NULL);
     mce_param_t *p = &o->param;
+    // If these are both integers, 
     if (PyInt_Check(ocard) && PyInt_Check(oparam)) {
         p->card.id[0] = (int)PyInt_AsLong(ocard);
         p->card.card_count = 1;
         p->param.id = (int)PyInt_AsLong(oparam);
         p->param.count = 1;
     } else {
-        mcecmd_load_param(mce, p,
-                          PyString_AsString(ocard),
-                          PyString_AsString(oparam));
+        if (mcecmd_load_param(mce, p,
+                              PyString_AsString(ocard),
+                              PyString_AsString(oparam)) != 0) {
+            Py_DECREF(o);
+            return NULL;
+        }
     }
     return (PyObject *)o;
 }
 
 /*
-  mce_lookup
-  args: (mce_context_t, card, param)
+  mce_lookup(context, card, param)
+
+  Returns a ptrobj(mce_param_t), or None on failure.
 */
 
 static PyObject *mce_lookup(PyObject *self, PyObject *args)
@@ -197,18 +230,24 @@ static PyObject *mce_lookup(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O&OO",
                           ptrobj_decode, &mce,
                           &card, &param))
-        return NULL;
-    return (PyObject *)lookup(mce, card, param);
+        Py_RETURN_NONE;
+
+    PyObject *p = lookup(mce, card, param);
+    if (p == NULL)
+        Py_RETURN_NONE;
+    return p;
 }
 
 
 /*
-  mce_write
-  args: (mce_context_t, card, param, offset, vals)
+  mce_write(context, card, param, offset, vals)
+
+  Returns True on success, False on failure.
 */
 
 static PyObject *mce_write(PyObject *self, PyObject *args)
 {
+    int err;
     mce_context_t *mce;
     int offset;
     datalet vals;
@@ -220,19 +259,29 @@ static PyObject *mce_write(PyObject *self, PyObject *args)
                           &param,
                           &offset,
                           datalet_decode, &vals))
-        return NULL;
+        Py_RETURN_FALSE;
     p = (ptrobj *)lookup(mce, card, param);
-    mcecmd_write_range(mce, &p->param, offset, vals.data, vals.count);
-    Py_RETURN_NONE;
+    if (p == NULL)
+        Py_RETURN_FALSE;
+    
+    err = mcecmd_write_range(mce, &p->param, offset, vals.data, vals.count);
+    Py_DECREF(p);
+        
+    if (err==0)
+        Py_RETURN_TRUE;
+
+    Py_RETURN_FALSE;
 }
 
 /*
-  mce_read
-  args: (mce_context_t, card, param, offset, count)
+  mce_read(context, card, param, offset, count)
+
+  Returns list of data on success, None on failure.
 */
 
 static PyObject *mce_read(PyObject *self, PyObject *args)
 {
+    int err = 0;
     mce_context_t *mce;
     PyObject *card, *param;
     ptrobj *p;
@@ -244,16 +293,20 @@ static PyObject *mce_read(PyObject *self, PyObject *args)
                           &card, &param,
                           &offset,
                           &vals.count))
-        return NULL;
+        Py_RETURN_NONE;
     p = (ptrobj*)lookup(mce, card, param);
-
+    if (p == NULL)
+        Py_RETURN_NONE;
     if (vals.count < 0)
         vals.count = p->param.param.count - offset;
     vals.count = mcecmd_read_size(&p->param, vals.count);
 
-    mcecmd_read_range(mce, &p->param, offset, vals.data, vals.count);
+    err = mcecmd_read_range(mce, &p->param, offset, vals.data, vals.count);
+    Py_DECREF(p);
 
-    return datalet_to_list(&vals);
+    if (err==0)
+        return datalet_to_list(&vals);
+    Py_RETURN_NONE;
 }
 
 typedef struct {
@@ -275,11 +328,14 @@ static int frame_callback(unsigned long user_data, int size, u32 *data)
 
 
 /*
-  mce_read_data
-  args: (mce_context_t, card, count, dest)
+  mce_read_data(context, cards, count, dest)
+
+  Reads count frames of data from cards.  Stores them in numpy array
+  dest, which sure better be the right size.
+
+  Returns True on success, False on failure.
 */
 
-/* Untested!! */
 static PyObject *mce_read_data(PyObject *self, PyObject *args)
 {
     mce_context_t *mce;
@@ -299,12 +355,19 @@ static PyObject *mce_read_data(PyObject *self, PyObject *args)
     mcedata_storage_t *ramb = mcedata_rambuff_create( frame_callback,
                                                       (unsigned long)&f );
      
+    int err = 0;
     mce_acq_t acq;
-    mcedata_acq_create(&acq, mce, 0, cards, -1, ramb, NULL);
-    mcedata_acq_go(&acq, count);
-    mcedata_acq_destroy(&acq);
+    err = mcedata_acq_create(&acq, mce, 0, cards, -1, ramb, NULL);
+    if (err != 0) goto fail;
+    err = mcedata_acq_go(&acq, count);
+    if (err != 0) goto fail;
+    err = mcedata_acq_destroy(&acq);
+    if (err != 0) goto fail;
 
-    Py_RETURN_NONE;
+    Py_RETURN_TRUE;
+
+fail:
+    Py_RETURN_FALSE;    
 }
 
 

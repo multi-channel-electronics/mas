@@ -1,2 +1,20 @@
+# Use this tree's build by default!
 import sys
-sys.path.append('../build/lib.linux-i686-2.6')
+sys.path.insert(1, '../build/lib.linux-i686-2.6')
+
+# Did you build your edits?  Ask make if target is up-to-date
+import os
+err = os.system('make -q -C ..')
+if err != 0:
+    print '.. is out of date!  make?'
+    print
+
+# Utility:
+
+import time
+class timer:
+    def __init__(self):
+        self.t0 = time.time()
+    def get(self):
+        return time.time() - self.t0
+

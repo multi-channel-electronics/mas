@@ -80,21 +80,27 @@ class BasicMCE:
         # Decode cards list -- ends up as a list of card numbers [1,2]
         cards = self.card_list(cards)
         if cards == None:
-            raise RuntimeError, "bad cards specification."
+            raise ValueError, "Invalid card list %s" % str(cards)
         frame_size = self.frame_size(cards, n_rows)
         card_code = sum([1<<(c-1) for c in cards])
         # Create array, read.
-        data = numpy.zeros((count,frame_size),'int32')
-        mcelib.read_data(self.context, card_code, count, data)
+        data = numpy.empty((count,frame_size),'int32')
+        ok = mcelib.read_data(self.context, card_code, count, data)
+        if not ok:
+            return None
         return data
 
     def read_data(self, count=1, cards=None, fields=None, extract=False,
                   row_col=False, raw_frames=False):
-        cards = self.card_list(cards)
         d = MCEBinaryData()
+        # Get card list, but leave error checking to read_raw...
+        cards = self.card_list(cards)
+        # Load frame data
         d.data = self.read_raw(count, cards)
         if raw_frames:
             return d.data
+        if d.data == None:
+            return None
         # To go any further we need mce_data
         if mce_data == None:
             raise RuntimeError, "mce_data module is required to process data "\

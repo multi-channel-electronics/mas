@@ -9,10 +9,11 @@ MOD = pymce
 # Source files
 SOURCE = $(MOD)/__init__.py $(MOD)/basic.py base.c
 
-all: build
+all: .build
 
-build: $(SOURCE) _default_setup.py
+.build: $(SOURCE) _default_setup.py $(LIBDEP)
 	python setup.py build
+	touch .build
 
 install: default
 	python setup.py install
