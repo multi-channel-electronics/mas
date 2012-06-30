@@ -34,13 +34,11 @@ static int get_n_frames(mce_acq_t *acq);
 
 static int card_count(int cards);
 
-static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
-			     int cards);
+static int load_frame_params(mce_acq_t *acq, int cards);
 
-static int load_data_params(mce_context_t *context, mce_acq_t *acq,
-			    int cards);
+static int load_data_params(mce_acq_t *acq);
 
-static int load_ret_dat(mce_acq_t *acq, int cards);
+static int load_ret_dat(mce_acq_t *acq);
 
 /* static int cards_to_rcsflags(int c); */
 
@@ -55,30 +53,28 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	// Zero the structure!
 	memset(acq, 0, sizeof(*acq));
 
+    // Save context, options, etc.
+	acq->options = options;
+	acq->context = context;
+	acq->storage = storage;
+
 	// Load frame size parameters from MCE
-	ret_val = load_frame_params(context, acq, cards);
+	ret_val = load_frame_params(acq, cards);
 	if (ret_val != 0) return ret_val;
 	
 	// Load data description stuff
-	ret_val = load_data_params(context, acq, cards);
+	ret_val = load_data_params(acq);
 	if (ret_val != 0) return ret_val;
 
 	// Save frame size and other options
 	acq->frame_size = acq->rows * acq->cols * acq->n_cards + 
 		MCEDATA_HEADER + MCEDATA_FOOTER;
-	acq->options = options;
-	acq->context = context;
-	acq->storage = storage;
 
     if (symlink && !*symlink)
         acq->symlink = NULL;
     else
         acq->symlink = symlink;
 
-	// Lookup "rc# ret_dat" (go address) location or fail.
-	if (load_ret_dat(acq, cards) != 0)
-		return -MCE_ERR_FRAME_CARD;
-	
 	// Lookup "cc ret_dat_s" (frame count) or fail
 	if ((ret_val=mcecmd_load_param(
 		     acq->context, &acq->ret_dat_s, "cc", "ret_dat_s")) != 0) {
@@ -220,8 +216,7 @@ static int get_n_frames(mce_acq_t *acq)
 }
 
 
-static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
-			     int cards)
+static int load_frame_params(mce_acq_t *acq, int cards)
 {
 	/* Determine frame size parameters
 	      acq->rows     number of rows returning data
@@ -238,14 +233,14 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 	   "rcs_to_report_data" register and recasting the result into
 	   the MCEDATA_RC? bit-mask form.
 	*/
-
+    mce_context_t *context = acq->context;
 	mce_param_t para_nrow, para_ncol, para_0, para_rcs;
 	u32 data[64];
 	int fw_rectangle = 0;         //firmware supports rectangle readout
-	int fw_rcsflags = 0;          //firmware supports rcs_to_report_data
+	int rcs_cards = 0;            //cards that rcs would return.
 	int ret_val = 0;
 	int i;
-	
+
 	/* Load MCE parameters to determine fw_* supported by this firmware */
 	if (mcecmd_load_param(context, &para_nrow, "cc",
 			      "num_rows_reported") != 0) {
@@ -256,21 +251,33 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 		fw_rectangle = 1;
 	}
 	if ((ret_val=mcecmd_load_param(context, &para_rcs, "cc",
-				       "rcs_to_report_data")) == 0)
-		fw_rcsflags = 1;
+                  "rcs_to_report_data")) == 0) {
+        if (mcecmd_read_block(context, &para_rcs, 1, data) != 0)
+            return -MCE_ERR_FRAME_DEVICE; // Close enough
+        rcs_cards = rcsflags_to_cards((int)data[0]);
+    } else
+        rcs_cards = MCEDATA_RCS; // Old firmware default.
 
-	/* Determine cards that will be returning data */
+    /* Validate card selection, set acq->cards and acq->n_cards. */
 	if (cards <= 0) {
-		acq->cards = MCEDATA_RCS;
-		if (fw_rcsflags) {
-			if (mcecmd_read_block(context, &para_rcs, 1, data) != 0)
-				return -MCE_ERR_FRAME_COLS;
-			acq->cards = rcsflags_to_cards((int)data[0]);
-		}
+        /* Assume RCS. */
+		acq->cards = rcs_cards;
+        acq->n_cards = card_count(acq->cards);
 	} else {
-		acq->cards = (cards & MCEDATA_RCS);
+        acq->cards = cards & MCEDATA_RCS;
+        acq->n_cards = card_count(acq->cards);
+        /* Single card is ok; otherwise insist on RCS match. */
+        if (acq->n_cards != 1 && acq->cards != rcs_cards) {
+            fprintf(stderr, "Invalid card set selection [%#x]\n", cards);
+            return -MCE_ERR_FRAME_CARD;
+        }
 	}
-	acq->n_cards = card_count(acq->cards);
+
+    /* Since we think we understand acq->cards, look up ret_dat. */
+    if (load_ret_dat(acq) != 0) {
+        fprintf(stderr, "Failed to find ret_data for card selection [%#x]\n", cards);
+        return -MCE_ERR_FRAME_CARD;
+    }
 
 	/* Determine cols and rows reported */
 	acq->cols = MCEDATA_COLUMNS;
@@ -306,24 +313,15 @@ static int load_frame_params(mce_context_t *context, mce_acq_t *acq,
 }
 
 
-static int load_data_params(mce_context_t *context, mce_acq_t *acq,
-			    int cards)
+static int load_data_params(mce_acq_t *acq)
 {
 	/* Determine data content parameters
 	      acq->data_mode  per-card data_mode settings
 	      (eventually, full rectangle mode support will go here)
-
-	   If cards < 0 then acq->cards is used instead.  i.e. call 
-	   load_frame_params first if you want guessing to happen.
 	*/
 	mce_param_t para;
 	u32 data[64];
 	int i;
-	
-	/* Determine cards that will be returning data */
-	if (cards <= 0) {
-		cards = acq->cards;
-	}
 	
 	// Load data_modes from each card.
 	for (i=0; i<MCEDATA_CARDS; i++) {
@@ -332,9 +330,9 @@ static int load_data_params(mce_context_t *context, mce_acq_t *acq,
 			continue;
 		sprintf(rc, "rc%i", 1+i);
 		acq->data_mode[i] = 0;
-		if ((mcecmd_load_param(context, &para, rc,
+		if ((mcecmd_load_param(acq->context, &para, rc,
 				  "data_mode")==0) &&
-		    (mcecmd_read_block(context, &para, 1, data)==0))
+		    (mcecmd_read_block(acq->context, &para, 1, data)==0))
 			acq->data_mode[i] = data[0];
 		else {
 			acq->data_mode[i] = -1;
@@ -345,13 +343,15 @@ static int load_data_params(mce_context_t *context, mce_acq_t *acq,
 }
 
 
-int load_ret_dat(mce_acq_t *acq, int cards)
+int load_ret_dat(mce_acq_t *acq)
 {
-	/* Return value is non-zero on error, but is not an mcelib error code! */
-	if (cards <=0 || acq->cards==MCEDATA_RCS) {
-		return mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
-	}
-	
+	/* Return value is non-zero on error, but is not an mcelib error
+     * code!  Note this can't do error checking on multi-card
+     * selections; but validity (compared with rcs_to_report_data) has
+     * already been checked.  So this just assumes "rcs" for
+     * any multi-card case.
+     */
+
 	// Lookup the go command location for the specified card set.
 	switch (acq->cards) {
 	case MCEDATA_RC1:
@@ -363,10 +363,9 @@ int load_ret_dat(mce_acq_t *acq, int cards)
 	case MCEDATA_RC4:
 		return mcecmd_load_param(acq->context, &acq->ret_dat, "rc4", "ret_dat");
 	}
-
-	fprintf(stderr, "Invalid card set selection [%#x]\n",
-		acq->cards);
-	return -1;
+    
+    // Multi-card? Return RCS.
+    return mcecmd_load_param(acq->context, &acq->ret_dat, "rcs", "ret_dat");
 }
 
 
