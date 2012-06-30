@@ -143,7 +143,7 @@ mascmdtree_opt_t root_opts[] = {
         flat_args},
     { SEL_NO, "ACQ_CONFIG_DIRFILE_FS", 3, 3, SPECIAL_ACQ_CONFIG_DIRFILESEQ,
         fs_args},
-    { SEL_NO, "ACQ_LINK", 1, 1, SPECIAL_ACQ_LINK, string_opts},
+    { SEL_NO, "ACQ_LINK", 0, 1, SPECIAL_ACQ_LINK, string_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
     { SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
     { SEL_NO, "ACQ_MULTI_BEGIN", 0, 0, SPECIAL_ACQ_MULTI_BEGIN, NULL},
@@ -214,7 +214,7 @@ int  bit_count(int k);
 int  menuify_mceconfig(mascmdtree_opt_t *opts);
 
 int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
-        char *errmsg);
+                    int n_args, char *errmsg);
 
 int pathify_filename(char *dest, const char *src);
 
@@ -371,7 +371,7 @@ int  main(int argc, char **argv)
                     err = -1;
                 }
             } else {
-                err = process_command(root_opts, args, errmsg);
+                err = process_command(root_opts, args, count, errmsg);
                 if (err==0) err = 1;
             }
         }
@@ -630,7 +630,7 @@ int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
 
 
 int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
-        char *errmsg)
+                    int n_args, char *errmsg)
 {
     int ret_val = 0;
     int err = 0;
@@ -857,8 +857,11 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 break;
 
             case SPECIAL_ACQ_LINK:
-                mascmdtree_token_word(s, tokens + 1);
-                pathify_filename(options.symlink, s);
+                if (n_args > 1) {
+                    mascmdtree_token_word(s, tokens + 1);
+                    pathify_filename(options.symlink, s);
+                } else
+                    options.symlink[0] = 0;
                 break;
 
             case SPECIAL_ACQ_PATH:
