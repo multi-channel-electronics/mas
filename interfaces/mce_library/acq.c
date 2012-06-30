@@ -595,6 +595,7 @@ static int rcsflags_to_cards(int c)
 
 int mcelib_symlink(const mce_acq_t *acq, const char *target)
 {
+    int err = 0;
     char *tmp;
 
     if (acq->symlink == NULL)
@@ -614,11 +615,10 @@ int mcelib_symlink(const mce_acq_t *acq, const char *target)
 
         if (tmp[0] == 0)
             break;
-        if (symlink(target, tmp) == 0)
-            break;
-    } while (errno == EEXIST);
+        err = symlink(target, tmp);
+    } while (err != 0 && errno == EEXIST);
 
-    if (errno) {
+    if (err != 0) {
         free(tmp);
         return 1;
     }
