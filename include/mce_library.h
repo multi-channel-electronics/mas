@@ -36,6 +36,6 @@ void mcelib_destroy(mce_context_t* context);
 /* Error look-up, versioning */
 
 char* mcelib_error_string(int error);
-char* mcelib_version();
+char* mcelib_version(void);
 
 #endif
