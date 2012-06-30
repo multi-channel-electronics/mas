@@ -568,7 +568,6 @@ int prepare_outfile(char *errmsg, int storage_option)
             break;
 
         case SPECIAL_ACQ_CONFIG_DIRFILE:
-            printf("symlink %s\n", options.symlink);
             storage = mcedata_dirfile_create(options.acq_filename, 0,
                                              options.symlink);
             if (storage == NULL) {
