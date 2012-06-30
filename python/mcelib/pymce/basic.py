@@ -92,7 +92,7 @@ class BasicMCE:
 
     def read_data(self, count=1, cards=None, fields=None, extract=False,
                   row_col=False, raw_frames=False):
-        d = MCEBinaryData()
+        d = MCEBinaryData(mce=self)
         # Get card list, but leave error checking to read_raw...
         cards = self.card_list(cards)
         # Load frame data
@@ -106,10 +106,13 @@ class BasicMCE:
             raise RuntimeError, "mce_data module is required to process data "\
                 "(pass raw_frames=True to suppress)."
         d.fast_axis = 'dets'
-        d._GetPayloadInfo(self, cards, d.data.shape[-1])
+        # head_binary needed for _ReadHeader, called by GetPayloadInfo
+        d._ReadHeader(head_binary=d.data[0,:43])
+        d._GetPayloadInfo()
         d.headers = d.data[:,:43]
         d.data = d.data[:,43:-1]
         if extract or row_col:
+            d._GetContentInfo()
             dm_data = mce_data.MCE_data_modes.get('%i'%d.data_mode)
             if dm_data.raw:
                 # 50 MHz data; automatically contiguous
@@ -129,6 +132,9 @@ class BasicMCE:
 """
 The MCEBinaryData object is based on SmallMCEFile, because that class
 knows how to unpack frame data.
+
+Someday, SmallMCEFile sould return one of these, instead of sort of
+being one of these.
 """
 
 class MCEBinaryData(mce_data.SmallMCEFile):
@@ -136,26 +142,28 @@ class MCEBinaryData(mce_data.SmallMCEFile):
     headers = None
     fast_axis = None  # axis -1; either 'time' or 'dets'
 
-    def __init__(self):
+    def __init__(self, mce=None, head_binary=None):
         mce_data.SmallMCEFile(self, runfile=False, basic_info=False)
+        self.mce = mce
+        self.runfile = 'fake'
+        self.filename = None
+        self.header = None
+        self.n_ro = 1
+        if head_binary != None:
+            self._ReadHeader(head_binary=self.head_binary)
         
-    def _GetPayloadInfo(self, mce, cards, frame_size):
-        self.n_rc = len(cards)
-        rc = 'rc%i' % cards[0]
-        mult1 = mce.read('cc', 'num_rows_reported')[0]
-        mult2 = mce.read('cc', 'num_cols_reported')[0]
-        self.n_rows = mce.read(rc, 'num_rows_reported')[0]
-        self.n_cols = mce.read(rc, 'num_cols_reported')[0]
-        self.rc_step = mult2
-        self.size_ro = mult1*mult2
-        self.frame_bytes = frame_size * 4
-        self.data_mode = mce.read(rc, 'data_mode')[0]
-
     def extract(self, field):
         dm_data = mce_data.MCE_data_modes.get('%i'%self.data_mode)
         if not isinstance(field, str):
             return [self.get_field(f) for f in field]
         return dm_data[field].extract(self.data)
+
+    # Replace _rfMCEParam, and load stuff right from the MCE
+    def _rfMCEParam(self, card, param, array=False, check_sys=True):
+        data = self.mce.read(card, param)
+        if len(data) == 1 and not array:
+            return data[0]
+        return data
 
 class DataMCE(BasicMCE):
     def read_data(self, count, cards=None, fields=None, extract=False,
