@@ -111,9 +111,12 @@ class BasicMCE:
         d._GetPayloadInfo()
         d.headers = d.data[:,:43]
         d.data = d.data[:,43:-1]
+        d._GetContentInfo()
+        dm_data = mce_data.MCE_data_modes.get('%i'%d.data_mode)
+        d.fields = [x for x in dm_data.fields]
+        if not extract and not row_col and fields==None:
+            return d
         if extract or row_col:
-            d._GetContentInfo()
-            dm_data = mce_data.MCE_data_modes.get('%i'%d.data_mode)
             if dm_data.raw:
                 # 50 MHz data; automatically contiguous
                 d.data = d._ExtractRaw(d.data, dm_data.raw_info['n_cols'])
@@ -154,6 +157,10 @@ class MCEBinaryData(mce_data.SmallMCEFile):
         
     def extract(self, field):
         dm_data = mce_data.MCE_data_modes.get('%i'%self.data_mode)
+        if field == 'default':
+            field = dm_data.fields[0]
+        elif field == 'all':
+            field = dm_data.fields
         if not isinstance(field, str):
             return [self.get_field(f) for f in field]
         return dm_data[field].extract(self.data)
@@ -164,35 +171,3 @@ class MCEBinaryData(mce_data.SmallMCEFile):
         if len(data) == 1 and not array:
             return data[0]
         return data
-
-class DataMCE(BasicMCE):
-    def read_data(self, count, cards=None, fields=None, extract=False,
-                  row_col=False, raw_frames=False):
-        cards = self.card_list(cards)
-        d = MCEBinaryData()
-        d.data = self.read_raw(count, cards)
-        if raw_frames:
-            return d.data
-        # To go any further we need mce_data
-        if mce_data == None:
-            raise RuntimeError, "mce_data module is required to process data "\
-                "(pass raw_frames=True to suppress)."
-        d.fast_axis = 'dets'
-        d._GetPayloadInfo(self, cards, d.data.shape[-1])
-        d.headers = d.data[:,:43]
-        d.data = d.data[:,43:-1]
-        if extract or row_col:
-            dm_data = mce_data.MCE_data_modes.get('%i'%d.data_mode)
-            if dm_data.raw:
-                # 50 MHz data; automatically contiguous
-                d.data = d._ExtractRaw(d.data, dm_data.raw_info['n_cols'])
-            else:
-                # Rectangle mode data
-                d.data = d._ExtractRect(d.data, None)
-                if row_col:
-                    d.data.shape = (d.n_rows, d.n_cols*d.n_rc, -1)
-            d.fast_axis = 'time'
-        if fields != None:
-            return d.extract(fields)
-        return d
-
