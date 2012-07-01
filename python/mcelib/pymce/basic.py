@@ -91,7 +91,7 @@ class BasicMCE:
         return data
 
     def read_data(self, count=1, cards=None, fields=None, extract=False,
-                  row_col=False, raw_frames=False):
+                  row_col=False, raw_frames=False, unfilter=False):
         d = MCEBinaryData(mce=self)
         # Get card list, but leave error checking to read_raw...
         cards = self.card_list(cards)
@@ -127,7 +127,7 @@ class BasicMCE:
                     d.data.shape = (d.n_rows, d.n_cols*d.n_rc, -1)
             d.fast_axis = 'time'
         if fields != None:
-            return d.extract(fields)
+            return d.extract(fields, unfilter=unfilter)
         return d
 
         
@@ -155,7 +155,7 @@ class MCEBinaryData(mce_data.SmallMCEFile):
         if head_binary != None:
             self._ReadHeader(head_binary=self.head_binary)
         
-    def extract(self, field):
+    def extract(self, field, unfilter=False):
         dm_data = mce_data.MCE_data_modes.get('%i'%self.data_mode)
         if field == 'default':
             field = dm_data.fields[0]
@@ -163,7 +163,13 @@ class MCEBinaryData(mce_data.SmallMCEFile):
             field = dm_data.fields
         if not isinstance(field, str):
             return [self.get_field(f) for f in field]
-        return dm_data[field].extract(self.data)
+        data = dm_data[field].extract(self.data)
+        if field == 'fb_filt' and unfilter == 'DC':
+            ftype = self.mce.read('rc1', 'fltr_type')[0]
+            fpara = self.mce.read('rc1', 'fltr_coeff')
+            filt = mce_data.MCEButterworth.from_params(ftype, fpara)
+            return data / filt.gain()
+        return data
 
     # Replace _rfMCEParam, and load stuff right from the MCE
     def _rfMCEParam(self, card, param, array=False, check_sys=True):
