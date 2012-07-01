@@ -357,7 +357,7 @@ static PyObject *mce_read_data(PyObject *self, PyObject *args)
      
     int err = 0;
     mce_acq_t acq;
-    err = mcedata_acq_create(&acq, mce, 0, cards, -1, ramb, NULL);
+    err = mcedata_acq_create(&acq, mce, 0, cards, -1, ramb);
     if (err != 0) goto fail;
     err = mcedata_acq_go(&acq, count);
     if (err != 0) goto fail;
