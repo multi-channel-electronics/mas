@@ -23,6 +23,7 @@ USAGE_OPTION_N \
 "  -f <output filename>   filename for output (stdout by default)\n"\
 "  -s                     snapshot style, civilized output\n"\
 "  -g                     dump parameter mapping\n"\
+"  -d                     Dirfile mode\n"\
 "\n"\
 "  -v                     print version string and exit\n"\
 ""
@@ -33,7 +34,7 @@ int process_options(options_t* options, int argc, char **argv)
 	char *s;
 #endif
 	int option;
-	while ( (option = getopt(argc, argv, "?hn:c:m:o:f:gvs")) >=0) {
+    while ( (option = getopt(argc, argv, "?hn:c:m:o:f:gvsd")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -82,6 +83,10 @@ int process_options(options_t* options, int argc, char **argv)
 		case 's':
 			options->mode = CRAWLER_MAS;
 			break;
+
+        case 'd':
+            options->mode = CRAWLER_DRF;
+            break;
 
 		case 'v':
 			printf("This is %s, version %s, using mce library version %s\n",

@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -29,11 +32,12 @@ int mas_crawler(options_t *options, crawler_t *crawler)
 
 	crawler->init = mas_init;
 	crawler->cleanup = mas_cleanup;
+    crawler->card = NULL;
 	crawler->item = mas_item;
 
 	crawler->user_data = (unsigned long) mas;
 
-	return 0;	
+	return 0;
 }
 
 int  mas_init(unsigned long user_data, const options_t *options)

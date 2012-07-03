@@ -85,6 +85,10 @@ int main(int argc, char **argv)
             cfg_crawler(&options, &crawler);
             break;
 
+        case CRAWLER_DRF:
+            dirfile_crawler(&options, &crawler);
+            break;
+
         default:
             fprintf(stderr, "Craler not implemented.\n");
             return 1;
@@ -124,6 +128,9 @@ int crawl_festival(crawler_t *crawler)
             fprintf(stderr, "Problem loading card data at index %i\n", i);
             return -1;
         }
+
+        if (crawler->card)
+            crawler->card(crawler->user_data, c);
 
         for (j=0; mceconfig_card_param(options.context, c, j, p)==0; j++) {
             if (crawler->item != NULL)

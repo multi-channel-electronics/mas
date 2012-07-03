@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdlib.h>
 #include <string.h>
 #include "mce_status.h"
@@ -27,11 +30,12 @@ int das_crawler(options_t *options, crawler_t *crawler)
 
 	crawler->init = das_init;
 	crawler->cleanup = das_cleanup;
+    crawler->card = NULL;
 	crawler->item = das_item;
 
 	crawler->user_data = (unsigned long) das;
 
-	return 0;	
+	return 0;
 }
 
 int  das_init(unsigned long user_data, const options_t *options)

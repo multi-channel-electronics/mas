@@ -11,7 +11,7 @@ LIBRARY=$(MCE_LIBS)
 
 CFLAGS += $(DEFS)
 
-OBJECTS = mce_status.o options.o das.o mas.o cfg_dump.o
+OBJECTS = mce_status.o options.o das.o mas.o cfg_dump.o dirfile.o
 HEADERS = mce_status.h das.h mas.h cfg_dump.h ../../defaults/config.h \
 					$(LIBHEADERS)
 
