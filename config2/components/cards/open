@@ -51,11 +51,13 @@
                 {
                     name = "card_id";
                     id = 0x93;
+                    hex = 1;
                 },
 
                 {
                     name = "card_type";
                     id = 0x94;
+                    hex = 1;
                 },
 
                 {
@@ -72,6 +74,7 @@
                 {
                     name = "led";
                     id = 0x99;
+                    hex = 1;
                 },
 
                 {
