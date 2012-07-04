@@ -39,8 +39,8 @@ static int dirfile_init(unsigned long user_data, const options_t *options)
     fprintf(dirfile->out, "# Author:     %s\n", getenv("USER"));
     fprintf(dirfile->out, "# Host:       %s\n", hostname);
 
-    /* Dirfile Standards Version >= 8 required for hex output */
-    fprintf(dirfile->out, "/VERSION 8\n");
+    /* Dirfile Standards Version >= 9 required for hex output */
+    fprintf(dirfile->out, "/VERSION 9\n");
     return 0;
 }
 
@@ -74,7 +74,7 @@ static int dirfile_item(unsigned long user_data, const mce_param_t *p)
     // Read some data
     int err = mcecmd_read_block(dirfile->options->context,
             p, p->param.count, buf);
-    if ( err ) {
+    if (err) {
         fprintf(dirfile->out, "# %s/%s ERROR\n", p->card.name, p->param.name);
         dirfile->error_count++;
     } else {
@@ -87,9 +87,9 @@ static int dirfile_item(unsigned long user_data, const mce_param_t *p)
             fprintf(dirfile->out, "CARRAY");
 
         if (p->param.flags & MCE_PARAM_HEX)
-            fprintf(dirfile->out, " UINT32");
+            fprintf(dirfile->out, " UINT16");
         else
-            fprintf(dirfile->out, " INT32");
+            fprintf(dirfile->out, " INT16");
 
         for (i = 0; i < p->param.count * p->card.card_count; i++) {
             if (p->param.flags & MCE_PARAM_HEX) {
