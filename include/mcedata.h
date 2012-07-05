@@ -86,10 +86,10 @@ mcedata_storage_t* mcedata_storage_destroy(mcedata_storage_t *storage);
    acquisition and go. */
 
 mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options,
-    const char *symlink);
+    const char *include, const char *symlink);
 
 mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
-    int digits, int options, const char *symlink);
+    int digits, int options, const char *include, const char *symlink);
 
 
 /* multisync storage class -- container for multiple storage objects */

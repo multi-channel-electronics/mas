@@ -50,6 +50,7 @@ typedef struct dirfile_struct {
 	int flush;
 
 	char basename[MCE_LONG];
+    char include[MCE_LONG];
     char symlink[MCE_LONG];
 	char format[MCE_LONG];
 
@@ -181,12 +182,16 @@ int write_format_file(dirfile_t* f)
 {
 	char filename[MCE_LONG];
 	FILE* format;
+    FILE *infile = NULL;
 	int i;
 
 	strcpy(filename, f->basename);
 	strcat(filename, "format");
 	format = fopen(filename, "w");
-	if (format == NULL) return -1;
+    if (format == NULL) {
+        perror("fopen");
+        return -1;
+    }
 
 	for (i=0; i<f->channel_count; i++) {
 		if (f->channels[i].has_sign) {
@@ -243,7 +248,37 @@ int write_format_file(dirfile_t* f)
 
 	}
 
+    /* extra stuff from the user, if any */
+    if (f->include) {
+        /* open the input here, just to verify it exists */
+        infile = fopen(f->include, "r");
+        if (infile != NULL)
+            fprintf(format, "\n\n#Extra metadata\nINCLUDE format.extra\n");
+        else
+            fprintf(stderr, "can't open %s for input: %m", f->include);
+    }
+
 	fclose(format);
+
+    /* copy the extra stuff from the user, if any */
+    if (infile) {
+        size_t n;
+        char buffer[MCE_LONG];
+        /* output */
+        strcat(filename, ".extra");
+        format = fopen(filename, "w");
+        if (format == NULL) {
+            perror("fopen");
+            return -1;
+        }
+
+        /* copy */
+        while ((n = fread(buffer, 1, MCE_LONG, infile)) > 0)
+            fwrite(buffer, 1, n, format);
+        fclose(format);
+        fclose(infile);
+    }
+
 	return 0;
 }
 
@@ -484,7 +519,7 @@ mcedata_storage_t dirfile_actions = {
 
 
 mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options,
-                                          const char *symlink)
+        const char *include, const char *symlink)
 {
 	dirfile_t *f = (dirfile_t*)malloc(sizeof(dirfile_t));
 	mcedata_storage_t *storage =
@@ -497,8 +532,10 @@ mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options,
 
 	memset(f, 0, sizeof(*f));
 	strcpy(f->basename, basename);
-        if (symlink!=NULL)
-            strcpy(f->symlink, symlink);
+    if (symlink != NULL)
+        strcpy(f->symlink, symlink);
+    if (include != NULL)
+        strcpy(f->include, include);
 	return storage;
 }
 
@@ -523,6 +560,7 @@ typedef struct dirfileseq_struct {
 	int frame_count;
 	char format[MCE_LONG];
 	char symlink[MCE_LONG];
+	char include[MCE_LONG];
 } dirfileseq_t;
 
 
@@ -544,6 +582,7 @@ static int dirfileseq_cycle(mce_acq_t *acq, dirfileseq_t *f, int this_frame)
 	f->active_idx = new_idx;
 	sprintf(f->active_dirfile.basename, f->format, new_idx);
     strcpy(f->active_dirfile.symlink, f->symlink);
+    strcpy(f->active_dirfile.include, f->include);
 	return dirfile_init(acq);
 }
 
@@ -596,7 +635,7 @@ mcedata_storage_t dirfileseq_actions = {
 };
 
 mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
-                                             int digits, int options, const char *symlink)
+        int digits, int options, const char *include, const char *symlink)
 {
 	dirfileseq_t *f = (dirfileseq_t*)malloc(sizeof(dirfileseq_t));
 
@@ -617,8 +656,10 @@ mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
 	// Produce format like "basename.%03i"
 	sprintf(f->format, "%s.%%0%ii", basename, f->digits);
 	
-        if (symlink!=NULL)
-            strcpy(f->symlink, symlink);
+    if (include!=NULL)
+        strcpy(f->include, include);
+    if (symlink!=NULL)
+        strcpy(f->symlink, symlink);
 
 	return storage;
 }

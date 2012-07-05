@@ -48,6 +48,7 @@ enum {
 	SPECIAL_ACQ_CONFIG_FS,
 	SPECIAL_ACQ_CONFIG_DIRFILE,
 	SPECIAL_ACQ_CONFIG_DIRFILESEQ,
+    SPECIAL_ACQ_DIRFILE_INC,
 	SPECIAL_ACQ_FLUSH,
 	SPECIAL_ACQ_MULTI_BEGIN,
 	SPECIAL_ACQ_MULTI_END,
@@ -143,6 +144,7 @@ mascmdtree_opt_t root_opts[] = {
         flat_args},
     { SEL_NO, "ACQ_CONFIG_DIRFILE_FS", 3, 3, SPECIAL_ACQ_CONFIG_DIRFILESEQ,
         fs_args},
+    { SEL_NO, "ACQ_DIRFILE_INC", 1, 1, SPECIAL_ACQ_DIRFILE_INC, string_opts},
     { SEL_NO, "ACQ_LINK", 0, 1, SPECIAL_ACQ_LINK, string_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
     { SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
@@ -569,7 +571,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 
         case SPECIAL_ACQ_CONFIG_DIRFILE:
             storage = mcedata_dirfile_create(options.acq_filename, 0,
-                                             options.symlink);
+                    options.dirfile_include, options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create dirfile");
                 return -1;
@@ -578,8 +580,8 @@ int prepare_outfile(char *errmsg, int storage_option)
 
         case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
             storage = mcedata_dirfileseq_create(options.acq_filename,
-                                                options.acq_interval, FS_DIGITS, 0,
-                                                options.symlink);
+                    options.acq_interval, FS_DIGITS, 0,
+                    options.dirfile_include, options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create dirfile sequencer");
                 return -1;
@@ -853,6 +855,12 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 if (acq && acq->storage->flush != NULL) {
                     acq->storage->flush(acq);
                 }
+                break;
+
+            case SPECIAL_ACQ_DIRFILE_INC:
+                /* this doesn't get run through pathify_filename because it's
+                 * an input file, not an output */
+                mascmdtree_token_word(options.dirfile_include, tokens + 1);
                 break;
 
             case SPECIAL_ACQ_LINK:
