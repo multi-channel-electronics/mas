@@ -16,6 +16,7 @@ typedef struct {
 static int dirfile_init(unsigned long user_data, const options_t *options)
 {
     char hostname[MCE_LONG];
+    char pretty_time[MCE_LONG];
     time_t t = time(NULL);
 
     dirfile_t *dirfile = (dirfile_t*)user_data;
@@ -33,14 +34,20 @@ static int dirfile_init(unsigned long user_data, const options_t *options)
     else
         hostname[MCE_LONG - 1] = 0;
 
-    fprintf(dirfile->out, "# ctime:      %u\n", (unsigned)t);
-    /* Note that ctime string carries its own '\n' */
-    fprintf(dirfile->out, "# Date (UTC): %s", asctime(gmtime(&t)));
-    fprintf(dirfile->out, "# Author:     %s\n", getenv("USER"));
-    fprintf(dirfile->out, "# Host:       %s\n", hostname);
+    strftime(pretty_time, MCE_LONG, "%a %e %b %T UTC %Y", gmtime(&t));
 
     /* Dirfile Standards Version >= 8 required for CARRAY */
-    fprintf(dirfile->out, "/VERSION 8\n");
+    fprintf(dirfile->out, "/VERSION 8\n\n");
+
+    fprintf(dirfile->out, "mce_status         STRING      \"mce status\"\n");
+    fprintf(dirfile->out, "mce_status/ctime   CONST UINT64 %u\n", (unsigned)t);
+    fprintf(dirfile->out, "mce_status/date    STRING      \"%s\"\n",
+            pretty_time);
+    fprintf(dirfile->out, "mce_status/author  STRING      \"%s\"\n",
+            getenv("USER"));
+    fprintf(dirfile->out, "mce_status/host    STRING      \"%s\"\n", hostname);
+    fprintf(dirfile->out, "mce_status/version STRING      \"%s\"\n",
+            VERSION_STRING);
     return 0;
 }
 
