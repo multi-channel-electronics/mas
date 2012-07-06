@@ -39,8 +39,8 @@ static int dirfile_init(unsigned long user_data, const options_t *options)
     fprintf(dirfile->out, "# Author:     %s\n", getenv("USER"));
     fprintf(dirfile->out, "# Host:       %s\n", hostname);
 
-    /* Dirfile Standards Version >= 9 required for hex output */
-    fprintf(dirfile->out, "/VERSION 9\n");
+    /* Dirfile Standards Version >= 8 required for CARRAY */
+    fprintf(dirfile->out, "/VERSION 8\n");
     return 0;
 }
 
@@ -93,7 +93,7 @@ static int dirfile_item(unsigned long user_data, const mce_param_t *p)
 
         for (i = 0; i < p->param.count * p->card.card_count; i++) {
             if (p->param.flags & MCE_PARAM_HEX) {
-                fprintf(dirfile->out, " %#x", buf[i]);
+                fprintf(dirfile->out, " %u", buf[i]);
             } else {
                 fprintf(dirfile->out, " %i", buf[i]);
             }
