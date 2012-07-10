@@ -151,19 +151,19 @@ mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "LOCK_REPLIES",   0,0, SPECIAL_REPLY_LOCK, NULL},
 	{ SEL_NO, "UNLOCK_REPLIES", 0,0, SPECIAL_REPLY_UNLOCK, NULL},
 	{ SEL_NO, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
-	{ SEL_NO, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
 	{ SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
     { SEL_NO, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
     { SEL_NO, "ACQ_CONFIG_DIRFILE", 2, 2, SPECIAL_ACQ_CONFIG_DIRFILE,
         flat_args},
     { SEL_NO, "ACQ_CONFIG_DIRFILE_FS", 3, 3, SPECIAL_ACQ_CONFIG_DIRFILESEQ,
         fs_args},
-    { SEL_NO, "ACQ_OPTION", 3, -1, SPECIAL_ACQ_OPTION, option_opts},
-    { SEL_NO, "ACQ_LINK",  0, 1, SPECIAL_ACQ_LINK, string_opts},
-    { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
     { SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
+    { SEL_NO, "ACQ_LINK",  0, 1, SPECIAL_ACQ_LINK, string_opts},
+    { SEL_NO, "ACQ_GO"  , 1, 1, SPECIAL_ACQ     , integer_opts},
     { SEL_NO, "ACQ_MULTI_BEGIN", 0, 0, SPECIAL_ACQ_MULTI_BEGIN, NULL},
     { SEL_NO, "ACQ_MULTI_END", 0, 0, SPECIAL_ACQ_MULTI_END, NULL},
+    { SEL_NO, "ACQ_OPTION", 3, -1, SPECIAL_ACQ_OPTION, option_opts},
+    { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
 	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
 	{ SEL_NO, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
@@ -651,11 +651,9 @@ int process_dirfile_option(mascmdtree_token_t *tokens, char *errmsg) {
             /* this doesn't get run through pathify_filename because it's
              * an input file, not an output */
             mascmdtree_token_word(options.dirfile_include, tokens + 1);
-            printf("include=%s\n", options.dirfile_include);
             break;
         case SPECIAL_DIROPT_SPF:
             options.dirfile_spf = tokens[1].value;
-            printf("spf=%i\n", options.dirfile_spf);
             break;
         default:
             sprintf(errmsg, "Unhandled ACQ_OPTION DIRFILE parameter: %i\n",
