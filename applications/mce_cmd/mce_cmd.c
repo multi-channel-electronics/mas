@@ -592,6 +592,9 @@ int prepare_outfile(char *errmsg, int storage_option)
                 sprintf(errmsg, "Could not create dirfile");
                 return -1;
             }
+            /* reset options */
+            options.dirfile_include[0] = 0;
+            options.dirfile_spf = 1;
             break;
 
         case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
@@ -603,6 +606,9 @@ int prepare_outfile(char *errmsg, int storage_option)
                 sprintf(errmsg, "Could not create dirfile sequencer");
                 return -1;
             }
+            /* reset options */
+            options.dirfile_include[0] = 0;
+            options.dirfile_spf = 1;
             break;
 
         default:
