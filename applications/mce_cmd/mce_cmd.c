@@ -48,7 +48,7 @@ enum {
 	SPECIAL_ACQ_CONFIG_FS,
 	SPECIAL_ACQ_CONFIG_DIRFILE,
 	SPECIAL_ACQ_CONFIG_DIRFILESEQ,
-    SPECIAL_ACQ_DIRFILE_INC,
+    SPECIAL_ACQ_OPTION,
 	SPECIAL_ACQ_FLUSH,
 	SPECIAL_ACQ_MULTI_BEGIN,
 	SPECIAL_ACQ_MULTI_END,
@@ -73,6 +73,9 @@ enum {
 	SPECIAL_DEC,
 	SPECIAL_HEX,
 	SPECIAL_ECHO,
+    SPECIAL_OPTION_DIRFILE,
+    SPECIAL_DIROPT_INCLUDE,
+    SPECIAL_DIROPT_SPF,
 	ENUM_SPECIAL_HIGH,
 };
 
@@ -100,6 +103,17 @@ mascmdtree_opt_t command_placeholder_opts[] = {
     { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL},
 };
 
+mascmdtree_opt_t dirfile_opt_opts[] = {
+    { SEL_NO, "INCLUDE", 1, 1, SPECIAL_DIROPT_INCLUDE, string_opts },
+    { SEL_NO, "SPF",     1, 1, SPECIAL_DIROPT_SPF,     integer_opts },
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL }
+};
+
+mascmdtree_opt_t option_opts[] = {
+    { SEL_NO, "DIRFILE", 2, -1, SPECIAL_OPTION_DIRFILE, dirfile_opt_opts },
+    /* more acq types go here */
+    { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL },
+};
 
 mascmdtree_opt_t flat_args[] = {
     { MASCMDTREE_STRING | MASCMDTREE_ARGS, "filename", 0, -1, 0, flat_args+1 },
@@ -144,8 +158,8 @@ mascmdtree_opt_t root_opts[] = {
         flat_args},
     { SEL_NO, "ACQ_CONFIG_DIRFILE_FS", 3, 3, SPECIAL_ACQ_CONFIG_DIRFILESEQ,
         fs_args},
-    { SEL_NO, "ACQ_DIRFILE_INC", 1, 1, SPECIAL_ACQ_DIRFILE_INC, string_opts},
-    { SEL_NO, "ACQ_LINK", 0, 1, SPECIAL_ACQ_LINK, string_opts},
+    { SEL_NO, "ACQ_OPTION", 3, -1, SPECIAL_ACQ_OPTION, option_opts},
+    { SEL_NO, "ACQ_LINK",  0, 1, SPECIAL_ACQ_LINK, string_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
     { SEL_NO, "ACQ_FLUSH", 0, 0, SPECIAL_ACQ_FLUSH, NULL},
     { SEL_NO, "ACQ_MULTI_BEGIN", 0, 0, SPECIAL_ACQ_MULTI_BEGIN, NULL},
@@ -191,6 +205,7 @@ options_t options = {
 	.acq_path =       "./",
 	.use_readline =   1,
 	.fibre_card =     -1,
+    .dirfile_spf =    1,
 };
 
 
@@ -571,7 +586,8 @@ int prepare_outfile(char *errmsg, int storage_option)
 
         case SPECIAL_ACQ_CONFIG_DIRFILE:
             storage = mcedata_dirfile_create(options.acq_filename, 0,
-                    options.dirfile_include, options.symlink);
+                    options.dirfile_include, options.dirfile_spf,
+                    options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create dirfile");
                 return -1;
@@ -581,7 +597,8 @@ int prepare_outfile(char *errmsg, int storage_option)
         case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
             storage = mcedata_dirfileseq_create(options.acq_filename,
                     options.acq_interval, FS_DIGITS, 0,
-                    options.dirfile_include, options.symlink);
+                    options.dirfile_include, options.dirfile_spf,
+                    options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create dirfile sequencer");
                 return -1;
@@ -628,7 +645,39 @@ int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
     return offset;
 }
 
+int process_dirfile_option(mascmdtree_token_t *tokens, char *errmsg) {
+    switch (tokens[0].value) {
+        case SPECIAL_DIROPT_INCLUDE:
+            /* this doesn't get run through pathify_filename because it's
+             * an input file, not an output */
+            mascmdtree_token_word(options.dirfile_include, tokens + 1);
+            printf("include=%s\n", options.dirfile_include);
+            break;
+        case SPECIAL_DIROPT_SPF:
+            options.dirfile_spf = tokens[1].value;
+            printf("spf=%i\n", options.dirfile_spf);
+            break;
+        default:
+            sprintf(errmsg, "Unhandled ACQ_OPTION DIRFILE parameter: %i\n",
+                    tokens[0].value);
+            return -1;
+    }
 
+    return 0;
+}
+
+int process_acq_option(mascmdtree_token_t *tokens, char *errmsg) {
+    switch (tokens[0].value) {
+        case SPECIAL_OPTION_DIRFILE:
+            return process_dirfile_option(tokens + 1, errmsg);
+        default:
+            sprintf(errmsg, "Unhandled ACQ_OPTION class: %i\n",
+                    tokens[0].value);
+            return -1;
+    }
+
+    return 0;
+}
 
 int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                     int n_args, char *errmsg)
@@ -841,6 +890,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 mascmdtree_token_word( s, tokens+2 );
                 options.acq_cards = translate_card_string(s, errmsg);
                 if (options.acq_cards < 0) {
+                    sprintf(errmsg, "Bad read-out card specification: %s\n", s);
                     ret_val = -1;
                     break;
                 }
@@ -857,10 +907,8 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 }
                 break;
 
-            case SPECIAL_ACQ_DIRFILE_INC:
-                /* this doesn't get run through pathify_filename because it's
-                 * an input file, not an output */
-                mascmdtree_token_word(options.dirfile_include, tokens + 1);
+            case SPECIAL_ACQ_OPTION:
+                ret_val = process_acq_option(tokens + 1, errmsg);
                 break;
 
             case SPECIAL_ACQ_LINK:
@@ -938,10 +986,6 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
             case SPECIAL_REPLY_UNLOCK:
                 ret_val = mcecmd_lock_replies(mce, 0);
                 break;
-
-                /*          case SPECIAL_CLEAR: */
-                /*              ret_val = mcecmd_reset(mce, tokens[1].value, tokens[2].value);*/
-                /*              break; */
 
             case SPECIAL_FAKESTOP:
                 ret_val = mcedata_fake_stopframe(mce);
