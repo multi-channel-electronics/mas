@@ -110,17 +110,17 @@ if __name__ == '__main__':
         vers = d.read("X", ADDRS['VERSION'])
     except dspError, msg:
         sys.stderr.write('Failed to query version.  Error message: \n')
-        print formatter('ERROR', msg)
+        print formatter('ERROR', msg, indent=1)
         if opts.runfile:
             print '</dsp_status>'
         sys.exit(1)
 
-    print formatter('CODE_VERSION', '%#x' % vers)
+    print formatter('CODE_VERSION', '%#x' % vers, indent=1)
 
     stat = d.read("X", ADDRS['STATUS'])
-    print formatter('STATUS', '%#06x' % stat)
+    print formatter('STATUS', '%#06x' % stat, indent=1)
     for k,b in status_bits:
-        print formatter(k, '%i' % get_bit(stat, b), indent=1)
+        print formatter(k, '%i' % get_bit(stat, b), indent=2)
 
     if vers < 0x550105 or vers >= 0x560000:
         if opts.runfile:
@@ -128,9 +128,9 @@ if __name__ == '__main__':
         sys.exit(0)
 
     mode = d.read('X', ADDRS['MODE'])
-    print formatter('MODE', '%#06x' % mode)
+    print formatter('MODE', '%#06x' % mode, indent=1)
     for k,b in mode_bits:
-        print formatter(k, '%i' % get_bit(mode, b), indent=1)
+        print formatter(k, '%i' % get_bit(mode, b), indent=2)
 
     stat = set_bit(stat, status_dict['MAIN_LOOP_POLL'])
     d.write('X', ADDRS['STATUS'], stat)
@@ -140,7 +140,7 @@ if __name__ == '__main__':
         stat = 'stalled'
     else:
         stat = 'running'
-    print formatter('MAIN_LOOP', stat)
+    print formatter('MAIN_LOOP', stat, indent=1)
 
     if opts.runfile:
         print '</dsp_status>'
