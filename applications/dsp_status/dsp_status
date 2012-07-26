@@ -55,7 +55,8 @@ def formatter_summary(a, b, **kwargs):
     return "%-20s : %s" % (a, b)
 
 def formatter_runfile(a, b, **kwargs):
-    return "<%s> %s" % (a, b)
+    indent = ' '*kwargs.get('indent',0)
+    return indent + "<%s> %s" % (a, b)
 
 ADDRS = {
     'STATUS': 0,
