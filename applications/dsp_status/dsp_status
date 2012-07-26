@@ -3,6 +3,7 @@
 import sys
 import time
 import subprocess as sp
+from optparse import OptionParser
 
 BIN_DIR = '/usr/mce/bin/'
 
@@ -49,6 +50,13 @@ def clear_bit(data, bit):
         data = data ^ (1 << bit)
     return data
 
+def formatter_summary(a, b, **kwargs):
+    a = ' '*kwargs.get('indent',0) + a
+    return "%-20s : %s" % (a, b)
+
+def formatter_runfile(a, b, **kwargs):
+    return "<%s> %s" % (a, b)
+
 ADDRS = {
     'STATUS': 0,
     'MODE': 1,
@@ -83,37 +91,55 @@ status_dict = dict(status_bits)
 mode_dict = dict(mode_bits)
 
 if __name__ == '__main__':        
+    o = OptionParser()
+    o.add_option('--runfile',action='store_true')
+    opts, args = o.parse_args()
+
+    if opts.runfile:
+        formatter = formatter_runfile
+    else:
+        formatter = formatter_summary
+
     d = dsp()
     
+    if opts.runfile:
+        print '<dsp_status>'
+
     try:
         vers = d.read("X", ADDRS['VERSION'])
     except dspError, msg:
-        print 'Failed to query version.  Error message: '
-        print ' ', msg
+        sys.stderr.write('Failed to query version.  Error message: \n')
+        print formatter('ERROR', msg)
+        if opts.runfile:
+            print '</dsp_status>'
         sys.exit(1)
 
-    print 'DSP code version = %#x' % vers
+    print formatter('CODE_VERSION', '%#x' % vers)
 
     stat = d.read("X", ADDRS['STATUS'])
-    print 'STATUS = %#06x' % stat
+    print formatter('STATUS', '%#06x' % stat)
     for k,b in status_bits:
-        print '  %-20s : %i' % (k, get_bit(stat, b))
+        print formatter(k, '%i' % get_bit(stat, b), indent=1)
 
     if vers < 0x550105 or vers >= 0x560000:
+        if opts.runfile:
+            print '</dsp_status>'
         sys.exit(0)
 
     mode = d.read('X', ADDRS['MODE'])
-    print 'MODE = %#06x' % mode
+    print formatter('MODE', '%#06x' % mode)
     for k,b in mode_bits:
-        print '  %-20s : %i' % (k, get_bit(mode, b))
+        print formatter(k, '%i' % get_bit(mode, b), indent=1)
 
-    print 'Checking main loop...  ',
     stat = set_bit(stat, status_dict['MAIN_LOOP_POLL'])
     d.write('X', ADDRS['STATUS'], stat)
     time.sleep(.1)
     stat = d.read('X', ADDRS['STATUS'])
     if get_bit(stat, status_dict['MAIN_LOOP_POLL']):
-        print 'stalled!'
+        stat = 'stalled'
     else:
-        print 'running.'
-    
+        stat = 'running'
+    print formatter('MAIN_LOOP', stat)
+
+    if opts.runfile:
+        print '</dsp_status>'
