@@ -131,7 +131,7 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
             (config_setting_type(config_item) != CONFIG_TYPE_ARRAY) ||
             config_setting_type(config_setting_get_elem(config_item, 0)) !=
             CONFIG_TYPE_STRING ||
-            config_setting_length(config_item) < c->fibre_card)
+            config_setting_length(config_item) <= c->fibre_card)
     {
         c->data_root = malloc(20);
 #if MULTICARD
