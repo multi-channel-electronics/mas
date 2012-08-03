@@ -7,7 +7,7 @@
  *  Origin: <?=`pwd`?>
  *  Date  : <?=`date`?>
  *
- *  Subrack configuration:
+ *  MAS configuration for this subrack:
 <?  include 'description'; ?>
  */
 
