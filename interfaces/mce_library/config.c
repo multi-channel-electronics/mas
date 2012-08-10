@@ -703,22 +703,22 @@ int mceconfig_lookup(const mce_context_t* context,
 		if (mceconfig_card_mapping(context, c, &m)) return -3;
 
 		config_setting_t *pcfg = get_setting(m.cfg, "parameters");
-		if (pcfg == NULL) return -2;
+		if (pcfg == NULL) return -4;
 
 		config_setting_t *cfg = get_setting_by_name(pcfg, para_name);
-		if (cfg == NULL) return -1;
+		if (cfg == NULL) return -5;
 
 		if (mceconfig_cfg_param(cfg, p) != 0)
-			return -1;
+			return -6;
 
 		return 0;
 
 	default:
 		fprintf(stderr, "Unhandled card nature!\n");
-		return -1;
+		return -3;
 	}
 
-	return -5;
+	return -10;
 }
 
 int mceconfig_check_data(const card_t *c, const param_t *p, int count,
