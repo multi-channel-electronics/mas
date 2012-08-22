@@ -64,7 +64,23 @@ ADDRS = {
     'VERSION': 3,
     }
     
-status_bits = [
+status_bits_U0104 = [
+    ('APPLICATION_RUNNING', 0),
+    ('SEND_IO_TO_HOST', 1),
+    ('FATAL_ERROR', 2),
+    ('FO_WRD_RCV', 3),
+    ('HST_NFYD', 9),
+    ('CON_DEMAND', 10),
+    ('CON_MCE', 11),
+    ('PCIDMA_RESTART', 14),
+    ('PCIDMA_RESUME', 15),
+    ('PCIDMA_RETRY', 16),
+    ('QT_ENABLED', 17),
+    ('QT_FLUSH', 18),
+    ('QT_NEW_GRANT', 19),
+    ]
+
+status_bits_U0105 = [
     ('APPLICATION_RUNNING', 0),
     ('SEND_IO_TO_HOST', 1),
     ('FATAL_ERROR', 2),
@@ -81,6 +97,13 @@ status_bits = [
     ('MAIN_LOOP_POLL', 23),
     ]
 
+status_bit_sets = {
+    0x550104: status_bits_U0104,
+    0x550105: status_bits_U0105,
+    0x550106: status_bits_U0105,
+    'default': status_bits_U0105,
+}
+
 mode_bits = [
     ( 'MODE_APPLICATION', 0),
     ( 'MODE_MCE', 1),
@@ -88,12 +111,28 @@ mode_bits = [
     ( 'MODE_RP_BUFFER', 3),
     ]
 
-status_dict = dict(status_bits)
-mode_dict = dict(mode_bits)
+pcidma_errors_U0104 = [
+    ('EC_TRTY' , 0x48),
+    ('EC_TO'   , 0x49),
+    ('EC_TDIS' , 0x4A),
+    ('EC_TAB'  , 0x4B),
+    ('EC_MAB'  , 0x4C),
+    ('EC_DPER' , 0x4D),
+    ('EC_APER' , 0x4E),
+    ]
+
+pcidma_errors_U0105 = [(a,b-0x13) for a,b in pcidma_errors_U0104]
+pcidma_errors_sets = {
+    0x550104: pcidma_errors_U0104,
+    0x550105: pcidma_errors_U0105,
+    0x550106: pcidma_errors_U0105,
+    'default': pcidma_errors_U0105,
+}
 
 if __name__ == '__main__':        
     o = OptionParser()
     o.add_option('--runfile',action='store_true')
+    o.add_option('--pcidma',action='store_true')
     opts, args = o.parse_args()
 
     if opts.runfile:
@@ -116,31 +155,35 @@ if __name__ == '__main__':
         sys.exit(1)
 
     print formatter('CODE_VERSION', '%#x' % vers, indent=1)
+ 
+    status_bits = status_bit_sets.get(vers, status_bit_sets['default'])
+    status_dict = dict(status_bits)
 
     stat = d.read("X", ADDRS['STATUS'])
     print formatter('STATUS', '%#06x' % stat, indent=1)
     for k,b in status_bits:
         print formatter(k, '%i' % get_bit(stat, b), indent=2)
 
-    if vers < 0x550105 or vers >= 0x560000:
-        if opts.runfile:
-            print '</dsp_status>'
-        sys.exit(0)
+    if vers >= 0x550105 and vers >= 0x560000:
+        mode = d.read('X', ADDRS['MODE'])
+        print formatter('MODE', '%#06x' % mode, indent=1)
+        for k,b in mode_bits:
+            print formatter(k, '%i' % get_bit(mode, b), indent=2)
 
-    mode = d.read('X', ADDRS['MODE'])
-    print formatter('MODE', '%#06x' % mode, indent=1)
-    for k,b in mode_bits:
-        print formatter(k, '%i' % get_bit(mode, b), indent=2)
+        stat = set_bit(stat, status_dict['MAIN_LOOP_POLL'])
+        d.write('X', ADDRS['STATUS'], stat)
+        time.sleep(.1)
+        stat = d.read('X', ADDRS['STATUS'])
+        if get_bit(stat, status_dict['MAIN_LOOP_POLL']):
+            stat = 'stalled'
+        else:
+            stat = 'running'
+        print formatter('MAIN_LOOP', stat, indent=1)
 
-    stat = set_bit(stat, status_dict['MAIN_LOOP_POLL'])
-    d.write('X', ADDRS['STATUS'], stat)
-    time.sleep(.1)
-    stat = d.read('X', ADDRS['STATUS'])
-    if get_bit(stat, status_dict['MAIN_LOOP_POLL']):
-        stat = 'stalled'
-    else:
-        stat = 'running'
-    print formatter('MAIN_LOOP', stat, indent=1)
+    if opts.pcidma:
+        for k,a in pcidma_errors_sets.get(vers, pcidma_errors_sets['default']):
+            x = d.read('X',a)
+            print formatter(k, '%i'%x, indent=1)
 
     if opts.runfile:
         print '</dsp_status>'
