@@ -164,7 +164,7 @@ if __name__ == '__main__':
     for k,b in status_bits:
         print formatter(k, '%i' % get_bit(stat, b), indent=2)
 
-    if vers >= 0x550105 and vers >= 0x560000:
+    if vers >= 0x550105 and vers < 0x560000:
         mode = d.read('X', ADDRS['MODE'])
         print formatter('MODE', '%#06x' % mode, indent=1)
         for k,b in mode_bits:
