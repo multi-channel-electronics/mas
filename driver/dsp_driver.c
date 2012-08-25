@@ -278,6 +278,7 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	dsp_message msg;
 	int i=0, j=0, k=0;
 	int n = sizeof(msg) / sizeof(u32);
+        int s = 0;
 
 	for(k=0; k<MAX_CARDS; k++) {
 		dev = dsp_dev + k;
@@ -307,11 +308,12 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	}
 
 	// Read data into dsp_message structure
-	while ( i<n && (dsp_read_hstr(dsp) & HSTR_HRRQ) ) {
+	while ( i<n && ((s=dsp_read_hstr(dsp)) & HSTR_HRRQ) ) {
 		((u32*)&msg)[i++] = dsp_read_hrxs(dsp) & DSP_DATAMASK;
 	}
 	if (i<n)
-                PRINT_ERR(dev->card, "incomplete message %i/%i.\n", i, n);
+                PRINT_ERR(dev->card, "incomplete message %i/%i (last HSTR=%#x).\n",
+                          i, n, s);
 
 	// We are done with the DSP, so release it.
 	if (dev->comm_mode & DSP_PCI_MODE_HANDSHAKE) {
@@ -461,6 +463,7 @@ int dsp_send_command_now_vector(struct dsp_dev_t *dev, u32 vector,
 {
 	int i = 0;
 	int n = sizeof(dsp_command) / sizeof(u32);
+        int s = 0;
 
 	// DSP may block while HCVR interrupts in some cases.
 	if (dsp_read_hcvr(dev->dsp) & HCVR_HC) {
@@ -469,18 +472,20 @@ int dsp_send_command_now_vector(struct dsp_dev_t *dev, u32 vector,
 	}
 
 	// HSTR must be ready to receive
-	if ( !(dsp_read_hstr(dev->dsp) & HSTR_TRDY) ) {
-                PRINT_ERR(dev->card, "HSTR not ready to transmit!\n");
+	if ( !((s=dsp_read_hstr(dev->dsp)) & HSTR_TRDY) ) {
+                /* DSP56301 errata ED46: such a read may sometimes return
+                 * the value of HCVR instead of HSTR... hopefully this will
+                 * help us catch that. */
+                PRINT_ERR(dev->card, "HSTR not ready to transmit (%#x)!\n", s);
 		return -EIO;
 	}
 
 	//Write bytes and interrupt
-	while ( i<n && (dsp_read_hstr(dev->dsp) & HSTR_HTRQ)!=0 )
+	while ( i<n && ((s=dsp_read_hstr(dev->dsp)) & HSTR_HTRQ)!=0 )
 		dsp_write_htxr(dev->dsp, ((u32*)cmd)[i++]);
 
 	if (i<n) {
-                PRINT_ERR(dev->card, "HTXR filled up during write! HSTR=%#x\n",
-			  dsp_read_hstr(dev->dsp));
+                PRINT_ERR(dev->card, "HTXR filled up during write! HSTR=%#x\n", s);
 		return -EIO;
 	}
 
