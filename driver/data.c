@@ -153,7 +153,7 @@ int data_frame_contribute(int new_head, int card)
 	} else {
 		dframes->head_index = new_head;
 	}
-	dsp_request_grant(card, dframes->tail_index);
+	/* dsp_request_grant(card, dframes->tail_index); */
 
 	wake_up_interruptible(&dframes->queue);
 
@@ -340,7 +340,8 @@ int data_copy_frame(void* __user user_buf, void *kern_buf,
 			dframes->partial = 0;
 		}
 	}
-
+        if (count_out)
+                dsp_request_grant(card, dframes->tail_index);
 	return count_out;
 }
 
@@ -387,6 +388,7 @@ int data_tail_increment(int card)
 	barrier();
 	dframes->tail_index = d;
 	dframes->partial = 0;
+        dsp_request_grant(card, d);
 	return 0;
 }
 

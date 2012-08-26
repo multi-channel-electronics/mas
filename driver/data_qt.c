@@ -40,16 +40,21 @@ int mce_qti_handler (dsp_message *msg, unsigned long data)
 	dsp_qtinform *qti = (dsp_qtinform*)msg;
 
         PRINT_INFO(card,
-		   "update head to %u with %u drops; active tail is %u\n",
+		   "update head to %u with %u drops; active tail is %u (%u)\n",
 		   qti->dsp_head, qti->dsp_drops,
-		   qti->dsp_tail);
+                  qti->dsp_tail, dframes->tail_index);
+
+        /* Are we dropping frames? */
+
+        if (dframes->dropped != qti->dsp_drops) {
+                PRINT_ERR(card, "DSP has dropped %i frames to date.\n", qti->dsp_drops);
+                dframes->dropped = qti->dsp_drops;
+        }
 
 	/* Check consistency of buffer_index */
 
  	data_frame_contribute(qti->dsp_head, card);
 	
-	// Schedule a grant update
-
 	return 0;
 }
 
