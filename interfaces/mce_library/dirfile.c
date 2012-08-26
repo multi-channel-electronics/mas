@@ -411,7 +411,7 @@ static int dirfile_init(mce_acq_t *acq)
 	}
 
 	// Checksum!
-	checksum.offset = n_header + n_data;
+	checksum.offset = MCEDATA_HEADER + n_data;
 	checksum.name = "checksum";
 	add_item(f, &checksum);
 
