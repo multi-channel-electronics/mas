@@ -170,12 +170,27 @@ static PyObject *trace(PyObject *self, PyObject *args)
 */
 
 static PyObject *mce_connect(PyObject *self, PyObject *args) {
-    int device_index = -1;
+    int err;
+    int device_index = MCE_DEFAULT_MCE;
     mce_context_t* mce = mcelib_create(device_index, "/etc/mce/mas.cfg", 0);
-
-    mcecmd_open(mce);
-    mcedata_open(mce);
-    mceconfig_open(mce, NULL, NULL);
+    if (mce==NULL) {
+        fprintf(stderr, "pymce: failed to create.\n");
+        Py_RETURN_NONE;
+    }
+    if ((err=mcecmd_open(mce)) != 0) {
+        fprintf(stderr, "pymce: failed to open commander [err=%i].\n",
+                err);
+        Py_RETURN_NONE;
+    }
+        
+    if ((err=mcedata_open(mce)) != 0) {
+        fprintf(stderr, "pymce: failed to open data device [err=%i].\n",
+                err);
+    }
+    if ((err=mceconfig_open(mce, NULL, NULL)) != 0) {
+        fprintf(stderr, "pymce: failed to open config module [err=%i].\n",
+                err);
+    }
 
     ptrobj* p = PyObject_New(ptrobj, &ptrobjType);
     p->p = mce;
