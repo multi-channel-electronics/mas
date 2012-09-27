@@ -41,6 +41,7 @@ typedef struct {
     char symlink[LINE_LEN];
     char dirfile_include[LINE_LEN];
     int dirfile_spf;
+    int dirfile_version;
 
 	maslog_t *logger;
 

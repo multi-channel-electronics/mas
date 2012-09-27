@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -31,7 +34,7 @@
 			.type = DATA_MODE_RAW,		\
 			.name = MCE_DATA_ ## NAME,	\
 	};
-		              
+
 #define DECLARE_SCALE(MODE, NAME, SCALE)		\
 	DATA_FIELD_DECLARE(MODE, NAME) = {		\
 			.data_mode = MODE,		\
@@ -40,16 +43,17 @@
 			.scalar = SCALE,		\
 	};
 
-#define DECLARE_EXTRACT(MODE, NAME, START, COUNT)	\
+#define DECLARE_EXTRACT(MODE, NAME, START, COUNT, SIGNED) \
 	DATA_FIELD_DECLARE(MODE, NAME) = {		\
 			.data_mode = MODE,		\
 			.type = DATA_MODE_EXTRACT,	\
 			.name = MCE_DATA_ ## NAME,	\
 			.bit_start = START,		\
 			.bit_count = COUNT,		\
+            .has_sign = SIGNED, \
 	};
 
-#define DECLARE_EXTRACT_SCALE(MODE, NAME, START, COUNT, SCALE)	\
+#define DECLARE_EXTRACT_SCALE(MODE, NAME, START, COUNT, SCALE, SIGNED) \
 	DATA_FIELD_DECLARE(MODE, NAME) = {			\
 			.data_mode = MODE,		\
 			.type = DATA_MODE_EXTRACT_SCALE, \
@@ -57,6 +61,7 @@
 			.bit_start = START,		\
 			.bit_count = COUNT,		\
 			.scalar = SCALE,		\
+            .has_sign = SIGNED, \
 	};
 
 
@@ -76,13 +81,13 @@
 /* Macro set 2 */
 
 #define DECLARE_RAW(MODE, NAME) \
-	& DATA_FIELD(MODE, NAME),
-#define DECLARE_EXTRACT(MODE, NAME, START, COUNT) \
-	& DATA_FIELD(MODE, NAME),
+    & DATA_FIELD(MODE, NAME),
+#define DECLARE_EXTRACT(MODE, NAME, START, COUNT, SIGNED) \
+    & DATA_FIELD(MODE, NAME),
 #define DECLARE_SCALE(MODE, NAME, SCALE) \
-	& DATA_FIELD(MODE, NAME),
-#define DECLARE_EXTRACT_SCALE(MODE, NAME, START, COUNT, SCALE) \
-	& DATA_FIELD(MODE, NAME),
+    & DATA_FIELD(MODE, NAME),
+#define DECLARE_EXTRACT_SCALE(MODE, NAME, START, COUNT, SCALE, SIGNED) \
+    & DATA_FIELD(MODE, NAME),
 
 
 /* Define the list of data fields, NULL terminated. */
@@ -91,5 +96,5 @@ struct mce_data_field* mce_data_fields[] = {
 
 #include "data_mode.def"
 
-	NULL,
+    NULL,
 };

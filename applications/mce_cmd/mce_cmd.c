@@ -76,6 +76,7 @@ enum {
     SPECIAL_OPTION_DIRFILE,
     SPECIAL_DIROPT_INCLUDE,
     SPECIAL_DIROPT_SPF,
+    SPECIAL_DIROPT_VERSION,
 	ENUM_SPECIAL_HIGH,
 };
 
@@ -106,6 +107,7 @@ mascmdtree_opt_t command_placeholder_opts[] = {
 mascmdtree_opt_t dirfile_opt_opts[] = {
     { SEL_NO, "INCLUDE", 1, 1, SPECIAL_DIROPT_INCLUDE, string_opts },
     { SEL_NO, "SPF",     1, 1, SPECIAL_DIROPT_SPF,     integer_opts },
+    { SEL_NO, "VERSION", 1, 1, SPECIAL_DIROPT_VERSION, integer_opts },
     { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL }
 };
 
@@ -206,6 +208,7 @@ options_t options = {
 	.use_readline =   1,
 	.fibre_card =     -1,
     .dirfile_spf =    1,
+    .dirfile_version = -1,
 };
 
 
@@ -587,7 +590,7 @@ int prepare_outfile(char *errmsg, int storage_option)
         case SPECIAL_ACQ_CONFIG_DIRFILE:
             storage = mcedata_dirfile_create(options.acq_filename, 0,
                     options.dirfile_include, options.dirfile_spf,
-                    options.symlink);
+                    options.dirfile_version, options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create dirfile");
                 return -1;
@@ -595,13 +598,14 @@ int prepare_outfile(char *errmsg, int storage_option)
             /* reset options */
             options.dirfile_include[0] = 0;
             options.dirfile_spf = 1;
+            options.dirfile_version = -1;
             break;
 
         case SPECIAL_ACQ_CONFIG_DIRFILESEQ:
             storage = mcedata_dirfileseq_create(options.acq_filename,
                     options.acq_interval, FS_DIGITS, 0,
                     options.dirfile_include, options.dirfile_spf,
-                    options.symlink);
+                    options.dirfile_version, options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create dirfile sequencer");
                 return -1;
@@ -609,6 +613,7 @@ int prepare_outfile(char *errmsg, int storage_option)
             /* reset options */
             options.dirfile_include[0] = 0;
             options.dirfile_spf = 1;
+            options.dirfile_version = -1;
             break;
 
         default:
@@ -660,6 +665,9 @@ int process_dirfile_option(mascmdtree_token_t *tokens, char *errmsg) {
             break;
         case SPECIAL_DIROPT_SPF:
             options.dirfile_spf = tokens[1].value;
+            break;
+        case SPECIAL_DIROPT_VERSION:
+            options.dirfile_version = tokens[1].value;
             break;
         default:
             sprintf(errmsg, "Unhandled ACQ_OPTION DIRFILE parameter: %i\n",

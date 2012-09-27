@@ -11,7 +11,13 @@
 
 #include "context.h"
 
-/* Method: data buffers for all channels. */
+#define MINIMUM_DIRFILE_VERSION 3 /* earlier versions have annoying limitations
+                                     on field name length (in addition to worse
+                                     things) */
+#define DEFAULT_DIRFILE_VERSION 7 /* this is the earliest version that can
+                                     sucessfully extract the signed bitfields
+                                     from the packed MCE data in data modes
+                                     4, 5, 7, and 10 */
 
 #define TES_BASE_FORMAT "r%02ic%02i"
 #define TES_RAW_FORMAT  "tesdata%s"
@@ -32,7 +38,7 @@ typedef struct {
 	int free_on_destroy;       // Should destructor free data, basename, filename?
 	int frame_offset;          // Offset within frame data
 	int data_mode;             /* If non-negative, format definition will
-				      include field extraction lines. */
+                                  include field extraction lines. */
 	int has_sign;              // Indicates raw field should be treated as signed.
 } channel_t;
 
@@ -55,6 +61,7 @@ typedef struct dirfile_struct {
 	char format[MCE_LONG];
 
     int spf;
+    int version;
 
 //	struct frame_header_abstraction frame_description;
 
@@ -179,7 +186,6 @@ static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
 }
 
 /* Write the format file into the dirfile folder */
-
 int write_format_file(dirfile_t* f)
 {
 	char filename[MCE_LONG];
@@ -197,11 +203,11 @@ int write_format_file(dirfile_t* f)
 
 	for (i=0; i<f->channel_count; i++) {
 		if (f->channels[i].has_sign) {
-            fprintf(format, "%-20s RAW S %i\n", f->channels[i].filename,
-                    f->spf);
+            fprintf(format, "%-20s RAW %s %i\n", f->channels[i].filename,
+                    (f->version >= 5) ? " INT32" : "S", f->spf);
 		} else {
-            fprintf(format, "%-20s RAW U %i\n", f->channels[i].filename,
-                    f->spf);
+            fprintf(format, "%-20s RAW %s %i\n", f->channels[i].filename,
+                    (f->version >= 5) ? "UINT32" : "U", f->spf);
 		}
 	}
 
@@ -231,18 +237,19 @@ int write_format_file(dirfile_t* f)
 				break;
 
 			case DATA_MODE_EXTRACT:
-				fprintf(format, "%-20s BIT %-20s %i %i\n",
-					final_field, c->filename,
-					(*m)->bit_start, (*m)->bit_count);
+                fprintf(format, "%-20s %s %-20s %i %i\n", final_field,
+                        (f->version >= 7 && (*m)->has_sign) ? "SBIT  " :
+                        " BIT  ", c->filename, (*m)->bit_start,
+                        (*m)->bit_count);
 				break;
 				
 			case DATA_MODE_EXTRACT_SCALE:
-				sprintf(inter_field, EXT_FORMAT,
-					(*m)->name, c->basename);
+                sprintf(inter_field, EXT_FORMAT, (*m)->name, c->basename);
 				/* First extract, then scale. */
-				fprintf(format, "%-20s BIT %-20s %i %i\n",
-					inter_field, c->filename,
-					(*m)->bit_start, (*m)->bit_count);
+                fprintf(format, "%-20s %s %-20s %i %i\n", inter_field,
+                        (f->version >= 7 && (*m)->has_sign) ? "SBIT  " :
+                        " BIT  ", c->filename, (*m)->bit_start,
+                        (*m)->bit_count);
 				fprintf(format, "%-20s LINCOM 1 %-20s %lf 0\n",
 					final_field, inter_field, (*m)->scalar);
 				break;
@@ -523,7 +530,7 @@ mcedata_storage_t dirfile_actions = {
 
 
 mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options,
-        const char *include, int spf, const char *symlink)
+        const char *include, int spf, int version, const char *symlink)
 {
 	dirfile_t *f = (dirfile_t*)malloc(sizeof(dirfile_t));
 	mcedata_storage_t *storage =
@@ -541,6 +548,8 @@ mcedata_storage_t* mcedata_dirfile_create(const char *basename, int options,
     if (include != NULL)
         strcpy(f->include, include);
     f->spf = (spf > 0) ? spf : 1;
+    f->version = (version >= MINIMUM_DIRFILE_VERSION) ? version :
+        DEFAULT_DIRFILE_VERSION;
 	return storage;
 }
 
@@ -567,6 +576,7 @@ typedef struct dirfileseq_struct {
 	char symlink[MCE_LONG];
 	char include[MCE_LONG];
     int spf;
+    int version;
 } dirfileseq_t;
 
 
@@ -642,7 +652,7 @@ mcedata_storage_t dirfileseq_actions = {
 };
 
 mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
-        int digits, int options, const char *include, int spf,
+        int digits, int options, const char *include, int spf, int version,
         const char *symlink)
 {
 	dirfileseq_t *f = (dirfileseq_t*)malloc(sizeof(dirfileseq_t));
@@ -669,6 +679,8 @@ mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
     if (symlink!=NULL)
         strcpy(f->symlink, symlink);
     f->spf = (spf > 0) ? spf : 1;
+    f->version = (version >= MINIMUM_DIRFILE_VERSION) ? version :
+        DEFAULT_DIRFILE_VERSION;
 
 	return storage;
 }
