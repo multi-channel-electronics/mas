@@ -47,6 +47,19 @@ AC_ARG_WITH([driver],
       DO_MAS_DRIVER=$withval], [])
 AC_SUBST(DO_MAS_DRIVER)
 
+dnl Allow disabling of symlinks in /usr/local
+AC_ARG_ENABLE([sys-links],
+              [AS_HELP_STRING([--disable-sys-links], [don't create ]dnl'
+              [symlinks in /usr/local pointing to the installed MAS libraries ]
+              [and headers.  By default these links are created.])],
+              [
+               case "${enableval}" in
+                 (no) INSTALL_SYS_LINKS=0 ;;
+                 (*)  INSTALL_SYS_LINKS=1 ;;
+               esac
+              ], [INSTALL_SYS_LINKS=1])
+AC_SUBST([INSTALL_SYS_LINKS])
+                   
 dnl Multicard MAS
 AC_ARG_ENABLE([multicard],
               [AS_HELP_STRING([--enable-multicard=N], [build a MAS which ]
@@ -433,6 +446,11 @@ else
   echo "  Multicard support:       yes (max ${MAX_FIBRE_CARD} cards)"
 fi
 echo "  build mce.cfg:           ${DO_CONFIG2}"
+if test $INSTALL_SYS_LINKS -eq 1; then
+  echo "  Symlinks in /usr/local:  yes"
+else
+  echo "  Symlinks in /usr/local:  no"
+fi
 echo "  MAS user/group:          ${MAS_USER}/${MAS_GROUP}"
 echo
 echo "  etc dir:                 \"${MAS_ETCDIR}\""

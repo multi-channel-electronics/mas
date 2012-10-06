@@ -69,5 +69,11 @@ MAS_INSTALL_PYTHON=$(MAS_INSTALL)/python/
 MAS_INSTALL_INIT=/etc/init.d/
 MAS_INSTALL_INIT_RC=/etc/
 
+INSTALL_SYS_LINKS = @INSTALL_SYS_LINKS@
+ifneq (0,${INSTALL_SYS_LINKS})
 MAS_SYS_INC=/usr/local/include/
 MAS_SYS_LIB=/usr/local/lib/
+else
+MAS_SYS_INC=
+MAS_SYS_LIB=
+endif
