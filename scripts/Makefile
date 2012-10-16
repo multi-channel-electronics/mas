@@ -18,7 +18,6 @@ include $(MAKERULES)Makefile.install_rule
 all: mas mas_mknodes
 
 install: install__mas install__mas_mknodes install__mas_make_card_id
-	install --mode=644 91-mas.rules /etc/udev/rules.d
 
 mas: ../config.status mas.in
 	cd .. && $(MAKE) scripts/mas
