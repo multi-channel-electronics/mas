@@ -118,8 +118,8 @@ char *mcelib_default_hardwarefile(mce_context_t *context)
 
 char *mcelib_default_masfile(void)
 {
-    if (getenv("MCE_MAS_CFG"))
-        return mcelib_shell_expand(NULL, "${MCE_MAS_CFG}");
+    if (getenv("MAS_MAS_CFG"))
+        return mcelib_shell_expand(NULL, "${MAS_MAS_CFG}");
     return mcelib_shell_expand(NULL, DEFAULT_MASFILE);
 }
 
