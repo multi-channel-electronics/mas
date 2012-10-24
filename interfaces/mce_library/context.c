@@ -21,7 +21,7 @@ static char *get_default_dir(const mce_context_t *c,
     config_setting_t *config_item;
     
     if (masconfig == NULL)
-        return strdup(def);
+        return def ? strdup(def) : NULL;
 
     if ((config_item = config_setting_get_member(masconfig, name)) == NULL
             || (config_setting_type(config_item) != CONFIG_TYPE_STRING))
@@ -29,9 +29,7 @@ static char *get_default_dir(const mce_context_t *c,
         mcelib_warning(c, "Missing required variable `%s' in MAS "
                 "configuration.", name);
         mcelib_warning(c, "Using configuration defaults.");
-        if (def == NULL)
-            return NULL;
-        return strdup(def);
+        return def ? strdup(def) : NULL;
     }
     return strdup(config_setting_get_string(config_item));
 }
