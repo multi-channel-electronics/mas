@@ -14,14 +14,16 @@
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
-MAS_PREFIX=@prefix@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
 DESC="MCE Aquisition Software"
 NAME=mas
 USER=@MAS_USER@
 GROUP=@MAS_GROUP@
-DAEMON=$MAS_PREFIX/bin/maslog_server
+DAEMON=$bindir/maslog_server
 DAEMON_ARGS=
-MKNODES=$MAS_PREFIX/bin/mas_mknodes
+MKNODES=$bindir/mas_mknodes
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
