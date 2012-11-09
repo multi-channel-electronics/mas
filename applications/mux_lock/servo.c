@@ -26,6 +26,22 @@ int error_action(char *msg, int code){
     ERRPRINT(temp);
     exit (code);  
 }  
+
+char *bias_codes[] = {
+    "",         /* 0 */
+    "sq1bias",  /* 1 - sq1servo */
+    "sq2bias",  /* 2 - sq2servo */
+    "sq1bias",  /* 3 - sq1servo_sa */
+    "sq1bias",  /* 4 - rs_servo */
+};
+char *flux_codes[] = {
+    "",        /* 0 */
+    "sq1fb",   /* 1 - sq1servo */
+    "sq2fb",   /* 2 - sq2servo */
+    "sq1fb",   /* 3 - sq1servo_sa */
+    "rowsel",  /* 4 - rs_servo */
+};
+
 /***********************************************************
  * genrunfile - creates a runfile
  ***********************************************************/
@@ -34,7 +50,8 @@ int genrunfile (
         char *datafile,          /* datafilename */
         int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
         int  which_rc,
-        int  bias, int bstep, int nbias, int feed, int fstep, int nfeed,
+        int bias, int bstep, int nbias, int bias_active,
+        int feed, int fstep, int nfeed,
         char *servo_init1,       /* a line of servo_init var_name and values to be included in <servo_init>*/     
         char *servo_init2        /* a line of servo_init var_name and values to be included in <servo_init>*/     
 )
@@ -70,10 +87,17 @@ int genrunfile (
     }
     /*<par_ramp> section*/  
     fprintf (runfile,"<par_ramp>\n  <loop_list> loop1 loop2\n");
-    fprintf (runfile,"    <par_list loop1> par1\n      <par_title loop1 par1> sq%dbias\n      <par_step loop1 par1> %d %d %d\n",
-            which_servo, bias, bstep, nbias);
-    fprintf (runfile,"    <par_list loop2> par1\n      <par_title loop2 par1> sq%dfb\n      <par_step loop2 par1> %d %d %d\n",
-            which_servo, feed, fstep, nfeed);
+    fprintf (runfile,
+            "    <par_list loop1> par1\n"
+            "      <par_title loop1 par1> %s\n"
+            "      <par_step loop1 par1> %d %d %d\n"
+            "      <par_active loop1 par1> %d\n",
+            bias_codes[which_servo], bias, bstep, nbias, bias_active);
+    fprintf (runfile,
+            "    <par_list loop2> par1\n"
+            "      <par_title loop2 par1> %s\n"
+            "      <par_step loop2 par1> %d %d %d\n",
+            bias_codes[which_servo], feed, fstep, nfeed);
     fprintf (runfile, "</par_ramp>\n\n");
     fclose(runfile);
 
@@ -222,6 +246,31 @@ int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
     }
 
     return fast_sq2;
+}
+
+/* check_mux11d -- check for mux11d support.
+
+   Initializes safb and/or safb_col for use and returns 1 or 0
+   depending on whether mux11d appears to be enabled or not.
+*/
+
+int check_mux11d(mce_context_t* mce, mce_param_t* safb,
+        mce_param_t* safb_col, int col0, int n_col)
+{
+    /* Just check for "sa fb_col0". */
+    int fb0_err = load_param_or_exit(mce, safb, SA_CARD, SA_FB_COL "0", 1);
+    if (fb0_err != 0) {
+        printf("Card does not appear to support fast-switching SA FB.\n");
+        return 0;
+    }
+
+    char tempbuf[MAXLINE];
+    for (int i=0; i<n_col; i++) {
+        sprintf(tempbuf, "%s%i", SA_FB_COL, i+col0);
+        load_param_or_exit(mce, safb_col+i, SA_CARD, tempbuf, 0);
+    }
+
+    return 1;
 }
 
 void duplicate_fill(i32 value, i32 *data, int count)

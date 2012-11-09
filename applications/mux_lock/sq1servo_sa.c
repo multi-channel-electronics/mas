@@ -5,25 +5,27 @@
 #include "servo_err.h"
 #include "servo.h"
 
-/***********************************************************
- *    sq1servo       : locks sq1 by calculating new sq2_fb value and sweeping sq1_bias
- *    Author         : Mandana@ubc/Dennis@atc     5May2005
- *    Original Source: ssaservo
- * Revision history:
- * <date $Date: 2007/10/22 23:38:35 $>    - <initials $Author: mce $>
- * $Log: sq1servo.c,v $
- * Revision 1.27  2007/10/22 23:38:35  mce
- *   * EB: MH fixed a bug
- *   * MA added <> to .bias header line
- *   * MA renamed .fb to .bias and creates a merger-friendly format of .bias file
- *   * MA+MFH: repair multi-bias bug
+/**************************************************************************
+ *    sq1servo_sa
  *
- ***********************************************************/
+ *    Based on sq1servo_all.c.  See "svn log" for revision history.
+ *
+ *    For mux11d operation.  Locks the SQ1 by computing a new sa_fb
+ *    for every row and column while sweeping the sq1_fb.  Optionally
+ *    this may be done for a series of sq1_bias values.
+ *
+ *    As is typical for these programs, a lot of prep has to be done
+ *    already; in particular you need the SA FB to be fast-switching,
+ *    and the SQ1 FB (and maybe bias) to be not fast-switching.
+ *
+ *    See the function "load_exp_config" to see what experiment.cfg
+ *    parameters are used to control the servo ramps.
+ **************************************************************************/
 
 
 struct {
 
-  char *filename; /* Basename for output data */
+  char *filename;
 
   int rc;         /* [1,2,3,4] or 0 for RCS */
   int column_0;   /* First column to servo */
@@ -40,20 +42,16 @@ struct {
   int dfb;
   int nfb;
   
+  int fb_const;
+
   int sfb_init[MAXCOLS];
 
   double target[MAXCOLS];
   double gain[MAXCOLS];
   int quanta[MAXCOLS];
-
-  int row_choice[MAXCOLS];
+  int columns_off[MAXCOLS];
 	
 } control;
-
-
-int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
-		mce_param_t *m_sq2fb_col, int biasing_ac,
-		i32 *data, int offset, int count);
 
 
 /***********************************************************
@@ -65,8 +63,9 @@ int frame_callback(unsigned long user_data, int frame_size, u32 *data)
   //Re-type 
   servo_t *myservo = (servo_t*)user_data;
 
-  // Write frame to our data file
-  fwrite(data, sizeof(u32), frame_size, myservo->df);
+  // Write frame to our data file?
+  if (myservo->df != NULL)
+    fwrite(data, sizeof(u32), frame_size, myservo->df);
 
   // Copy header and data into myservo struct
   memcpy(myservo->last_header, data, HEADER_OFFSET*sizeof(*data));
@@ -90,6 +89,8 @@ int load_exp_config(const char *filename)
     exit(1);
   }
 
+  load_int(cfg, "default_num_rows", &control.rows);
+
   load_int(cfg, "sq1_servo_flux_start", &control.fb);
   load_int(cfg, "sq1_servo_flux_count", &control.nfb);
   load_int(cfg, "sq1_servo_flux_step", &control.dfb);
@@ -99,40 +100,40 @@ int load_exp_config(const char *filename)
   load_int(cfg, "sq1_servo_bias_count", &control.nbias);
   load_int(cfg, "sq1_servo_bias_step", &control.dbias);
 
+  load_int(cfg, "fb_const", &control.fb_const);
+
   load_double_array(cfg, "sq1_servo_gain",
 		    control.column_0, control.column_n, control.gain);
-
-  load_int_array(cfg, "sq2_fb",
+  load_int_array(cfg, "sa_fb",
 		 control.column_0, control.column_n, control.sfb_init);
-
-  load_int_array(cfg, "sq2_flux_quanta",
+  load_int_array(cfg, "sa_flux_quanta",
 		 control.column_0, control.column_n, control.quanta);
-
-  load_int_array(cfg, "sq2_rows",
-		 control.column_0, control.column_n, control.row_choice);
-
+  load_int_array(cfg, "columns_off",
+		 control.column_0, control.column_n, control.columns_off);
+  
   return 0;
 }
 
 /************************************************************
  *          M A I N
  ************************************************************/
-int main ( int argc, char **argv )
+int main(int argc, char **argv)
 {
-   char full_datafilename[MAXLINE]; /*full path for datafile*/
+   char full_datafilename[256]; /*full path for datafile*/
    char *datadir;
    
    i32 temparr[MAXTEMP];
   
-   int i, j, snum;          /* loop counters */
+   int i, j, r, snum;       /* loop counters */
  
-   FILE *fd;                /* pointer to output file*/
-   char outfile[MAXLINE];   /* output data file */
+   FILE *bias_out;              /* Output files for error and bias entries; one per row */
+   char outfile[MAXLINE];       /* output data file */
    char init_line1[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
    char init_line2[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
+   char tempbuf[30];
 
    char *endptr;
-   i32 sq2fb[MAXCOLS];      /* sq2 feedback voltages */
+   i32 safb[MAXCOLS][MAXROWS];     /* sq2 feedback voltages */
    
    int error=0;
    char errmsg_temp[MAXLINE];
@@ -141,11 +142,11 @@ int main ( int argc, char **argv )
 
    /* Define default MAS options */
    option_t options = {
-	   .fibre_card = -1,
-	   .config_file = NULL,
+     .fibre_card = -1,
+     .config_file = NULL,
      .hardware_file = NULL,
-	   .experiment_file = NULL,
-	   .argument_opts = 0,
+     .experiment_file = NULL,
+     .argument_opts = 0,
    };
    int arg_offset = 0;
    
@@ -167,30 +168,29 @@ int main ( int argc, char **argv )
       printf("  (pass -E0 to get command line control of ramp parameters)\n");
    }
    if (!args_ok && options.argument_opts) {
-      printf ( "usage:- sq1servo outfile sq1bias sq1bstep nbias " );
-      printf ( "sq1fb sq1fstep nfb N target total_row gain skip_sq1bias\n" );
-      printf ( "   outfile = filename for output data\n" );
-      printf ( "   sq1bias = starting SQ1 bias\n" );
-      printf ( "   sq1bstep = step size for SQ1 bias\n" );
-      printf ( "   nbias = number of bias steps\n" );
-      printf ( "   sq1fb = starting SQ1 feedback\n" );
-      printf ( "   sq1fstep = step size for SQ1 feedback\n" );
-      printf ( "   nfb = number of feedback steps\n" );
-      printf ( "   N = readout-card number (1 to 4)\n");
-      printf ( "   target = lock target \n");
-      printf ( "   total_row = total number of rows in the system \n");
-      printf ( "   gain = gain of the servo (double)\n");
-      printf ( "   skip_sq1bias (optional) = if specified as 1, no SQ1 bias is applied\n");
-      printf ( "*NOTE*: Make sure sq2fb.init (32 single-entry lines) and row.init (32 single-entry lines between 0 to 40) are present in the data directory\n"); 
+      printf("usage:- sq1servo_sa outfile sq1bias sq1bstep nbias " );
+      printf("sq1fb sq1fstep nfb N target total_row gain skip_sq1bias\n" );
+      printf("   outfile = filename for output data\n" );
+      printf("   sq1bias = starting SQ1 bias\n" );
+      printf("   sq1bstep = step size for SQ1 bias\n" );
+      printf("   nbias = number of bias steps\n" );
+      printf("   sq1fb = starting SQ1 feedback\n" );
+      printf("   sq1fstep = step size for SQ1 feedback\n" );
+      printf("   nfb = number of feedback steps\n" );
+      printf("   N = readout-card number (1 to 4)\n");
+      printf("   target = lock target \n");
+      printf("   total_row = total number of rows in the system \n");
+      printf("   gain = gain of the servo (double)\n");
+      printf("   skip_sq1bias (optional) = if specified as 1, no SQ1 bias is applied\n");
       ERRPRINT("no argument specified");
       return ERR_NUM_ARGS;
    }
    if (!args_ok && !options.argument_opts) {
      printf("When ramp parameters are loaded from experiment.cfg, arguments are:\n"
-	    "    sq1servo [options] <rc> <filename>\n\n"
+	    "    sq1servo_sa [options] <rc> <filename>\n\n"
 	    "where\n"
 	    "    rc           readout card number (1-4)\n"
-	    "    filename     output file basename ($MAS_DATA will be prepended)\n");
+	    "    filename     output file basename ($$MAS_DATA will be prepended)\n");
      return ERR_NUM_ARGS;
    }
 
@@ -216,6 +216,7 @@ int main ( int argc, char **argv )
      for (i=0; i<control.column_n; i++) {
        control.target[i] = atoi(argv[9]);
        control.gain[i] = strtod(argv[11], &endptr);
+       control.sfb_init[i] = 0;
      }
 
      control.bias_active = 1;
@@ -265,136 +266,157 @@ int main ( int argc, char **argv )
      control.nbias = 1;
 
    // Lookup MCE parameters, or exit with error message.
-   mce_param_t m_sq2fb, m_sq1fb, m_sq1bias, m_sq2fb_col[MAXCOLS];
+   mce_param_t m_safb, m_sq1fb, m_sq1bias, m_safb_col[MAXCOLS];
 
    load_param_or_exit(mce, &m_sq1fb,   SQ1_CARD, SQ1_FB, 0);
    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
 
-   // Check for biasing address card
-   int fast_sq2 = check_fast_sq2(mce, &m_sq2fb, m_sq2fb_col,
-				 control.column_0, control.column_n);
+   // Make sure this is the right kind of system.
+   int mux11d = check_mux11d(mce, &m_safb, m_safb_col,
+			     control.column_0, control.column_n);
+   if (mux11d != 1) {
+       sprintf(errmsg_temp,
+	       "This system doesn't appear to be set up for mux11d operation."); 
+       ERRPRINT(errmsg_temp);
+       exit(ERR_MCE_PARA);
+   }
+     
+   // Load params for all columns
+   for (i=0; i<control.column_n; i++) {
+       sprintf(tempbuf, "%s%i", SA_FB_COL, control.column_0+i);
+       load_param_or_exit(mce, m_safb_col+i, SA_CARD, tempbuf, 0);
+   }
 
-   if ((datadir=getenv("MAS_DATA")) == NULL) {
+   if ((datadir=getenv("MAS_DATA")) == NULL){
      ERRPRINT("Enviro var. $MAS_DATA not set, quit");
      return ERR_DATA_DIR;
    }
    sprintf(full_datafilename, "%s%s",datadir, control.filename);
    
-   // open a datafile 
-   if ((sq1servo.df = fopen(full_datafilename, "w")) == NULL) {
-     sprintf(errmsg_temp, "openning data file: %s", full_datafilename);
-     ERRPRINT(errmsg_temp);
-     return ERR_DATA_FIL;
+   // open a datafile?  Nahh...
+   if (0) {
+     if ((sq1servo.df = fopen(full_datafilename, "w")) == NULL){
+       sprintf(errmsg_temp, "opening data file: %s", full_datafilename);
+       ERRPRINT(errmsg_temp);
+       return ERR_DATA_FIL;
+     }
+   } else {
+     sq1servo.df = NULL;
    }
                           
-   /* Open output file to append modified data set */
+   /* Bias file holds error and bias readings for all rows and columns */
    sprintf(outfile, "%s%s.bias", datadir, control.filename);
-   fd = fopen ( outfile, "a" );
+   bias_out = fopen(outfile, "a");
 
-   if (options.argument_opts) {
-     /* Get starting SQ2 feedback values  from a file called sq2fb.init*/
-     load_initfile(datadir, "sq2fb.init", control.column_0, control.column_n, sq2fb);
-     load_initfile(datadir, "row.init", control.column_0, control.column_n,
-		   control.row_choice);
-   } else {
-     // Initialize servo output
-     for (j=0; j<control.column_n; j++)
-	 sq2fb[j] = control.sfb_init[j];
-   }
+   /* Initialize servo output */
+   for (snum=0; snum<control.column_n; snum++)
+     for (r=0; r<control.rows; r++) 
+       safb[snum][r] = control.sfb_init[snum];
 
-   /* prepare lines of init values for runfile */
-   sprintf(init_line1, "<sq2fb.init> ");
-   sprintf(init_line2, "<row.init> ");
-   for (j=0; j<control.column_n; j++) {
-     sprintf(init_line1+strlen(init_line1), "%d ", sq2fb[j]);
-     sprintf(init_line2+strlen(init_line2), "%d ", control.row_choice[j]);
-   }
+   /*prepare a line of init values for runfile*/
+   sprintf(init_line1, "<safb.init>");
+   for (j=0; j<control.column_n; j++ )
+     sprintf(init_line1 + strlen(init_line1), " %d", safb[j][0]);
 
    /** generate a runfile **/
-   error=genrunfile (full_datafilename, control.filename, 1, control.rc,
-		     control.bias, control.dbias, control.nbias,
-		     control.fb, control.dfb, control.nfb, control.bias_active,
+   sprintf(init_line2, "<super_servo> 1");
+   error=genrunfile (full_datafilename, control.filename, 3, control.rc,
+		     control.bias, control.dbias, control.nbias, control.bias_active,
+		     control.fb, control.dfb, control.nfb, 
 		     init_line1, init_line2);
-   if (error != 0) {
+   if (error != 0){
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);
      return ERR_RUN_FILE;
    }
 
    /* generate the header line for the bias file*/
+   fprintf (bias_out, "<bias> <flux> <row> ");
    for (snum=0; snum<control.column_n; snum++)
-     fprintf ( fd, "  <error%02d> ", snum + control.column_0);
-         
+     fprintf (bias_out, "<error%02d> ", snum + control.column_0);
    for (snum=0; snum<control.column_n; snum++)
-      fprintf ( fd, "  <sq2fb%02d> ", snum + control.column_0); 
-   fprintf ( fd, "\n");
+     fprintf (bias_out, "<safb%02d> ", snum + control.column_0); 
+   fprintf (bias_out, "\n");
 
    /* start the servo*/
    for (j=0; j<control.nbias; j++ ){
 
       if (control.bias_active) {
-	// Write *all* sq1bias here, or row-order destroys you.
-	duplicate_fill(control.bias + j*control.dbias, temparr, MAXROWS);
-        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (u32*)temparr)) != 0) 
-          error_action("mcecmd_write_block sq1bias", error);
+	// Update the SQ1 bias
+	duplicate_fill(control.bias + j*control.dbias, temparr, control.column_n);
+	write_range_or_exit(mce, &m_sq1bias, control.column_0, temparr, control.column_n, "sq1bias");
       }
 
-      // Initialize SQ1 FB
+      // Initialize SQ1 FB -- "off" columns will be held to fb_const.
       duplicate_fill(control.fb, temparr, control.column_n);
+      for (int k=0; k<control.column_n; k++)
+	if (control.columns_off[k+control.column_0])
+	  temparr[k] = control.fb_const;
       write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
 
       // Preservo and run the FB ramp.
       for (i=-options.preservo; i<control.nfb; i++ ){
 
-	// Write SQ2 FB
-	rerange(temparr, sq2fb, control.column_n, control.quanta, control.column_n);
-	write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, fast_sq2, temparr, control.column_0, control.column_n);
+	// Write all rows fb to each series array
+	for (snum=0; snum<control.column_n; snum++) {
+	  rerange(temparr, safb[snum], MAXROWS, control.quanta+snum, 1);
+	  write_range_or_exit(mce, m_safb_col+snum, 0, temparr, MAXROWS, "safb_col");
+	}
 
 	if (i > 0) {
 	  // Next sq1 fb ramp value.
-	  duplicate_fill(control.fb + i*control.dfb, temparr, control.column_n);
-	  write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
+	  for (int k=0; k<control.column_n; k++)
+	    if (!control.columns_off[k+control.column_0])
+	      temparr[k] = control.fb + i*control.dfb;
+          write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
 	}
 	
 	// Get a frame
 	if ((error=mcedata_acq_go(&acq, 1)) != 0)
 	  error_action("data acquisition failed", error);
 
-	// Update output
+	// Compute new feedback for each column, row
 	for (snum=0; snum<control.column_n; snum++) {
-	  int idx = snum + control.column_n * control.row_choice[snum];
-	  sq1servo.last_frame[snum] = sq1servo.last_frame[idx]; // For printing, below.
-	  sq2fb[snum] += control.gain[snum] * ((int)sq1servo.last_frame[snum] - control.target[snum]);
+	  for (r=0; r<control.rows; r++) {
+	    safb[snum][r] += control.gain[snum] *
+		((int)sq1servo.last_frame[r*control.column_n + snum] - control.target[snum] );
+	  }
 	}
 
 	if (i >= 0) {
-	  // Record
-	  for (snum=0; snum<control.column_n; snum++)	 
-	    fprintf(fd, "%11d ", sq1servo.last_frame[snum]);
-	  for (snum=0; snum<control.column_n; snum++)
-	    fprintf ( fd, "%11d ", sq2fb[snum]);
-	  fprintf ( fd, "\n" );
+	  // Write errors and computed feedbacks to .bias file.
+	  for (r=0; r<control.rows; r++) {
+	    fprintf(bias_out, "%2i %4i %2i ", j, i, r);
+	    for (snum=0; snum<control.column_n; snum++)	 
+		fprintf(bias_out, "%13d ", sq1servo.last_frame[r*control.column_n + snum]);
+	    for (snum=0; snum<control.column_n; snum++)	 
+		fprintf(bias_out, "%13d ", safb[snum][r]);
+	    fprintf (bias_out, "\n" );
+	  }
 	}
+
       }
    }
 
    /* reset values back to 0 */
    duplicate_fill(0, temparr, control.column_n);
-   write_range_or_exit(mce, &m_sq2fb, control.column_0, temparr, control.column_n, "sq2fb");
+   write_range_or_exit(mce, &m_safb, control.column_0, temparr, control.column_n, "safb");
  
    duplicate_fill(-8192, temparr, control.column_n);
    write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");	
    
    if (control.bias_active) {
-     duplicate_fill(0, temparr, MAXROWS);
-     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (u32*)temparr)) != 0) 
-       error_action("mcecmd_write_block sq1bias", error);
+     duplicate_fill(0, temparr, control.column_n);
+     write_range_or_exit(mce, &m_sq1bias, control.column_0, temparr, control.column_n, "sq1bias");
    }
    else
-      printf("No SQ1 bias is applied!\n"); 
+      printf("SQ1 bias unchanged.\n"); 
 
-   fclose(sq1servo.df);
-   fclose(fd);
+   if (sq1servo.df != NULL)
+     fclose(sq1servo.df);
+
+   fclose(bias_out);
+
    mcelib_destroy(mce);
    
    time(&finish);
@@ -402,28 +424,3 @@ int main ( int argc, char **argv )
       
    return SUCCESS;
 }
-
-
-/* Writes values to sq2 feedback columns offset through offset+count.
- * Even with biasing_ac, the same value is applied for the whole
- * column.  In that case, m_sq2fb_col should point to the desired
- * columns only (i.e. m_sq2fb_col[0] through mm_sq2fb_col[count-1] are
- * used, *not* m_sq2fb_col[offset] through [offset+count-1]. */
-
-int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
-		 mce_param_t *m_sq2fb_col, int biasing_ac,
-		 i32 *data, int offset, int count)
-{
-	if (biasing_ac) {
-		int i;
-		i32 temparr[MAXROWS];
-		for (i=0; i<count; i++) {
-		        duplicate_fill(data[i], temparr, MAXROWS);
-			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");
-		}
-	} else {
-		write_range_or_exit(mce, m_sq2fb, offset, data, control.column_n, "sq2fb");
-	}
-	return 0;
-}
-

@@ -13,24 +13,34 @@ CFLAGS += $(DEFS)
 
 # targets
 
-TARGETS = sq1servo   sq2servo   sq1servo_all
-OBJECTS = sq1servo.o sq2servo.o servo.o options.o
-HEADERS = servo.h servo_err.h options.h ../../defaults/config.h $(LIBHEADERS)
+TARGETS = sq1servo sq2servo sq1servo_all sq1servo_sa rs_servo
 
-all: $(TARGETS)
+OBJECTS = $(foreach d,$(TARGETS),$(d).o ) \
+	servo.o options.o
+
+HEADERS = servo.h servo_err.h options.h ../../defaults/config.h
+
+.c.o : $(HEADERS)
+	$(CC) -c $(CFLAGS) $< -o $@
 
 $(OBJECTS): $(HEADERS)
 
-sq1servo: sq1servo.o servo.o options.o $(LIBDEP)
+all: $(TARGETS)
+
+sq1servo: sq1servo.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-sq1servo_all: sq1servo_all.o servo.o options.o $(LIBDEP)
+sq1servo_all: sq1servo_all.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-sq2servo: sq2servo.o servo.o options.o $(LIBDEP)
+sq1servo_sa: sq1servo_sa.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-.c.o: 	$(HEADERS)
+rs_servo: rs_servo.o servo.o options.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+
+sq2servo: sq2servo.o servo.o options.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
 tidy:
 	rm -f *~ *.o
@@ -42,6 +52,10 @@ clean:	tidy
 INSTALL_TARGET=sq1servo
 include $(MAKERULES)Makefile.install_rule
 INSTALL_TARGET=sq1servo_all
+include $(MAKERULES)Makefile.install_rule
+INSTALL_TARGET=sq1servo_sa
+include $(MAKERULES)Makefile.install_rule
+INSTALL_TARGET=rs_servo
 include $(MAKERULES)Makefile.install_rule
 INSTALL_TARGET=sq2servo
 include $(MAKERULES)Makefile.install_rule

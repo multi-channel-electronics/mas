@@ -12,6 +12,11 @@
 $hw_subrack = "full";
 
 
+/* Set $hw_mux11d=1 if this system uses new-school SA+SQ1 muxes. */
+
+$hw_mux11d = 0;
+
+
 /* In $card_list, list all cards present in your MCE.  The order
  * probably doesn't matter.
  */
@@ -77,8 +82,8 @@ $fw_rev = array(
  *   VIRTUAL FUNCTIONS
  */
 
-/* List of virtual cards to expose.  Probably doesn't need to be altered
- * except to add "heater".
+/* List of virtual cards to expose.  Probably doesn't need to be altered,
+ * except to add "heater", or to add "row" for mux11d operation.
  */
 
 $virt_list = array("rcs", "rca", "sys", "sa", "sq2", "sq1", "tes");

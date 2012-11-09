@@ -11,6 +11,19 @@
                         }
                     );
                 },
+<? /* Expose fast switching on SA FB */
+echo map_array("fb_col", $num_columns, "bc1", 41);
+?>
+                {
+                    name = "enbl_mux";
+                    count = <?=$num_columns?>;
+                    maps = (
+                        {
+                            start = 0; count = <?=$num_columns?>; card = "bc1";
+                            param = "enbl_mux"; offset = 0;
+                        }
+                    );
+                },
                 {
                     name = "bias";
                     count = <?=$num_columns?>;
@@ -28,44 +41,12 @@
             );
         },
 
+<? /* Transitional -- map SQ2 FB and SQ1 bias to the same place.
+      In the future, SQ2 ref will be removed. */
+?>
         {
             name = "sq2_mapping";
             parameters = (
-
-<? /* Biasing address card - map "sq2 fb_col%i" to "bac fb_col%i"
-      and have single enbl_mux switch.  */
-   if ($hw_bac) {
-     /* bac */
-     echo map_array("fb_col", $num_columns, "bac", 41);
-?>
-                {
-                    name = "enbl_mux";
-                    count = 1;
-                    maps = (
-                        {
-                            start = 0; count = 1; card = "bac";
-                            param = "enbl_mux"; offset = 0;
-                        }
-                    );
-                },
-<?   /* bac */
-   } else {
-     if ($fw_rev_bc_fast) {
-       /* bc-fast */
-       echo map_array("fb_col", $num_columns, "bc2", 41);
-?>
-
-                {
-                    name = "enbl_mux";
-                    count = <?=$num_columns?>;
-                    maps = (
-                        {
-                            start = 0; count = <?=$num_columns?>; card = "bc2";
-                            param = "enbl_mux"; offset = 0;
-                        }
-                    );
-                },
-<?   }  /* fw_rev_bc_fast */   ?>
                 {
                     name = "fb";
                     count = <?=$num_columns?>;
@@ -76,21 +57,38 @@
                         }
                     );
                 },
-<? } /* if bac */ ?>
-
-<? /* SQ2 bias comes from bc3 or bc1 depending on sub-rack size. */ ?>
-<?    if ($hw_subrack == "full") { ?>
+<? /* Expose fast switching of SQ1 BIAS as sq2 fb */
+echo map_array("fb_col", $num_columns, "bc2", 41);
+?>
                 {
-                    name = "bias";
+                    name = "enbl_mux";
                     count = <?=$num_columns?>;
                     maps = (
                         {
-                            start = 0; count = <?=$num_columns?>; card = "bc3";
-                            param = "flux_fb"; offset = 0;
+                            start = 0; count = <?=$num_columns?>; card = "bc2";
+                            param = "enbl_mux"; offset = 0;
                         }
                     );
                 }
-<?    } else { ?>
+            );
+        },
+<? /* End transitional... */?>
+        {
+            name = "sq1_mapping";
+            parameters = (
+<? /* Expose fast switching on SQ1 BIAS */
+echo map_array("fb_col", $num_columns, "bc1", 41, "bias_col",16,0);
+?>
+                {
+                    name = "enbl_mux";
+                    count = <?=$num_columns?>;
+                    maps = (
+                        {
+                            start = 0; count = <?=$num_columns?>; card = "bc1";
+                            param = "enbl_mux"; offset = 16;
+                        }
+                    );
+                },
                 {
                     name = "bias";
                     count = <?=$num_columns?>;
@@ -98,33 +96,6 @@
                         {
                             start = 0; count = <?=$num_columns?>; card = "bc1";
                             param = "flux_fb"; offset = 16;
-                        }
-                    );
-                }
-<?    } ?>
-            );
-        },
-
-        {
-            name = "sq1_mapping";
-            parameters = (
-                {
-                    name = "bias";
-                    count = 41;
-                    maps = (
-                        {
-                            start = 0; count = 41; card = "ac";
-                            param = "on_bias"; offset = 0;
-                        }
-                    );
-                },
-                {
-                    name = "bias_off";
-                    count = 41;
-                    maps = (
-                        {
-                            start = 0; count = 41; card = "ac";
-                            param = "off_bias"; offset = 0;
                         }
                     );
                 },
@@ -140,6 +111,32 @@
                     count = <?=$num_columns?>;
                     maps = (
 <? echo rc_map("servo_mode"); ?>
+                    );
+                }
+            );
+        },
+
+        {
+            name = "row_mapping";
+            parameters = (
+                {
+                    name = "select";
+                    count = 41;
+                    maps = (
+                        {
+                            start = 0; count = 41; card = "ac";
+                            param = "on_bias"; offset = 0;
+                        }
+                    );
+                },
+                {
+                    name = "deselect";
+                    count = 41;
+                    maps = (
+                        {
+                            start = 0; count = 41; card = "ac";
+                            param = "off_bias"; offset = 0;
+                        }
                     );
                 }
             );

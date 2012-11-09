@@ -42,7 +42,13 @@ include "cards/bac";
     mappings = (
 
 <?
+if ($hw_mux11d)
+include "squids_mux11d";
+else
 include "squids";
+
+include "no_mapping";
+
 include "tes";
 if ($heater_virt)
 include "heater";
