@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,7 +53,7 @@ struct {
   double gain[MAXCOLS];
   int quanta[MAXCOLS];
   int columns_off[MAXCOLS];
-	
+
 } control;
 
 
@@ -120,7 +123,7 @@ int load_exp_config(const char *filename)
 int main(int argc, char **argv)
 {
    char full_datafilename[256]; /*full path for datafile*/
-   char *datadir;
+   const char *datadir;
    
    i32 temparr[MAXTEMP];
   
@@ -287,11 +290,11 @@ int main(int argc, char **argv)
        load_param_or_exit(mce, m_safb_col+i, SA_CARD, tempbuf, 0);
    }
 
-   if ((datadir=getenv("MAS_DATA")) == NULL){
-     ERRPRINT("Enviro var. $MAS_DATA not set, quit");
-     return ERR_DATA_DIR;
+   if ((datadir = mcelib_lookup_dir(mce, MAS_DIR_DATA)) == NULL) {
+       ERRPRINT("Error deteriming $MAS_DATA, quit");
+       return ERR_DATA_DIR;
    }
-   sprintf(full_datafilename, "%s%s",datadir, control.filename);
+   sprintf(full_datafilename, "%s/%s", datadir, control.filename);
    
    // open a datafile?  Nahh...
    if (0) {
@@ -305,7 +308,7 @@ int main(int argc, char **argv)
    }
                           
    /* Bias file holds error and bias readings for all rows and columns */
-   sprintf(outfile, "%s%s.bias", datadir, control.filename);
+   sprintf(outfile, "%s/%s.bias", datadir, control.filename);
    bias_out = fopen(outfile, "a");
 
    /* Initialize servo output */

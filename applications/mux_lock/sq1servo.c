@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -120,7 +123,7 @@ int load_exp_config(const char *filename)
 int main ( int argc, char **argv )
 {
    char full_datafilename[MAXLINE]; /*full path for datafile*/
-   char *datadir;
+   const char *datadir;
    
    i32 temparr[MAXTEMP];
   
@@ -274,11 +277,11 @@ int main ( int argc, char **argv )
    int fast_sq2 = check_fast_sq2(mce, &m_sq2fb, m_sq2fb_col,
 				 control.column_0, control.column_n);
 
-   if ((datadir=getenv("MAS_DATA")) == NULL) {
-     ERRPRINT("Enviro var. $MAS_DATA not set, quit");
-     return ERR_DATA_DIR;
+   if ((datadir = mcelib_lookup_dir(mce, MAS_DIR_DATA)) == NULL) {
+       ERRPRINT("Error deteriming $MAS_DATA, quit");
+       return ERR_DATA_DIR;
    }
-   sprintf(full_datafilename, "%s%s",datadir, control.filename);
+   sprintf(full_datafilename, "%s/%s", datadir, control.filename);
    
    // open a datafile 
    if ((sq1servo.df = fopen(full_datafilename, "w")) == NULL) {
@@ -288,7 +291,7 @@ int main ( int argc, char **argv )
    }
                           
    /* Open output file to append modified data set */
-   sprintf(outfile, "%s%s.bias", datadir, control.filename);
+   sprintf(outfile, "%s/%s.bias", datadir, control.filename);
    fd = fopen ( outfile, "a" );
 
    if (options.argument_opts) {
