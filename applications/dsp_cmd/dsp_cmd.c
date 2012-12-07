@@ -13,10 +13,29 @@
 #include <mce/cmdtree.h>
 #include <mce/defaults.h>
 
-#define PROGRAM_NAME "dsp_cmd"
+#include "../../defaults/config.h"
 
 #define LINE_LEN 1024
 #define NARGS 64
+
+#if !MULTICARD
+#  define USAGE_OPTION_N "  -n CARD    ignored\n"
+#else
+#  define USAGE_OPTION_N "  -n CARD    use the specified fibre card\n"
+#endif
+
+#define USAGE \
+"dsp_cmd [-i] [-q] [-p] [-n CARD] [-f FILE | -x COMMAND]\n" \
+"dsp_cmd [-h | -?]\n" \
+"\n" \
+"where:\n" \
+" -h / -?    show this help screen\n" \
+" -i         interactive mode\n" \
+" -q         quiet mode (report errors only)\n" \
+" -p         don't prefix output lines\n" \
+" -f FILE    read commands from FILE\n" \
+USAGE_OPTION_N \
+" -x COMMAND execute command COMMAND\n"
 
 mce_context_t *mce;
 
@@ -76,9 +95,15 @@ mascmdtree_opt_t qt_opts[] = {
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "ENABLE", 1,1, DSP_QT_ENABLE,
         integer_opts},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "TON" ,0,0, 10, NULL},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "TOFF",0,0, 11, NULL},
+    //{ MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "TON" ,0,0, 10, NULL},
+    //{ MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "TOFF",0,0, 11, NULL},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "BURST" , 1,1, DSP_QT_BURST,
+        integer_opts},
+    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RP_SIZE" , 1,1, DSP_QT_RPSIZE,
+        integer_opts},
+    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RP_BASE" , 1,1, DSP_QT_RPBASE,
+        integer_opts},
+    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RP_ENABLE" , 1,1, DSP_QT_RPENAB,
         integer_opts},
     { MASCMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
@@ -98,7 +123,7 @@ mascmdtree_opt_t root_opts[] = {
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET_MCE", 0,0, COMMAND_RCO,
         integer_opts},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "QT_SET"   , 0,-1, COMMAND_QTS,
+    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "QT_SET"   , 2,2, COMMAND_QTS,
         qt_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "#"        , 0,-1, SPECIAL_COMMENT,
         anything_opts},
@@ -144,8 +169,7 @@ int main(int argc, char **argv)
 	if (process_options(argc, argv, &options)) return 1;
 
 	if (!options.nonzero_only) {
-		printf("This is %s version %s\n",
-		       PROGRAM_NAME, VERSION_STRING);
+        printf("This is dsp_cmd version %s\n", VERSION_STRING);
 	}
 
     mce = mcelib_create(options.fibre_card, NULL, 0);
@@ -246,10 +270,8 @@ int  process_options(int argc, char **argv, option_t *options)
 		switch(option) {
 		case '?':
 		case 'h':
-			printf("Usage:\n\t%s [-i] [-q] [-p] [-n card] "
-			       "[-f <batch file> | -x <command>]\n",
-			       argv[0]);
-			return -1;
+            puts(USAGE);
+            exit(0);
 
 		case 'i':
 			options->interactive = 1;
@@ -281,7 +303,9 @@ int  process_options(int argc, char **argv, option_t *options)
 			break;
 
 		default:
-			printf("Unimplemented option '-%c'!\n", option);
+            printf("Unimplemented option '-%c'!\n", option);
+            puts(USAGE);
+            return -1;
 		}
 	}
 

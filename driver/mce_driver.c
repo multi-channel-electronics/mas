@@ -1,5 +1,5 @@
-/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *      vim: sw=8 ts=8 et tw=80
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
  */
 #include <linux/init.h>
 #include <linux/fs.h>
@@ -710,6 +710,14 @@ int mce_proc(char *buf, int count, int card)
 		len += sprintf(buf+len, "    %-15s %25s\n", "quiet_RP:",
 			       mdat->quiet_rp ? "on" : "off");
 	}
+    if (len < count) {
+        len += sprintf(buf+len, "    %-15s %#25x\n", "base:",
+                mdat->buff.reply_busaddr);
+    }
+    if (len < count) {
+        len += sprintf(buf+len, "    %-15s %#25x\n", "size:",
+                sizeof(mce_reply));
+    }
 	return len;
 }
 
