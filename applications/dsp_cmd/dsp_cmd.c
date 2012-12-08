@@ -123,7 +123,7 @@ mascmdtree_opt_t root_opts[] = {
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET_MCE", 0,0, COMMAND_RCO,
         integer_opts},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "QT_SET"   , 2,2, COMMAND_QTS,
+    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "QT_SET"   , 3,3, COMMAND_QTS,
         qt_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "#"        , 0,-1, SPECIAL_COMMENT,
         anything_opts},
