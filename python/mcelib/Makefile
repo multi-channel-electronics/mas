@@ -7,7 +7,7 @@ include $(BASE)Makefile.children
 MOD = pymce
 
 # Source files
-SOURCE = $(MOD)/__init__.py $(MOD)/basic.py base.c
+SOURCE = $(MOD)/__init__.py $(MOD)/basic.py $(MOD)/compat.py base.c
 
 all: .build
 

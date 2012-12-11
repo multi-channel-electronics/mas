@@ -7,7 +7,8 @@ original mce.py:mce interface, for transitional purposes.
 
 class old_mce(BasicMCE):
     def read_frames(self, count, channel_set=False, data_only=False):
-        d = self.read_data(count, extract=False, row_col=False)
+        # Be sure to call base class read_data...
+        d = BasicMCE.read_data(self, count, extract=False, row_col=False)
         if data_only:
             return d.data
         return d.data, d.headers

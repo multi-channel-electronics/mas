@@ -14,11 +14,16 @@ class BasicMCE:
 
     No higher level functionality.  Extend me.
     """
-    def __init__(self, device_index=-1):
+    _numpify = False  # Set to true to return arrays rather than lists.
+
+    def __init__(self, device_index=-1, numpify=False):
         self.context = mcelib.connect(device_index)
+        self._numpify = numpify
 
     def read(self, card, param, count=-1, offset=0, array=True):
         d = mcelib.read(self.context, card, param, offset, count)
+        if self._numpify:
+            d = numpy.array(d)
         if not array and len(d) == 1:
             return d[0]
         return d
@@ -26,6 +31,9 @@ class BasicMCE:
     def write(self, card, param, data, offset=0):
         if not hasattr(data, '__getitem__'):
             data = [data]
+        if len(data) == 0:
+            # This messes up the MCE, so forbid it here.
+            return False
         return mcelib.write(self.context, card, param, offset, data)
 
     def frame_size(self, cards=None, n_rows=None):
