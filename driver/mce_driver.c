@@ -716,7 +716,7 @@ int mce_proc(char *buf, int count, int card)
     }
     if (len < count) {
         len += sprintf(buf+len, "    %-15s %#25x\n", "size:",
-                sizeof(mce_reply));
+                       (int)sizeof(mce_reply));
     }
 	return len;
 }

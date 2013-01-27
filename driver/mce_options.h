@@ -8,7 +8,7 @@
 
 #define MAX_CARDS MAX_FIBRE_CARD
 
-#define DEVICE_NAME "mceds"
+#define DEVICE_NAME "mcedsX"
 
 
 /*
@@ -24,6 +24,7 @@
 
 */
 
+#define DRIVER_VERBOSE
 
 /*
   DEBUG MESSAGES

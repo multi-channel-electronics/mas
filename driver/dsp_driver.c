@@ -13,6 +13,15 @@
 #include <linux/interrupt.h>
 #include <linux/sched.h>
 
+#include <linux/kernel.h>
+#include <linux/slab.h>
+#include <linux/fs.h>
+#include <linux/errno.h>
+#include <linux/types.h>
+#include <linux/proc_fs.h>
+#include <linux/fcntl.h>
+#include <linux/sched.h>
+
 #include "mce_options.h"
 #include "kversion.h"
 #include "version.h"
@@ -213,7 +222,7 @@ static const struct pci_device_id pci_ids[] = {
 };
 
 static struct pci_driver pci_driver = {
-	.name = "mce_dsp",
+	.name = DEVICE_NAME,
 	.id_table = pci_ids,
 	.probe = dsp_driver_probe,
 	.remove = dsp_driver_remove,
@@ -1272,7 +1281,7 @@ int dsp_unconfigure(int card)
 	return card;
 }
 
-void dsp_driver_remove(struct pci_dev *pci)
+void olddsp_driver_remove(struct pci_dev *pci)
 {
 	int card;
 	struct dsp_dev_t *dev;
@@ -1327,7 +1336,7 @@ int dsp_ready(int card) {
 
 */
 
-int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
+int olddsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	int card;
 	struct dsp_dev_t *dev = NULL;
@@ -1377,7 +1386,7 @@ fail:
 }
 
 
-void dsp_driver_cleanup(void)
+void olddsp_driver_cleanup(void)
 {
 	int i = 0;
 
@@ -1406,38 +1415,442 @@ void dsp_driver_cleanup(void)
         PRINT_INFO(NOCARD, "driver removed\n");
 }    
 
+/*****
+
+ HACKING
+
+*****/
+
+#include "test/dspioctl.h"
+
+typedef struct {
+	/* int major; */
+        int minor;
+        int enabled;
+
+	struct pci_dev *pci;
+	dsp_reg_t *reg;
+
+        int reply_recd;  // state... 0 is idle, 1 is reqd, 2 is recd.
+        struct dsp_reply reply;
+
+        __s32 *data_buffer;
+        int data_head;
+        int data_tail;
+        int data_size;
+
+	/* struct semaphore sem; */
+	/* wait_queue_head_t queue; */
+
+	int error;
+
+	/* dsp_ops_state_t state; */
+
+	/* dsp_message msg; */
+	/* dsp_command cmd; */
+        
+} newdsp_t;
+
+newdsp_t dspdata[MAX_CARDS];
+int major = 0;
+
+int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
+{
+	int card;
+        int err = 0;
+	struct dsp_dev_t *dev = NULL;
+	newdsp_t *dsp = NULL;
+        PRINT_INFO(NOCARD, "entry\n");
+
+        // Find open slot
+        for (card=0; card<MAX_CARDS; card++) {
+                dsp = dspdata + card;
+                if (dsp->pci == NULL)
+                        break;
+        }
+
+        if (card==MAX_CARDS) {
+                PRINT_ERR(NOCARD, "too many cards, dspdata is full.\n");
+                return -ENODEV;
+        }
+
+        PRINT_INFO(NOCARD, "assigned to minor=%i\n", card);
+        dsp->minor = card;
+
+        // Do this on success only...
+        /* dsp->pci = pci; */
+
+        // Now we can set up the kernel to talk to the card
+	// PCI paperwork
+	if ((err = pci_enable_device(pci))) {
+                PRINT_ERR(card, "pci_enable_device failed.\n");
+                goto fail;
+        }
+	if (pci_request_regions(pci, DEVICE_NAME)!=0) {
+                PRINT_ERR(card, "pci_request_regions failed.\n");
+		err = -1;
+		goto fail;
+	}
+
+        dsp->reg = (dsp_reg_t *)ioremap_nocache(pci_resource_start(pci, 0) &
+						PCI_BASE_ADDRESS_MEM_MASK,
+						sizeof(*dsp->reg));
+	if (dsp->reg==NULL) {
+                PRINT_ERR(card, "Could not map PCI registers!\n");
+		pci_release_regions(pci);
+		err = -EIO;
+		goto fail;
+	}
+	pci_set_master(pci);
+
+        //Allocate a buffer...
+        dsp->data_size = 100000;
+        dsp->data_buffer = kmalloc(GFP_KERNEL,
+                                   dsp->data_size * sizeof(*dsp->data_buffer));
+
+        //Ok, we made it.
+        dsp->pci = pci;
+        dsp->enabled = 1;
+
+        return 0;
+              
+	// Setup data structure for the card, configure PCI stuff and
+	// the DSP.  After this call, the DSP is ready to go.
+	if ((card = dsp_configure(pci)) < 0)
+		goto fail;
+	dev = dsp_dev + card;
+
+	// Get DSP version, which MCE driver likes to know...
+	if (dsp_query_version(card) != 0)
+		goto fail;
+
+	if (dev->version >= DSP_U0105) {
+		// Enable interrupt hand-shaking
+		dev->comm_mode |= DSP_PCI_MODE_HANDSHAKE;
+		dsp_write_hctr(dev->dsp, dev->comm_mode);
+		dev->hcvr_bits &= ~HCVR_HNMI;
+	} else {
+		// All vector commands must be non-maskable on older firmware
+		dev->hcvr_bits |= HCVR_HNMI;
+	}
+
+	dev->enabled = 1;
+
+	// Set the PCI latency timer
+	if (dsp_set_latency(card, 0))
+		goto fail;
+
+	// Enable the character device for this card.
+	if (dsp_ops_probe(card) != 0)
+		goto fail;
+
+	// DSP is ready, setup a structure for MCE driver
+	if (mce_probe(card, dsp_dev[card].version))
+		goto fail;
+
+        PRINT_INFO(NOCARD, "ok\n");
+	return 0;
+
+fail:
+        PRINT_ERR(NOCARD, "failed, calling removal routine.\n");
+	dsp_driver_remove(pci);
+	return -1;
+}
+
+
+void dsp_driver_remove(struct pci_dev *pci)
+{
+	int card;
+	newdsp_t *dsp = NULL;
+
+        PRINT_INFO(NOCARD, "entry\n");
+	if (pci == NULL) {
+                PRINT_ERR(NOCARD, "called with null pointer, ignoring.\n");
+		return;
+	}
+
+	// Match to existing card
+	for (card=0; card < MAX_CARDS; card++) {
+                dsp = dspdata + card;
+		if (pci == dsp->pci)
+			break;
+	}
+	if (card >= MAX_CARDS) {
+                PRINT_ERR(card, "could not match configured device, "
+                                "ignoring.\n");
+		return;
+	}
+			
+        dsp->enabled = 0;
+
+        // Free that buffer
+        if (dsp->data_buffer != NULL)
+                kfree(dsp->data_buffer);
+
+        //Unmap i/o...
+        iounmap(dsp->reg);
+        /* dev->dsp = NULL; */
+        pci_release_regions(dsp->pci);
+        pci_disable_device(dsp->pci);
+
+        dsp->pci = NULL;
+
+	/* // Disable higher-level features first */
+	/* mce_remove(card); */
+	/* del_timer_sync(&dev->tim_dsp); */
+
+	/* // Hopefully these aren't still running... */
+	/* tasklet_kill(&dev->priority_tasklet); */
+	/* tasklet_kill(&dev->handshake_tasklet); */
+
+	/* // Revert card to default mode */
+	/* dsp_write_hctr(dev->dsp, DSP_PCI_MODE); */
+
+	/* // Do DSP cleanup, free PCI resources */
+	/* dsp_unconfigure(card); */
+
+        PRINT_INFO(NOCARD, "ok\n");
+}
+
+__s32 read_pair(newdsp_t *dsp) {
+        __s32 i1, i2;
+        while (!(dsp_read_hstr(dsp->reg) & HSTR_HRRQ));
+        i1 = dsp_read_hrxs(dsp->reg);
+        while (!(dsp_read_hstr(dsp->reg) & HSTR_HRRQ));
+        i2 = dsp_read_hrxs(dsp->reg);
+        return (i1 & 0xffff) << 16 | (i2 & 0xffff);
+}
+
+int read_hrxs_packet(newdsp_t *dsp) {
+        int word, code, size;
+        int i;
+
+        // Anything there?
+        if (!(dsp_read_hstr(dsp->reg) & HSTR_HRRQ))
+                return -EBUSY;
+
+        // Yes, something is there.
+        word = read_pair(dsp);
+        code = (word >> 16) & 0xff;
+        size = (word & 0xffff);
+        
+        if (code < DSP_CODE_REPLY_MAX) {
+                // This is a reply to a command we sent.
+                if (dsp->reply_recd == 2)
+                        // Bad!  The driver contains an outstanding reply.
+                        PRINT_ERR(NOCARD, "Reply trashes existing reply.");
+                // Fill the reply.
+                dsp->reply.size = size+1;
+                dsp->reply.data[0] = word;
+                for (i=1; i<dsp->reply.size; i++)
+                        dsp->reply.data[i] = read_pair(dsp);
+                dsp->reply_recd = 2;
+        } else {
+                PRINT_ERR(NOCARD, "MCE packet - size %i!\n", size);
+                for (i=0; i<size; i++) {
+                        dsp->data_buffer[dsp->data_head++] = read_pair(dsp);
+                }
+                PRINT_ERR(NOCARD, "Buffer state: %i %i\n",
+                          dsp->data_head, dsp->data_tail);
+        }
+        return 0;
+}
+
+
+long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
+{
+//	struct filp_pdata *fpdata = filp->private_data;
+//	struct dsp_ops_t *dops = dsp_ops + fpdata->minor;
+        newdsp_t *dsp = (newdsp_t*)filp->private_data;
+        int card = dsp->minor;
+
+        struct dsp_command cmd;
+        int i;
+
+        int blocking = (filp->f_flags & O_NONBLOCK)!=0;
+
+//        PRINT_INFO(card, "entry! minor=%d\n", card);
+
+	switch(iocmd) {
+        case DSPIOCT_R_HRXS:
+                return dsp_read_hrxs(dsp->reg);
+        case DSPIOCT_R_HSTR:
+                return dsp_read_hstr(dsp->reg);
+        case DSPIOCT_R_HCVR:
+                return dsp_read_hcvr(dsp->reg);
+        case DSPIOCT_R_HCTR:
+                return dsp_read_hctr(dsp->reg);
+
+        case DSPIOCT_W_HTXR:
+                dsp_write_htxr(dsp->reg, (int)arg);
+                return 0;
+        case DSPIOCT_W_HCVR:
+                dsp_write_hcvr(dsp->reg, (int)arg);
+                return 0;
+        case DSPIOCT_W_HCTR:
+                dsp_write_hctr(dsp->reg, (int)arg);
+                return 0;
+
+        case DSPIOCT_COMMAND:
+                //FIXME: check stuff.
+
+                // Copy command from user
+                copy_from_user(&cmd, (const void __user *)arg, sizeof(cmd));
+                PRINT_INFO(card, "len %i, first word is %i\n",
+                           cmd.size, cmd.data[0]);
+                // Clear reply state
+                dsp->reply_recd = cmd.reply_reqd;
+                //FIXME: register this for later writing.
+                if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
+                        return -EBUSY;
+                
+                for (i=0; i < cmd.size; i++) {
+                        while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ));
+                        dsp_write_htxr(dsp->reg, cmd.data[i]);
+                        PRINT_INFO(card, "wrote %i=%x\n", i, cmd.data[i]);
+                }
+                return 0;
+
+        case DSPIOCT_REPLY:
+                // Do we have a reply?
+                // I guess we could try to read one.
+                if (dsp->reply_recd != 2)
+                        read_hrxs_packet(dsp);
+                /* if (dsp->reply_recd != 2 &&  */
+                /*     (dsp_read_hstr(dsp->reg) & HSTR_HRRQ)) { */
+                /*         dsp->reply.data[0] = read_pair(dsp); */
+                /*         dsp->reply.size = (dsp->reply.data[0] & 0xffff) + 1; */
+                /*         PRINT_INFO(card, "data is %x\n", dsp->reply.data[0]); */
+                /*         for (i=1; i<dsp->reply.size; i++) { */
+                /*                 dsp->reply.data[i] = read_pair(dsp); */
+                /*                 PRINT_INFO(card, "and %x\n", dsp->reply.data[i]); */
+                /*         } */
+                /*         dsp->reply_recd = 2; */
+                /* } */
+                if (dsp->reply_recd != 2)
+                        return -EBUSY;
+
+                copy_to_user((void __user*)arg, &dsp->reply, sizeof(dsp->reply));
+                dsp->reply_recd = 0;
+                return 0;
+	default:
+                PRINT_INFO(card, "unknown ioctl\n");
+                return 0;
+	}
+	return 0;
+}
+
+int newdsp_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+        newdsp_t *dsp = (newdsp_t*)filp->private_data;
+        int card = dsp->minor;
+
+	// Mark memory as reserved (prevents core dump inclusion) and
+	// IO (prevents caching)
+	vma->vm_flags |= VM_IO | VM_RESERVED;
+
+	// Do args checking on vma... start, end, prot.
+        PRINT_INFO(card, "mapping %#lx bytes to user address %#lx\n",
+		   vma->vm_end - vma->vm_start, vma->vm_start);
+
+	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
+	remap_pfn_range(vma, vma->vm_start,
+			virt_to_phys(dsp->data_buffer) >> PAGE_SHIFT,
+			vma->vm_end - vma->vm_start, vma->vm_page_prot);
+	return 0;
+}
+
+
+int newdsp_open(struct inode *inode, struct file *filp)
+{
+	/* struct filp_pdata *fpdata; */
+	int minor = iminor(inode);
+        PRINT_INFO(minor, "entry! iminor(inode)=%d\n", minor);
+
+        // Is this a real device?
+        if (minor >= MAX_CARDS || !dspdata[minor].enabled) {
+                PRINT_ERR(minor, "card %i not enabled.\n", minor);
+		return -ENODEV;
+	}
+
+        // FIXME: populate .owner in fops?
+	if(!try_module_get(THIS_MODULE))
+		return -1;
+
+        
+	/* fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL); */
+        /* fpdata->minor = iminor(inode); */
+	filp->private_data = dspdata + minor;
+
+        PRINT_INFO(minor, "ok\n");
+	return 0;
+}
+
+int newdsp_release(struct inode *inode, struct file *filp)
+{
+	/* struct filp_pdata *fpdata = filp->private_data; */
+        /* int card = fpdata->minor; */
+        newdsp_t *dsp = (newdsp_t*)filp->private_data;
+        int card = dsp->minor;
+
+        PRINT_INFO(card, "entry!\n");
+
+	/* if (fpdata != NULL) { */
+	/* 	kfree(fpdata); */
+	/* } else */
+        /*         PRINT_ERR(card, "called with NULL private_data!\n"); */
+
+	module_put(THIS_MODULE);
+
+        PRINT_INFO(card, "ok\n");
+	return 0;
+}
+
+
+struct file_operations newdsp_fops = 
+{
+	.owner=   THIS_MODULE,
+	.open=    newdsp_open,
+	/* .read=    dsp_read, */
+	.release= newdsp_release,
+	/* .write=   dsp_write, */
+	.unlocked_ioctl= newdsp_ioctl,
+};
+
+
 
 inline int dsp_driver_init(void)
 {
 	int i = 0;
 	int err = 0;
 
+        //FIXME: necessary to zero these?
         PRINT_ERR(NOCARD, "MAS driver version %s\n", VERSION_STRING);
 	for(i=0; i<MAX_CARDS; i++) {
-		struct dsp_dev_t *dev = dsp_dev + i;
+//		struct dsp_dev_t *dev = dsp_dev + i;
+                newdsp_t *dev = dspdata + i;
 		memset(dev, 0, sizeof(*dev));
+                dev->minor = i;
 	}
   
-	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
+        //	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
 
-	err = dsp_ops_init();
-	if(err != 0) goto out;
+	err = register_chrdev(0, DEVICE_NAME, &newdsp_fops);
+        major = err;
 
-	err = mce_init();
-	if(err != 0) goto out;
+	/* err = dsp_ops_init(); */
+	/* if(err != 0) goto out; */
 
-#ifdef FAKEMCE
-	dsp_fake_init( DSPDEV_NAME );
-#else
+	/* err = mce_init(); */
+	/* if(err != 0) goto out; */
+
 	err = pci_register_driver(&pci_driver);
-
 	if (err) {
                 PRINT_ERR(NOCARD, "pci_register_driver failed with code %i.\n",
                                 err);
 		err = -1;
 		goto out;
 	}			  
-#endif //FAKEMCE
 
         PRINT_INFO(NOCARD, "ok\n");
 	return 0;
@@ -1445,6 +1858,23 @@ out:
         PRINT_ERR(NOCARD, "exiting with error\n");
 	return err;
 }
+
+void dsp_driver_cleanup(void)
+{
+        PRINT_INFO(NOCARD, "entry\n");
+
+	pci_unregister_driver(&pci_driver);
+
+        unregister_chrdev(major, DEVICE_NAME);
+
+	/* dsp_ops_cleanup(); */
+
+	/* mce_cleanup(); */
+
+	/* remove_proc_entry("mce_dsp", NULL); */
+
+        PRINT_INFO(NOCARD, "driver removed\n");
+}    
 
 module_init(dsp_driver_init);
 module_exit(dsp_driver_cleanup);

@@ -1,0 +1,9 @@
+sudo rmmod mce_dsp
+
+if [ "$1" == "new" ] ; then 
+   echo New driver.
+   sudo insmod mce_dsp.ko
+else
+   sudo modprobe mce_dsp
+fi
+
