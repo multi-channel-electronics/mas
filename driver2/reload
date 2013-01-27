@@ -1,8 +1,0 @@
-#!/bin/bash
-
-DRIVER=mce_dsp
-
-grep '^mce_dsp\ ' /proc/modules && \
-    sudo rmmod ${DRIVER}
-
-sudo insmod ${DRIVER}.ko
