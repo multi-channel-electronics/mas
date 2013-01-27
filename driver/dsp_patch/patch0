@@ -1,0 +1,29 @@
+./freeze 1 || exit
+sleep .1
+
+# Replacement data
+# disable HF2 as int activator
+dsp_cmd -qx write P 0x0487 0x0000
+dsp_cmd -qx write P 0x0486 0x0000
+
+# This just tests HF2 and returns.
+if false; then 
+dsp_cmd -qx write P 0x0810 0x000c
+dsp_cmd -qx write P 0x0811 0xa8985
+dsp_cmd -qx write P 0x0812 0x0810
+dsp_cmd -qx write P 0x0813 0x0000
+dsp_cmd -qx write P 0x0814 0x0000
+dsp_cmd -qx write P 0x0815 0x0000
+dsp_cmd -qx write P 0x0816 0x000c
+dsp_cmd -qx write P 0x0817 0x0fc1
+dsp_cmd -qx write P 0x0818 0x0fc0
+dsp_cmd -qx write P 0x0819 0x00ef
+
+# set hacking jump point
+dsp_cmd -qx write P 0x0180 0xbf080
+dsp_cmd -qx write P 0x0181 0x0811
+fi
+
+sleep .1
+
+./freeze 0

@@ -1,0 +1,1 @@
+./set_driver old && ./freeze 1 && bash patch && ./freeze 0 && ./set_driver new

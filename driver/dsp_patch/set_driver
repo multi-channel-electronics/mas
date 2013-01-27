@@ -1,0 +1,2 @@
+cd $HOME/code/mas/trunk/driver2/
+./set_driver $1
