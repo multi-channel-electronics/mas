@@ -53,7 +53,12 @@ int genrunfile (
         int bias, int bstep, int nbias, int bias_active,
         int feed, int fstep, int nfeed,
         char *servo_init1,       /* a line of servo_init var_name and values to be included in <servo_init>*/     
-        char *servo_init2        /* a line of servo_init var_name and values to be included in <servo_init>*/     
+        char *servo_init2,        /* a line of servo_init var_name and values to be included in <servo_init>*/
+        int n_cols,        /* number of gains and quanta (set 0 to ignore) */
+        int super,         /* all rows? */
+        double *gains,      /* servo gains used */
+        int *quanta        /* the flux quanta used */
+
 )
 {
     /* Method: spawns mcestatus to create <header> section
@@ -85,6 +90,7 @@ int genrunfile (
             fprintf (runfile,"  %s\n", servo_init2);
         fprintf (runfile, "</servo_init>\n\n");    
     }
+
     /*<par_ramp> section*/  
     fprintf (runfile,"<par_ramp>\n  <loop_list> loop1 loop2\n");
     fprintf (runfile,
@@ -97,8 +103,22 @@ int genrunfile (
             "    <par_list loop2> par1\n"
             "      <par_title loop2 par1> %s\n"
             "      <par_step loop2 par1> %d %d %d\n",
-            bias_codes[which_servo], feed, fstep, nfeed);
+            flux_codes[which_servo], feed, fstep, nfeed);
     fprintf (runfile, "</par_ramp>\n\n");
+
+    /*<servo_params> section*/
+    if (n_cols > 0) {
+        fprintf(runfile, "<servo_params>\n");
+        fprintf(runfile, "  <super_servo> %i\n", super);
+        fprintf(runfile, "  <servo_gains>");
+        for (int i=0; i<n_cols; i++)
+            fprintf(runfile, " %.4f", gains[i]);
+        fprintf(runfile, "\n  <servo_quanta>");
+        for (int i=0; i<n_cols; i++)
+            fprintf(runfile, " %i", quanta[i]);
+        fprintf (runfile, "\n</servo_params>\n\n");
+    }
+
     fclose(runfile);
 
     /* frameacq_stamp */

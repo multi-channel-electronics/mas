@@ -317,7 +317,7 @@ int main ( int argc, char **argv )
    error=genrunfile (full_datafilename, control.filename, 1, control.rc,
 		     control.bias, control.dbias, control.nbias,
 		     control.fb, control.dfb, control.nfb, control.bias_active,
-		     init_line1, init_line2);
+                     init_line1, init_line2, 0, 0, NULL, NULL);
    if (error != 0) {
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);

@@ -75,7 +75,11 @@ int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
 int  which_rc,
 int  bias, int bstep, int nbias, int bias_active,
 int feed, int fstep, int nfeed,
-char *initline1, char *initline2 /*init lines to be included in <servo_init> section*/
+char *initline1, char *initline2, /*init lines to be included in <servo_init> section*/
+int n_cols,
+int servo,
+double *gains,
+int *quanta
 );
 
 
