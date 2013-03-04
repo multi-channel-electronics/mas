@@ -698,7 +698,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
     int err = 0;
     int i;
     mce_param_t mcep;
-    int to_read, to_request, to_write, card_mul, index;
+    int to_read, to_request, to_write, index;
     u32 buf[DATA_SIZE];
     char s[LINE_LEN];
 
@@ -717,7 +717,6 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
         // Allow integer values for card and para.
         int raw_mode = (tokens[1].type != MASCMDTREE_SELECT) ||
             (tokens[2].type != MASCMDTREE_SELECT);
-        card_mul = 1;
         to_read = 0;
 
         if (!raw_mode) {
@@ -731,6 +730,10 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 return -1;
             }
         } else {
+            // Sensible defaults...
+            memset(&mcep, 0, sizeof(mcep));
+
+            // If user gave a card string, look up the code.
             if ( tokens[1].type == MASCMDTREE_SELECT ) {
                 mceconfig_cfg_card ((config_setting_t*)tokens[1].data,
                         &mcep.card);
@@ -738,8 +741,16 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 mcep.card.id[0] = tokens[1].value;
                 mcep.card.card_count = 1;
             }
+
+            // User definitely didn't give a param.
             mcep.param.id = tokens[2].value;
-            mcep.param.count = tokens[3].value;
+
+            if (tokens[3].type == MASCMDTREE_INTEGER) {
+                mcep.param.count = tokens[3].value;
+            } else {
+                mcep.param.count = 1;   // default
+            }
+
             mcep.card.card_count =
                 ( tokens[4].type == MASCMDTREE_INTEGER  ?
                   tokens[4].value : 1 );
@@ -747,9 +758,6 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 
         if (to_read == 0 && tokens[3].type == MASCMDTREE_INTEGER) {
             to_read = tokens[3].value;
-            if (tokens[4].type == MASCMDTREE_INTEGER) {
-                card_mul = tokens[4].value;
-            }
         }
 
         switch( tokens[0].value ) {
