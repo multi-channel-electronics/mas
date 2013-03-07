@@ -29,7 +29,8 @@ class BasicMCE:
         return d
 
     def write(self, card, param, data, offset=0):
-        if not hasattr(data, '__getitem__'):
+        if not hasattr(data, '__getitem__') or \
+                (isinstance(data, numpy.ndarray) and data.ndim==0):
             data = [data]
         if len(data) == 0:
             # This messes up the MCE, so forbid it here.
