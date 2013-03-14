@@ -100,4 +100,7 @@ echo " *  - RC configurable filter support: " . (fw_range("rc", $min=0x5010000)
 ? "yes" : "no") .  "\n";
 
 echo " *  - RC p-term decay support:        " . ($has_pterm ? "yes" : "no")
-. "\n"; /* 0x5010009 */
+. "\n"; /* 0x5010009 / revE */
+
+echo " *  - RC servo reset support:         " . ($does_servo_rst ? "yes" : "no")
+. "\n"; /* 0x5020000 / revE */

@@ -177,4 +177,7 @@ $fw_rev_cc_jtag = fw_range("cc", $min=0x5000005);
 /* Does RC support pterm decay bits? */
 $has_pterm = fw_range("rc", $min=0x5010009) && $hw_rev["rc"] >= "revE";
 
+/* Does RC support servo reset? */
+$does_servo_rst = fw_range("rc", $min=0x5020000) && $hw_rev["rc"] >= "revE";
+
 ?>

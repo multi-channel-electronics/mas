@@ -159,6 +159,9 @@
                     count = 6;
                 },
 <? } ?>
+<? if ($does_servo_rst) { ?>
+                # Mandana: put stuff here.
+<? } ?>
                 {
                     name = "flx_lp_init";
                     id = 0x37;
