@@ -159,8 +159,17 @@
                     count = 6;
                 },
 <? } ?>
-<? if ($does_servo_rst) { ?>
-                # Mandana: put stuff here.
+<? if (fw_range("rc", $min=0x5020000) { ?>
+                { name = "servo_rst_col0"; id = 0xF0; count = 41; },
+                { name = "servo_rst_col1"; id = 0xF1; count = 41; },
+                { name = "servo_rst_col2"; id = 0xF2; count = 41; },
+                { name = "servo_rst_col3"; id = 0xF3; count = 41; },
+                { name = "servo_rst_col4"; id = 0xF4; count = 41; },
+                { name = "servo_rst_col5"; id = 0xF5; count = 41; },
+                { name = "servo_rst_col6"; id = 0xF6; count = 41; },
+                { name = "servo_rst_col7"; id = 0xF7; count = 41; },
+                { name = "servo_rst_arm"; id = 0xF8; count = 1; },
+
 <? } ?>
                 {
                     name = "flx_lp_init";
