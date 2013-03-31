@@ -159,7 +159,7 @@
                     count = 6;
                 },
 <? } ?>
-<? if (fw_range("rc", $min=0x5020000) { ?>
+<? if (fw_range("rc", $min=0x5020000)) { ?>
                 { name = "servo_rst_col0"; id = 0xF0; count = 41; },
                 { name = "servo_rst_col1"; id = 0xF1; count = 41; },
                 { name = "servo_rst_col2"; id = 0xF2; count = 41; },
