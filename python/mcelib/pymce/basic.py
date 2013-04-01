@@ -139,7 +139,14 @@ class BasicMCE:
             return d.extract(fields, unfilter=unfilter)
         return d
 
-        
+    def lock_query(self):
+        return mcelib.lock_op(self.context, 0)
+    def lock_down(self):
+        return mcelib.lock_op(self.context, 1)
+    def lock_up(self):
+        return mcelib.lock_op(self.context, 2)
+    def lock_reset(self):
+        return mcelib.lock_op(self.context, 3)
     
 """
 The MCEBinaryData object is based on SmallMCEFile, because that class
