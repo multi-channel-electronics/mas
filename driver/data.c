@@ -7,6 +7,7 @@
 #include <linux/fs.h>
 #include <linux/mm.h>
 #include <linux/sched.h>
+#include <linux/time.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
@@ -36,6 +37,46 @@ frame_buffer_t data_frames[MAX_CARDS];
  *      Buffer management and interrupt service                           *
  *                                                                        *
  **************************************************************************/
+
+/* data_frame_timestamp
+ *
+ * Handle timestamping, if necessary.  This timestamps every frame between
+ * dframes->head_index and new_head-1 inclusive.  The timestamp is microsecond
+ * precise, which is more than its accuracy.  This runs in interrupt context.
+ */
+
+/* timestampage is flagged in bit 31 of the frame status word */
+#define TIMESTAMP_BIT (1 << 31)
+
+/* we use header words 34, 35 for the timestamp; the CC returns PSUC data in
+ * these fields, which we overwrite; the word number here must be even for
+ * alignment reasons */
+#define HDR_TIMESTAMP     34
+
+static void data_frame_timestamp(int new_head, int card)
+{
+        int i;
+        frame_buffer_t *dframes = data_frames + card;
+
+        /* nothing to do */
+        if (!dframes->timestamp)
+                return;
+
+        /* loop over new frames */
+        for (i = dframes->head_index; i != new_head;
+                        i = (i + 1) % dframes->max_index)
+        {
+                /* write microseconds since the epoch (note divide by 2 here
+                 * for word index since we're dealing with 64-bit int pointers)
+                 */
+                ((u64*)(dframes->base + i * dframes->frame_size))[HDR_TIMESTAMP
+                        / 2] = dframes->usec;
+
+                /* set the timstamp bit */
+                ((u32*)(dframes->base + i * dframes->frame_size))[0]
+                        |= TIMESTAMP_BIT;
+        }
+}
 
 /*
   data_frame_address
@@ -92,6 +133,9 @@ int data_frame_increment(int card)
 	frame_buffer_t *dframes = data_frames + card;
 	int d;
 
+        d = (dframes->head_index + 1) % dframes->max_index;
+        data_frame_timestamp(d, card);
+
 #ifdef OPT_WATCHER
 	if (watcher.on)
 		watcher_file((dframes->head_index
@@ -100,7 +144,6 @@ int data_frame_increment(int card)
 			     % dframes->max_index);
 #endif
         
-	d = (dframes->head_index + 1) % dframes->max_index;
 	wake_up_interruptible(&dframes->queue);
 
 	if ( d == dframes->tail_index) {
@@ -145,6 +188,8 @@ int data_frame_contribute(int new_head, int card)
 		(new_head >= dframes->head_index) +
 		(dframes->head_index >= dframes->tail_index) +
 		(dframes->tail_index > new_head);
+
+        data_frame_timestamp(new_head, card);
 	
 	if (d != 2) {
                 PRINT_ERR(card, "buffer trashed!\n");
@@ -616,6 +661,9 @@ int data_proc(char *buf, int count, int card)
 		}
 		len += sprintf(buf+len, "    %-15s %25s\n", "mode:", sstr);
 	}
+        if (len < count)
+                len += sprintf(buf+len, "    %-15s %25s\n", "timestamp:",
+                                dframes->timestamp ? "on" : "off");
 
 	return len;
 }

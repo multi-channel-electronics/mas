@@ -151,3 +151,7 @@ int mcedata_lock_up(mce_context_t* context)
 	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_UP);
 }
 
+int mcedata_timestamp_enable(mce_context_t *context, int on)
+{
+    return ioctl(C_data.fd, DATADEV_IOCT_TIMESTAMP_ENABLE, on);
+}

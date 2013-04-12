@@ -48,6 +48,7 @@ int mcedata_lock_query(mce_context_t* context);
 int mcedata_lock_reset(mce_context_t* context);
 int mcedata_lock_down(mce_context_t* context);
 int mcedata_lock_up(mce_context_t* context);
+int mcedata_timestamp_enable(mce_context_t *context, int on);
 
 
 /* Frame data handlers */

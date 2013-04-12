@@ -150,6 +150,13 @@ ssize_t data_write(struct file *filp, const char __user *buf, size_t count,
 	return count;
 }
 
+/* turn on/off timestamping */
+static int data_timestamp_enable(int on, int card)
+{
+        frame_buffer_t *dframes = data_frames + card;
+        dframes->timestamp = on ? 1 : 0;
+        return 0;
+}
 
 /* Map the DSP buffer into user space (rather than occupying limited
  * kernel space.  The driver doesn't need direct access to the buffer
@@ -287,6 +294,10 @@ long data_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                         fpdata->leech_acq = dframes->acq_index;
                 }
                 return 0;
+
+        case DATADEV_IOCT_TIMESTAMP_ENABLE:
+                PRINT_INFO(card, "enable/disable data timestamp [on=%li]", arg);
+                return data_timestamp_enable(arg, card);
 
 	default:
                 PRINT_ERR(card, "unknown command (%#x)\n", iocmd );

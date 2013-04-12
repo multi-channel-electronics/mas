@@ -98,6 +98,11 @@ typedef struct {
         // help leeches realize they need to update their view).
         int acq_index;
 
+        /* frame timestamping */
+        int timestamp; /* timestamping on */
+        u64 usec; /* time of most recent GO comamnd (in microseconds
+                     since the epoch */
+
 } frame_buffer_t;
 
 extern frame_buffer_t data_frames[MAX_CARDS];

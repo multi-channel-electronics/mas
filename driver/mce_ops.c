@@ -6,11 +6,13 @@
 #include <linux/fs.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/time.h>
 #include <asm/uaccess.h>
 
 #include "kversion.h"
 #include "mce_options.h"
 
+#include "data.h"
 #include "mce_ops.h"
 #include "mce_driver.h"
 #include "mce/mce_ioctl.h"
@@ -236,6 +238,7 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 {
 	struct filp_pdata *fpdata = filp->private_data;
 	struct mce_ops_t *mops = mce_ops + fpdata->minor;
+        frame_buffer_t *dframes = data_frames + fpdata->minor;
         int card = fpdata->minor;
 	int err = 0;
 	int ret_val = 0;
@@ -309,6 +312,12 @@ ssize_t mce_write(struct file *filp, const char __user *buf, size_t count,
 	}
 	switch(err) {
 	case 0:
+                /* timestamp a successful GO command, if enabled */
+                if (dframes->timestamp && mops->cmd.command == MCE_GO) {
+                        struct timeval tv;
+                        do_gettimeofday(&tv);
+                        dframes->usec = (u64)tv.tv_sec * 1000000 + tv.tv_usec;
+                }
 		ret_val = count;
 		break;
 	default:

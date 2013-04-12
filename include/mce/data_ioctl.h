@@ -57,4 +57,7 @@
 #define DATADEV_IOCT_SET           _IO(DATADEV_IOC_MAGIC, 13)
 #define      DATA_LEECH      (1 << 0)  /* Secondary data reader */
 
+/* timestamping */
+#define DATADEV_IOCT_TIMESTAMP_ENABLE _IO(DATADEV_IOC_MAGIC, 14)
+
 #endif
