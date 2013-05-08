@@ -29,7 +29,7 @@ class BasicMCE:
         return d
 
     def write(self, card, param, data, offset=0):
-        if not hasattr(data, '__getitem__') or \
+        if numpy.isscalar(data) or \
                 (isinstance(data, numpy.ndarray) and data.ndim==0):
             data = [data]
         if len(data) == 0:
