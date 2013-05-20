@@ -14,6 +14,7 @@
 #include <linux/types.h>
 
 #include "dspioctl.h"
+#include "new_dsp.h"
 
 typedef __s32 int32;
 
@@ -75,6 +76,11 @@ void int_handler(int sig) {
     // Hand it up.
     signal(sig, SIG_DFL);
     raise(sig);
+}
+
+void exit_now(int err) {
+    mode_off();
+    exit(err);
 }
 
 #pragma push
@@ -170,6 +176,13 @@ int main(void) {
     printf("On entry:\n");
 	dump_regs();
 
+    if (read_io(HCTR) & 0x20) {
+        printf("We were still on; offing and exiting.\n");
+        mode_off();
+        dump_regs();
+        return 0;
+    }
+
     /* printf("Disabling prefetch\n"); */
     /* write_io(HCTR, read_io(HCTR) | 0x80); */
 
@@ -208,9 +221,56 @@ int main(void) {
 
     dump_regs();
 
-    // Kill this mode on exit.
+
+/*
+ * Set up commanding.
+ */
+
+    // Kill this mode on exit?
     mode_on();
-    signal(SIGINT, int_handler);
+    // signal(SIGINT, int_handler);
+
+    // Cause upload of DMA destination
+    printf("Setting DMA REP_BUF\n");
+    int err = ioctl(fd, DSPIOCT_SET_REP_BUF);
+    printf(" err=%i\n", err);
+    dump_regs();
+
+/*
+ * Send a test command
+ */
+
+    cmd.size=2;
+    cmd.flags = DSP_EXPECT_DSP_REPLY;
+    cmd.data[0] = cmd.size-1 + DSP_CMD_READ_X;
+    cmd.data[1] = 0x3;
+//    cmd.data[2] = 0xdead;       //       3
+    err = write_cmd(&cmd);
+    printf("write_cmd err=%i\n", err);
+    usleep(500000);
+    
+    char line[256];
+    /* printf("waiting for string > "); */
+    /* fgets(line, 256, stdin); */
+
+    ioctl(fd, DSPIOCT_DUMP_BUF);
+    exit_now(0);
+    
+    /* printf("waiting for string > "); */
+    /* fgets(line, 256, stdin); */
+
+    dump_regs();
+    exit_now(0);
+
+
+    // Trigger an update.
+    ioctl(fd, DSPIOCT_TRIGGER_FAKE);
+    usleep(500000);
+
+    while (1) {
+        printf (" alive...\n");
+        usleep(500000);
+    }
 
     // Wait for packets?
     base_packet_t bp;
@@ -223,44 +283,9 @@ int main(void) {
     }
     
 
-    printf("Sending command...\n");
-    
-    cmd.size = 2;
-    cmd.data[0] = 0x20001;
-    cmd.data[1] = 0x3;
-
-    if (0) {
-    // Let's dump the memory.
-
-    for (i=0; i<100; i++) {
-        cmd.data[1] = i;
-        write_cmd(&cmd);
-        while (read_reply(&rep)!=0);
-        printf("%3i %8x\n", i, rep.data[1]);
-    }
-    }
-
-    cmd.size = 2;
-    cmd.data[0] = 0x20001;
-    cmd.data[1] = 0x3;
-    write_cmd(&cmd);
-    while (read_reply(&rep)!=0) usleep(100000);
-    printf("rep=%x\n\n", rep.data[1]);
-
-    // Fake data trigger...
-    cmd.size = 1;
-    cmd.data[0] = 0x310000;
-    printf("Sending command...\n");
-    write_cmd(&cmd);
-    usleep(100000);
-    /* while (read_reply(&rep)!=0) usleep(100000); */
-    /* printf("rep=%x\n", rep.data[0]); */
-
-    printf("\n");
-    usleep(200000);
-
 
     printf("stopping.\n");
+    usleep(200000);
     // Shut down the test and pick up strays.
     mode_off();
     i = 0;

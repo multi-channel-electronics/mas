@@ -30,10 +30,13 @@
 
 /* PCI register definitions */
 
-#define HSTR_HC3  0x8
-#define HSTR_HRRQ 0x4
-#define HSTR_HTRQ 0x2
-#define HSTR_TRDY 0x1
+#define HSTR_HINT 0x40
+#define HSTR_HC5  0x20
+#define HSTR_HC4  0x10
+#define HSTR_HC3  0x08
+#define HSTR_HRRQ 0x04
+#define HSTR_HTRQ 0x02
+#define HSTR_TRDY 0x01
 
 #define HCTR_HF0  0x08        /* Hand-shake bit */
 #define HCTR_HF1  0x10        /* Enable hand-shaking */
@@ -86,7 +89,7 @@ typedef struct {
 	volatile u32 hstr;      // Host status register
 	volatile u32 hcvr;      // Host command vector register(base+$018)
 	volatile u32 htxr_hrxs; // Host transmit / receive data
-	volatile u32 unused2[16384-32];
+//	volatile u32 unused2[16384-32];
 
 } dsp_reg_t;
 

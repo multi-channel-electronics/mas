@@ -231,7 +231,7 @@ static struct pci_driver pci_driver = {
 
 /* DSP register wrappers */
 
-static inline int dsp_read_hrxs(dsp_reg_t *dsp) {
+static inline volatile int dsp_read_hrxs(dsp_reg_t *dsp) {
 	return ioread32((void*)&(dsp->htxr_hrxs));
 }
 
@@ -281,67 +281,8 @@ irqreturn_t pci_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	/* Note that the regs argument is deprecated in newer kernels,
 	   do not use it.  It is left here for compatibility with
 	   -2.6.18                                                    */
+        return IRQ_NONE;
 
-	struct dsp_dev_t *dev = NULL;
-	dsp_reg_t *dsp = NULL;
-	dsp_message msg;
-	int i=0, j=0, k=0;
-	int n = sizeof(msg) / sizeof(u32);
-        int s = 0;
-
-	for(k=0; k<MAX_CARDS; k++) {
-		dev = dsp_dev + k;
-		if (dev_id == dev) {
-			dsp = dev->dsp;
-			break;
-		}
-	}
-
-	if (dev_id != dev) return IRQ_NONE;
-
-	//Verify handshake bit
-	if ( !(dsp_read_hstr(dsp) & HSTR_HC3) ) {
-		/* not our interrupt -- another device interrupted on our
-		   shared IRQ */
-		return IRQ_NONE;
-	}
-
-	// Interrupt hand-shaking changed in U0105.
-	if (dev->comm_mode & DSP_PCI_MODE_HANDSHAKE) {
-		// Raise HF0 to acknowledge that IRQ is being handled.
-		// DSP will lower INTA and then HF3, and wait for HF0 to fall.
-		dsp_write_hctr(dev->dsp, dev->comm_mode | HCTR_HF0);
-	} else {
-		// Host command to clear INTA
-		dsp_quick_command(dev, HCVR_INT_RST);
-	}
-
-	// Read data into dsp_message structure
-	while ( i<n && ((s=dsp_read_hstr(dsp)) & HSTR_HRRQ) ) {
-		((u32*)&msg)[i++] = dsp_read_hrxs(dsp) & DSP_DATAMASK;
-	}
-	if (i<n)
-                PRINT_ERR(dev->card, "incomplete message %i/%i (last HSTR=%#x).\n",
-                          i, n, s);
-
-	// We are done with the DSP, so release it.
-	if (dev->comm_mode & DSP_PCI_MODE_HANDSHAKE) {
-		dsp_ack_int_or_schedule((unsigned long)dev);
-	} else {
-		// Host command to clear HF3
-		dsp_quick_command(dev, HCVR_INT_DON);
-	}
-
-	// Discover message handler 	
-	for (j=0; j < dev->n_handlers; j++) {
-		if ( (dev->handlers[j].code == msg.type) &&
-		     (dev->handlers[j].handler != NULL) ) {
-			dev->handlers[j].handler(&msg, dev->handlers[j].data);
-		}
-	}
-
-        PRINT_INFO(dev->card, "ok\n");
-	return IRQ_HANDLED;
 }
 
 
@@ -1236,6 +1177,7 @@ int dsp_configure(struct pci_dev *pci)
 		mod_timer(&dev->tim_poll, jiffies + DSP_POLL_JIFFIES);
 	} else {
 		// Install the interrupt handler (cast necessary for backward compat.)
+                PRINT_ERR(card, "interrupt handler installed.\n");
 		err = dsp_pci_set_handler(card, (irq_handler_t)pci_int_handler,
 					  "mce_dsp");		
 		if (err) goto fail;
@@ -1423,6 +1365,16 @@ void olddsp_driver_cleanup(void)
 
 #include "test/dspioctl.h"
 
+typedef enum {
+        DSP_IDLE = 0,
+        DSP_CMD_QUED = 1,
+        DSP_CMD_SENT = 2,
+        DSP_REP_RECD = 3,
+        DSP_REP_HNDL = 4
+} newdsp_state_t;
+
+
+
 typedef struct {
 	/* int major; */
         int minor;
@@ -1432,15 +1384,25 @@ typedef struct {
 	dsp_reg_t *reg;
 
         int reply_recd;  // state... 0 is idle, 1 is reqd, 2 is recd.
-        struct dsp_reply reply;
+        /* struct dsp_reply reply; */
+        struct dsp_datagram reply;
 
         __s32 *data_buffer;
         int data_head;
         int data_tail;
         int data_size;
 
-	/* struct semaphore sem; */
+        int reply_buffer_size;
+        void* reply_buffer_dma_virt;
+        dma_addr_t reply_buffer_dma_handle;
+
+        /* void* reply_buffer; */
+
+        spinlock_t lock;
 	/* wait_queue_head_t queue; */
+        newdsp_state_t state;
+
+	/* struct semaphore sem; */
 
 	int error;
 
@@ -1453,6 +1415,117 @@ typedef struct {
 
 newdsp_t dspdata[MAX_CARDS];
 int major = 0;
+
+
+#define DSP_LOCK_DECLARE_FLAGS unsigned long irqflags
+#define DSP_LOCK    spin_lock_irqsave(&dsp->lock, irqflags)
+#define DSP_UNLOCK  spin_unlock_irqrestore(&dsp->lock, irqflags)
+/* #define DSP_LOCK_DECLARE_FLAGS  */
+/* #define DSP_LOCK  */
+/* #define DSP_UNLOCK  */
+
+
+irqreturn_t new_int_handler(int irq, void *dev_id, struct pt_regs *regs)
+{
+	/* Note that the regs argument is deprecated in newer kernels,
+	 * do not use it.  It is left here for compatibility with
+	 * -2.6.18                                                    */
+
+	newdsp_t *dsp = dev_id;
+        int k;
+        int hctr;
+        int n_wait;
+        int n_wait_max;
+
+        // Reject null devs
+        if (dsp == NULL) {
+                PRINT_ERR(NOCARD, "IRQ with null device\n");
+                return IRQ_NONE;
+        }
+
+        // Is this really one of ours?
+	for(k=0; k<MAX_CARDS; k++) {
+                if (dsp == dspdata+k)
+                        break;
+        }
+
+        if (k==MAX_CARDS)
+                return IRQ_NONE;
+
+        PRINT_INFO(dsp->minor, "Entry.\n");
+
+	if (dsp == NULL || dsp->enabled == 0) {
+                PRINT_ERR(NOCARD, "IRQ on disabled device\n");
+                return IRQ_NONE;
+        }
+
+	// Confirm that device has raised interrupt
+        n_wait = 0;
+        n_wait_max = 100000;
+        do {
+                if (dsp_read_hstr(dsp->reg) & HSTR_HINT)
+                        break;
+        } while (++n_wait < n_wait_max);
+        if (n_wait >= n_wait_max) {
+                PRINT_ERR(dsp->minor,
+                          "HINT did not rise in %i cycles; ignoring\n",
+                          n_wait);
+                return IRQ_NONE;
+        }
+        if (n_wait != 0) {
+                PRINT_ERR(dsp->minor,
+                          "HINT took %i cycles to rise; accepting\n",
+                          n_wait);
+	}
+
+        PRINT_INFO(dsp->minor, "IRQ owned.\n");
+
+        // Hand shake up...
+        hctr = dsp_read_hctr(dsp->reg);
+        dsp_write_hctr(dsp->reg, hctr | HCTR_HF0);
+
+        //Is this a DSP reply? Update the DSP state.
+        if (1) { // Yes, it is a DSP reply.
+                DSP_LOCK_DECLARE_FLAGS;
+                DSP_LOCK;
+                switch(dsp->state) {
+                case DSP_CMD_SENT:
+                        PRINT_ERR(dsp->minor, "marking RECD\n");
+                        dsp->state = DSP_REP_RECD;
+                        //Copy into datagram holder
+                        memcpy(&dsp->reply, dsp->reply_buffer_dma_virt,
+                               sizeof(dsp->reply));
+                        break;
+                default:
+                        PRINT_ERR(dsp->minor,
+                                  "unexpected reply packet (state=%i)\n",
+                                  dsp->state);
+                        dsp->state = DSP_IDLE;
+                }
+                DSP_UNLOCK;
+        }
+
+        n_wait = 0;
+        n_wait_max = 1000000;
+        do {
+                if (!(dsp_read_hstr(dsp->reg) & HSTR_HINT))
+                        break;
+        } while (++n_wait < n_wait_max);
+        if (n_wait!=0) {
+                PRINT_ERR(dsp->minor, "int handler timed out waiting for HINT\n");
+                PRINT_ERR(dsp->minor, "hobbling int handler so you get this message\n");
+                /* global_fail = 1; */
+        }
+
+        PRINT_INFO(dsp->minor, "HSTR=%x\n", dsp_read_hstr(dsp->reg));
+
+        // Hand shake down.
+        dsp_write_hctr(dsp->reg, hctr & ~HCTR_HF0);
+
+        PRINT_INFO(dsp->minor, "ok\n");
+	return IRQ_HANDLED;
+}
+
 
 int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
@@ -1486,6 +1559,9 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
                 PRINT_ERR(card, "pci_enable_device failed.\n");
                 goto fail;
         }
+        // This was recently moved up; used to be under ioremap
+	pci_set_master(pci);
+
 	if (pci_request_regions(pci, DEVICE_NAME)!=0) {
                 PRINT_ERR(card, "pci_request_regions failed.\n");
 		err = -1;
@@ -1501,12 +1577,36 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 		err = -EIO;
 		goto fail;
 	}
-	pci_set_master(pci);
 
         //Allocate a buffer...
-        dsp->data_size = 100000;
-        dsp->data_buffer = kmalloc(GFP_KERNEL,
-                                   dsp->data_size * sizeof(*dsp->data_buffer));
+        /* dsp->data_size = 100000; */
+        /* dsp->data_buffer = kmalloc(GFP_KERNEL, */
+        /*                            dsp->data_size * sizeof(*dsp->data_buffer)); */
+
+        // Allocate DMA-ready reply buffer.
+        dsp->reply_buffer_size = 1024;
+        dsp->reply_buffer_dma_virt =
+                dma_alloc_coherent(&pci->dev, dsp->reply_buffer_size,
+                                   &dsp->reply_buffer_dma_handle,
+                                   GFP_KERNEL);
+
+        if (dsp->reply_buffer_dma_virt==NULL) {
+                PRINT_ERR(card, "Failed to allocate DMA memory.\n");
+        }
+
+        /* dsp->reply_buffer = kmalloc(dsp->reply_buffer_size, GFP_KERNEL); */
+        /* if (dsp->reply_buffer==NULL) { */
+        /*         PRINT_ERR(card, "Failed to allocate buffer copy.\n"); */
+        /* } */
+
+        // Interrupt handler?  Maybe this can wait til later...
+	err = request_irq(pci->irq, (irq_handler_t)new_int_handler,
+                          IRQ_FLAGS, DEVICE_NAME, dsp);
+	if (err!=0) {
+                PRINT_ERR(card, "irq request failed with error code %#x\n",
+			  -err);
+	}
+        PRINT_ERR(card, "new interrupt handler installed.\n");
 
         //Ok, we made it.
         dsp->pci = pci;
@@ -1583,15 +1683,28 @@ void dsp_driver_remove(struct pci_dev *pci)
 			
         dsp->enabled = 0;
 
+        if (dsp->pci != NULL)
+                free_irq(dsp->pci->irq, dsp);
+
+        if (dsp->reply_buffer_dma_virt != NULL)
+                dma_free_coherent(&dsp->pci->dev, dsp->reply_buffer_size,
+                                  dsp->reply_buffer_dma_virt,
+                                  dsp->reply_buffer_dma_handle);
+
+        /* if (dsp->reply_buffer != NULL) */
+        /*         kfree(dsp->reply_buffer); */
+
         // Free that buffer
-        if (dsp->data_buffer != NULL)
-                kfree(dsp->data_buffer);
+        /* if (dsp->data_buffer != NULL) */
+        /*         kfree(dsp->data_buffer); */
 
         //Unmap i/o...
         iounmap(dsp->reg);
+
         /* dev->dsp = NULL; */
-        pci_release_regions(dsp->pci);
+        // Call release_regions *after* disable_device.
         pci_disable_device(dsp->pci);
+        pci_release_regions(dsp->pci);
 
         dsp->pci = NULL;
 
@@ -1621,6 +1734,7 @@ __s32 read_pair(newdsp_t *dsp) {
         return (i1 & 0xffff) << 16 | (i2 & 0xffff);
 }
 
+/*
 int read_hrxs_packet(newdsp_t *dsp) {
         int word, code, size;
         int i;
@@ -1655,7 +1769,23 @@ int read_hrxs_packet(newdsp_t *dsp) {
         }
         return 0;
 }
+*/
 
+void send_cmd(newdsp_t *dsp, struct dsp_command *cmd) {
+        int i;
+        int n_wait = 0;
+        int n_wait_max = 10000;
+
+        for (i=0; i < cmd->size; i++) {
+                while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ) && ++n_wait < n_wait_max);
+                dsp_write_htxr(dsp->reg, cmd->data[i]);
+                PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, cmd->data[i]);
+        }
+        if (n_wait >= n_wait_max) {
+                PRINT_ERR(dsp->minor,
+                          "failed to write command while waiting for HTRQ.\n");
+        }
+}
 
 long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 {
@@ -1666,8 +1796,10 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 
         struct dsp_command cmd;
         int i;
+        unsigned x;
+        DSP_LOCK_DECLARE_FLAGS;
 
-        int blocking = (filp->f_flags & O_NONBLOCK)!=0;
+        //int blocking = (filp->f_flags & O_NONBLOCK)!=0;
 
 //        PRINT_INFO(card, "entry! minor=%d\n", card);
 
@@ -1692,46 +1824,107 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 return 0;
 
         case DSPIOCT_COMMAND:
-                //FIXME: check stuff.
-
+                //Get lock and check that system can accept new command
+                DSP_LOCK;
+                if (dsp->state == DSP_IDLE) {
+                        dsp->state = DSP_CMD_QUED;
+                        DSP_UNLOCK;
+                } else {
+                        DSP_UNLOCK;
+                        return -EBUSY;
+                }
+                        
                 // Copy command from user
                 copy_from_user(&cmd, (const void __user *)arg, sizeof(cmd));
                 PRINT_INFO(card, "len %i, first word is %i\n",
                            cmd.size, cmd.data[0]);
                 // Clear reply state
-                dsp->reply_recd = cmd.reply_reqd;
+                //dsp->reply_recd = cmd.reply_reqd;
                 //FIXME: register this for later writing.
                 if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
                         return -EBUSY;
                 
-                for (i=0; i < cmd.size; i++) {
-                        while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ));
-                        dsp_write_htxr(dsp->reg, cmd.data[i]);
-                        PRINT_INFO(card, "wrote %i=%x\n", i, cmd.data[i]);
+                send_cmd(dsp, &cmd);
+                /* for (i=0; i < cmd.size; i++) { */
+                /*         while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ)); */
+                /*         dsp_write_htxr(dsp->reg, cmd.data[i]); */
+                /*         PRINT_INFO(card, "wrote %i=%x\n", i, cmd.data[i]); */
+                /* } */
+
+                // Update state
+                DSP_LOCK;
+                if (cmd.flags & DSP_EXPECT_DSP_REPLY) {
+                        PRINT_ERR(dsp->minor, "state=sent\n");
+                        dsp->state = DSP_CMD_SENT;
+                }
+                else
+                        dsp->state = DSP_IDLE;
+                DSP_UNLOCK;
+
+                return 0;
+
+        case DSPIOCT_SET_REP_BUF:
+                // Hand craftily upload the bus address.
+                x = (unsigned) dsp->reply_buffer_dma_handle;
+                PRINT_INFO(card, "Informing DSP of bus address=%lx\n",
+                           (long)dsp->reply_buffer_dma_handle);
+
+                cmd.data[0] = 0x090002;
+                cmd.data[1] = (x) & 0xffff;
+                cmd.data[2] = (x >> 16) & 0xffff;
+                cmd.size = 3;
+                cmd.flags = 0;
+                //cmd.reply_reqd = 0;
+
+                //FIXME: register this for later writing.
+                if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
+                        return -EBUSY;
+                
+                send_cmd(dsp, &cmd);
+
+                return 0;
+
+        case DSPIOCT_TRIGGER_FAKE:
+                // Hand craftily upload the bus address.
+                PRINT_INFO(card, "Triggering DSP write\n");
+
+                cmd.data[0] = 0x310000;
+                cmd.size = 1;
+                //cmd.reply_reqd = 0;
+                cmd.flags = 0;
+
+                //FIXME: register this for later writing.
+                if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
+                        return -EBUSY;
+                
+                send_cmd(dsp, &cmd);
+                return 0;
+
+        case DSPIOCT_DUMP_BUF:
+                for (i=0; i<12; i++) {
+                        if (i==2) i=8;
+                        PRINT_INFO(card, "buffer %3i = %4x\n",
+                                   i, (int)((__u32*)(dsp->reply_buffer_dma_virt))[i]);
                 }
                 return 0;
 
         case DSPIOCT_REPLY:
-                // Do we have a reply?
-                // I guess we could try to read one.
-                if (dsp->reply_recd != 2)
-                        read_hrxs_packet(dsp);
-                /* if (dsp->reply_recd != 2 &&  */
-                /*     (dsp_read_hstr(dsp->reg) & HSTR_HRRQ)) { */
-                /*         dsp->reply.data[0] = read_pair(dsp); */
-                /*         dsp->reply.size = (dsp->reply.data[0] & 0xffff) + 1; */
-                /*         PRINT_INFO(card, "data is %x\n", dsp->reply.data[0]); */
-                /*         for (i=1; i<dsp->reply.size; i++) { */
-                /*                 dsp->reply.data[i] = read_pair(dsp); */
-                /*                 PRINT_INFO(card, "and %x\n", dsp->reply.data[i]); */
-                /*         } */
-                /*         dsp->reply_recd = 2; */
-                /* } */
-                if (dsp->reply_recd != 2)
+                // Check for reply, and mark it as in process
+                DSP_LOCK;
+                if (dsp->state == DSP_REP_RECD) {
+                        dsp->state = DSP_REP_HNDL;
+                        DSP_UNLOCK;
+                } else {
+                        DSP_UNLOCK;
                         return -EBUSY;
-
+                }
+                        
                 copy_to_user((void __user*)arg, &dsp->reply, sizeof(dsp->reply));
-                dsp->reply_recd = 0;
+                // Mark DSP as idle.
+                DSP_LOCK;
+                dsp->state = DSP_IDLE;
+                DSP_UNLOCK;
+
                 return 0;
 	default:
                 PRINT_INFO(card, "unknown ioctl\n");
@@ -1824,13 +2017,12 @@ inline int dsp_driver_init(void)
 	int i = 0;
 	int err = 0;
 
-        //FIXME: necessary to zero these?
         PRINT_ERR(NOCARD, "MAS driver version %s\n", VERSION_STRING);
 	for(i=0; i<MAX_CARDS; i++) {
-//		struct dsp_dev_t *dev = dsp_dev + i;
                 newdsp_t *dev = dspdata + i;
 		memset(dev, 0, sizeof(*dev));
                 dev->minor = i;
+                spin_lock_init(&dev->lock);
 	}
   
         //	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);

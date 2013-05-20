@@ -1,6 +1,9 @@
+echo freezing...
+
 ./freeze 1 || exit
 sleep .1
 
+echo patching...
 # Replacement data
 # disable HF2 as int activator
 dsp_cmd -qx write P 0x0487 0x0000
@@ -25,5 +28,5 @@ dsp_cmd -qx write P 0x0181 0x0811
 fi
 
 sleep .1
-
+echo unfreezing.
 ./freeze 0

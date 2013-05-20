@@ -25,18 +25,33 @@
 #define DSPIOCT_COMMAND  _IOW(DSPIOCT_MAGIC,  140, int)
 #define DSPIOCT_REPLY    _IOR(DSPIOCT_MAGIC,  141, int)
 
+#define DSPIOCT_SET_REP_BUF  _IO(DSPIOCT_MAGIC,  150)
+#define DSPIOCT_DUMP_BUF     _IO(DSPIOCT_MAGIC,  151)
+#define DSPIOCT_TRIGGER_FAKE _IO(DSPIOCT_MAGIC,  152)
+
 #define DSP_COMMAND_SIZE 128
+#define DSP_DATAGRAM_BUFFER_SIZE 128
+
+#define DSP_EXPECT_DSP_REPLY 0x01
+#define DSP_EXPECT_MCE_REPLY 0x02
 
 #pragma pack(push,1)
 struct dsp_command {
 	__s32 size;
-	__s32 reply_reqd;
+	__s32 flags;
 	__s32 data[DSP_COMMAND_SIZE];
 };
 
 struct dsp_reply {
 	__s32 size;
 	__s32 data[DSP_COMMAND_SIZE];
+};
+
+struct dsp_datagram {
+	__s16 version;
+	__s16 buffer_size;
+	__s32 unused1[15];
+	__s32 buffer[DSP_DATAGRAM_BUFFER_SIZE];
 };
 
 #pragma pack(pop)
