@@ -10,3 +10,6 @@
 
 #define CMD_SET_REP_BUF 0x110000
 
+#define DSP_SEND_MCE    0x210000
+#define DSP_TRIGGER_FAKE 0x310000
+

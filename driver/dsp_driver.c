@@ -26,6 +26,10 @@
 #include "kversion.h"
 #include "version.h"
 
+#ifdef BIGPHYS
+# include <linux/bigphysarea.h>
+#endif
+
 #ifdef REALTIME
 #include <rtai.h>
 #endif
@@ -1365,6 +1369,35 @@ void olddsp_driver_cleanup(void)
 
 #include "test/dspioctl.h"
 
+
+typedef struct {
+
+	void*     base;
+	unsigned long base_busaddr;
+        size_t    size;
+
+        // New data is written at head, consumer data is read at tail.
+	volatile
+	int       head_index;
+	volatile
+	int       tail_index;
+
+	// Semaphore should be held when modifying structure, but
+	// interrupt routines may modify head_index at any time.
+
+        spinlock_t lock;
+	wait_queue_head_t queue;
+
+	// Device lock - controls read access on data device and
+	// provides a system for checking whether the system is
+	// mid-acquisition.  Should be NULL (for idle) or pointer to
+        // reader's filp (for locking).
+
+	void *data_lock;	
+
+} newframe_buffer_t;
+
+
 typedef enum {
         DSP_IDLE = 0,
         DSP_CMD_QUED = 1,
@@ -1387,10 +1420,12 @@ typedef struct {
         /* struct dsp_reply reply; */
         struct dsp_datagram reply;
 
-        __s32 *data_buffer;
-        int data_head;
-        int data_tail;
-        int data_size;
+        /* __s32 *data_buffer; */
+        /* int data_head; */
+        /* int data_tail; */
+        /* int data_size; */
+
+        newframe_buffer_t dframes;
 
         int reply_buffer_size;
         void* reply_buffer_dma_virt;
@@ -1400,6 +1435,7 @@ typedef struct {
 
         spinlock_t lock;
 	wait_queue_head_t queue;
+	struct timer_list timer;
         newdsp_state_t state;
 
 	/* struct semaphore sem; */
@@ -1423,6 +1459,54 @@ int major = 0;
 /* #define DSP_LOCK_DECLARE_FLAGS  */
 /* #define DSP_LOCK  */
 /* #define DSP_UNLOCK  */
+
+
+int newdata_alloc(newdsp_t *dev, int mem_size)
+{
+	newframe_buffer_t *dframes = &dev->dframes;
+	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
+	caddr_t virt;
+
+        PRINT_INFO(dev->minor, "entry\n");
+
+	mem_size = npg * PAGE_SIZE;
+
+        // Virtual address?
+	virt = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
+        PRINT_ERR(dev->minor, "BIGPHYS selected\n");
+
+	if (virt==NULL) {
+                PRINT_ERR(dev->minor, "bigphysarea_alloc_pages failed!\n");
+		return -ENOMEM;
+	}
+
+	// Save the buffer address
+	dframes->base = virt;
+	
+	// Save physical address for hardware
+
+	// Note virt_to_bus is on the deprecation list... we will want
+	// to switch to the DMA-API, dma_map_single does what we want.
+	dframes->base_busaddr = virt_to_bus(virt);
+
+	// Save the maximum size
+	dframes->size = mem_size;
+
+	//Debug
+        PRINT_INFO(dev->minor, "buffer: base=%lx, size %li\n",
+		   (unsigned long)dframes->base, 
+		   (long)dframes->size);
+	
+	return 0;
+}
+
+void newdata_free(newdsp_t *dsp)
+{
+        if (dsp->dframes.base != NULL)
+                bigphysarea_free_pages(dsp->dframes.base);
+        dsp->dframes.base = NULL;
+}
+
 
 static void inline dsp_set_state_wake(newdsp_t *dsp, int new_state) {
         DSP_LOCK_DECLARE_FLAGS;
@@ -1536,6 +1620,19 @@ irqreturn_t new_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	return IRQ_HANDLED;
 }
 
+void newdsp_timeout(unsigned long data)
+{
+	newdsp_t *dsp = (newdsp_t*)data;
+        if (dsp->state == DSP_IDLE) {
+                PRINT_INFO(dsp->minor, "Something timed out...\n");
+                return;
+        }
+
+        PRINT_ERR(dsp->minor, "Something timed out. state=%i\n",
+                  dsp->state);
+        dsp_set_state_wake(dsp, DSP_IDLE);
+}
+
 
 int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
@@ -1562,6 +1659,9 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 
         // Kernel structures...
         init_waitqueue_head(&dsp->queue);
+	init_timer(&dsp->timer);
+	dsp->timer.function = newdsp_timeout;
+	dsp->timer.data = (unsigned long)dsp;
 
         // Do this on success only...
         /* dsp->pci = pci; */
@@ -1595,6 +1695,13 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
         /* dsp->data_size = 100000; */
         /* dsp->data_buffer = kmalloc(GFP_KERNEL, */
         /*                            dsp->data_size * sizeof(*dsp->data_buffer)); */
+
+        // Allocate the frame data buffer
+        if (newdata_alloc(dsp, 10000000)!=0) {
+                PRINT_ERR(card, "data buffer allocation failed.\n");
+                err = -1;
+                goto fail;
+        }
 
         // Allocate DMA-ready reply buffer.
         dsp->reply_buffer_size = 1024;
@@ -1704,6 +1811,8 @@ void dsp_driver_remove(struct pci_dev *pci)
                                   dsp->reply_buffer_dma_virt,
                                   dsp->reply_buffer_dma_handle);
 
+        newdata_free(dsp);
+
         /* if (dsp->reply_buffer != NULL) */
         /*         kfree(dsp->reply_buffer); */
 
@@ -1784,6 +1893,8 @@ int read_hrxs_packet(newdsp_t *dsp) {
 }
 */
 
+
+
 int try_send_cmd(newdsp_t *dsp, struct dsp_command *cmd) {
         int i;
         int n_wait = 0;
@@ -1795,7 +1906,7 @@ int try_send_cmd(newdsp_t *dsp, struct dsp_command *cmd) {
         for (i=0; i < cmd->size; i++) {
                 while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ) && ++n_wait < n_wait_max);
                 dsp_write_htxr(dsp->reg, cmd->data[i]);
-                PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, cmd->data[i]);
+                /* PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, cmd->data[i]); */
         }
         if (n_wait >= n_wait_max) {
                 PRINT_ERR(dsp->minor,
@@ -1867,15 +1978,22 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 // Clear reply state
                 //dsp->reply_recd = cmd.reply_reqd;
                 //FIXME: register this for later writing.
+                DSP_LOCK;
                 if (try_send_cmd(dsp, &cmd)!=0) {
-                        dsp_set_state_wake(dsp, DSP_IDLE);
+                        dsp->state = DSP_IDLE;
+                        DSP_UNLOCK;
+                        wake_up_interruptible(&dsp->queue);
                         return -EBUSY;
                 }
+                dsp->state = DSP_CMD_SENT;
+                DSP_UNLOCK;
 
                 // Update state
-                dsp_set_state_wake(dsp,
-                                   (cmd.flags & DSP_EXPECT_DSP_REPLY) ? 
-                                   DSP_CMD_SENT : DSP_IDLE);
+                if (cmd.flags & DSP_EXPECT_DSP_REPLY) {
+                        mod_timer(&dsp->timer, jiffies + HZ);
+                } else {
+                        dsp_set_state_wake(dsp, DSP_IDLE);
+                }
 
                 return 0;
 
@@ -1907,6 +2025,7 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 copy_to_user((void __user*)arg, &dsp->reply, sizeof(dsp->reply));
 
                 // Mark DSP as idle.
+                del_timer_sync(&dsp->timer);
                 dsp_set_state_wake(dsp, DSP_IDLE);
 
                 return 0;
@@ -1922,7 +2041,29 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 cmd.data[2] = (x >> 16) & 0xffff;
                 cmd.size = 3;
                 cmd.flags = 0;
-                //cmd.reply_reqd = 0;
+                cmd.owner = 0;
+                cmd.timeout_us = 10000;
+
+                //FIXME: register this for later writing.
+                
+                if (try_send_cmd(dsp, &cmd) != 0)
+                        return -EBUSY;
+
+                return 0;
+
+        case DSPIOCT_SET_DATA_BUF:
+                // Hand craftily upload the bus address.
+                x = (unsigned) dsp->dframes.base_busaddr;
+                PRINT_INFO(card, "Informing DSP of bus address=%#x\n", x);
+
+                cmd.data[0] = 0x0a0002;
+                cmd.data[1] = (x) & 0xffff;
+                cmd.data[2] = (x >> 16) & 0xffff;
+                memset(&(cmd.data[3]), 0, 4*16);
+                cmd.size = 7;
+                cmd.flags = 0;
+                cmd.owner = 0;
+                cmd.timeout_us = 10000;
 
                 //FIXME: register this for later writing.
                 
@@ -1935,23 +2076,22 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 // Hand craftily upload the bus address.
                 PRINT_INFO(card, "Triggering DSP write\n");
 
+                // Clear data buffer?
+                memset(dsp->dframes.base, 0, 256);
+
                 cmd.data[0] = 0x310000;
                 cmd.size = 1;
                 //cmd.reply_reqd = 0;
                 cmd.flags = 0;
 
-                //FIXME: register this for later writing.
-                if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
+                if (try_send_cmd(dsp, &cmd)!=0)
                         return -EBUSY;
-                
-                try_send_cmd(dsp, &cmd);
                 return 0;
 
         case DSPIOCT_DUMP_BUF:
                 for (i=0; i<12; i++) {
-                        if (i==2) i=8;
-                        PRINT_INFO(card, "buffer %3i = %4x\n",
-                                   i, (int)((__u32*)(dsp->reply_buffer_dma_virt))[i]);
+                        PRINT_ERR(card, "buffer %3i = %4x\n", i,
+                                  ((__u32*)dsp->dframes.base)[i]);
                 }
                 return 0;
 
@@ -1977,7 +2117,7 @@ int newdsp_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
 	remap_pfn_range(vma, vma->vm_start,
-			virt_to_phys(dsp->data_buffer) >> PAGE_SHIFT,
+			virt_to_phys(dsp->dframes.base) >> PAGE_SHIFT,
 			vma->vm_end - vma->vm_start, vma->vm_page_prot);
 	return 0;
 }

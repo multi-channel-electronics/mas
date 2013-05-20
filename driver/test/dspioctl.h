@@ -28,17 +28,22 @@
 #define DSPIOCT_SET_REP_BUF  _IO(DSPIOCT_MAGIC,  150)
 #define DSPIOCT_DUMP_BUF     _IO(DSPIOCT_MAGIC,  151)
 #define DSPIOCT_TRIGGER_FAKE _IO(DSPIOCT_MAGIC,  152)
+#define DSPIOCT_SET_DATA_BUF _IO(DSPIOCT_MAGIC,  153)
 
 #define DSP_COMMAND_SIZE 128
 #define DSP_DATAGRAM_BUFFER_SIZE 128
 
 #define DSP_EXPECT_DSP_REPLY 0x01
-#define DSP_EXPECT_MCE_REPLY 0x02
+//#define DSP_EXPECT_MCE_REPLY 0x02
+
+#define DSP_DEFAULT_TIMEOUT_US 1000000
 
 #pragma pack(push,1)
 struct dsp_command {
 	__s32 size;
 	__s32 flags;
+	__s32 owner;
+	__s32 timeout_us;
 	__s32 data[DSP_COMMAND_SIZE];
 };
 

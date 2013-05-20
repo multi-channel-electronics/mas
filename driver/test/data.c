@@ -48,6 +48,14 @@ int read_reply(struct dsp_datagram *reply) {
     return ioctl(fd, DSPIOCT_REPLY, reply);
 }
 
+int trigger_fake() {
+    return ioctl(fd, DSPIOCT_TRIGGER_FAKE);
+}
+
+int dump_buf() {
+    return ioctl(fd, DSPIOCT_DUMP_BUF);
+}
+
 void dump_regs() {
     printf(" HSTR: %06x\n", read_io(HSTR));
     printf(" HCVR: %06x\n", read_io(HCVR));
@@ -167,8 +175,8 @@ void summarize(base_packet_t *bp) {
 }
 
 int main(void) {
-    int x, y, z, i, j, k;
-    fd = open("/dev/mce_test0", O_RDWR | O_NONBLOCK);
+    int x, y, z, i, j, k, err;
+    fd = open("/dev/mce_test0", O_RDWR);
     printf("Hi. fd=%i\n\n", fd);
     if (fd<=0) 
         return -1;
@@ -232,8 +240,13 @@ int main(void) {
 
     // Cause upload of DMA destination
     printf("Setting DMA REP_BUF\n");
-    int err = ioctl(fd, DSPIOCT_SET_REP_BUF);
+    err = ioctl(fd, DSPIOCT_SET_REP_BUF);
     printf(" err=%i\n", err);
+
+    printf("Setting DMA DATA_BUF\n");
+    err = ioctl(fd, DSPIOCT_SET_DATA_BUF);
+    printf(" err=%i\n", err);
+
     dump_regs();
 
 /*
@@ -243,26 +256,56 @@ int main(void) {
     cmd.size=2;
     cmd.flags = DSP_EXPECT_DSP_REPLY;
     cmd.data[0] = cmd.size-1 + DSP_CMD_READ_X;
-    cmd.data[1] = 0x3;
-//    cmd.data[2] = 0xdead;       //       3
-        err = write_cmd(&cmd);
-        printf("write_cmd err=%i\n", err);
-
-    int tries = 1;
-
+    // Dump X data?
     struct dsp_datagram reply;
-    while (1) {
-        err = read_reply(&reply);
-        printf("read_reply err=%i\n", err);
-        if (err==0) break;
-        /* usleep(1000); */
-        if (tries--) {
-            err = write_cmd(&cmd);
-            printf("Side attempt: %i\n", err);
+    for (int j=0; j<10; j++) {
+        cmd.data[1] = j;
+        err = write_cmd(&cmd);
+        if (err<0) {
+            printf("write_cmd err=%i\n", err);
+            exit_now(1);
         }
+        err = read_reply(&reply);
+        if (err<0) {
+            printf("read_reply err=%i\n", err);
+            exit_now(1);
+        }
+        printf("  data %3i = %#x\n", j, reply.buffer[1]);
     }
-    printf("  data0 = %#x\n", reply.buffer[1]);
-    exit_now(0);
 
+    if (0) {
+
+        printf("\nMCE command?\n");
+        cmd.flags = DSP_EXPECT_DSP_REPLY;
+        cmd.timeout_us = 1000000;
+        for (int j=0; j<64; j++) {
+            cmd.data[j+1] = j + 0x0b0caa00;
+        }
+        cmd.data[0] = 64 + DSP_SEND_MCE;
+        cmd.size = 65;
+    
+        err = write_cmd(&cmd);
+        if (err<0) {
+            printf("write_cmd err=%i\n", err);
+            exit_now(1);
+        }
+        err = read_reply(&reply);
+        if (err<0) {
+            printf("read_reply err=%i\n", err);
+            exit_now(1);
+        }
+        printf("  data %3i = %#x\n", j, reply.buffer[1]);
+    }
+
+    printf("\nTrigger frame.\n");
+    /* cmd.flags = 0; */
+    /* cmd.data[0] = 0 + DSP_TRIGGER_FAKE; */
+    /* cmd.size = 1; */
+    /* err = write_cmd(&cmd); */
+//    trigger_fake();
+
+    dump_buf();
+    usleep(1000000);
+    exit_now(0);
 
 }
