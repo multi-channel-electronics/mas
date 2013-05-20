@@ -1399,7 +1399,7 @@ typedef struct {
         /* void* reply_buffer; */
 
         spinlock_t lock;
-	/* wait_queue_head_t queue; */
+	wait_queue_head_t queue;
         newdsp_state_t state;
 
 	/* struct semaphore sem; */
@@ -1423,6 +1423,14 @@ int major = 0;
 /* #define DSP_LOCK_DECLARE_FLAGS  */
 /* #define DSP_LOCK  */
 /* #define DSP_UNLOCK  */
+
+static void inline dsp_set_state_wake(newdsp_t *dsp, int new_state) {
+        DSP_LOCK_DECLARE_FLAGS;
+        DSP_LOCK;
+        dsp->state = new_state;
+        DSP_UNLOCK;
+        wake_up_interruptible(&dsp->queue);
+}
 
 
 irqreturn_t new_int_handler(int irq, void *dev_id, struct pt_regs *regs)
@@ -1495,6 +1503,8 @@ irqreturn_t new_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                         //Copy into datagram holder
                         memcpy(&dsp->reply, dsp->reply_buffer_dma_virt,
                                sizeof(dsp->reply));
+                        //Wake up any blockers
+                        wake_up_interruptible(&dsp->queue);
                         break;
                 default:
                         PRINT_ERR(dsp->minor,
@@ -1549,6 +1559,9 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 
         PRINT_INFO(NOCARD, "assigned to minor=%i\n", card);
         dsp->minor = card;
+
+        // Kernel structures...
+        init_waitqueue_head(&dsp->queue);
 
         // Do this on success only...
         /* dsp->pci = pci; */
@@ -1771,10 +1784,13 @@ int read_hrxs_packet(newdsp_t *dsp) {
 }
 */
 
-void send_cmd(newdsp_t *dsp, struct dsp_command *cmd) {
+int try_send_cmd(newdsp_t *dsp, struct dsp_command *cmd) {
         int i;
         int n_wait = 0;
         int n_wait_max = 10000;
+
+        if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
+                return -EBUSY;
 
         for (i=0; i < cmd->size; i++) {
                 while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ) && ++n_wait < n_wait_max);
@@ -1784,7 +1800,9 @@ void send_cmd(newdsp_t *dsp, struct dsp_command *cmd) {
         if (n_wait >= n_wait_max) {
                 PRINT_ERR(dsp->minor,
                           "failed to write command while waiting for HTRQ.\n");
+                return -EIO;
         }
+        return 0;
 }
 
 long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
@@ -1799,7 +1817,7 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
         unsigned x;
         DSP_LOCK_DECLARE_FLAGS;
 
-        //int blocking = (filp->f_flags & O_NONBLOCK)!=0;
+        int nonblock = (filp->f_flags & O_NONBLOCK);
 
 //        PRINT_INFO(card, "entry! minor=%d\n", card);
 
@@ -1824,42 +1842,72 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 return 0;
 
         case DSPIOCT_COMMAND:
-                //Get lock and check that system can accept new command
+                PRINT_ERR(dsp->minor, "send_command\n");
                 DSP_LOCK;
-                if (dsp->state == DSP_IDLE) {
-                        dsp->state = DSP_CMD_QUED;
+                while (dsp->state != DSP_IDLE) {
+                        int last_state = dsp->state;
                         DSP_UNLOCK;
-                } else {
-                        DSP_UNLOCK;
-                        return -EBUSY;
+                        if (nonblock)
+                                return -EBUSY;
+                        // Wait for state change?
+                        PRINT_ERR(dsp->minor, "wait once...\n");
+                        if (wait_event_interruptible(
+                                    dsp->queue, (dsp->state!=last_state))!=0)
+                                return -ERESTARTSYS;
+                        DSP_LOCK;
                 }
-                        
+                dsp->state = DSP_CMD_QUED;
+                DSP_UNLOCK;
+
+                PRINT_ERR(dsp->minor, "attempt send.\n");
+
                 // Copy command from user
                 copy_from_user(&cmd, (const void __user *)arg, sizeof(cmd));
-                PRINT_INFO(card, "len %i, first word is %i\n",
-                           cmd.size, cmd.data[0]);
+
                 // Clear reply state
                 //dsp->reply_recd = cmd.reply_reqd;
                 //FIXME: register this for later writing.
-                if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
+                if (try_send_cmd(dsp, &cmd)!=0) {
+                        dsp_set_state_wake(dsp, DSP_IDLE);
                         return -EBUSY;
-                
-                send_cmd(dsp, &cmd);
-                /* for (i=0; i < cmd.size; i++) { */
-                /*         while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ)); */
-                /*         dsp_write_htxr(dsp->reg, cmd.data[i]); */
-                /*         PRINT_INFO(card, "wrote %i=%x\n", i, cmd.data[i]); */
-                /* } */
+                }
 
                 // Update state
+                dsp_set_state_wake(dsp,
+                                   (cmd.flags & DSP_EXPECT_DSP_REPLY) ? 
+                                   DSP_CMD_SENT : DSP_IDLE);
+
+                return 0;
+
+        case DSPIOCT_REPLY:
+                /* Check for reply.  Only block if a command has been
+                 * sent and thus a reply is expected in the near
+                 * future. */
+                PRINT_ERR(dsp->minor, "get_reply\n");
                 DSP_LOCK;
-                if (cmd.flags & DSP_EXPECT_DSP_REPLY) {
-                        PRINT_ERR(dsp->minor, "state=sent\n");
-                        dsp->state = DSP_CMD_SENT;
+                while (dsp->state != DSP_REP_RECD) {
+                        int last_state = dsp->state;
+                        DSP_UNLOCK;
+                        if (nonblock ||
+                            dsp->state == DSP_IDLE ||
+                            dsp->state == DSP_REP_HNDL)
+                                return -EBUSY;
+                        // Wait for state change?
+                        PRINT_ERR(dsp->minor, "wait once...\n");
+                        if (wait_event_interruptible(
+                                    dsp->queue, (dsp->state!=last_state))!=0)
+                                return -ERESTARTSYS;
+                        DSP_LOCK;
                 }
-                else
-                        dsp->state = DSP_IDLE;
+                PRINT_ERR(dsp->minor, "process reply.\n");
+                // Mark that we're handling the reply and release lock
+                dsp->state = DSP_REP_HNDL;
                 DSP_UNLOCK;
+
+                copy_to_user((void __user*)arg, &dsp->reply, sizeof(dsp->reply));
+
+                // Mark DSP as idle.
+                dsp_set_state_wake(dsp, DSP_IDLE);
 
                 return 0;
 
@@ -1877,10 +1925,9 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 //cmd.reply_reqd = 0;
 
                 //FIXME: register this for later writing.
-                if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
-                        return -EBUSY;
                 
-                send_cmd(dsp, &cmd);
+                if (try_send_cmd(dsp, &cmd) != 0)
+                        return -EBUSY;
 
                 return 0;
 
@@ -1897,7 +1944,7 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
                         return -EBUSY;
                 
-                send_cmd(dsp, &cmd);
+                try_send_cmd(dsp, &cmd);
                 return 0;
 
         case DSPIOCT_DUMP_BUF:
@@ -1908,24 +1955,6 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 }
                 return 0;
 
-        case DSPIOCT_REPLY:
-                // Check for reply, and mark it as in process
-                DSP_LOCK;
-                if (dsp->state == DSP_REP_RECD) {
-                        dsp->state = DSP_REP_HNDL;
-                        DSP_UNLOCK;
-                } else {
-                        DSP_UNLOCK;
-                        return -EBUSY;
-                }
-                        
-                copy_to_user((void __user*)arg, &dsp->reply, sizeof(dsp->reply));
-                // Mark DSP as idle.
-                DSP_LOCK;
-                dsp->state = DSP_IDLE;
-                DSP_UNLOCK;
-
-                return 0;
 	default:
                 PRINT_INFO(card, "unknown ioctl\n");
                 return 0;

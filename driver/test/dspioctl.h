@@ -50,7 +50,7 @@ struct dsp_reply {
 struct dsp_datagram {
 	__s16 version;
 	__s16 buffer_size;
-	__s32 unused1[15];
+	__s16 unused1[14];
 	__s32 buffer[DSP_DATAGRAM_BUFFER_SIZE];
 };
 

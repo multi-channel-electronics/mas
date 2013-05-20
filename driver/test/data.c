@@ -44,7 +44,7 @@ int write_cmd(struct dsp_command *cmd) {
     return ioctl(fd, DSPIOCT_COMMAND, cmd);
 }
 
-int read_reply(struct dsp_reply *reply) {
+int read_reply(struct dsp_datagram *reply) {
     return ioctl(fd, DSPIOCT_REPLY, reply);
 }
 
@@ -168,7 +168,7 @@ void summarize(base_packet_t *bp) {
 
 int main(void) {
     int x, y, z, i, j, k;
-    fd = open("/dev/mce_test0", O_RDWR);
+    fd = open("/dev/mce_test0", O_RDWR | O_NONBLOCK);
     printf("Hi. fd=%i\n\n", fd);
     if (fd<=0) 
         return -1;
@@ -245,61 +245,24 @@ int main(void) {
     cmd.data[0] = cmd.size-1 + DSP_CMD_READ_X;
     cmd.data[1] = 0x3;
 //    cmd.data[2] = 0xdead;       //       3
-    err = write_cmd(&cmd);
-    printf("write_cmd err=%i\n", err);
-    usleep(500000);
-    
-    char line[256];
-    /* printf("waiting for string > "); */
-    /* fgets(line, 256, stdin); */
+        err = write_cmd(&cmd);
+        printf("write_cmd err=%i\n", err);
 
-    ioctl(fd, DSPIOCT_DUMP_BUF);
-    exit_now(0);
-    
-    /* printf("waiting for string > "); */
-    /* fgets(line, 256, stdin); */
+    int tries = 1;
 
-    dump_regs();
-    exit_now(0);
-
-
-    // Trigger an update.
-    ioctl(fd, DSPIOCT_TRIGGER_FAKE);
-    usleep(500000);
-
+    struct dsp_datagram reply;
     while (1) {
-        printf (" alive...\n");
-        usleep(500000);
-    }
-
-    // Wait for packets?
-    base_packet_t bp;
-    while (0) {
-        if (recv_packet(&bp, 1000000)==0) {
-            printf("Message received [type=%i,size=%i].\n", bp.type, bp.size);
-            break;
-        } else 
-            printf("Nothing yet.\n");
-    }
-    
-
-
-    printf("stopping.\n");
-    usleep(200000);
-    // Shut down the test and pick up strays.
-    mode_off();
-    i = 0;
-    while (get_hf4() || get_hrrq()) {
-        printf("Waiting for hf4 to drop...\n");
-        usleep(100000);
-        while (get_hrrq()) {
-            j = read_io(HRXS);
-            i += 1;
-            printf("  %x\n", j);
+        err = read_reply(&reply);
+        printf("read_reply err=%i\n", err);
+        if (err==0) break;
+        /* usleep(1000); */
+        if (tries--) {
+            err = write_cmd(&cmd);
+            printf("Side attempt: %i\n", err);
         }
     }
-    printf(" %i strays\n", i);
+    printf("  data0 = %#x\n", reply.buffer[1]);
+    exit_now(0);
 
-    close(fd);
-    return 0;
+
 }
