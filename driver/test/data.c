@@ -203,7 +203,7 @@ int main(void) {
 
     //IOCT test...
     struct dsp_command cmd;
-    struct dsp_reply rep;
+    struct dsp_reply *rep;
 
     // Test responsiveness:
     if (get_hf4()) {
@@ -257,20 +257,26 @@ int main(void) {
     cmd.flags = DSP_EXPECT_DSP_REPLY;
     cmd.data[0] = cmd.size-1 + DSP_CMD_READ_X;
     // Dump X data?
-    struct dsp_datagram reply;
-    for (int j=0; j<10; j++) {
+    struct dsp_datagram dgram;
+//    for (int j=0; j<10; j++) {
+    for (int j=3; j<4; j++) {
         cmd.data[1] = j;
         err = write_cmd(&cmd);
         if (err<0) {
             printf("write_cmd err=%i\n", err);
             exit_now(1);
         }
-        err = read_reply(&reply);
+        err = read_reply(&dgram);
         if (err<0) {
             printf("read_reply err=%i\n", err);
             exit_now(1);
         }
-        printf("  data %3i = %#x\n", j, reply.buffer[1]);
+        __s32 *x = (__s32*)&dgram;
+        for (int k=0; k<16; k++) {
+            printf("%2i %8x\n", k, x[k]);
+        }
+        rep = DSP_REPLY(&dgram);
+        printf("  data %3i = %#x\n", j, rep->data[0]);
     }
 
     if (0) {
@@ -289,22 +295,22 @@ int main(void) {
             printf("write_cmd err=%i\n", err);
             exit_now(1);
         }
-        err = read_reply(&reply);
+        err = read_reply(&dgram);
         if (err<0) {
             printf("read_reply err=%i\n", err);
             exit_now(1);
         }
-        printf("  data %3i = %#x\n", j, reply.buffer[1]);
+        printf("  data %3i = %#x\n", j, DSP_REPLY(&dgram)->data[0]);
     }
 
-    printf("\nTrigger frame.\n");
+//    printf("\nTrigger frame.\n");
     /* cmd.flags = 0; */
     /* cmd.data[0] = 0 + DSP_TRIGGER_FAKE; */
     /* cmd.size = 1; */
     /* err = write_cmd(&cmd); */
 //    trigger_fake();
 
-    dump_buf();
+//    dump_buf();
     usleep(1000000);
     exit_now(0);
 

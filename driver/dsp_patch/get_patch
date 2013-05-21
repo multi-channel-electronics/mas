@@ -1,1 +1,3 @@
-scp gamow.phas.ubc.ca:code/MCE/arc_pci/specials/master_only/patch .
+
+#scp gamow.phas.ubc.ca:code/MCE/arc_pci/specials/master_only/patch .
+scp e-mode.phas.ubc.ca:patch .

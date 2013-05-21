@@ -47,17 +47,23 @@ struct dsp_command {
 	__s32 data[DSP_COMMAND_SIZE];
 };
 
+struct dsp_datagram {
+	__s16 version;
+	__s16 total_size;
+	__s16 type;
+	__s16 unused1[13];
+	__s32 buffer[DSP_DATAGRAM_BUFFER_SIZE];
+};
+
 struct dsp_reply {
-	__s32 size;
+	__s16 err;
+	__s16 size;
+	__s16 cmd;
+	__s16 unused1;
 	__s32 data[DSP_COMMAND_SIZE];
 };
 
-struct dsp_datagram {
-	__s16 version;
-	__s16 buffer_size;
-	__s16 unused1[14];
-	__s32 buffer[DSP_DATAGRAM_BUFFER_SIZE];
-};
+#define DSP_REPLY(datagramp) ((struct dsp_reply*)(&((datagramp)->buffer)))
 
 #pragma pack(pop)
 
