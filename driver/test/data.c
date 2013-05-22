@@ -42,7 +42,11 @@ int write_cmd(struct dsp_command *cmd) {
 }
 
 int read_reply(struct dsp_datagram *reply) {
-    return ioctl(fd, DSPIOCT_REPLY, reply);
+    return ioctl(fd, DSPIOCT_GET_DSP_REPLY, reply);
+}
+
+int read_mce_reply(struct dsp_datagram *reply) {
+    return ioctl(fd, DSPIOCT_GET_MCE_REPLY, reply);
 }
 
 int write_read(struct dsp_command *cmd, struct dsp_datagram *reply) {
@@ -52,7 +56,7 @@ int write_read(struct dsp_command *cmd, struct dsp_datagram *reply) {
         printf("cmd err=%i\n", err);
         return err;
     }
-    err = ioctl(fd, DSPIOCT_REPLY, reply);
+    err = ioctl(fd, DSPIOCT_GET_DSP_REPLY, reply);
     if (err != 0) 
         printf("rep err=%i\n", err);
     return err;
@@ -268,24 +272,24 @@ int main(void) {
     rep = DSP_REPLY(&dgram);
 
     /* Write / read test */
-    cmd.flags = DSP_EXPECT_DSP_REPLY;
-    cmd.cmd = DSP_CMD_READ_Y;
-    cmd.data_size = 1;
-    cmd.data[0] = 0x1000; // addr to read
-    write_read(&cmd, &dgram);
+    /* cmd.flags = DSP_EXPECT_DSP_REPLY; */
+    /* cmd.cmd = DSP_CMD_READ_Y; */
+    /* cmd.data_size = 1; */
+    /* cmd.data[0] = 0x1000; // addr to read */
+    /* write_read(&cmd, &dgram); */
 
-    printf("  read %#x\n", rep->data[0]);
+    /* printf("  read %#x\n", rep->data[0]); */
     
-    cmd.cmd = DSP_CMD_WRITE_Y;
-    cmd.data_size = 2;
-    cmd.data[1] = rep->data[0] + 1;
-    write_read(&cmd, &dgram);
-    printf("  wrote %#x\n", cmd.data[1]);
+    /* cmd.cmd = DSP_CMD_WRITE_Y; */
+    /* cmd.data_size = 2; */
+    /* cmd.data[1] = rep->data[0] + 1; */
+    /* write_read(&cmd, &dgram); */
+    /* printf("  wrote %#x\n", cmd.data[1]); */
     
-    cmd.cmd = DSP_CMD_READ_Y;
-    cmd.data_size = 1;
-    write_read(&cmd, &dgram);
-    printf("  read %#x\n", rep->data[0]);
+    /* cmd.cmd = DSP_CMD_READ_Y; */
+    /* cmd.data_size = 1; */
+    /* write_read(&cmd, &dgram); */
+    /* printf("  read %#x\n", rep->data[0]); */
     
 
 
@@ -297,10 +301,11 @@ int main(void) {
     cmd.cmd = DSP_CMD_READ_X;
     cmd.data_size = 1;
     cmd.data[0] = 0; // addr to read
-
-    // Dump X data?
-    for (int j=0; j<10; j++) {
+ 
+     // Dump X data?
+    /* for (int j=0; j<10; j++) { */
     /* for (int j=3; j<4; j++) { */
+    while (0) {
         cmd.data[0] = j;
         /* err = write_cmd(&cmd); */
         /* if (err<0) { */
@@ -329,9 +334,16 @@ int main(void) {
 
 
     if (1) {
+        struct dsp_command cmd2;
+        cmd2.flags = DSP_EXPECT_DSP_REPLY;
+        cmd2.cmd = DSP_CMD_READ_X;
+        cmd2.data_size = 1;
+        cmd2.data[0] = 100; // addr to read
+ 
+ 
 
         printf("\nMCE command?\n");
-        cmd.flags = DSP_EXPECT_DSP_REPLY;
+        cmd.flags = DSP_EXPECT_MCE_REPLY;
 //        cmd.timeout_us = 1000000;
         cmd.cmd = DSP_SEND_MCE;
         cmd.data_size = 64;
@@ -358,7 +370,13 @@ int main(void) {
             usleep(1000000);
             exit_now(1);
         }
-        err = read_reply(&dgram);
+
+        /* // Jam in a dsp read? */
+        /* write_read(&cmd2, &dgram); */
+        /* printf(" jam: %i\n", DSP_REPLY(&dgram)->data[0]); */
+
+
+        err = read_mce_reply(&dgram);
         if (err<0) {
             printf("read_reply err=%i\n", err);
             usleep(1000000);

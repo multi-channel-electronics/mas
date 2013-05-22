@@ -193,7 +193,8 @@ typedef enum {
         DSP_CMD_QUED = 1,
         DSP_CMD_SENT = 2,
         DSP_REP_RECD = 3,
-        DSP_REP_HNDL = 4
+        DSP_REP_HNDL = 4,
+        DSP_IGNORE = 1000
 } dsp_state_t;
 
 typedef enum {
@@ -201,7 +202,8 @@ typedef enum {
         MCE_CMD_QUED = 1,
         MCE_CMD_SENT = 2,
         MCE_REP_RECD = 3,
-        MCE_REP_HNDL = 4
+        MCE_REP_HNDL = 4,
+        MCE_IGNORE = 1000
 } mce_state_t;
 
 
@@ -212,9 +214,12 @@ typedef struct {
 	struct pci_dev *pci;
 	dsp_reg_t *reg;
 
-        int reply_recd;  // state... 0 is idle, 1 is reqd, 2 is recd.
+        /* int reply_recd;  // state... 0 is idle, 1 is reqd, 2 is recd. */
         /* struct dsp_reply reply; */
         struct dsp_datagram reply;
+        struct dsp_datagram mce_reply;
+        struct dsp_datagram buffer_update;
+        
 
         /* __s32 *data_buffer; */
         /* int data_head; */
@@ -232,6 +237,7 @@ typedef struct {
         spinlock_t lock;
 	wait_queue_head_t queue;
 	struct timer_list timer;
+	struct timer_list mce_timer;
         dsp_state_t state;
         mce_state_t mce_state;
 
@@ -305,12 +311,21 @@ void newdata_free(dspdev_t *dsp)
 }
 
 
-static void inline dsp_set_state_wake(dspdev_t *dsp, int new_state) {
+static void inline dsp_set_state_wake(dspdev_t *dsp,
+                                      dsp_state_t new_dsp_state,
+                                      mce_state_t new_mce_state) {
         DSP_LOCK_DECLARE_FLAGS;
         DSP_LOCK;
-        dsp->state = new_state;
-        DSP_UNLOCK;
+        if (new_dsp_state < DSP_IGNORE) {
+                PRINT_ERR(dsp->minor, "%i -> dsp_state\n", new_dsp_state);
+                dsp->state = new_dsp_state;
+        }
+        if (new_mce_state < MCE_IGNORE) {
+                PRINT_ERR(dsp->minor, "%i -> mce_state\n", new_mce_state);
+                dsp->mce_state = new_mce_state;
+        }
         wake_up_interruptible(&dsp->queue);
+        DSP_UNLOCK;
 }
 
 
@@ -319,8 +334,8 @@ irqreturn_t dspdev_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	/* Note that the regs argument is deprecated in newer kernels,
 	 * do not use it.  It is left here for compatibility with
 	 * -2.6.18                                                    */
-        DSP_LOCK_DECLARE_FLAGS;
 
+        DSP_LOCK_DECLARE_FLAGS;
 	dspdev_t *dsp = dev_id;
         int k;
         int hctr;
@@ -329,9 +344,9 @@ irqreturn_t dspdev_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 
         int report_packet = 1;
 
+        int copy_size;
         struct dsp_datagram *gramlet;
         struct dsp_datagram gram;
-        int copy_size;
 
         // Reject null devs
         if (dsp == NULL) {
@@ -344,7 +359,6 @@ irqreturn_t dspdev_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                 if (dsp == dspdata+k)
                         break;
         }
-
         if (k==MAX_CARDS)
                 return IRQ_NONE;
 
@@ -399,7 +413,8 @@ irqreturn_t dspdev_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                         report_packet = 0;
                         memcpy(&dsp->reply, &gram, copy_size);
                         dsp->state = DSP_REP_RECD;
-                        wake_up_interruptible(&dsp->queue);
+                        PRINT_ERR(dsp->minor, "%i -> dsp_state\n",
+                                  dsp->state);
                         break;
                 default:
                         PRINT_ERR(dsp->minor,
@@ -407,10 +422,28 @@ irqreturn_t dspdev_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                                   dsp->state);
                         dsp->state = DSP_IDLE;
                 }
+                wake_up_interruptible(&dsp->queue);
                 DSP_UNLOCK;
                 break;
         case DGRAM_TYPE_MCE_REP:
                 /* MCE reply */
+                DSP_LOCK;
+                switch(dsp->mce_state) {
+                case MCE_CMD_SENT:
+                        report_packet = 0;
+                        memcpy(&dsp->mce_reply, &gram, copy_size);
+                        dsp->mce_state = MCE_REP_RECD;
+                        PRINT_ERR(dsp->minor, "%i -> mce_state\n",
+                                  dsp->mce_state);
+                        break;
+                default:
+                        PRINT_ERR(dsp->minor,
+                                  "unexpected MCE reply packet (state=%i)\n",
+                                  dsp->mce_state);
+                        dsp->mce_state = MCE_IDLE;
+                }
+                wake_up_interruptible(&dsp->queue);
+                DSP_UNLOCK;
                 break;
         default:
                 PRINT_ERR(dsp->minor, "unknown DGRAM_TYPE\n");
@@ -422,11 +455,9 @@ irqreturn_t dspdev_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                 if (!(dsp_read_hstr(dsp->reg) & HSTR_HINT))
                         break;
         } while (++n_wait < n_wait_max);
-        if (n_wait!=0) {
+        if (n_wait>=n_wait_max) {
                 PRINT_ERR(dsp->minor, "int handler timed out waiting for HINT\n");
         }
-
-        PRINT_INFO(dsp->minor, "HSTR=%x\n", dsp_read_hstr(dsp->reg));
 
         // Hand shake down.
         dsp_write_hctr(dsp->reg, hctr & ~HCTR_HF0);
@@ -445,13 +476,26 @@ void dspdev_timeout(unsigned long data)
 {
 	dspdev_t *dsp = (dspdev_t*)data;
         if (dsp->state == DSP_IDLE) {
-                PRINT_INFO(dsp->minor, "Something timed out...\n");
+                PRINT_INFO(dsp->minor, "Unexpected timeout.\n");
                 return;
         }
 
-        PRINT_ERR(dsp->minor, "Something timed out. state=%i\n",
+        PRINT_ERR(dsp->minor, "DSP command timed out in state=%i\n",
                   dsp->state);
-        dsp_set_state_wake(dsp, DSP_IDLE);
+        dsp_set_state_wake(dsp, DSP_IDLE, MCE_IGNORE);
+}
+
+void dspdev_mce_timeout(unsigned long data)
+{
+	dspdev_t *dsp = (dspdev_t*)data;
+        if (dsp->mce_state == MCE_IDLE) {
+                PRINT_INFO(dsp->minor, "Unexpected timeout.\n");
+                return;
+        }
+
+        PRINT_ERR(dsp->minor, "MCE command timed out in state=%i\n",
+                  dsp->mce_state);
+        dsp_set_state_wake(dsp, DSP_IGNORE, MCE_IDLE);
 }
 
 
@@ -482,6 +526,10 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	init_timer(&dsp->timer);
 	dsp->timer.function = dspdev_timeout;
 	dsp->timer.data = (unsigned long)dsp;
+
+	init_timer(&dsp->mce_timer);
+	dsp->mce_timer.function = dspdev_mce_timeout;
+	dsp->mce_timer.data = (unsigned long)dsp;
 
         // Do this on success only...
         /* dsp->pci = pci; */
@@ -691,7 +739,7 @@ int try_send_cmd(dspdev_t *dsp, struct dsp_command *cmd) {
         for (i=0; i < cmd->size*2; i++) {
                 while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ) && ++n_wait < n_wait_max);
                 dsp_write_htxr(dsp->reg, data[i]);
-                PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, data[i]);
+                /* PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, data[i]); */
         }
         if (n_wait >= n_wait_max) {
                 PRINT_ERR(dsp->minor,
@@ -761,28 +809,36 @@ long dspdev_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 copy_from_user(&cmd, (const void __user *)arg, sizeof(cmd));
 
                 // Clear reply state
-                //dsp->reply_recd = cmd.reply_reqd;
                 //FIXME: register this for later writing.
                 DSP_LOCK;
                 if (try_send_cmd(dsp, &cmd)!=0) {
                         dsp->state = DSP_IDLE;
-                        DSP_UNLOCK;
                         wake_up_interruptible(&dsp->queue);
+                        DSP_UNLOCK;
                         return -EBUSY;
                 }
-                dsp->state = DSP_CMD_SENT;
-                DSP_UNLOCK;
 
-                // Update state
-                if (cmd.flags & DSP_EXPECT_DSP_REPLY) {
-                        mod_timer(&dsp->timer, jiffies + HZ);
-                } else {
-                        dsp_set_state_wake(dsp, DSP_IDLE);
+                // Stil with the lock...
+                if (cmd.flags & DSP_EXPECT_MCE_REPLY) {
+                        dsp->mce_state = MCE_CMD_SENT;
+                        mod_timer(&dsp->mce_timer, jiffies + HZ);
                 }
 
+                if (cmd.flags & DSP_EXPECT_DSP_REPLY) {
+                        dsp->state = DSP_CMD_SENT;
+                        mod_timer(&dsp->timer, jiffies + HZ);
+                } else {
+                        dsp->state = DSP_IDLE;
+                }
+                PRINT_ERR(dsp->minor, "states dsp=%i mce=%i\n",
+                          dsp->state, dsp->mce_state);
+
+                wake_up_interruptible(&dsp->queue);
+                DSP_UNLOCK;
+                
                 return 0;
 
-        case DSPIOCT_REPLY:
+        case DSPIOCT_GET_DSP_REPLY:
                 /* Check for reply.  Only block if a command has been
                  * sent and thus a reply is expected in the near
                  * future. */
@@ -811,7 +867,41 @@ long dspdev_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 
                 // Mark DSP as idle.
                 del_timer_sync(&dsp->timer);
-                dsp_set_state_wake(dsp, DSP_IDLE);
+                dsp_set_state_wake(dsp, DSP_IDLE, MCE_IGNORE);
+
+                return 0;
+
+        case DSPIOCT_GET_MCE_REPLY:
+                /* Check for reply.  Only block if a command has been
+                 * sent and thus a reply is expected in the near
+                 * future. */
+                PRINT_ERR(dsp->minor, "get_reply\n");
+                DSP_LOCK;
+                while (dsp->mce_state != MCE_REP_RECD) {
+                        int last_state = dsp->mce_state;
+                        DSP_UNLOCK;
+                        if (nonblock ||
+                            dsp->mce_state == MCE_IDLE ||
+                            dsp->mce_state == MCE_REP_HNDL)
+                                return -EBUSY;
+                        // Wait for state change?
+                        PRINT_ERR(dsp->minor, "get_mce_rep: wait once...\n");
+                        if (wait_event_interruptible(dsp->queue,
+                                    (dsp->mce_state!=last_state))!=0)
+                                return -ERESTARTSYS;
+                        DSP_LOCK;
+                }
+                PRINT_ERR(dsp->minor, "process reply.\n");
+                // Mark that we're handling the reply and release lock
+                dsp->mce_state = MCE_REP_HNDL;
+                DSP_UNLOCK;
+
+                copy_to_user((void __user*)arg, &dsp->mce_reply,
+                             sizeof(dsp->mce_reply));
+
+                // Mark DSP as idle.
+                del_timer_sync(&dsp->mce_timer);
+                dsp_set_state_wake(dsp, DSP_IGNORE, MCE_IDLE);
 
                 return 0;
 
