@@ -45,6 +45,19 @@ int read_reply(struct dsp_datagram *reply) {
     return ioctl(fd, DSPIOCT_REPLY, reply);
 }
 
+int write_read(struct dsp_command *cmd, struct dsp_datagram *reply) {
+    cmd->size = cmd->data_size + 1;
+    int err = ioctl(fd, DSPIOCT_COMMAND, cmd);
+    if (err != 0) {
+        printf("cmd err=%i\n", err);
+        return err;
+    }
+    err = ioctl(fd, DSPIOCT_REPLY, reply);
+    if (err != 0) 
+        printf("rep err=%i\n", err);
+    return err;
+}
+
 int trigger_fake() {
     return ioctl(fd, DSPIOCT_TRIGGER_FAKE);
 }
@@ -250,6 +263,32 @@ int main(void) {
 
     /* exit_now(0); */
 
+
+    struct dsp_datagram dgram;
+    rep = DSP_REPLY(&dgram);
+
+    /* Write / read test */
+    cmd.flags = DSP_EXPECT_DSP_REPLY;
+    cmd.cmd = DSP_CMD_READ_Y;
+    cmd.data_size = 1;
+    cmd.data[0] = 0x1000; // addr to read
+    write_read(&cmd, &dgram);
+
+    printf("  read %#x\n", rep->data[0]);
+    
+    cmd.cmd = DSP_CMD_WRITE_Y;
+    cmd.data_size = 2;
+    cmd.data[1] = rep->data[0] + 1;
+    write_read(&cmd, &dgram);
+    printf("  wrote %#x\n", cmd.data[1]);
+    
+    cmd.cmd = DSP_CMD_READ_Y;
+    cmd.data_size = 1;
+    write_read(&cmd, &dgram);
+    printf("  read %#x\n", rep->data[0]);
+    
+
+
 /*
  * Send a test command
  */
@@ -260,22 +299,23 @@ int main(void) {
     cmd.data[0] = 0; // addr to read
 
     // Dump X data?
-    struct dsp_datagram dgram;
     for (int j=0; j<10; j++) {
     /* for (int j=3; j<4; j++) { */
         cmd.data[0] = j;
-        err = write_cmd(&cmd);
-        if (err<0) {
-            printf("write_cmd err=%i\n", err);
-        }
-        err = read_reply(&dgram);
-        if (err<0) {
-            printf("read_reply err=%i\n", err);
-        }
-        __s32 *x = (__s32*)&dgram;
-        /* for (int k=0; k<16; k++) { */
-        /*     printf("%2i %8x\n", k, x[k]); */
+        /* err = write_cmd(&cmd); */
+        /* if (err<0) { */
+        /*     printf("write_cmd err=%i\n", err); */
         /* } */
+        /* err = read_reply(&dgram); */
+        /* if (err<0) { */
+        /*     printf("read_reply err=%i\n", err); */
+        /* } */
+        /* __s32 *x = (__s32*)&dgram; */
+        /* /\* for (int k=0; k<16; k++) { *\/ */
+        /* /\*     printf("%2i %8x\n", k, x[k]); *\/ */
+        /* /\* } *\/ */
+        if (write_read(&cmd, &dgram)!=0)
+            break;
         rep = DSP_REPLY(&dgram);
         printf("  data %3i = %#x\n", j, rep->data[0]);
     }
@@ -288,7 +328,7 @@ int main(void) {
     /* exit_now(0); */
 
 
-    if (1) { // This causes an interrupt avalanche.
+    if (1) {
 
         printf("\nMCE command?\n");
         cmd.flags = DSP_EXPECT_DSP_REPLY;
@@ -306,6 +346,12 @@ int main(void) {
         for (int j=6; j<64; j++)
             cmd.data[OFS+j] = 0;
 
+        int chksum = 0;
+        for (int j=2; j<63; j++)
+            chksum ^= cmd.data[OFS+j];
+        cmd.data[OFS+63] = chksum;
+        printf("chksum=%x\n",chksum);
+
         err = write_cmd(&cmd);
         if (err<0) {
             printf("write_cmd err=%i\n", err);
@@ -321,7 +367,7 @@ int main(void) {
         printf("  data %3i = %#x\n", j, DSP_REPLY(&dgram)->data[0]);
     }
 
-//    printf("\nTrigger frame.\n");
+//    printf("\nTrigger frame.\n";)
     /* cmd.flags = 0; */
     /* cmd.data[0] = 0 + DSP_TRIGGER_FAKE; */
     /* cmd.size = 1; */

@@ -14,3 +14,9 @@
 #define DSP_SEND_MCE     0x21
 #define DSP_TRIGGER_FAKE 0x31
 
+
+
+#define DGRAM_TYPE_DSP_REP    1
+#define DGRAM_TYPE_MCE_REP    2
+#define DGRAM_TYPE_MCE_DATA   3
+#define DGRAM_TYPE_BUF_STA    4
