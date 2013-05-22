@@ -40,12 +40,17 @@
 
 #pragma pack(push,1)
 struct dsp_command {
+	// Internal; decoded by driver.
 	__s32 size;
 	__s32 flags;
 	__s32 owner;
 	__s32 timeout_us;
+	// Payload; sent to DSP
+	__s16 cmd;
+	__s16 data_size;
 	__s32 data[DSP_COMMAND_SIZE];
 };
+
 
 struct dsp_datagram {
 	__s16 version;

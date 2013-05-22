@@ -1368,7 +1368,7 @@ void olddsp_driver_cleanup(void)
 *****/
 
 #include "test/dspioctl.h"
-
+#include "test/new_dsp.h"
 
 typedef struct {
 
@@ -1587,6 +1587,11 @@ irqreturn_t new_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                         //Copy into datagram holder
                         memcpy(&dsp->reply, dsp->reply_buffer_dma_virt,
                                sizeof(dsp->reply));
+                        // Summary?
+                        for (k=0; k<32; k++) {
+                                PRINT_ERR(dsp->minor, " reply %3i=%8x\n", k,
+                                          ((__u32*)&dsp->reply)[k]);
+                        }
                         //Wake up any blockers
                         wake_up_interruptible(&dsp->queue);
                         break;
@@ -1899,14 +1904,16 @@ int try_send_cmd(newdsp_t *dsp, struct dsp_command *cmd) {
         int i;
         int n_wait = 0;
         int n_wait_max = 10000;
+        __u16 *data;
 
         if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
                 return -EBUSY;
 
-        for (i=0; i < cmd->size; i++) {
+        data = (__u16*)&(cmd->cmd);
+        for (i=0; i < cmd->size*2; i++) {
                 while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ) && ++n_wait < n_wait_max);
-                dsp_write_htxr(dsp->reg, cmd->data[i]);
-                /* PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, cmd->data[i]); */
+                dsp_write_htxr(dsp->reg, data[i]);
+                PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, data[i]);
         }
         if (n_wait >= n_wait_max) {
                 PRINT_ERR(dsp->minor,
@@ -2036,10 +2043,13 @@ long newdsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 PRINT_INFO(card, "Informing DSP of bus address=%lx\n",
                            (long)dsp->reply_buffer_dma_handle);
 
-                cmd.data[0] = 0x090002;
-                cmd.data[1] = (x) & 0xffff;
-                cmd.data[2] = (x >> 16) & 0xffff;
-                cmd.size = 3;
+                cmd.cmd = CMD_SET_REP_BUF;
+                cmd.data_size = 1;
+                cmd.data[0] = x;
+                /* cmd.data[0] = 0x090002; */
+                /* cmd.data[1] = (x) & 0xffff; */
+                /* cmd.data[2] = (x >> 16) & 0xffff; */
+                cmd.size = 2;
                 cmd.flags = 0;
                 cmd.owner = 0;
                 cmd.timeout_us = 10000;

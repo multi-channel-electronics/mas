@@ -37,10 +37,7 @@ static inline int get_hf4()  { return read_io(HSTR) & 0x10; }
 
 
 int write_cmd(struct dsp_command *cmd) {
-    if (cmd->size != cmd->data[0] & 0xffff + 1) {
-        printf("Bad packet!\n");
-        return -1;
-    }
+    cmd->size = cmd->data_size + 1;
     return ioctl(fd, DSPIOCT_COMMAND, cmd);
 }
 
@@ -229,7 +226,6 @@ int main(void) {
 
     dump_regs();
 
-
 /*
  * Set up commanding.
  */
@@ -243,61 +239,83 @@ int main(void) {
     err = ioctl(fd, DSPIOCT_SET_REP_BUF);
     printf(" err=%i\n", err);
 
-    printf("Setting DMA DATA_BUF\n");
-    err = ioctl(fd, DSPIOCT_SET_DATA_BUF);
-    printf(" err=%i\n", err);
+    /* printf("Setting DMA DATA_BUF\n"); */
+    /* err = ioctl(fd, DSPIOCT_SET_DATA_BUF); */
+    /* printf(" err=%i\n", err); */
 
-    dump_regs();
+    /* mode_off(); */
+    /* usleep(100000); */
+    /* printf(" regs after mode-off:\n"); */
+    /* dump_regs(); */
+
+    /* exit_now(0); */
 
 /*
  * Send a test command
  */
 
-    cmd.size=2;
     cmd.flags = DSP_EXPECT_DSP_REPLY;
-    cmd.data[0] = cmd.size-1 + DSP_CMD_READ_X;
+    cmd.cmd = DSP_CMD_READ_X;
+    cmd.data_size = 1;
+    cmd.data[0] = 0; // addr to read
+
     // Dump X data?
     struct dsp_datagram dgram;
-//    for (int j=0; j<10; j++) {
-    for (int j=3; j<4; j++) {
-        cmd.data[1] = j;
+    for (int j=0; j<10; j++) {
+    /* for (int j=3; j<4; j++) { */
+        cmd.data[0] = j;
         err = write_cmd(&cmd);
         if (err<0) {
             printf("write_cmd err=%i\n", err);
-            exit_now(1);
         }
         err = read_reply(&dgram);
         if (err<0) {
             printf("read_reply err=%i\n", err);
-            exit_now(1);
         }
         __s32 *x = (__s32*)&dgram;
-        for (int k=0; k<16; k++) {
-            printf("%2i %8x\n", k, x[k]);
-        }
+        /* for (int k=0; k<16; k++) { */
+        /*     printf("%2i %8x\n", k, x[k]); */
+        /* } */
         rep = DSP_REPLY(&dgram);
         printf("  data %3i = %#x\n", j, rep->data[0]);
     }
 
-    if (0) {
+    /* mode_off(); */
+    /* usleep(100000); */
+    /* printf(" regs after mode-off:\n"); */
+    /* dump_regs(); */
+
+    /* exit_now(0); */
+
+
+    if (1) { // This causes an interrupt avalanche.
 
         printf("\nMCE command?\n");
         cmd.flags = DSP_EXPECT_DSP_REPLY;
-        cmd.timeout_us = 1000000;
-        for (int j=0; j<64; j++) {
-            cmd.data[j+1] = j + 0x0b0caa00;
-        }
-        cmd.data[0] = 64 + DSP_SEND_MCE;
-        cmd.size = 65;
-    
+//        cmd.timeout_us = 1000000;
+        cmd.cmd = DSP_SEND_MCE;
+        cmd.data_size = 64;
+        int OFS=0;
+        // wb cc led 7 = 20205742 00020099 00000001 00000007
+        cmd.data[OFS+0] = 0xa5a5a5a5;
+        cmd.data[OFS+1] = 0x5a5a5a5a;
+        cmd.data[OFS+2] = 0x20205742;
+        cmd.data[OFS+3] = 0x00020099;
+        cmd.data[OFS+4] = 0x00000001;
+        cmd.data[OFS+5] = 0x00000007;
+        for (int j=6; j<64; j++)
+            cmd.data[OFS+j] = 0;
+
         err = write_cmd(&cmd);
         if (err<0) {
             printf("write_cmd err=%i\n", err);
+            usleep(1000000);
             exit_now(1);
         }
         err = read_reply(&dgram);
         if (err<0) {
             printf("read_reply err=%i\n", err);
+            usleep(1000000);
             exit_now(1);
         }
         printf("  data %3i = %#x\n", j, DSP_REPLY(&dgram)->data[0]);
