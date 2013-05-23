@@ -14,13 +14,13 @@
 /* dsp.h defines the structures used by the dsp driver */
 
 #include <mce_library.h>
-#include <mce/dsp.h>
+#include <mce/new_dsp.h>
 
 
 /* Maximum number of handles available */
-
+/*
 #define MAX_CONS 16
-
+*/
 
 /*
    API: all functions return a negative error value on failure.  On
@@ -44,8 +44,16 @@ int mcedsp_close(mce_context_t *context);
    The memory type (dsp_memory_code) is defined in dsp.h.
 */
 
-int mcedsp_send_command(mce_context_t *context, dsp_command *cmd);
+typedef enum {
+    DSP_MEMP = 1,
+    DSP_MEMX = 2,
+    DSP_MEMY = 3
+} dsp_memory_code;
 
+
+/*
+int mcedsp_send_command(mce_context_t *context, dsp_command *cmd);
+*/
 
 int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address);
 int mcedsp_read_word_X(mce_context_t *context, int address);
@@ -61,17 +69,17 @@ int mcedsp_write_word_P(mce_context_t *context, int address, u32 value);
 int mcedsp_version(mce_context_t *context);
 
 int mcedsp_reset(mce_context_t *context);
-
+/*
 int mcedsp_start_application(mce_context_t *context, int data);
 
 int mcedsp_stop_application(mce_context_t *context);
-
+*/
 int mcedsp_reset_mce(mce_context_t *context);
-
+/*
 int mcedsp_qt_set(mce_context_t *context, int var, int arg1, int arg2);
 
 int mcedsp_ioctl(mce_context_t *context, unsigned int iocmd, unsigned long arg);
-
+*/
 int mcedsp_reset_flags(mce_context_t *context);
 
 int mcedsp_error(mce_context_t *context);

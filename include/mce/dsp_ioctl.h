@@ -1,3 +1,5 @@
+#error "The old gods are not welcome here."
+
 #ifndef _DSP_IOCTL_H_
 #define _DSP_IOCTL_H_
 

@@ -13,8 +13,8 @@
 #include <signal.h>
 #include <linux/types.h>
 
-#include "dspioctl.h"
-#include "new_dsp.h"
+#include "../../include/mce/new_dspioctl.h"
+#include "../../include/mce/new_dsp.h"
 
 typedef __s32 int32;
 

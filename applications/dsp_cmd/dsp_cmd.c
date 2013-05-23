@@ -44,11 +44,11 @@ enum {
 	COMMAND_VER,
 	COMMAND_RDM,
 	COMMAND_WRM,
-	COMMAND_GOA,
-	COMMAND_STP,
+//	COMMAND_GOA,
+//	COMMAND_STP,
 	COMMAND_RST,
 	COMMAND_RCO,
-	COMMAND_QTS,
+//	COMMAND_QTS,
 	ENUM_COMMAND_HIGH,
 	SPECIAL_COMMENT,
 	SPECIAL_SLEEP,
@@ -73,7 +73,7 @@ mascmdtree_opt_t mem_opts[] = {
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "P", 0,-1, DSP_MEMP, integer_opts},
     { MASCMDTREE_TERMINATOR, "", 0, 0, 0, NULL}
 };
-
+/*
 mascmdtree_opt_t qt_opts[] = {
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "BASE"  , 1,1, DSP_QT_BASE,
         integer_opts},
@@ -107,6 +107,7 @@ mascmdtree_opt_t qt_opts[] = {
         integer_opts},
     { MASCMDTREE_TERMINATOR, "", 0,0, 0, NULL}
 };
+*/
 
 mascmdtree_opt_t root_opts[] = {
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "VERS"     , 0,0, COMMAND_VER,
@@ -115,16 +116,16 @@ mascmdtree_opt_t root_opts[] = {
         mem_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "WRITE"    , 3,3, COMMAND_WRM,
         mem_opts},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "START"    , 0,0, COMMAND_GOA,
-        integer_opts},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "STOP"     , 0,0, COMMAND_STP,
-        integer_opts},
+    /* { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "START"    , 0,0, COMMAND_GOA, */
+    /*     integer_opts}, */
+    /* { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "STOP"     , 0,0, COMMAND_STP, */
+    /*     integer_opts}, */
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET"    , 0,0, COMMAND_RST,
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET_MCE", 0,0, COMMAND_RCO,
         integer_opts},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "QT_SET"   , 3,3, COMMAND_QTS,
-        qt_opts},
+/*    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "QT_SET"   , 3,3, COMMAND_QTS,
+      qt_opts}, */
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "#"        , 0,-1, SPECIAL_COMMENT,
         anything_opts},
     { MASCMDTREE_TERMINATOR, "", 0,0, 0, NULL}
@@ -357,7 +358,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 						 tokens[2].value, tokens[3].value);
 			if (err >= 0) err = 0;
 			break;
-
+/*
 		case COMMAND_GOA:
             err = mcedsp_start_application(mce, tokens[1].value);
 			if (err >= 0) err = 0;
@@ -367,7 +368,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
             err = mcedsp_stop_application(mce);
 			if (err >= 0) err = 0;
 			break;
-
+*/
 		case COMMAND_RST:
             err = mcedsp_reset(mce);
 			if (err >= 0) err = 0;
@@ -377,12 +378,13 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
             err = mcedsp_reset_mce(mce);
 			if (err >= 0) err = 0;
 			break;
-
+/*
 		case COMMAND_QTS:
             err = mcedsp_qt_set(mce, tokens[1].value, tokens[2].value,
 					 tokens[3].value);
 			if (err >= 0) err = 0;
 			break;
+*/
 		default:
 			sprintf(errmsg, "command not implemented");
 			return -1;

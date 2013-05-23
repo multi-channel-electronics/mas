@@ -33,7 +33,10 @@
 #endif
 
 #include "dsp_driver.h"
-#include "mce/dsp_ioctl.h"
+#include "dsp_regs.h"
+
+#include "mce/new_dspioctl.h"
+#include "mce/new_dsp.h"
 
 /*
  *  dsp_driver.c includes
@@ -41,12 +44,7 @@
 
 #include <linux/module.h>
 #include <linux/init.h>
-
 #include <asm/uaccess.h>
-
-#include "mce_driver.h"
-#include "dsp_ops.h"
-#include "proc.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Matthew Hasselfield"); 
@@ -160,8 +158,8 @@ int dsp_proc(char *buf, int count, int card)
 
 *****/
 
-#include "test/dspioctl.h"
-#include "test/new_dsp.h"
+/* #include "test/dspioctl.h" */
+/* #include "test/new_dsp.h" */
 
 typedef struct {
 
@@ -897,7 +895,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 PRINT_INFO(card, "Informing DSP of bus address=%lx\n",
                            (long)dsp->reply_buffer_dma_handle);
 
-                cmd.cmd = CMD_SET_REP_BUF;
+                cmd.cmd = DSP_SET_REP_BUF;
                 cmd.data_size = 1;
                 cmd.data[0] = x;
                 /* cmd.data[0] = 0x090002; */
