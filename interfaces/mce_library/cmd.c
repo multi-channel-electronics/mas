@@ -17,6 +17,8 @@
 #include <sys/ioctl.h>
 
 #include <mce/mce_ioctl.h>
+#include <mce/new_dspioctl.h>
+#include <mce/new_dsp.h>
 
 #include "context.h"
 #include "virtual.h"
@@ -74,7 +76,9 @@ int mcecmd_open (mce_context_t *context)
     if (C_cmd.connected)
         mcecmd_close(context);
 
-    sprintf(dev_name, "/dev/mce_cmd%u", (unsigned)context->fibre_card);
+    /* sprintf(dev_name, "/dev/mce_cmd%u", (unsigned)context->fibre_card); */
+    printf("dev name hack in mce lib!\n");
+    sprintf(dev_name, "/dev/mce_test%u", (unsigned)context->fibre_card);
     C_cmd.fd = open(dev_name, O_RDWR);
     if (C_cmd.fd < 0)
         return -MCE_ERR_DEVICE;
@@ -129,23 +133,33 @@ int mcecmd_lock_replies(mce_context_t *context, int lock)
 
 int mcecmd_send_command_now(mce_context_t* context, mce_command *cmd)
 {
-	int error = write(C_cmd.fd, cmd, sizeof(*cmd));
-	if (error < 0) {
+    struct dsp_command dsp;
+    dsp.flags = DSP_EXPECT_MCE_REPLY;
+    memcpy(dsp.data, cmd, sizeof(*cmd));
+    dsp.data_size = sizeof(*cmd) / sizeof(u32);
+    dsp.size = dsp.data_size + 1;
+    dsp.cmd = DSP_SEND_MCE;
+
+    int error = ioctl(C_cmd.fd, DSPIOCT_COMMAND, (unsigned long)&dsp);
+	if (error < 0)
 		return -MCE_ERR_DEVICE;
-	} else if (error != sizeof(*cmd)) {
-		return get_last_error(context);
-	}
 	return 0;
 }
 
 int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
 {
-	int error = read(C_cmd.fd, rep, sizeof(*rep));
-	if (error < 0) {
+    int j;
+    struct dsp_datagram gram;
+    struct mce_reply *rep0; //ouch
+	/* int error = read(C_cmd.fd, rep, sizeof(*rep)); */
+    int error = ioctl(C_cmd.fd, DSPIOCT_GET_MCE_REPLY, (unsigned long)&gram);
+	if (error < 0)
 		return -MCE_ERR_DEVICE;
-	} else if (error != sizeof(*rep)) {
-		return get_last_error(context);
-	}
+    // Datagram->buffer contains "  RP", size, then only "size" valid words.
+    rep0 = MCE_REPLY(&gram);
+    for (j=rep0->size; j<64; j++)
+        rep0->data[j] = 0;
+    memcpy(rep, rep0->data, sizeof(*rep));
 	return 0;
 }
 

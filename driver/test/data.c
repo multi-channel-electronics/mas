@@ -34,7 +34,7 @@ void _write_io(int cmd, int val) {
 
 static inline int get_hrrq() { return read_io(HSTR) & 0x04; }
 static inline int get_hf4()  { return read_io(HSTR) & 0x10; }
-
+static inline int get_ok() { return (read_io(HSTR) & 0xffffff) != 0xffffff; }
 
 int write_cmd(struct dsp_command *cmd) {
     cmd->size = cmd->data_size + 1;
@@ -78,13 +78,13 @@ void dump_regs() {
     
 }
 
-void mode_on() {
+void xmode_on() {
     printf("Raising HF2\n");
     int x = read_io(HCTR);
     write_io(HCTR, x | 0x20);
 }
 
-void mode_off() {
+void xmode_off() {
     printf("Lowering HF2\n");
     int x = read_io(HCTR);
     write_io(HCTR, x & ~0x20);
@@ -93,7 +93,7 @@ void mode_off() {
 void int_handler(int sig) {
     if (sig == SIGINT) {
         printf("Stopping!\n");
-        mode_off();
+        //mode_off();
     }
     // Hand it up.
     signal(sig, SIG_DFL);
@@ -101,7 +101,7 @@ void int_handler(int sig) {
 }
 
 void exit_now(int err) {
-    mode_off();
+    //mode_off();
     exit(err);
 }
 
@@ -198,63 +198,31 @@ int main(void) {
     printf("On entry:\n");
 	dump_regs();
 
-    if (read_io(HCTR) & 0x20) {
-        printf("We were still on; offing and exiting.\n");
-        mode_off();
-        dump_regs();
-        return 0;
+    if (!get_ok()) {
+        printf("We thought the driver would be working\n");
+        exit(1);
     }
 
-    /* printf("Disabling prefetch\n"); */
-    /* write_io(HCTR, read_io(HCTR) | 0x80); */
-
-    
-    if (0) {
-        clear_hrrq();
-        dump_regs();
-        return 0;
+    if (!get_hf4()) {
+        printf("We thought HF4 would be high.\n");
+        exit(1);
     }
-
     //IOCT test...
     struct dsp_command cmd;
     struct dsp_reply *rep;
-
-    // Test responsiveness:
-    if (get_hf4()) {
-        printf("HF4 is high on entry, writing one word...\n");
-        write_io(HTXR, 0x0);
-        return 0;
-    }
-
-    mode_on();
-    usleep(100000);
-    if (!get_hf4()) {
-        printf("No handshake!\n");
-        mode_off();
-        return 0;
-    }
-
-    mode_off();
-    usleep(100000);
-    if (get_hf4()) {
-        printf("HF4 did not drop.\n");
-        return 0;
-    }
-
-    dump_regs();
 
 /*
  * Set up commanding.
  */
 
     // Kill this mode on exit?
-    mode_on();
+//    mode_on();
     // signal(SIGINT, int_handler);
 
     // Cause upload of DMA destination
-    printf("Setting DMA REP_BUF\n");
-    err = ioctl(fd, DSPIOCT_SET_REP_BUF);
-    printf(" err=%i\n", err);
+    /* printf("Setting DMA REP_BUF\n"); */
+    /* err = ioctl(fd, DSPIOCT_SET_REP_BUF); */
+    /* printf(" err=%i\n", err); */
 
     /* printf("Setting DMA DATA_BUF\n"); */
     /* err = ioctl(fd, DSPIOCT_SET_DATA_BUF); */
@@ -303,9 +271,9 @@ int main(void) {
     cmd.data[0] = 0; // addr to read
  
      // Dump X data?
-    /* for (int j=0; j<10; j++) { */
+    for (int j=0; j<10; j++) {
     /* for (int j=3; j<4; j++) { */
-    while (0) {
+    /* while (0) { */
         cmd.data[0] = j;
         /* err = write_cmd(&cmd); */
         /* if (err<0) { */
@@ -382,7 +350,8 @@ int main(void) {
             usleep(1000000);
             exit_now(1);
         }
-        printf("  data %3i = %#x\n", j, DSP_REPLY(&dgram)->data[0]);
+        for (int j = 0; j<64; j++)
+            printf("  data %3i = %#x\n", j, DSP_REPLY(&dgram)->data[j]);
     }
 
 //    printf("\nTrigger frame.\n";)
@@ -393,7 +362,7 @@ int main(void) {
 //    trigger_fake();
 
 //    dump_buf();
-    usleep(1000000);
+    usleep(10000);
     exit_now(0);
 
 }

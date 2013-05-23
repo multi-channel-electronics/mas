@@ -44,4 +44,42 @@
 #define DSP_POLL_JIFFIES    (HZ / DSP_POLL_FREQ + 1)
 
 
+typedef struct {
+
+	void*     base;
+	unsigned long base_busaddr;
+        size_t    size;
+
+        int n_frames;
+        int frame_size;
+        int data_size;
+
+        // New data is written at head, consumer data is read at tail.
+	volatile
+	int       head_index;
+	volatile
+	int       tail_index;
+
+	// Semaphore should be held when modifying structure, but
+	// interrupt routines may modify head_index at any time.
+
+        spinlock_t lock;
+	wait_queue_head_t queue;
+
+	// Device lock - controls read access on data device and
+	// provides a system for checking whether the system is
+	// mid-acquisition.  Should be NULL (for idle) or pointer to
+        // reader's filp (for locking).
+
+	void *data_lock;	
+
+} frame_buffer_t;
+
+#define DSP_INTERNAL_FREQ  50e6
+#define DSP_INFORM_RATE    10 /* Hz */
+#define DSP_INFORM_COUNTS  (DSP_INTERNAL_FREQ / DSP_INFORM_RATE) 
+
+int get_qt_command(frame_buffer_t *dframes, int qt_interval,
+                   struct dsp_command *cmd);
+
 #endif

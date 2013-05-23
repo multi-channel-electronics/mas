@@ -28,11 +28,12 @@
 #include "kversion.h"
 #include "mce_options.h"
 
-#include "data.h"
-#include "data_qt.h"
+//#include "data.h"
+//#include "data_qt.h"
 #include "dsp_driver.h"
-#include "mce_driver.h"
+//#include "mce_driver.h"
 
+#if 0
 int mce_qti_handler (dsp_message *msg, unsigned long data)
 {
 	frame_buffer_t *dframes = (frame_buffer_t *)data;
@@ -112,4 +113,24 @@ int data_qt_configure(int qt_interval, int card)
 		err = data_qt_enable(1, card);
 
 	return err;
+}
+#endif
+
+#include <mce/new_dsp.h>
+
+int get_qt_command(frame_buffer_t *dframes, int qt_interval,
+                   struct dsp_command *cmd)
+{
+        cmd->data[0] = dframes->base_busaddr;
+        cmd->data[1] = dframes->n_frames;
+        cmd->data[2] = dframes->frame_size;
+        cmd->data[3] = dframes->data_size;
+        cmd->data[4] = qt_interval;
+        cmd->data[5] = DSP_INFORM_COUNTS;
+        cmd->data[6] = 0; /* head */
+        cmd->data[7] = 0; /* tail */
+        cmd->data[8] = 0; /* drops */
+        cmd->data_size = 9;
+
+        return 0;
 }

@@ -287,8 +287,9 @@ int  main(int argc, char **argv)
 
     if (mcedata_open(mce) != 0) {
         fprintf(ferr, "Could not open DATA device\n");
-		err = ERR_MCE;
-		goto exit_now;
+        printf("DATA error ignored...\n");
+		/* err = ERR_MCE; */
+		/* goto exit_now; */
 	}
 
     if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {

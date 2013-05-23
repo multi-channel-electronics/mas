@@ -102,91 +102,6 @@ static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
 	iowrite32(value, (void*)&(dsp->hctr));
 }
 
-int dsp_proc(char *buf, int count, int card)
-{
-        int len = 0;
-        if (count < 1024) {
-/*                
-	struct dsp_dev_t *dev = dsp_dev + card;
-	int len = 0;
-
-        PRINT_INFO(card, "card = %d\n", card);
-	if (dev->pci == NULL) 
-		return len;
-	if (len < count) {
-		len += sprintf(buf+len, "    %-15s %25s\n",
-			       "bus address:", pci_name(dev->pci));
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-15s %25s\n",
-			       "interrupt:",
-			       (dev->comm_mode & DSP_PCI_MODE_NOIRQ) ? "polling" : "enabled");
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-32s %#08x\n    %-32s %#08x\n"
-			       "    %-32s %#08x\n",
-			       "hstr:", dsp_read_hstr(dev->dsp),
-			       "hctr:", dsp_read_hctr(dev->dsp),
-			       "hcvr:", dsp_read_hcvr(dev->dsp));
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-20s %20s\n",
-			       "firmware version:", dev->version_string);
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-30s ", "state:");
-		if (dev->state & DDAT_CMD)
-			len += sprintf(buf+len, "commanded");
-		else
-			len += sprintf(buf+len, "     idle");
-		if (dev->state & DDAT_RESERVE)
-			len += sprintf(buf+len, " (reserved)\n");
-		else
-			len += sprintf(buf+len, "\n");
-	}
-*/
-        }
-	return len;
-}
-
-
-
-
-/*****
-
-  NEW
-
-*****/
-
-/* #include "test/dspioctl.h" */
-/* #include "test/new_dsp.h" */
-
-typedef struct {
-
-	void*     base;
-	unsigned long base_busaddr;
-        size_t    size;
-
-        // New data is written at head, consumer data is read at tail.
-	volatile
-	int       head_index;
-	volatile
-	int       tail_index;
-
-	// Semaphore should be held when modifying structure, but
-	// interrupt routines may modify head_index at any time.
-
-        spinlock_t lock;
-	wait_queue_head_t queue;
-
-	// Device lock - controls read access on data device and
-	// provides a system for checking whether the system is
-	// mid-acquisition.  Should be NULL (for idle) or pointer to
-        // reader's filp (for locking).
-
-	void *data_lock;	
-
-} frame_buffer_t;
 
 
 typedef enum {
@@ -215,25 +130,15 @@ typedef struct {
 	struct pci_dev *pci;
 	dsp_reg_t *reg;
 
-        /* int reply_recd;  // state... 0 is idle, 1 is reqd, 2 is recd. */
-        /* struct dsp_reply reply; */
         struct dsp_datagram reply;
         struct dsp_datagram mce_reply;
         struct dsp_datagram buffer_update;
         
-
-        /* __s32 *data_buffer; */
-        /* int data_head; */
-        /* int data_tail; */
-        /* int data_size; */
-
         frame_buffer_t dframes;
 
         int reply_buffer_size;
         void* reply_buffer_dma_virt;
         dma_addr_t reply_buffer_dma_handle;
-
-        /* void* reply_buffer; */
 
         spinlock_t lock;
 	wait_queue_head_t queue;
@@ -242,15 +147,8 @@ typedef struct {
         dsp_state_t dsp_state;
         mce_state_t mce_state;
 
-	/* struct semaphore sem; */
-
 	int error;
 
-	/* dsp_ops_state_t state; */
-
-	/* dsp_message msg; */
-	/* dsp_command cmd; */
-        
 } mcedsp_t;
 
 static mcedsp_t dspdata[MAX_CARDS];
@@ -264,6 +162,32 @@ static int major = 0;
 /* #define DSP_LOCK  */
 /* #define DSP_UNLOCK  */
 
+
+int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd);
+
+static int upload_rep_buffer(mcedsp_t *dsp, int enable, int n_tries) {
+        int n = 0;
+        struct dsp_command cmd;
+        __u32 addr = (__u32) dsp->reply_buffer_dma_handle;
+
+        if (!enable)
+                addr = 0;
+        cmd.cmd = DSP_SET_REP_BUF;
+        cmd.flags = 0;
+        cmd.owner = 0;
+        cmd.timeout_us = 0;
+        cmd.size = 2;
+        cmd.data_size = 1;
+        cmd.data[0] = addr;
+
+        PRINT_INFO(dsp->minor, "Informing DSP of bus address=%x\n", addr);
+
+        while (n++ < n_tries) {
+                if (try_send_cmd(dsp, &cmd) == 0)
+                        return 0;
+        }
+        return -EBUSY;
+}
 
 int data_alloc(mcedsp_t *dsp, int mem_size)
 {
@@ -288,7 +212,7 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
 	// Save physical address for hardware
 	// Note virt_to_bus is on the deprecation list... we will want
 	// to switch to the DMA-API, dma_map_single does what we want.
-        bus = virt_to_bus(virt);
+        bus = virt_to_bus(dframes->base);
 	dframes->base_busaddr = bus;
 
 	// Save the maximum size
@@ -412,12 +336,21 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
         // Inspect the header
         gramlet = dsp->reply_buffer_dma_virt;
         copy_size = sizeof(dsp->reply);
-        if (gramlet->total_size < copy_size)
-                copy_size = gramlet->total_size;
+        if (gramlet->total_size * sizeof(__u32) < copy_size) {
+                PRINT_ERR(dsp->minor, "datagram too large; truncating.\n");
+                copy_size = gramlet->total_size * sizeof(__u32);
+        }
 
         // Copy into temporary storage...
         memcpy(&gram, dsp->reply_buffer_dma_virt,
                copy_size);
+        {
+                int j;
+                for (j=0; j<copy_size/4; j++) {
+                        PRINT_ERR(dsp->minor, "%3i = %x\n",
+                                  j, ((__u32*)&gram)[j]);
+                }
+        }
 
         switch (gram.type) {
         case DGRAM_TYPE_DSP_REP:
@@ -518,6 +451,8 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	int card;
         int err = 0;
+        int hctr;
+        int n_waits;
 	mcedsp_t *dsp = NULL;
         PRINT_INFO(NOCARD, "entry\n");
 
@@ -597,6 +532,28 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 			  -err);
 	}
         PRINT_ERR(card, "new interrupt handler installed.\n");
+
+        // Raise handshake bit.
+        hctr = dsp_read_hctr(dsp->reg);
+        dsp_write_hctr(dsp->reg, hctr | HCTR_HF2);
+
+        // Wait for DSP to ack support of this driver
+        n_waits = 100000;
+        while (n_waits-- > 0) {
+                if (dsp_read_hstr(dsp->reg) & HSTR_HC4)
+                        break;
+        }
+        if (n_waits <= 0) {
+                dsp_write_hctr(dsp->reg, hctr & ~HCTR_HF2);
+                PRINT_ERR(card, "card did not hand-shake.\n");
+                goto fail;
+        }
+
+        // Configure reply buffer
+        if (upload_rep_buffer(dsp, 1, 10000) != 0) {
+                PRINT_ERR(card, "could not configure reply buffer.\n");
+                goto fail;
+        }
 
         //Ok, we made it.
         dsp->pci = pci;
@@ -732,6 +689,7 @@ int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd) {
         }
         return 0;
 }
+
 
 long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 {
@@ -1066,11 +1024,18 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                 if (!dsp->enabled)
                         continue;
 
-                len += sprintf(buf+len,"\nCARD: %d\n\n", card);
+                len += sprintf(buf+len,"\nCARD: %d\n", card);
                 len += sprintf(buf+len,"  dsp command state: %i\n",
                                dsp->dsp_state);
                 len += sprintf(buf+len,"  mce command state: %i\n",
                                dsp->dsp_state);
+                len += sprintf(buf+len,
+                               "   HSTR = %#06x\n"
+                               "   HCTR = %#06x\n"
+                               "   HCVR = %#06x\n",
+                               dsp_read_hstr(dsp->reg),
+                               dsp_read_hctr(dsp->reg),
+                               dsp_read_hcvr(dsp->reg));
         }
 
 	return len;

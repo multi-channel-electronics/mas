@@ -41,9 +41,17 @@ struct dsp_reply {
 	__s32 data[DSP_COMMAND_SIZE];
 };
 
+struct mce_reply {
+	__s16 type;
+	__s16 _spaces;
+	__s32 size;
+	__s32 data[DSP_COMMAND_SIZE];
+};
+
 #pragma pack(pop)
 
 #define DSP_REPLY(datagramp) ((struct dsp_reply*)(&((datagramp)->buffer)))
+#define MCE_REPLY(datagramp) ((struct mce_reply*)(&((datagramp)->buffer)))
 
 
 #define DSP_CMD_READ_P   0x01

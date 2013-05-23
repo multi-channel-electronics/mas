@@ -39,7 +39,9 @@ int mcedsp_open(mce_context_t *context)
 {
     int fd;
     char dev_name[20];
-    sprintf(dev_name, "/dev/mce_dsp%u", (unsigned)context->fibre_card);
+    //sprintf(dev_name, "/dev/mce_dsp%u", (unsigned)context->fibre_card);
+    printf("dev name hot-wired\n");
+    sprintf(dev_name, "/dev/mce_test%u", (unsigned)context->fibre_card);
 
     fd = open(dev_name, O_RDWR);
     if (fd < 0)
@@ -127,14 +129,22 @@ int mcedsp_send_command(mce_context_t *context,
                         struct dsp_command *cmd,
                         struct dsp_datagram *gram)
 {
-    int err = 0;
-    err = mcedsp_ioctl(context, DSPIOCT_COMMAND, (unsigned long)cmd);
-    if (err < 0)
-        return -DSP_ERR_DEVICE;
+    CHECK_OPEN(context);
 
-    err = mcedsp_ioctl(context, DSPIOCT_GET_DSP_REPLY, (unsigned long)gram);
-    if (err < 0)
+    int err = 0;
+    if (cmd->size < 0)
+        cmd->size = cmd->data_size + 1;
+
+    err = mcedsp_ioctl(context, DSPIOCT_COMMAND, (unsigned long)cmd);
+    if (err < 0) {
+        printf("err on write\n");
         return -DSP_ERR_DEVICE;
+    }
+    err = mcedsp_ioctl(context, DSPIOCT_GET_DSP_REPLY, (unsigned long)gram);
+    if (err < 0) {
+        printf("err on read\n");
+        return -DSP_ERR_DEVICE;
+    }
     
     return 0;
 }
@@ -150,7 +160,6 @@ int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address)
     struct dsp_command cmd;
     struct dsp_datagram gram;
 
-    CHECK_OPEN(context);
     cmd.flags = DSP_EXPECT_DSP_REPLY;
     cmd.size = -1;
     cmd.data_size = 1;
