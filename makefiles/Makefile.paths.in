@@ -22,14 +22,6 @@ endif
 # Special includes
 PYTHON_INC = @PYTHON_DIR@
 
-# Linking arguments, including libconfig
-ifeq ($(SHARED), yes)
-MCE_EXTRA =
-else
-MCE_EXTRA = $(CONFIG_LIBS)
-endif
-MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) $(LIBS)
-
 #the built library (for dependency tracking in Makefiles)
 LIBDEP=$(MCELIB_F)/lib$(MCELIB)$(LIB_SUFFIX)
 
@@ -73,6 +65,14 @@ MAS_INSTALL_INIT=/etc/init.d/
 else
 MAS_INSTALL_INIT=
 endif
+
+# Linking arguments, including libconfig
+ifeq ($(SHARED), yes)
+MCE_EXTRA = -Wl,-rpath -Wl,$(MAS_INSTALL_LIB)
+else
+MCE_EXTRA = $(CONFIG_LIBS)
+endif
+MCE_LIBS = -L$(MCELIB_F) -l$(MCELIB) $(MCE_EXTRA) $(LIBS)
 
 INSTALL_SYS_LINKS = @INSTALL_SYS_LINKS@
 ifneq (0,${INSTALL_SYS_LINKS})
