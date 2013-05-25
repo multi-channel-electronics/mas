@@ -19,7 +19,7 @@ HEADERS = options.h cmd.h ../../defaults/config.h $(LIBHEADERS)
 all: mce_cmd
 
 mce_cmd: mce_cmd.o options.o $(LIBDEP)
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+	$(CC) $(CFLAGS) mce_cmd.o options.o -o $@ $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)
 

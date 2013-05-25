@@ -22,7 +22,7 @@ all: $(TARGETS)
 $(OBJECTS): $(HEADERS)
 
 psc_status: psc_status.o options.o $(LIBDEP)
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+	$(CC) $(CFLAGS) psc_status.o options.o -o $@ $(LIBRARY)
 
 
 .c.o: 	$(HEADERS)

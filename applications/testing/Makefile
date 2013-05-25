@@ -15,7 +15,7 @@ HEADERS = $(LIBHEADERS)
 all: $(TARGETS)
 
 %: %.o $(LIBDEP)
-	$(CC) $(CFLAGS) $^ -o $@ $(MCE_LIBS)
+	$(CC) $(CFLAGS) $< -o $@ $(MCE_LIBS)
 
 $(OBJECTS): $(HEADERS)
 
