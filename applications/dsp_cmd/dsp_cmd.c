@@ -47,6 +47,7 @@ enum {
 	COMMAND_GOA,
 	COMMAND_STP,
 	COMMAND_RST,
+	COMMAND_PCIRST,
 	COMMAND_RCO,
 	COMMAND_QTS,
 	ENUM_COMMAND_HIGH,
@@ -120,6 +121,8 @@ mascmdtree_opt_t root_opts[] = {
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "STOP"     , 0,0, COMMAND_STP,
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET"    , 0,0, COMMAND_RST,
+        integer_opts},
+    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET_PCI", 0,0, COMMAND_PCIRST,
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET_MCE", 0,0, COMMAND_RCO,
         integer_opts},
@@ -370,6 +373,11 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 
 		case COMMAND_RST:
             err = mcedsp_reset(mce);
+			if (err >= 0) err = 0;
+			break;
+
+		case COMMAND_PCIRST:
+            err = mcedsp_hard_reset(mce);
 			if (err >= 0) err = 0;
 			break;
 

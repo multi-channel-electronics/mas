@@ -1081,6 +1081,11 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card)
 	case DSPDEV_IOCT_LATENCY:
 		return dsp_set_latency(card, (int)arg);
 
+        case DSPDEV_IOCT_HARD_RESET:
+                // Vector int to hard reset the card
+                dsp_quick_command(dev, HCVR_SYS_RST);
+                return 0;
+
 	default:
                 PRINT_ERR(card, "I don't handle iocmd=%ui\n", iocmd);
 		return -1;
@@ -1181,6 +1186,10 @@ int dsp_configure(struct pci_dev *pci)
 	// PCI paperwork
 	err = pci_enable_device(dev->pci);
 	if (err) goto fail;
+
+        // This should be done before regions / ioremap
+	pci_set_master(dev->pci);
+
 	if (pci_request_regions(dev->pci, DEVICE_NAME)!=0) {
                 PRINT_ERR(card, "pci_request_regions failed.\n");
 		err = -1;
@@ -1195,8 +1204,6 @@ int dsp_configure(struct pci_dev *pci)
 		err = -EIO;
 		goto fail;
 	}
-	pci_set_master(dev->pci);
-
 	/* Card configuration - now we're done with the kernel and
 	 * talk to the card */
 

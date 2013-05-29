@@ -86,7 +86,7 @@ typedef struct {
 	volatile u32 hstr;      // Host status register
 	volatile u32 hcvr;      // Host command vector register(base+$018)
 	volatile u32 htxr_hrxs; // Host transmit / receive data
-	volatile u32 unused2[16384-32];
+        //	volatile u32 unused2[16384-32];
 
 } dsp_reg_t;
 

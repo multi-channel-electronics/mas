@@ -191,6 +191,11 @@ int mcedsp_reset(mce_context_t *context)
     return mcedsp_send_command_now(context, &cmd);
 }
 
+int mcedsp_hard_reset(mce_context_t *context)
+{
+    return mcedsp_ioctl(context, DSPDEV_IOCT_HARD_RESET, 0);
+}    
+
 int mcedsp_start_application(mce_context_t *context, int data)
 {
     CHECK_OPEN(context);
