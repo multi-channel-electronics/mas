@@ -70,7 +70,7 @@ int mas_cleanup(unsigned long user_data)
 int  mas_item(unsigned long user_data, const mce_param_t *p)
 {
 	mas_t *mas = (mas_t*) user_data;
-	u32 buf[MCE_REP_DATA_MAX];
+    uint32_t buf[MCE_REP_DATA_MAX];
 
 	if (!(p->card.flags & MCE_PARAM_STAT) ||
 	    !(p->param.flags & MCE_PARAM_STAT) ||

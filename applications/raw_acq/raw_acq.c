@@ -33,8 +33,8 @@ enum STORE_SCHEME {
 /* Our acquisition structure and callback */
 
 typedef struct {
-	u32 header[HEADER_SIZE];
-	u32 *raw_data;
+    uint32_t header[HEADER_SIZE];
+    uint32_t *raw_data;
 	int count;
 	int header_offset;
 	int data_size;
@@ -42,7 +42,7 @@ typedef struct {
 } raw_data_t;
 
 
-int frame_callback(unsigned long user_data, int size, u32 *data)
+int frame_callback(unsigned long user_data, int size, uint32_t *data)
 {
 	//Re-type 
 	raw_data_t *c = (raw_data_t*)user_data;
@@ -59,7 +59,7 @@ int frame_callback(unsigned long user_data, int size, u32 *data)
 	return 0;
 }
 
-void print_u32(u32 *data, int count)
+void print_u32(uint32_t *data, int count)
 {
 	int i;
 	for (i=0; i<count; i++) {
@@ -161,9 +161,9 @@ int main(int argc, char **argv)
 	}
 
 	/* Storage */
-	u32 row_len, num_rows, num_rows_reported, data_mode;
-	u32 ret_dat_s[2];
-	u32 temp[32];
+    uint32_t row_len, num_rows, num_rows_reported, data_mode;
+    uint32_t ret_dat_s[2];
+    uint32_t temp[32];
 
 	err |= mcecmd_read_block(mce, &p_row_len, 1, &row_len);
 	err |= mcecmd_read_block(mce, &p_num_rows, 1, &num_rows);
@@ -186,7 +186,8 @@ int main(int argc, char **argv)
 	raw_data.max_frames = (int)row_len * n_internal;
 	raw_data.data_size = NCOLS*num_rows;
 	raw_data.header_offset = HEADER_SIZE;
-	raw_data.raw_data = (u32*)malloc(raw_data.data_size * raw_data.max_frames * sizeof(u32));
+    raw_data.raw_data = (uint32_t*)malloc(raw_data.data_size
+            * raw_data.max_frames * sizeof(uint32_t));
 	raw_data.count = 0;
 
 	// Storage object calls our callback.
@@ -210,7 +211,8 @@ int main(int argc, char **argv)
 
 	// Write out the data
 	FILE *fout = fopen(filename, "w");
-	u32 *buf = (u32*)malloc((HEADER_SIZE + raw_data.data_size + 1) * sizeof(u32));
+    uint32_t *buf = (uint32_t*)malloc((HEADER_SIZE + raw_data.data_size + 1)
+            * sizeof(uint32_t));
 
 	switch (store_scheme) {
 
@@ -221,19 +223,19 @@ int main(int argc, char **argv)
 		   necessary. */
 
 		// Hack the header into shape
-		memcpy(buf, raw_data.header, HEADER_SIZE*sizeof(u32));
-		buf[FRAME_NUM_ROWS_REP] = 1;
+        memcpy(buf, raw_data.header, HEADER_SIZE*sizeof(uint32_t));
+        buf[FRAME_NUM_ROWS_REP] = 1;
 				
 		for (int i=0; i<raw_data.max_frames; i++) {
 			for (int j=0; j<num_rows; j++) {
 				buf[FRAME_COUNTER] = i*num_rows + j;
 				memcpy(buf + HEADER_SIZE,
 				       raw_data.raw_data + (i*num_rows + j)*NCOLS,
-				       NCOLS*sizeof(u32));
+                       NCOLS*sizeof(uint32_t));
 				buf[HEADER_SIZE + NCOLS] =
 					mcecmd_checksum(buf, HEADER_SIZE + raw_data.data_size);
 				fwrite(buf, 1, (HEADER_SIZE + raw_data.data_size + 1) *
-				       sizeof(u32), fout);
+                        sizeof(uint32_t), fout);
 			}
 		}
 		break;
@@ -245,16 +247,17 @@ int main(int argc, char **argv)
 
 		for (int i=0; i<raw_data.max_frames; i++) {
 			raw_data.header[1] = i;
-			memcpy(buf, raw_data.header, HEADER_SIZE*sizeof(u32));
+            memcpy(buf, raw_data.header, HEADER_SIZE*sizeof(uint32_t));
 			for (int j=0; j<num_rows; j++) {
 				memcpy(buf + HEADER_SIZE + j*NCOLS,
 				       raw_data.raw_data + (j*row_len+i)*NCOLS,
-				       NCOLS*sizeof(u32));
+                       NCOLS*sizeof(uint32_t));
 			}
 			buf[HEADER_SIZE + raw_data.data_size] =
 				mcecmd_checksum(buf, HEADER_SIZE + raw_data.data_size);
 
-			fwrite(buf, 1, (HEADER_SIZE + raw_data.data_size + 1)*sizeof(u32), fout);
+            fwrite(buf, 1, (HEADER_SIZE + raw_data.data_size + 1) *
+                    sizeof(uint32_t), fout);
 		}
 		break;
 	}

@@ -65,14 +65,14 @@ struct {
  * frame_callback: to store the frame to a file and fill row_data
  * 
  **********************************************************/
-int frame_callback(unsigned long user_data, int frame_size, u32 *data)
+int frame_callback(unsigned long user_data, int frame_size, uint32_t *data)
 {
   //Re-type 
   servo_t *myservo = (servo_t*)user_data;
 
   // Write frame to our data file?
   if (myservo->df != NULL)
-    fwrite(data, sizeof(u32), frame_size, myservo->df);
+      fwrite(data, sizeof(uint32_t), frame_size, myservo->df);
 
   // Copy header and data into myservo struct
   memcpy(myservo->last_header, data, HEADER_OFFSET*sizeof(*data));
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
    char full_datafilename[256]; /*full path for datafile*/
    const char *datadir;
    
-   i32 temparr[MAXTEMP];
+   int32_t temparr[MAXTEMP];
   
    int i, j, r, snum;       /* loop counters */
  
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
    char tempbuf[30];
 
    char *endptr;
-   i32 safb[MAXCOLS][MAXROWS];     /* sq2 feedback voltages */
+   int32_t safb[MAXCOLS][MAXROWS];     /* sq2 feedback voltages */
    
    int error=0;
    char errmsg_temp[MAXLINE];

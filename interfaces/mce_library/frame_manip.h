@@ -3,6 +3,6 @@
 
 #include <mce/acq.h>
 
-int sort_columns( mce_acq_t* acq, u32* data );
+int sort_columns( mce_acq_t* acq, uint32_t* data );
 
 #endif

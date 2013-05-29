@@ -64,7 +64,7 @@ int data_reset(params_t *p)
 
 inline int stop_bit(char *packet) {
 	//Stop flag is bit 0 of first word
-	return *( (u32*)packet + 0) & 1;
+    return *( (uint32_t*)packet + 0) & 1;
 }
 
  
@@ -72,10 +72,10 @@ void *data_thread(void *p_void)
 {
 	int ret_val;
 	data_thread_t *d =(data_thread_t*) p_void;
-	int size = d->acq->frame_size*sizeof(u32);
+    int size = d->acq->frame_size*sizeof(uint32_t);
 	int fd = d->acq->context->data.fd;
 	mcedata_storage_t *acts = d->acq->storage;
-	u32 *data = malloc(size);
+    uint32_t *data = malloc(size);
 	int done = 0;
 
 	if (data==NULL) {
@@ -99,7 +99,7 @@ void *data_thread(void *p_void)
 				fprintf(stderr, "pre_frame action failed\n");
 		}
 	
-		ret_val = read(fd, (void*)data + index, size - index);
+		ret_val = read(fd, (char*)data + index, size - index);
 
 		if (ret_val<0) {
 			if (errno==EAGAIN) {
@@ -108,7 +108,7 @@ void *data_thread(void *p_void)
 				// Error: clear rest of frame and quit
 				fprintf(stderr,
 					"read failed with code %i\n", ret_val);
-				memset((void*)data + index, 0, size - index);
+				memset((char*)data + index, 0, size - index);
 				done = EXIT_READ;
 				break;
 			}

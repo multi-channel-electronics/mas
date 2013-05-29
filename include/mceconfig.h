@@ -1,4 +1,7 @@
-/******************************************************
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
+ /******************************************************
   mceconfig.h - header file for MCE API, config module
 
   Matthew Hasselfield, 08.01.02
@@ -7,6 +10,8 @@
 
 #ifndef _MCECONFIG_H_
 #define _MCECONFIG_H_
+
+#include <stdint.h>
 
 /*! \file mceconfig.h
  *
@@ -125,8 +130,8 @@ typedef struct {
 	int count;
 
 	int flags;
-	u32 min;
-	u32 max;
+    uint32_t min;
+    uint32_t max;
 	config_setting_t *defaults;
 
 	int map_count;
@@ -145,7 +150,7 @@ typedef struct {
 
 	char name[MCE_SHORT];
 	char type[MCE_SHORT];
-	u32 error_bits;
+    uint32_t error_bits;
 
 	int flags;
 	int card_count;
@@ -182,8 +187,7 @@ int mceconfig_lookup(const mce_context_t *mce,
 /* Static function for verifying that data obeys parameter constraints */
 
 int mceconfig_check_data(const card_t *c, const param_t *p, int count,
-			 const u32 *data, unsigned block_flags,
-			 char *errmsg);
+        const uint32_t *data, unsigned block_flags, char *errmsg);
 
 
 /* Loading of root data from configuration */

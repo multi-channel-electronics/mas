@@ -4,6 +4,7 @@
 #ifndef MCELIB_CONTEXT_H
 #define MCELIB_CONTEXT_H
 
+#include <stdint.h>
 #include <mce_library.h>
 #include <libmaslog.h>
 

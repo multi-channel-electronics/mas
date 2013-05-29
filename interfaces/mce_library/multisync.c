@@ -66,7 +66,7 @@ DECLARE_MULTISYNC(cleanup)
 DECLARE_MULTISYNC(pre_frame)
 DECLARE_MULTISYNC(flush)
 
-static int multisync_post_frame(mce_acq_t *acq, int frame_index, u32 *data)
+static int multisync_post_frame(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	multisync_t *f = (multisync_t*)acq->storage->action_data;
     int i, err = 0;

@@ -1,6 +1,7 @@
 /* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  *      vim: sw=4 ts=4 et tw=80
  */
+#include <stdint.h>
 #include <stdio.h>
 #include <mce_library.h>
 #include <mce/defaults.h>
@@ -38,8 +39,8 @@
 
 typedef struct {
   int fcount;
-  u32 last_header[HEADER_OFFSET];
-  u32 last_frame[MAXCOLS*MAXROWS];
+  uint32_t last_header[HEADER_OFFSET];
+  uint32_t last_frame[MAXCOLS*MAXROWS];
   FILE *df;
 }servo_t;
 
@@ -57,15 +58,14 @@ mce_context_t* connect_mce_or_exit(option_t* options);
 int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
 			const char *card, const char *para, int no_exit);
 void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
-			 int start, i32 *data, int count,
-			 const char *opmsg);
+        int start, int32_t *data, int count, const char *opmsg);
 int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
 		   mce_param_t* sq2fb_col, int col0, int n_col);
 int check_mux11d(mce_context_t* mce, mce_param_t* safb,
 		   mce_param_t* safb_col, int col0, int n_col);
-void duplicate_fill(i32 value, i32 *data, int count);
+void duplicate_fill(int32_t value, int32_t *data, int count);
 
-void rerange(i32 *dest, i32 *src, int n_data,
+void rerange(int32_t *dest, int32_t *src, int n_data,
 	     int *quanta, int n_quanta);
 
 int genrunfile (

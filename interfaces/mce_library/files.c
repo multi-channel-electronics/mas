@@ -94,7 +94,7 @@ static int fileseq_cleanup(mce_acq_t *acq)
 	
 	return 0;
 }
-static int fileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int fileseq_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	fileseq_t *f = (fileseq_t*)acq->storage->action_data;
 
@@ -174,7 +174,7 @@ static int flatfile_cleanup(mce_acq_t *acq)
 	return 0;
 }
 
-static int flatfile_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int flatfile_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
 	if (!FILE_OK(f)) return -1;
@@ -206,7 +206,7 @@ mcedata_storage_t flatfile_actions = {
 typedef struct rambuff_struct {
 
 	int frame_size;
-	u32 *buffer;
+    uint32_t *buffer;
 	
 	unsigned long user_data;
 	rambuff_callback_t callback;
@@ -219,7 +219,7 @@ static int rambuff_init(mce_acq_t *acq)
 	rambuff_t *f = (rambuff_t*)acq->storage->action_data;
 	int b_size = acq->frame_size*sizeof(f->buffer);
 	if (f->buffer != NULL) free(f->buffer);
-	f->buffer = (u32*) malloc(b_size);
+    f->buffer = (uint32_t*) malloc(b_size);
 	if (f->buffer == NULL) {
 		sprintf(acq->errstr, "rambuff could not allocate %i bytes", b_size);
 		return -1;
@@ -236,7 +236,7 @@ static int rambuff_cleanup(mce_acq_t *acq)
 	return 0;
 }
 
-static int rambuff_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int rambuff_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	rambuff_t *f = (rambuff_t*)acq->storage->action_data;
 

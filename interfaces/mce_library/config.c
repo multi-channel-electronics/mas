@@ -722,12 +722,11 @@ int mceconfig_lookup(const mce_context_t* context,
 }
 
 int mceconfig_check_data(const card_t *c, const param_t *p, int count,
-			 const u32 *data, unsigned block_flags,
-			 char *errmsg)
+        const uint32_t *data, unsigned block_flags, char *errmsg)
 {
 	int i;
 
-	int *datai = (int *)data;
+	int32_t *datai = (int32_t *)data;
 
 	if (count > p->count) {
 		sprintf(errmsg, "too many data");

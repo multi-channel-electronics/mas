@@ -155,7 +155,7 @@ int mcedsp_read_word_P(mce_context_t *context, int address)
 
 
 int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
-        u32 value)
+        uint32_t value)
 {
     CHECK_OPEN(context);
     CHECK_MEM_TYPE(mem);
@@ -165,17 +165,17 @@ int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
     return mcedsp_send_command_now(context, &cmd);
 }
 
-int mcedsp_write_word_X(mce_context_t *context, int address, u32 value)
+int mcedsp_write_word_X(mce_context_t *context, int address, uint32_t value)
 {
     return mcedsp_write_word(context, DSP_MEMX, address, value);
 }
 
-int mcedsp_write_word_Y(mce_context_t *context, int address, u32 value)
+int mcedsp_write_word_Y(mce_context_t *context, int address, uint32_t value)
 {
     return mcedsp_write_word(context, DSP_MEMY, address, value);
 }
 
-int mcedsp_write_word_P(mce_context_t *context, int address, u32 value)
+int mcedsp_write_word_P(mce_context_t *context, int address, uint32_t value)
 {
     return mcedsp_write_word(context, DSP_MEMP, address, value);
 }

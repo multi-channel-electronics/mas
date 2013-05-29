@@ -7,7 +7,7 @@
 #include "virtual.h"
 
 int mcecmd_write_virtual(mce_context_t* context, const mce_param_t* param,
-			 int data_index, u32* data, int count)
+        int data_index, uint32_t* data, int count)
 {
 	maprange_t mr;
 	mce_param_t child;
@@ -48,7 +48,7 @@ int mcecmd_write_virtual(mce_context_t* context, const mce_param_t* param,
 
 
 int mcecmd_read_virtual(mce_context_t* context, const mce_param_t* param,
-			int data_index, u32* data, int count)
+        int data_index, uint32_t* data, int count)
 {
 	maprange_t mr;
 	mce_param_t child;

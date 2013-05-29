@@ -15,7 +15,7 @@
 
 #include <mce_library.h>
 #include <mce/dsp.h>
-
+#include <stdint.h>
 
 /* Maximum number of handles available */
 
@@ -53,10 +53,10 @@ int mcedsp_read_word_Y(mce_context_t *context, int address);
 int mcedsp_read_word_P(mce_context_t *context, int address);
 
 int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
-        u32 value);
-int mcedsp_write_word_X(mce_context_t *context, int address, u32 value);
-int mcedsp_write_word_Y(mce_context_t *context, int address, u32 value);
-int mcedsp_write_word_P(mce_context_t *context, int address, u32 value);
+        uint32_t value);
+int mcedsp_write_word_X(mce_context_t *context, int address, uint32_t value);
+int mcedsp_write_word_Y(mce_context_t *context, int address, uint32_t value);
+int mcedsp_write_word_P(mce_context_t *context, int address, uint32_t value);
 
 int mcedsp_version(mce_context_t *context);
 

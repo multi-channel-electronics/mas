@@ -641,7 +641,8 @@ int prepare_outfile(char *errmsg, int storage_option)
     return 0;
 }
 
-int data_string(char* dest, const u32 *buf, int count, const mce_param_t *p)
+int data_string(char* dest, const uint32_t *buf, int count,
+        const mce_param_t *p)
 {
     int i;
     int offset = 0;
@@ -699,7 +700,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
     int i;
     mce_param_t mcep;
     int to_read, to_request, to_write, index;
-    u32 buf[DATA_SIZE];
+    uint32_t buf[DATA_SIZE];
     char s[LINE_LEN];
 
     errmsg[0] = 0;

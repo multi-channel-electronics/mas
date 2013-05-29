@@ -27,7 +27,7 @@
 #define DIRFILE_CHANNELS      (MCEDATA_CARDS*MCEDATA_COLUMNS*MCEDATA_ROWS)
 
 typedef struct {
-	u32 *data;                 // buffer for this channel's data
+    uint32_t *data;                 // buffer for this channel's data
 	int count;                 // number of data in buffer
 	int decimation;            // If non-zero, indicates how often to record a data point
 	int decimation_count;      // Decimation counter
@@ -103,7 +103,7 @@ frame_item header_items[] = {
 static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 {
 	int i;
-	u32* base_data;
+    uint32_t* base_data;
 	char* base_names;
 	char* base_files;
 	int err = 0;
@@ -177,7 +177,7 @@ static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
 			continue;
 		if (c->fout == NULL)
 			continue;
-		fwrite(c->data, c->count, sizeof(u32), c->fout);
+        fwrite(c->data, c->count, sizeof(uint32_t), c->fout);
 		c->count = 0;
 		writes++;
 	}
@@ -468,7 +468,7 @@ static int dirfile_cleanup(mce_acq_t *acq)
 	return 0;
 }
 
-static int dirfile_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int dirfile_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	dirfile_t *f = (dirfile_t*)acq->storage->action_data;
 	int i;
@@ -611,7 +611,7 @@ static int dirfileseq_init(mce_acq_t *acq)
 	return 0;
 }
 
-static int dirfileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int dirfileseq_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	dirfileseq_t *f = (dirfileseq_t*)acq->storage->action_data;
 

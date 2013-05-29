@@ -79,7 +79,7 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	
 	// Set frame size in driver.
 	ret_val = mcedata_set_datasize(acq->context,
-				       acq->frame_size * sizeof(u32));
+            acq->frame_size * sizeof(uint32_t));
 	if (ret_val != 0) {
  		fprintf(stdout, "Could not set data size [%i]\n", ret_val);
 		return -MCE_ERR_FRAME_SIZE;
@@ -175,7 +175,7 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 static int set_n_frames(mce_acq_t *acq, int n_frames)
 {
 	int ret_val;
-	u32 args[2];
+    uint32_t args[2];
 
 	args[0] = 0;
 	args[1] = n_frames - 1;
@@ -200,7 +200,7 @@ static int set_n_frames(mce_acq_t *acq, int n_frames)
 static int get_n_frames(mce_acq_t *acq)
 {
 	int ret_val;
-	u32 args[2];
+    uint32_t args[2];
 	ret_val = mcecmd_read_block(acq->context, &acq->ret_dat_s, 2, args);
 	if (ret_val != 0) {
 		fprintf(stderr, "Error reading ret_dat_s: '%s'",
@@ -230,7 +230,7 @@ static int load_frame_params(mce_acq_t *acq, int cards)
 	*/
     mce_context_t *context = acq->context;
 	mce_param_t para_nrow, para_ncol, para_0, para_rcs;
-	u32 data[64];
+    uint32_t data[64];
 	int fw_rectangle = 0;         //firmware supports rectangle readout
 	int rcs_cards = 0;            //cards that rcs would return.
 	int ret_val = 0;
@@ -315,7 +315,7 @@ static int load_data_params(mce_acq_t *acq)
 	      (eventually, full rectangle mode support will go here)
 	*/
 	mce_param_t para;
-	u32 data[64];
+    uint32_t data[64];
 	int i;
 	
 	// Load data_modes from each card.
@@ -370,7 +370,7 @@ int copy_frames_mmap(mce_acq_t *acq)
 	int done = 0;
 	int count = 0;
 	int index = 0;
-	u32 *data;
+    uint32_t *data;
 
 	int waits = 0;
 	int max_waits = 1000;
@@ -454,7 +454,7 @@ int copy_frames_read(mce_acq_t *acq)
 	int done = 0;
 	int count = 0;
 	int index = 0;
-	u32 *data = malloc(acq->frame_size * sizeof(*data));
+    uint32_t *data = malloc(acq->frame_size * sizeof(*data));
 
 	int waits = 0;
 	int max_waits = 1000;

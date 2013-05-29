@@ -11,6 +11,8 @@
 #ifndef _MCECMD_H_
 #define _MCECMD_H_
 
+#include <stdint.h>
+
 /*! \file mcecmd.h
  *
  *  \brief Main header file for command module.
@@ -47,28 +49,28 @@ int mcecmd_stop_application (mce_context_t* context, const mce_param_t *param);
 int mcecmd_reset            (mce_context_t* context, const mce_param_t *param);
 
 int mcecmd_write_block      (mce_context_t* context, const mce_param_t *param,
-			     int count, u32 *data);
+        int count, uint32_t *data);
 
 int mcecmd_read_block       (mce_context_t* context, const mce_param_t *param,
-			     int count, u32 *data);
+        int count, uint32_t *data);
 
 
 /* MCE special commands - these provide additional logical support */
 
 int mcecmd_write_element    (mce_context_t* context, const mce_param_t *param,
-			     int data_index, u32 datum);
+        int data_index, uint32_t datum);
 
 int mcecmd_read_element     (mce_context_t* context, const mce_param_t *param,
-			     int data_index, u32 *datum);
+        int data_index, uint32_t *datum);
 
 int mcecmd_write_range      (mce_context_t* context, const mce_param_t *param,
-			     int data_index, u32 *data, int count);
+        int data_index, uint32_t *data, int count);
 
 int mcecmd_read_range       (mce_context_t* context, const mce_param_t *param,
-			     int data_index, u32 *data, int count);
+        int data_index, uint32_t *data, int count);
 
 int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
-			     int count, u32 *data, int checks);
+        int count, uint32_t *data, int checks);
 
 
 /* Raw i/o routines; roll your own packets */
@@ -101,14 +103,14 @@ int mcecmd_hardware_reset   (mce_context_t* context);    // reset MCE
 
 /* Custom packet creation */
 
-int mcecmd_load_command(mce_command *cmd, u32 command,
-		     u32 card_id, u32 para_id, 
-		     int count, int data_count, const u32 *data);
+int mcecmd_load_command(mce_command *cmd, uint32_t command,
+        uint32_t card_id, uint32_t para_id,
+        int count, int data_count, const uint32_t *data);
 
 /* Packet examination */
 
-u32 mcecmd_checksum( const u32 *data, int count );
-u32 mcecmd_cmd_checksum( const mce_command *cmd );
+uint32_t mcecmd_checksum( const uint32_t *data, int count );
+uint32_t mcecmd_cmd_checksum( const mce_command *cmd );
 int mcecmd_cmd_match_rep( const mce_command *cmd, const mce_reply *rep );
 
 

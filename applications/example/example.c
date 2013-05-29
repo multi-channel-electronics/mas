@@ -1,20 +1,23 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 
 /* This is the MCE include file; it should be in /usr/local/include or something */
 
 #include <mce_library.h>
-
+#include <inttypes.h>
 
 /* Our buffer size */
 
 #define SIZE 256
 
-void print_u32(u32 *data, int count)
+void print_u32(uint32_t *data, int count)
 {
 	int i;
 	for (i=0; i<count; i++) {
-		printf("%u ", data[i]);
+        printf("%" PRIu32 " ", data[i]);
 	}
 	printf("\n");
 }
@@ -23,9 +26,9 @@ void print_u32(u32 *data, int count)
 int main()
 {
 	int error = 0;
-	int n = 0;
-	u32 data[SIZE];
-	u32 more_data[SIZE];
+    int n = 0;
+    uint32_t data[SIZE];
+    uint32_t more_data[SIZE];
 
 	/*
 	  Initialization example
