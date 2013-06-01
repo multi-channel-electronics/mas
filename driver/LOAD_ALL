@@ -1,0 +1,7 @@
+#make clean
+make
+cd dsp_patch
+bash LOAD
+cd ../test/
+bash nodes
+ 

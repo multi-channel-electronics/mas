@@ -54,19 +54,19 @@ struct mce_reply {
 #define MCE_REPLY(datagramp) ((struct mce_reply*)(&((datagramp)->buffer)))
 
 
-#define DSP_CMD_READ_P   0x01
-#define DSP_CMD_READ_X   0x02
-#define DSP_CMD_READ_Y   0x03
+#define DSP_CMD_READ_P       0x01
+#define DSP_CMD_READ_X       0x02
+#define DSP_CMD_READ_Y       0x03
+			     
+#define DSP_CMD_WRITE_P      0x05
+#define DSP_CMD_WRITE_X      0x06
+#define DSP_CMD_WRITE_Y      0x07
 
-#define DSP_CMD_WRITE_P  0x05
-#define DSP_CMD_WRITE_X  0x06
-#define DSP_CMD_WRITE_Y  0x07
+#define DSP_CMD_SET_REP_BUF  0x09
+#define DSP_CMD_SET_DATA_BUF 0x0A
 
-#define DSP_SET_REP_BUF  0x09
-#define DSP_SET_DATA_BUF 0x0A
-
-#define DSP_SET_TAIL     0x11
-#define DSP_SEND_MCE     0x21
+#define DSP_CMD_SET_TAIL     0x11
+#define DSP_CMD_SEND_MCE     0x21
 
 
 /* type codes for dsp_datagram */

@@ -1,0 +1,4 @@
+cd dsp_patch
+bash get_patch
+md5sum patch
+cd ..

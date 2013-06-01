@@ -37,9 +37,7 @@ int mcedata_open(mce_context_t *context)
 	if (C_data.connected)
     mcedata_close(context);
 
-    printf("dev name hack in mce lib!\n");
-    sprintf(dev_name, "/dev/mce_test%u", (unsigned)context->fibre_card);
-    /* sprintf(dev_name, "/dev/mce_data%u", (unsigned)context->fibre_card); */
+    sprintf(dev_name, "/dev/mce_dev%u", (unsigned)context->fibre_card);
     C_data.fd = open(dev_name, O_RDWR);
     if (C_data.fd<0)
         return -MCE_ERR_DEVICE;
@@ -54,7 +52,6 @@ int mcedata_open(mce_context_t *context)
 	if (map_size > 0) {
 		map = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
 			   MAP_SHARED, C_data.fd, 0);
-        printf("Map=%p\n", map);
 		if (map != NULL) {
 			C_data.map = map;
 			C_data.map_size = map_size;
@@ -137,25 +134,21 @@ int mcedata_consume_frame(mce_context_t* context)
 
 int mcedata_lock_query(mce_context_t* context)
 {
-	/* return ioctl(C_data.fd, DSPIOCT_LOCK, LOCK_QUERY); */
-    return 0;
+	return ioctl(C_data.fd, DSPIOCT_DATA_LOCK, LOCK_QUERY);
 }
 
 int mcedata_lock_reset(mce_context_t* context)
 {
-	/* return ioctl(C_data.fd, DSPIOCT_LOCK, LOCK_RESET); */
-    return 0;
+	return ioctl(C_data.fd, DSPIOCT_DATA_LOCK, LOCK_RESET);
 }
 
 int mcedata_lock_down(mce_context_t* context)
 {
-	/* return ioctl(C_data.fd, DSPIOCT_LOCK, LOCK_DOWN); */
-    return 0;
+	return ioctl(C_data.fd, DSPIOCT_DATA_LOCK, LOCK_DOWN);
 }
 
 int mcedata_lock_up(mce_context_t* context)
 {
-	/* return ioctl(C_data.fd, DSPIOCT_LOCK, LOCK_UP); */
-    return 0;
+	return ioctl(C_data.fd, DSPIOCT_DATA_LOCK, LOCK_UP);
 }
 

@@ -76,9 +76,7 @@ int mcecmd_open (mce_context_t *context)
     if (C_cmd.connected)
         mcecmd_close(context);
 
-    /* sprintf(dev_name, "/dev/mce_cmd%u", (unsigned)context->fibre_card); */
-    printf("dev name hack in mce lib!\n");
-    sprintf(dev_name, "/dev/mce_test%u", (unsigned)context->fibre_card);
+    sprintf(dev_name, "/dev/mce_dev%u", (unsigned)context->fibre_card);
     C_cmd.fd = open(dev_name, O_RDWR);
     if (C_cmd.fd < 0)
         return -MCE_ERR_DEVICE;
@@ -138,7 +136,7 @@ int mcecmd_send_command_now(mce_context_t* context, mce_command *cmd)
     memcpy(dsp.data, cmd, sizeof(*cmd));
     dsp.data_size = sizeof(*cmd) / sizeof(u32);
     dsp.size = dsp.data_size + 1;
-    dsp.cmd = DSP_SEND_MCE;
+    dsp.cmd = DSP_CMD_SEND_MCE;
 
     int error = ioctl(C_cmd.fd, DSPIOCT_COMMAND, (unsigned long)&dsp);
 	if (error < 0)

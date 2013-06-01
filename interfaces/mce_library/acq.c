@@ -9,9 +9,6 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
-
-#include <mce/data_ioctl.h>
 
 #include "context.h"
 #include "data_thread.h"

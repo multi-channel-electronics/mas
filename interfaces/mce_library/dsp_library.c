@@ -39,9 +39,7 @@ int mcedsp_open(mce_context_t *context)
 {
     int fd;
     char dev_name[20];
-    //sprintf(dev_name, "/dev/mce_dsp%u", (unsigned)context->fibre_card);
-    printf("dev name hot-wired\n");
-    sprintf(dev_name, "/dev/mce_test%u", (unsigned)context->fibre_card);
+    sprintf(dev_name, "/dev/mce_dev%u", (unsigned)context->fibre_card);
 
     fd = open(dev_name, O_RDWR);
     if (fd < 0)
