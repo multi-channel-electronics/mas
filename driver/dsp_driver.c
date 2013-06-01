@@ -187,7 +187,7 @@ static int upload_rep_buffer(mcedsp_t *dsp, int enable, int n_tries) {
         
         if (!enable)
                 addr = 0;
-        cmd->cmd = DSP_SET_REP_BUF;
+        cmd->cmd = DSP_CMD_SET_REP_BUF;
         cmd->flags = DSP_EXPECT_DSP_REPLY;
         cmd->owner = 0;
         cmd->timeout_us = 0;
@@ -374,7 +374,7 @@ void grant_task(unsigned long data)
         tail = dsp->dframes.tail_index;
         DSP_UNLOCK;
 
-        cmd.cmd = DSP_SET_TAIL;
+        cmd.cmd = DSP_CMD_SET_TAIL;
         cmd.flags = DSP_EXPECT_DSP_REPLY; // But we're going to ignore it...
         cmd.owner = 0;
         cmd.timeout_us = 0;
@@ -507,7 +507,7 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                         report_packet = 0;
                         /* Some replies are just for hand-shaking and
                          * don't need to be processed */
-                        if (DSP_REPLY(&gram)->cmd == DSP_SET_TAIL) {
+                        if (DSP_REPLY(&gram)->cmd == DSP_CMD_SET_TAIL) {
                                 dsp->dsp_state = DSP_IDLE;
                                 break;
                         }
@@ -546,7 +546,7 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                 DSP_UNLOCK;
                 break;
         case DGRAM_TYPE_BUF_INFO:
-                PRINT_ERR(dsp->minor, "info received; %i\n", gram.buffer[0]);
+                PRINT_INFO(dsp->minor, "info received; %i\n", gram.buffer[0]);
                 report_packet = 0;
                 DSP_LOCK;
                 dsp->dframes.head_index = gram.buffer[0];
@@ -973,7 +973,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 
         struct dsp_command *cmd;
         struct dsp_datagram *gram;
-        int i, x, err;
+        int x, err;
 
         DSP_LOCK_DECLARE_FLAGS;
 
@@ -1023,13 +1023,6 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                         copy_to_user((void __user*)arg, gram, sizeof(*gram));
                 kfree(gram);
                 return err;
-
-        case DSPIOCT_DUMP_BUF:
-                for (i=0; i<12; i++) {
-                        PRINT_ERR(card, "buffer %3i = %4x\n", i,
-                                  ((__u32*)dsp->dframes.base)[i]);
-                }
-                return 0;
 
 /* Frame data stuff */
                 
@@ -1118,8 +1111,8 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 		return data_lock_operation(dsp, arg, filp);
 
 	default:
-                PRINT_INFO(card, "unknown ioctl\n");
-                return 0;
+                PRINT_ERR(card, "unknown ioctl\n");
+                return -1;
 	}
 	return 0;
 }

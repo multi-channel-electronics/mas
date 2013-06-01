@@ -3,7 +3,7 @@
 DRN=`cat /proc/devices | awk '($2=="mcedsX") {print $1}'`
 echo $DRN
 
-NODE=/dev/mce_test0
+NODE=/dev/mce_dev0
 sudo mknod $NODE c $DRN 0
 
 sudo chgrp mce $NODE

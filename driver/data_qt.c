@@ -121,7 +121,7 @@ int data_qt_configure(int qt_interval, int card)
 int get_qt_command(frame_buffer_t *dframes, int enable, int qt_interval,
                    struct dsp_command *cmd)
 {
-        cmd->cmd = DSP_SET_DATA_BUF;
+        cmd->cmd = DSP_CMD_SET_DATA_BUF;
         if (enable)
                 cmd->data[0] = dframes->base_busaddr;
         else

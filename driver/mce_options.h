@@ -24,7 +24,7 @@
 
 */
 
-#define DRIVER_VERBOSE
+//#define DRIVER_VERBOSE
 
 /*
   DEBUG MESSAGES

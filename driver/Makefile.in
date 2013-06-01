@@ -51,7 +51,7 @@ endif #REALTIME=yes
 #	data.o data_qt.o data_ops.o data_watcher.o \
 #	proc.o repeater.o
 
-SOURCE_OBJ := dsp_driver.o
+SOURCE_OBJ := dsp_driver.o data_qt.o
 
 ifeq ($(FAKEMCE),yes)
 
