@@ -2,10 +2,10 @@
  *      vim: sw=8 ts=8 et tw=80
  */
 
-#include <linux/kernel.h>
-#include <linux/pci.h>
-#include <linux/interrupt.h>
-#include <linux/sched.h>
+
+#include <linux/module.h>
+#include <linux/init.h>
+#include <asm/uaccess.h>
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -15,6 +15,7 @@
 #include <linux/proc_fs.h>
 #include <linux/fcntl.h>
 #include <linux/sched.h>
+#include <linux/pci.h>
 
 #include "mce_options.h"
 #include "kversion.h"
@@ -42,10 +43,6 @@
  *  dsp_driver.c includes
  */
 
-#include <linux/module.h>
-#include <linux/init.h>
-#include <asm/uaccess.h>
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Matthew Hasselfield"); 
 
@@ -56,6 +53,8 @@ void  mcedsp_remove(struct pci_dev *pci);
 
 int   mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id);
 
+# define DMA_ADDR_ALIGN 1024
+# define DMA_ADDR_MASK (0xffffffff ^ (DMA_ADDR_ALIGN-1))
 
 /* Data for PCI enumeration */
 
@@ -106,19 +105,19 @@ static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
 
 typedef enum {
         DSP_IDLE = 0,
-        DSP_CMD_QUED = 1,
+//        DSP_CMD_QUED = 1,
         DSP_CMD_SENT = 2,
         DSP_REP_RECD = 3,
-        DSP_REP_HNDL = 4,
+//        DSP_REP_HNDL = 4,
         DSP_IGNORE = 1000
 } dsp_state_t;
 
 typedef enum {
         MCE_IDLE = 0,
-        MCE_CMD_QUED = 1,
+//        MCE_CMD_QUED = 1,
         MCE_CMD_SENT = 2,
         MCE_REP_RECD = 3,
-        MCE_REP_HNDL = 4,
+//        MCE_REP_HNDL = 4,
         MCE_IGNORE = 1000
 } mce_state_t;
 
@@ -135,13 +134,17 @@ typedef struct {
         struct dsp_datagram buffer_update;
         
         frame_buffer_t dframes;
+        void* data_lock;
 
         int reply_buffer_size;
+        volatile
         void* reply_buffer_dma_virt;
         dma_addr_t reply_buffer_dma_handle;
 
         spinlock_t lock;
 	wait_queue_head_t queue;
+        struct tasklet_struct grantlet;
+
 	struct timer_list dsp_timer;
 	struct timer_list mce_timer;
         dsp_state_t dsp_state;
@@ -163,30 +166,54 @@ static int major = 0;
 /* #define DSP_UNLOCK  */
 
 
-int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd);
+static int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd,
+                        int nonblock);
+static int try_get_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
+                         int nonblock);
+
+static int try_get_mce_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
+                             int nonblock);
 
 static int upload_rep_buffer(mcedsp_t *dsp, int enable, int n_tries) {
-        int n = 0;
-        struct dsp_command cmd;
+        int err = -ENOMEM;
+        struct dsp_command *cmd;
+        struct dsp_datagram *gram;
         __u32 addr = (__u32) dsp->reply_buffer_dma_handle;
 
+        cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+        gram = kmalloc(sizeof(*gram), GFP_KERNEL);
+        if (cmd == NULL || gram == NULL)
+                goto free_and_out;
+        
         if (!enable)
                 addr = 0;
-        cmd.cmd = DSP_SET_REP_BUF;
-        cmd.flags = 0;
-        cmd.owner = 0;
-        cmd.timeout_us = 0;
-        cmd.size = 2;
-        cmd.data_size = 1;
-        cmd.data[0] = addr;
+        cmd->cmd = DSP_SET_REP_BUF;
+        cmd->flags = DSP_EXPECT_DSP_REPLY;
+        cmd->owner = 0;
+        cmd->timeout_us = 0;
+        cmd->size = 2;
+        cmd->data_size = 1;
+        cmd->data[0] = addr;
 
-        PRINT_INFO(dsp->minor, "Informing DSP of bus address=%x\n", addr);
+        PRINT_ERR(dsp->minor, "Informing DSP of bus address=%x\n", addr);
 
-        while (n++ < n_tries) {
-                if (try_send_cmd(dsp, &cmd) == 0)
-                        return 0;
+        err = try_send_cmd(dsp, cmd, 0);
+        if (err != 0) {
+                PRINT_ERR(dsp->minor, "Command failed. [%i]\n", err);
+                goto free_and_out;
         }
-        return -EBUSY;
+        err = try_get_reply(dsp, gram, 0);
+        if (err != 0) {
+                PRINT_ERR(dsp->minor, "Reply failed. [%i]\n", err);
+                goto free_and_out;
+        }
+
+free_and_out:
+        if (gram != NULL)
+                kfree(gram);
+        if (cmd != NULL)
+                kfree(cmd);
+        return err;
 }
 
 int data_alloc(mcedsp_t *dsp, int mem_size)
@@ -238,7 +265,7 @@ void data_free(mcedsp_t *dsp)
 {
         if (dsp->dframes.base != NULL) {
 #ifdef BIGPHYS
-                bigphysarea_free_pages(dsp->dframes.base);
+                bigphysarea_free_pages((void*)dsp->dframes.base);
 #else
                 dma_free_coherent(&dsp->pci->dev, dsp->dframes.size,
                                   dsp->dframes.base,
@@ -250,17 +277,132 @@ void data_free(mcedsp_t *dsp)
 }
 
 
+/* set_transfer_params
+ *
+ * Update data transfer parameters internally, and write them to the
+ * card.
+ *
+ * enable should be 0 or 1, to disable / enable data transfers.
+ * Disabling transfers results in bus address 0 being written to the
+ * card.
+ *
+ * If data_size <= 0, the buffer division parameters are not updated.
+ *
+ * If qt_inform <= 0, the information frame count trigger information
+ * is not updated.
+ */
+
+static int set_transfer_params(mcedsp_t *dsp, int enable, int data_size,
+                               int qt_inform)
+{
+        DSP_LOCK_DECLARE_FLAGS;
+        int err = -ENOMEM;
+        struct dsp_command *cmd;
+        struct dsp_datagram *gram;
+        frame_buffer_t *dframes = &dsp->dframes;
+
+        cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+        gram = kmalloc(sizeof(*gram), GFP_KERNEL);
+        if (cmd == NULL || gram == NULL)
+                goto free_and_exit;
+
+        if (data_size > 0) {
+                // Note that dividing by 0 causes a kernel panic, so don't do it.
+                int frame_size = (data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
+                int n_frames = dframes->size / frame_size;
+                if (enable && (data_size <=0 || n_frames <= 0)) {
+                        PRINT_ERR(dsp->minor,
+                                  "invalid configuration: %i frames of "
+                                  "size %i, payload %i.\n",
+                                  n_frames, frame_size, data_size);
+                        err = -1; // Hmm..
+                        goto free_and_exit;
+                }
+                DSP_LOCK;
+                dframes->frame_size = frame_size;
+                dframes->data_size = data_size;
+                dframes->n_frames = n_frames;
+                DSP_UNLOCK;
+        }
+        if (qt_inform > 0) {
+                DSP_LOCK;
+                dframes->update_interval = qt_inform;
+                DSP_UNLOCK;
+        }
+
+        /* This isn't really an option; the card resets the buffer
+         * when it gets the SET_DATA_BUF command. */
+        DSP_LOCK;
+        dframes->head_index = 0;
+        dframes->tail_index = 0;
+        DSP_UNLOCK;
+
+        // Inform the card...
+        get_qt_command(dframes, enable, qt_inform, cmd);
+        err = try_send_cmd(dsp, cmd, 0);
+        if (err != 0) {
+                PRINT_ERR(dsp->minor, "Command failure.\n");
+                goto free_and_exit;
+        }
+        err = try_get_reply(dsp, gram, 0);
+        if (err != 0) {
+                PRINT_ERR(dsp->minor, "Reply failure.\n");
+                goto free_and_exit;
+        }
+
+free_and_exit:
+        if (cmd != NULL)
+                kfree(cmd);
+        if (gram != NULL)
+                kfree(gram);
+        return err;
+}
+
+
+void grant_task(unsigned long data)
+{
+        DSP_LOCK_DECLARE_FLAGS;
+        int err;
+        mcedsp_t *dsp = (mcedsp_t *)data;
+        struct dsp_command cmd;
+        __u32 tail;
+
+        if (!dsp->enabled)
+                return;
+
+        DSP_LOCK;
+        tail = dsp->dframes.tail_index;
+        DSP_UNLOCK;
+
+        cmd.cmd = DSP_SET_TAIL;
+        cmd.flags = DSP_EXPECT_DSP_REPLY; // But we're going to ignore it...
+        cmd.owner = 0;
+        cmd.timeout_us = 0;
+        cmd.size = 2;
+        cmd.data_size = 1;
+        cmd.data[0] = tail;
+
+        PRINT_INFO(dsp->minor,
+                  "granting tail=%i\n", tail);
+
+        if ((err=try_send_cmd(dsp, &cmd, 1)) != 0) {
+                PRINT_ERR(dsp->minor, "failed to grant tail=%i, err=%i\n",
+                          tail, err);
+        }
+}
+
+
 static void inline mcedsp_set_state_wake(mcedsp_t *dsp,
                                          dsp_state_t new_dsp_state,
                                          mce_state_t new_mce_state) {
         DSP_LOCK_DECLARE_FLAGS;
         DSP_LOCK;
         if (new_dsp_state < DSP_IGNORE) {
-                PRINT_ERR(dsp->minor, "%i -> dsp_state\n", new_dsp_state);
+                PRINT_INFO(dsp->minor, "%i -> dsp_state\n", new_dsp_state);
                 dsp->dsp_state = new_dsp_state;
         }
         if (new_mce_state < MCE_IGNORE) {
-                PRINT_ERR(dsp->minor, "%i -> mce_state\n", new_mce_state);
+                PRINT_INFO(dsp->minor, "%i -> mce_state\n", new_mce_state);
                 dsp->mce_state = new_mce_state;
         }
         wake_up_interruptible(&dsp->queue);
@@ -334,23 +476,27 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
         dsp_write_hctr(dsp->reg, hctr | HCTR_HF0);
 
         // Inspect the header
-        gramlet = dsp->reply_buffer_dma_virt;
+        gramlet = (void*)dsp->reply_buffer_dma_virt;
         copy_size = sizeof(dsp->reply);
-        if (gramlet->total_size * sizeof(__u32) < copy_size) {
-                PRINT_ERR(dsp->minor, "datagram too large; truncating.\n");
+        if (gramlet->total_size * sizeof(__u32) > copy_size) {
+                PRINT_ERR(dsp->minor, "datagram too large (%i); "
+                          "truncating (%i).\n",
+                          (int)(gramlet->total_size*sizeof(__u32)),
+                          copy_size);
+        } else {
                 copy_size = gramlet->total_size * sizeof(__u32);
-        }
+        }                
 
         // Copy into temporary storage...
-        memcpy(&gram, dsp->reply_buffer_dma_virt,
+        memcpy(&gram, (void*)dsp->reply_buffer_dma_virt,
                copy_size);
-        {
-                int j;
-                for (j=0; j<copy_size/4; j++) {
-                        PRINT_ERR(dsp->minor, "%3i = %x\n",
-                                  j, ((__u32*)&gram)[j]);
-                }
-        }
+        /* { */
+        /*         int j; */
+        /*         for (j=0; j<copy_size/4; j++) { */
+        /*                 PRINT_ERR(dsp->minor, "%3i = %x\n", */
+        /*                           j, ((__u32*)&gram)[j]); */
+        /*         } */
+        /* } */
 
         switch (gram.type) {
         case DGRAM_TYPE_DSP_REP:
@@ -359,9 +505,15 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                 switch(dsp->dsp_state) {
                 case DSP_CMD_SENT:
                         report_packet = 0;
+                        /* Some replies are just for hand-shaking and
+                         * don't need to be processed */
+                        if (DSP_REPLY(&gram)->cmd == DSP_SET_TAIL) {
+                                dsp->dsp_state = DSP_IDLE;
+                                break;
+                        }
                         memcpy(&dsp->reply, &gram, copy_size);
                         dsp->dsp_state = DSP_REP_RECD;
-                        PRINT_ERR(dsp->minor, "%i -> dsp_state\n",
+                        PRINT_INFO(dsp->minor, "%i -> dsp_state\n",
                                   dsp->dsp_state);
                         break;
                 default:
@@ -381,7 +533,7 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                         report_packet = 0;
                         memcpy(&dsp->mce_reply, &gram, copy_size);
                         dsp->mce_state = MCE_REP_RECD;
-                        PRINT_ERR(dsp->minor, "%i -> mce_state\n",
+                        PRINT_INFO(dsp->minor, "%i -> mce_state\n",
                                   dsp->mce_state);
                         break;
                 default:
@@ -392,6 +544,16 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                 }
                 wake_up_interruptible(&dsp->queue);
                 DSP_UNLOCK;
+                break;
+        case DGRAM_TYPE_BUF_INFO:
+                PRINT_ERR(dsp->minor, "info received; %i\n", gram.buffer[0]);
+                report_packet = 0;
+                DSP_LOCK;
+                dsp->dframes.head_index = gram.buffer[0];
+
+                DSP_UNLOCK;
+                /* PRINT_INFO(dsp->minor, "scheduling update!\n"); */
+                tasklet_schedule(&dsp->grantlet);
                 break;
         default:
                 PRINT_ERR(dsp->minor, "unknown DGRAM_TYPE\n");
@@ -470,9 +632,12 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 
         PRINT_INFO(NOCARD, "assigned to minor=%i\n", card);
         dsp->minor = card;
+        dsp->pci = pci;
 
         // Kernel structures...
         init_waitqueue_head(&dsp->queue);
+        tasklet_init(&dsp->grantlet, grant_task, (unsigned long)dsp);
+
 	init_timer(&dsp->dsp_timer);
 	dsp->dsp_timer.function = mcedsp_dsp_timeout;
 	dsp->dsp_timer.data = (unsigned long)dsp;
@@ -480,6 +645,24 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	init_timer(&dsp->mce_timer);
 	dsp->mce_timer.function = mcedsp_mce_timeout;
 	dsp->mce_timer.data = (unsigned long)dsp;
+
+        // Allocate the frame data buffer
+        if (data_alloc(dsp, 10000000)!=0) {
+                PRINT_ERR(card, "data buffer allocation failed.\n");
+                err = -1;
+                goto fail;
+        }
+
+        // Allocate DMA-ready reply buffer.
+        dsp->reply_buffer_size = 1024;
+        dsp->reply_buffer_dma_virt =
+                dma_alloc_coherent(&pci->dev, dsp->reply_buffer_size,
+                                   &dsp->reply_buffer_dma_handle,
+                                   GFP_KERNEL);
+        if (dsp->reply_buffer_dma_virt==NULL) {
+                PRINT_ERR(card, "Failed to allocate DMA memory.\n");
+                goto fail;
+        }
 
         // Now we can set up the kernel to talk to the card
 	// PCI paperwork
@@ -501,37 +684,9 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 						sizeof(*dsp->reg));
 	if (dsp->reg==NULL) {
                 PRINT_ERR(card, "Could not map PCI registers!\n");
-		pci_release_regions(pci);
 		err = -EIO;
 		goto fail;
 	}
-
-        // Allocate the frame data buffer
-        if (data_alloc(dsp, 10000000)!=0) {
-                PRINT_ERR(card, "data buffer allocation failed.\n");
-                err = -1;
-                goto fail;
-        }
-
-        // Allocate DMA-ready reply buffer.
-        dsp->reply_buffer_size = 1024;
-        dsp->reply_buffer_dma_virt =
-                dma_alloc_coherent(&pci->dev, dsp->reply_buffer_size,
-                                   &dsp->reply_buffer_dma_handle,
-                                   GFP_KERNEL);
-
-        if (dsp->reply_buffer_dma_virt==NULL) {
-                PRINT_ERR(card, "Failed to allocate DMA memory.\n");
-        }
-
-        // Interrupt handler?  Maybe this can wait til later...
-	err = request_irq(pci->irq, (irq_handler_t)mcedsp_int_handler,
-                          IRQ_FLAGS, DEVICE_NAME, dsp);
-	if (err!=0) {
-                PRINT_ERR(card, "irq request failed with error code %#x\n",
-			  -err);
-	}
-        PRINT_ERR(card, "new interrupt handler installed.\n");
 
         // Raise handshake bit.
         hctr = dsp_read_hctr(dsp->reg);
@@ -549,15 +704,28 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
                 goto fail;
         }
 
-        // Configure reply buffer
+        // Interrupt handler?  Maybe this can wait til later...
+	err = request_irq(pci->irq, (irq_handler_t)mcedsp_int_handler,
+                          IRQ_FLAGS, DEVICE_NAME, dsp);
+	if (err!=0) {
+                PRINT_ERR(card, "irq request failed with error code %#x\n",
+			  -err);
+                goto fail;
+	}
+
+        //Ok, we made it.
+        dsp->enabled = 1;
+
+        // Configure reply and data buffers
         if (upload_rep_buffer(dsp, 1, 10000) != 0) {
                 PRINT_ERR(card, "could not configure reply buffer.\n");
                 goto fail;
         }
 
-        //Ok, we made it.
-        dsp->pci = pci;
-        dsp->enabled = 1;
+        if (set_transfer_params(dsp, 1, 1000, 1000) != 0) {
+                PRINT_ERR(card, "could not configure data buffer.\n");
+                goto fail;
+        }        
 
         return 0;
 
@@ -570,6 +738,7 @@ fail:
 
 void mcedsp_remove(struct pci_dev *pci)
 {
+        DSP_LOCK_DECLARE_FLAGS;
 	int card;
 	mcedsp_t *dsp = NULL;
 
@@ -591,24 +760,28 @@ void mcedsp_remove(struct pci_dev *pci)
 		return;
 	}
 			
+        DSP_LOCK;
         dsp->enabled = 0;
+        DSP_UNLOCK;
 
 	// Disable higher-level features first
 	del_timer_sync(&dsp->dsp_timer);
 	del_timer_sync(&dsp->mce_timer);
+        tasklet_kill(&dsp->grantlet);
 
         if (dsp->pci != NULL)
                 free_irq(dsp->pci->irq, dsp);
 
         if (dsp->reply_buffer_dma_virt != NULL)
                 dma_free_coherent(&dsp->pci->dev, dsp->reply_buffer_size,
-                                  dsp->reply_buffer_dma_virt,
+                                  (void*)dsp->reply_buffer_dma_virt,
                                   dsp->reply_buffer_dma_handle);
 
         data_free(dsp);
 
         //Unmap i/o...
-        iounmap(dsp->reg);
+        if (dsp->reg != NULL)
+                iounmap(dsp->reg);
 
         // Call release_regions *after* disable_device.
         pci_disable_device(dsp->pci);
@@ -619,68 +792,26 @@ void mcedsp_remove(struct pci_dev *pci)
         PRINT_INFO(NOCARD, "ok\n");
 }
 
-__s32 read_pair(mcedsp_t *dsp) {
-        __s32 i1, i2;
-        while (!(dsp_read_hstr(dsp->reg) & HSTR_HRRQ));
-        i1 = dsp_read_hrxs(dsp->reg);
-        while (!(dsp_read_hstr(dsp->reg) & HSTR_HRRQ));
-        i2 = dsp_read_hrxs(dsp->reg);
-        return (i1 & 0xffff) << 16 | (i2 & 0xffff);
-}
 
-/*
-int read_hrxs_packet(mcedsp_t *dsp) {
-        int word, code, size;
-        int i;
+static int raw_send_data(mcedsp_t *dsp, __u32 *buf, int count)
+{
+        /* Recast to buffer of __u16, since DSP is currently
+         * configured to truncate upper byte. */
+        __u16 *buf16 = (__u16*)buf;
+        int count16 = count * 2;
 
-        // Anything there?
-        if (!(dsp_read_hstr(dsp->reg) & HSTR_HRRQ))
-                return -EBUSY;
-
-        // Yes, something is there.
-        word = read_pair(dsp);
-        code = (word >> 16) & 0xff;
-        size = (word & 0xffff);
-        
-        if (code < DSP_CODE_REPLY_MAX) {
-                // This is a reply to a command we sent.
-                if (dsp->reply_recd == 2)
-                        // Bad!  The driver contains an outstanding reply.
-                        PRINT_ERR(NOCARD, "Reply trashes existing reply.");
-                // Fill the reply.
-                dsp->reply.size = size+1;
-                dsp->reply.data[0] = word;
-                for (i=1; i<dsp->reply.size; i++)
-                        dsp->reply.data[i] = read_pair(dsp);
-                dsp->reply_recd = 2;
-        } else {
-                PRINT_ERR(NOCARD, "MCE packet - size %i!\n", size);
-                for (i=0; i<size; i++) {
-                        dsp->data_buffer[dsp->data_head++] = read_pair(dsp);
-                }
-                PRINT_ERR(NOCARD, "Buffer state: %i %i\n",
-                          dsp->data_head, dsp->data_tail);
-        }
-        return 0;
-}
-*/
-
-
-
-int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd) {
-        int i;
         int n_wait = 0;
         int n_wait_max = 10000;
-        __u16 *data;
+        int i;
 
         if (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ))
                 return -EBUSY;
 
-        data = (__u16*)&(cmd->cmd);
-        for (i=0; i < cmd->size*2; i++) {
-                while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ) && ++n_wait < n_wait_max);
-                dsp_write_htxr(dsp->reg, data[i]);
-                /* PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, data[i]); */
+        for (i=0; i<count16; i++) {
+                while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ) &&
+                       ++n_wait < n_wait_max);
+                dsp_write_htxr(dsp->reg, buf16[i]);
+                /* PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, (int)buf16[i]); */
         }
         if (n_wait >= n_wait_max) {
                 PRINT_ERR(dsp->minor,
@@ -691,16 +822,159 @@ int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd) {
 }
 
 
+static int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd, int nonblock)
+{
+        DSP_LOCK_DECLARE_FLAGS;
+        int need_mce = cmd->flags & DSP_EXPECT_MCE_REPLY;
+        
+        // Require DSP_IDLE and possibly MCE_IDLE.  Block if allowed.
+        DSP_LOCK;
+        while ((dsp->dsp_state != DSP_IDLE) ||
+               (need_mce && (dsp->mce_state != MCE_IDLE))) {
+                int last_dsp = dsp->dsp_state;
+                int last_mce = dsp->mce_state;
+                DSP_UNLOCK;
+                // Block, if allowed, for conditions.
+                if (nonblock) {
+                        PRINT_ERR(dsp->minor,
+                                  "nonblock.  turns out state=%i\n", last_dsp);
+                        return -EBUSY;
+                }
+                if (wait_event_interruptible(
+                            dsp->queue,
+                            (dsp->dsp_state != last_dsp ||
+                             (need_mce && (dsp->mce_state != last_mce)))
+                            ) != 0)
+                        return -ERESTARTSYS;
+                DSP_LOCK;
+        }
+
+        if (raw_send_data(dsp, (__u32*)&cmd->cmd, cmd->size) != 0) {
+                // Restore state and return error.
+                dsp->dsp_state = DSP_IDLE;
+                wake_up_interruptible(&dsp->queue);
+                DSP_UNLOCK;
+                return -EIO;
+        }
+
+        // Update state depending on expections for reply.
+        if (cmd->flags & DSP_EXPECT_DSP_REPLY) {
+                dsp->dsp_state = DSP_CMD_SENT;
+                mod_timer(&dsp->dsp_timer, jiffies + HZ);
+        } else {
+                dsp->dsp_state = DSP_IDLE;
+        }
+        if (cmd->flags & DSP_EXPECT_MCE_REPLY) {
+                dsp->mce_state = MCE_CMD_SENT;
+                mod_timer(&dsp->mce_timer, jiffies + HZ);
+        }
+        
+        wake_up_interruptible(&dsp->queue);
+        DSP_UNLOCK;
+
+        return 0;
+}
+
+
+static int try_get_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
+                         int nonblock)
+{
+        DSP_LOCK_DECLARE_FLAGS;
+
+        DSP_LOCK;
+        while (dsp->dsp_state != DSP_REP_RECD) {
+                int last_state = dsp->dsp_state;
+                DSP_UNLOCK;
+                if (nonblock || dsp->dsp_state == DSP_IDLE)
+                        return -EBUSY;
+                if (wait_event_interruptible(
+                            dsp->queue, (dsp->dsp_state!=last_state))!=0)
+                        return -ERESTARTSYS;
+                DSP_LOCK;
+        }
+        PRINT_INFO(dsp->minor, "process reply.\n");
+        del_timer(&dsp->dsp_timer);
+        memcpy(gram, &dsp->reply, sizeof(*gram));
+        dsp->dsp_state = DSP_IDLE;
+        wake_up_interruptible(&dsp->queue);
+        DSP_UNLOCK;
+
+        return 0;
+}
+
+static int try_get_mce_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
+                             int nonblock)
+{
+        DSP_LOCK_DECLARE_FLAGS;
+
+        DSP_LOCK;
+        while (dsp->mce_state != MCE_REP_RECD) {
+                int last_state = dsp->mce_state;
+                DSP_UNLOCK;
+                if (nonblock || dsp->mce_state == MCE_IDLE)
+                        return -EBUSY;
+                if (wait_event_interruptible(
+                            dsp->queue, (dsp->mce_state != last_state))!=0)
+                        return -ERESTARTSYS;
+                DSP_LOCK;
+        }
+        PRINT_INFO(dsp->minor, "process MCE reply.\n");
+        del_timer(&dsp->mce_timer);
+        memcpy(gram, &dsp->mce_reply, sizeof(*gram));
+        dsp->mce_state = MCE_IDLE;
+        wake_up_interruptible(&dsp->queue);
+        DSP_UNLOCK;
+
+        return 0;
+}
+
+
+/* Data device locking support */
+
+static int data_lock_operation(mcedsp_t *dsp, int operation, void *filp)
+{
+        DSP_LOCK_DECLARE_FLAGS;
+	int ret_val = 0;
+
+	switch (operation) {
+	case LOCK_QUERY:
+		return dsp->data_lock != NULL;
+
+	case LOCK_RESET:
+		dsp->data_lock = NULL;
+		return 0;
+
+	case LOCK_DOWN:
+	case LOCK_UP:
+                DSP_LOCK;
+		if (operation == LOCK_DOWN) {
+			if (dsp->data_lock != NULL) {
+				ret_val = -EBUSY;
+			} else {
+				dsp->data_lock = filp;
+			}
+		} else /* LOCK_UP */ {
+			if (dsp->data_lock == filp) {
+				dsp->data_lock = NULL;
+			}
+		}
+                DSP_UNLOCK;
+		return ret_val;
+	}
+        PRINT_ERR(dsp->minor, "unknown operation (%i).\n", operation);
+	return -1;
+}
+
+
 long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 {
-//	struct filp_pdata *fpdata = filp->private_data;
-//	struct dsp_ops_t *dops = dsp_ops + fpdata->minor;
         mcedsp_t *dsp = (mcedsp_t*)filp->private_data;
         int card = dsp->minor;
 
-        struct dsp_command cmd;
-        int i;
-        unsigned x;
+        struct dsp_command *cmd;
+        struct dsp_datagram *gram;
+        int i, x, err;
+
         DSP_LOCK_DECLARE_FLAGS;
 
         int nonblock = (filp->f_flags & O_NONBLOCK);
@@ -728,185 +1002,27 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 return 0;
 
         case DSPIOCT_COMMAND:
-                PRINT_ERR(dsp->minor, "send_command\n");
-                DSP_LOCK;
-                while (dsp->dsp_state != DSP_IDLE) {
-                        int last_state = dsp->dsp_state;
-                        DSP_UNLOCK;
-                        if (nonblock)
-                                return -EBUSY;
-                        // Wait for state change?
-                        PRINT_ERR(dsp->minor, "wait once...\n");
-                        if (wait_event_interruptible(
-                                    dsp->queue, (dsp->dsp_state!=last_state))!=0)
-                                return -ERESTARTSYS;
-                        DSP_LOCK;
-                }
-                dsp->dsp_state = DSP_CMD_QUED;
-                DSP_UNLOCK;
-
-                PRINT_ERR(dsp->minor, "attempt send.\n");
-
-                // Copy command from user
-                copy_from_user(&cmd, (const void __user *)arg, sizeof(cmd));
-
-                // Clear reply state
-                //FIXME: register this for later writing.
-                DSP_LOCK;
-                if (try_send_cmd(dsp, &cmd)!=0) {
-                        dsp->dsp_state = DSP_IDLE;
-                        wake_up_interruptible(&dsp->queue);
-                        DSP_UNLOCK;
-                        return -EBUSY;
-                }
-
-                // Stil with the lock...
-                if (cmd.flags & DSP_EXPECT_MCE_REPLY) {
-                        dsp->mce_state = MCE_CMD_SENT;
-                        mod_timer(&dsp->mce_timer, jiffies + HZ);
-                }
-
-                if (cmd.flags & DSP_EXPECT_DSP_REPLY) {
-                        dsp->dsp_state = DSP_CMD_SENT;
-                        mod_timer(&dsp->dsp_timer, jiffies + HZ);
-                } else {
-                        dsp->dsp_state = DSP_IDLE;
-                }
-                PRINT_ERR(dsp->minor, "states dsp=%i mce=%i\n",
-                          dsp->dsp_state, dsp->mce_state);
-
-                wake_up_interruptible(&dsp->queue);
-                DSP_UNLOCK;
-                
-                return 0;
+                cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+                copy_from_user(cmd, (const void __user *)arg, sizeof(*cmd));
+                err = try_send_cmd(dsp, cmd, nonblock) != 0;
+                kfree(cmd);
+                return err;
 
         case DSPIOCT_GET_DSP_REPLY:
-                /* Check for reply.  Only block if a command has been
-                 * sent and thus a reply is expected in the near
-                 * future. */
-                PRINT_ERR(dsp->minor, "get_reply\n");
-                DSP_LOCK;
-                while (dsp->dsp_state != DSP_REP_RECD) {
-                        int last_state = dsp->dsp_state;
-                        DSP_UNLOCK;
-                        if (nonblock ||
-                            dsp->dsp_state == DSP_IDLE ||
-                            dsp->dsp_state == DSP_REP_HNDL)
-                                return -EBUSY;
-                        // Wait for state change?
-                        PRINT_ERR(dsp->minor, "wait once...\n");
-                        if (wait_event_interruptible(
-                                    dsp->queue, (dsp->dsp_state!=last_state))!=0)
-                                return -ERESTARTSYS;
-                        DSP_LOCK;
-                }
-                PRINT_ERR(dsp->minor, "process reply.\n");
-                // Mark that we're handling the reply and release lock
-                dsp->dsp_state = DSP_REP_HNDL;
-                DSP_UNLOCK;
-
-                copy_to_user((void __user*)arg, &dsp->reply, sizeof(dsp->reply));
-
-                // Mark DSP as idle.
-                del_timer_sync(&dsp->dsp_timer);
-                mcedsp_set_state_wake(dsp, DSP_IDLE, MCE_IGNORE);
-
-                return 0;
+                gram = kmalloc(sizeof(*gram), GFP_KERNEL);
+                err = try_get_reply(dsp, gram, nonblock);
+                if (err == 0)
+                        copy_to_user((void __user*)arg, gram, sizeof(*gram));
+                kfree(gram);
+                return err;
 
         case DSPIOCT_GET_MCE_REPLY:
-                /* Check for reply.  Only block if a command has been
-                 * sent and thus a reply is expected in the near
-                 * future. */
-                PRINT_ERR(dsp->minor, "get_reply\n");
-                DSP_LOCK;
-                while (dsp->mce_state != MCE_REP_RECD) {
-                        int last_state = dsp->mce_state;
-                        DSP_UNLOCK;
-                        if (nonblock ||
-                            dsp->mce_state == MCE_IDLE ||
-                            dsp->mce_state == MCE_REP_HNDL)
-                                return -EBUSY;
-                        // Wait for state change?
-                        PRINT_ERR(dsp->minor, "get_mce_rep: wait once...\n");
-                        if (wait_event_interruptible(dsp->queue,
-                                    (dsp->mce_state!=last_state))!=0)
-                                return -ERESTARTSYS;
-                        DSP_LOCK;
-                }
-                PRINT_ERR(dsp->minor, "process reply.\n");
-                // Mark that we're handling the reply and release lock
-                dsp->mce_state = MCE_REP_HNDL;
-                DSP_UNLOCK;
-
-                copy_to_user((void __user*)arg, &dsp->mce_reply,
-                             sizeof(dsp->mce_reply));
-
-                // Mark DSP as idle.
-                del_timer_sync(&dsp->mce_timer);
-                mcedsp_set_state_wake(dsp, DSP_IGNORE, MCE_IDLE);
-
-                return 0;
-
-        case DSPIOCT_SET_REP_BUF:
-                // Hand craftily upload the bus address.
-                x = (unsigned) dsp->reply_buffer_dma_handle;
-                PRINT_INFO(card, "Informing DSP of bus address=%lx\n",
-                           (long)dsp->reply_buffer_dma_handle);
-
-                cmd.cmd = DSP_SET_REP_BUF;
-                cmd.data_size = 1;
-                cmd.data[0] = x;
-                /* cmd.data[0] = 0x090002; */
-                /* cmd.data[1] = (x) & 0xffff; */
-                /* cmd.data[2] = (x >> 16) & 0xffff; */
-                cmd.size = 2;
-                cmd.flags = 0;
-                cmd.owner = 0;
-                cmd.timeout_us = 10000;
-
-                //FIXME: register this for later writing.
-                
-                if (try_send_cmd(dsp, &cmd) != 0)
-                        return -EBUSY;
-
-                return 0;
-
-        case DSPIOCT_SET_DATA_BUF:
-                // Hand craftily upload the bus address.
-                x = (unsigned) dsp->dframes.base_busaddr;
-                PRINT_INFO(card, "Informing DSP of bus address=%#x\n", x);
-
-                cmd.data[0] = 0x0a0002;
-                cmd.data[1] = (x) & 0xffff;
-                cmd.data[2] = (x >> 16) & 0xffff;
-                memset(&(cmd.data[3]), 0, 4*16);
-                cmd.size = 7;
-                cmd.flags = 0;
-                cmd.owner = 0;
-                cmd.timeout_us = 10000;
-
-                //FIXME: register this for later writing.
-                
-                if (try_send_cmd(dsp, &cmd) != 0)
-                        return -EBUSY;
-
-                return 0;
-
-        case DSPIOCT_TRIGGER_FAKE:
-                // Hand craftily upload the bus address.
-                PRINT_INFO(card, "Triggering DSP write\n");
-
-                // Clear data buffer?
-                memset(dsp->dframes.base, 0, 256);
-
-                cmd.data[0] = 0x310000;
-                cmd.size = 1;
-                //cmd.reply_reqd = 0;
-                cmd.flags = 0;
-
-                if (try_send_cmd(dsp, &cmd)!=0)
-                        return -EBUSY;
-                return 0;
+                gram = kmalloc(sizeof(*gram), GFP_KERNEL);
+                err = try_get_mce_reply(dsp, gram, nonblock);
+                if (err == 0)
+                        copy_to_user((void __user*)arg, gram, sizeof(*gram));
+                kfree(gram);
+                return err;
 
         case DSPIOCT_DUMP_BUF:
                 for (i=0; i<12; i++) {
@@ -914,6 +1030,92 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                                   ((__u32*)dsp->dframes.base)[i]);
                 }
                 return 0;
+
+/* Frame data stuff */
+                
+	case DSPIOCT_QUERY:
+                PRINT_INFO(card, "query\n");
+		switch (arg) {
+		case QUERY_HEAD:
+			return dsp->dframes.head_index;
+		case QUERY_TAIL:
+			return dsp->dframes.tail_index;
+		case QUERY_MAX:
+			return dsp->dframes.n_frames;
+		/* case QUERY_PARTIAL: */
+		/* 	return dsp->dframes.partial; */
+		case QUERY_DATASIZE:			
+			return dsp->dframes.data_size;
+		case QUERY_FRAMESIZE:
+			return dsp->dframes.frame_size;
+		case QUERY_BUFSIZE:
+			return dsp->dframes.size;
+/*                case QUERY_LTAIL:
+                        return fpdata->leech_tail;
+                case QUERY_LPARTIAL:
+                        return fpdata->leech_partial;
+                case QUERY_LVALID:
+                        return (int)(fpdata->leech_acq == dsp->dframes.acq_index);
+*/
+		default:
+			return -1;
+		}
+		break;
+
+                
+	case DSPIOCT_SET_DATASIZE:
+                // Configure QT stuff for the data payload size in arg.
+                PRINT_ERR(dsp->minor, "set frame size %i\n", (int)arg);
+                return set_transfer_params(dsp, 1, arg, -1);
+/*
+	case DATADEV_IOCT_FAKE_STOPFRAME:
+                PRINT_ERR(card, "fake_stopframe initiated!\n");
+		return data_frame_fake_stop(card);
+*/
+	case DSPIOCT_EMPTY:
+                DSP_LOCK;
+                dsp->dframes.head_index = 0;
+                dsp->dframes.tail_index = 0;
+                DSP_UNLOCK;
+                return 0;
+
+	case DSPIOCT_QT_CONFIG:
+                PRINT_ERR(card, "configure Quiet Transfer mode "
+			   "[inform=%li]\n", arg);
+		return set_transfer_params(dsp, 1, -1, arg);
+
+	case DSPIOCT_QT_ENABLE:
+                PRINT_ERR(card, "enable/disable quiet Transfer mode "
+			   "[on=%li]\n", arg);
+                return set_transfer_params(dsp, arg, -1, -1);
+
+        case DSPIOCT_FRAME_POLL:
+                // Return index offset of next frame, or -1 if no new data.
+                /* x = dsp->dframes.tail_index * dsp->dframes.frame_size; */
+                /* PRINT_ERR(card, "Offset %i = %i\n", x, */
+                /*           ((__s32*)dsp->dframes.base)[x]); */
+                DSP_LOCK;
+                x = dsp->dframes.tail_index;
+                if (x == dsp->dframes.head_index)
+                        x = -1;
+                else
+                        x = x * dsp->dframes.frame_size;
+                DSP_UNLOCK;
+                return x;
+
+	case DSPIOCT_FRAME_CONSUME:
+                DSP_LOCK;
+                if ((dsp->dframes.n_frames > 0) &&
+                    (dsp->dframes.tail_index != dsp->dframes.head_index)) {
+                        dsp->dframes.tail_index = 
+                                (dsp->dframes.tail_index + 1) %
+                                dsp->dframes.n_frames;
+                }
+                DSP_UNLOCK;
+		return 0;
+
+	case DSPIOCT_DATA_LOCK:
+		return data_lock_operation(dsp, arg, filp);
 
 	default:
                 PRINT_INFO(card, "unknown ioctl\n");
@@ -925,14 +1127,13 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 int mcedsp_mmap(struct file *filp, struct vm_area_struct *vma)
 {
         mcedsp_t *dsp = (mcedsp_t*)filp->private_data;
-        int card = dsp->minor;
 
 	// Mark memory as reserved (prevents core dump inclusion) and
 	// IO (prevents caching)
 	vma->vm_flags |= VM_IO | VM_RESERVED;
 
 	// Do args checking on vma... start, end, prot.
-        PRINT_INFO(card, "mapping %#lx bytes to user address %#lx\n",
+        PRINT_INFO(dsp->minor, "mapping %#lx bytes to user address %#lx\n",
 		   vma->vm_end - vma->vm_start, vma->vm_start);
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
@@ -959,9 +1160,6 @@ int mcedsp_open(struct inode *inode, struct file *filp)
 	if(!try_module_get(THIS_MODULE))
 		return -1;
 
-        
-	/* fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL); */
-        /* fpdata->minor = iminor(inode); */
 	filp->private_data = dspdata + minor;
 
         PRINT_INFO(minor, "ok\n");
@@ -970,14 +1168,7 @@ int mcedsp_open(struct inode *inode, struct file *filp)
 
 int mcedsp_release(struct inode *inode, struct file *filp)
 {
-        mcedsp_t *dsp = (mcedsp_t*)filp->private_data;
-        int card = dsp->minor;
-
-        PRINT_INFO(card, "entry!\n");
-
 	module_put(THIS_MODULE);
-
-        PRINT_INFO(card, "ok\n");
 	return 0;
 }
 
@@ -987,6 +1178,7 @@ struct file_operations mcedsp_fops =
 	.owner=   THIS_MODULE,
 	.open=    mcedsp_open,
 	.release= mcedsp_release,
+        .mmap=    mcedsp_mmap,
 	/* .read=    dsp_read, */
 	/* .write=   dsp_write, */
 	.unlocked_ioctl= mcedsp_ioctl,
@@ -1025,17 +1217,38 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                         continue;
 
                 len += sprintf(buf+len,"\nCARD: %d\n", card);
-                len += sprintf(buf+len,"  dsp command state: %i\n",
-                               dsp->dsp_state);
-                len += sprintf(buf+len,"  mce command state: %i\n",
-                               dsp->dsp_state);
+                len += sprintf(buf+len,"  Commander states:\n"
+                               "   DSP channel: %2i\n"
+                               "   MCE channel: %2i\n",
+                               dsp->dsp_state, dsp->mce_state);
                 len += sprintf(buf+len,
-                               "   HSTR = %#06x\n"
-                               "   HCTR = %#06x\n"
-                               "   HCVR = %#06x\n",
+                               "  PCI regs:\n"
+                               "   HSTR:  %#06x\n"
+                               "   HCTR:  %#06x\n"
+                               "   HCVR:  %#06x\n",
                                dsp_read_hstr(dsp->reg),
                                dsp_read_hctr(dsp->reg),
                                dsp_read_hcvr(dsp->reg));
+                len += sprintf(buf+len,
+                               "  Bus addresses:\n"
+                               "   reply: %#08x\n"
+                               "   data:  %#08x\n",
+                               (unsigned)dsp->reply_buffer_dma_handle,
+                               (unsigned)dsp->dframes.base_busaddr);
+                len += sprintf(buf+len,
+                               "  Circular buffer state:\n"
+                               "   total_size:  %10i\n"
+                               "   data_size:   %10i\n"
+                               "   container:   %10i\n"
+                               "   n_frames:    %10i\n"
+                               "   head_idx:    %10i\n"
+                               "   tail_idx:    %10i\n",
+                               (int)dsp->dframes.size,
+                               dsp->dframes.data_size,
+                               dsp->dframes.frame_size,
+                               dsp->dframes.n_frames,
+                               dsp->dframes.head_index,
+                               dsp->dframes.tail_index);
         }
 
 	return len;
@@ -1056,11 +1269,6 @@ inline int mcedsp_driver_init(void)
                 spin_lock_init(&dev->lock);
 	}
   
-        create_proc_read_entry("mce_dsp", 0, NULL, mcedsp_proc, NULL);
-
-	err = register_chrdev(0, DEVICE_NAME, &mcedsp_fops);
-        major = err;
-
 	err = pci_register_driver(&pci_driver);
 	if (err) {
                 PRINT_ERR(NOCARD, "pci_register_driver failed with code %i.\n",
@@ -1068,6 +1276,11 @@ inline int mcedsp_driver_init(void)
 		err = -1;
 		goto out;
 	}			  
+
+	err = register_chrdev(0, DEVICE_NAME, &mcedsp_fops);
+        major = err;
+
+        create_proc_read_entry("mce_dsp", 0, NULL, mcedsp_proc, NULL);
 
         PRINT_INFO(NOCARD, "ok\n");
 	return 0;
@@ -1080,11 +1293,9 @@ void mcedsp_driver_cleanup(void)
 {
         PRINT_INFO(NOCARD, "entry\n");
 
-	pci_unregister_driver(&pci_driver);
-
-        unregister_chrdev(major, DEVICE_NAME);
-
 	remove_proc_entry("mce_dsp", NULL);
+        unregister_chrdev(major, DEVICE_NAME);
+	pci_unregister_driver(&pci_driver);
 
         PRINT_INFO(NOCARD, "driver removed\n");
 }    

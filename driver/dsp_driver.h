@@ -46,7 +46,8 @@
 
 typedef struct {
 
-	void*     base;
+	volatile
+        void*     base;
 	unsigned long base_busaddr;
         size_t    size;
 
@@ -59,6 +60,8 @@ typedef struct {
 	int       head_index;
 	volatile
 	int       tail_index;
+
+        int update_interval;
 
 	// Semaphore should be held when modifying structure, but
 	// interrupt routines may modify head_index at any time.
@@ -79,7 +82,7 @@ typedef struct {
 #define DSP_INFORM_RATE    10 /* Hz */
 #define DSP_INFORM_COUNTS  (DSP_INTERNAL_FREQ / DSP_INFORM_RATE) 
 
-int get_qt_command(frame_buffer_t *dframes, int qt_interval,
+int get_qt_command(frame_buffer_t *dframes, int enable, int qt_interval,
                    struct dsp_command *cmd);
 
 #endif

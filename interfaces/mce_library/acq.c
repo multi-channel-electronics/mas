@@ -28,7 +28,7 @@ static int copy_frames_mmap(mce_acq_t *acq);
 
 static int copy_frames_read(mce_acq_t *acq);
 
-static int set_n_frames(mce_acq_t *acq, int n_frames);
+static int set_n_frames(mce_acq_t *acq, int n_frames, int dsp_only);
 
 static int get_n_frames(mce_acq_t *acq);
 
@@ -130,12 +130,13 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 		if (n_frames <= 0) return -MCE_ERR_FRAME_COUNT;
 	}
 
-	// Check if ret_dat_s needs changing...
-	if ( n_frames != acq->last_n_frames || acq->last_n_frames <= 0 ) {
-		ret_val = set_n_frames(acq, n_frames);
-		if (ret_val != 0)
-			return -MCE_ERR_FRAME_COUNT;
-	}
+	/* We always tell the driver about the frame count; and sometimes
+     * we also tell the MCE */
+    ret_val = set_n_frames(acq, n_frames,
+                               (acq->last_n_frames > 0) &&
+                               (n_frames == acq->last_n_frames));
+    if (ret_val != 0)
+        return -MCE_ERR_FRAME_COUNT;
 
 	// Issue the MCE 'GO' command.
 	ret_val = mcecmd_start_application(acq->context, &acq->ret_dat);
@@ -161,7 +162,8 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 		if (acq->context->data.map != NULL) {
 			ret_val = copy_frames_mmap(acq);
 		} else {
-			ret_val = copy_frames_read(acq);
+            ret_val = -1;
+//			ret_val = copy_frames_read(acq);
 		}
 	}
 
@@ -172,11 +174,20 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 /* set_n_frames - must tell both the MCE and the DSP about the number
  * of frames to expect. */
 
-static int set_n_frames(mce_acq_t *acq, int n_frames)
+static int set_n_frames(mce_acq_t *acq, int n_frames, int dsp_only)
 {
 	int ret_val;
 	u32 args[2];
 
+	// Inform DSP/driver
+	if (mcedata_qt_setup(acq->context, n_frames)) {
+		fprintf(stderr, "Failed to set quiet transfer interval!\n");
+		return -MCE_ERR_DEVICE;
+	}
+    if (dsp_only)
+        return 0;
+
+    // Write to cc ret_dat_s
 	args[0] = 0;
 	args[1] = n_frames - 1;
 	ret_val = mcecmd_write_block(acq->context, &acq->ret_dat_s, 2, args);
@@ -185,12 +196,6 @@ static int set_n_frames(mce_acq_t *acq, int n_frames)
 		acq->last_n_frames = -1;
 	} else {
 		acq->last_n_frames = n_frames;
-	}
-
-	// Inform DSP/driver, also.
-	if (mcedata_qt_setup(acq->context, n_frames)) {
-		fprintf(stderr, "Failed to set quiet transfer interval!\n");
-		return -MCE_ERR_DEVICE;
 	}
 
 	return ret_val;
@@ -369,7 +374,6 @@ int copy_frames_mmap(mce_acq_t *acq)
 	int ret_val = 0;
 	int done = 0;
 	int count = 0;
-	int index = 0;
 	u32 *data;
 
 	int waits = 0;
@@ -405,7 +409,6 @@ int copy_frames_mmap(mce_acq_t *acq)
 			fprintf(stderr, "post_frame action failed\n");
 		}
 
-		index = 0;
 		if (++count >= acq->n_frames)
 			done = EXIT_COUNT;
 

@@ -65,15 +65,14 @@ struct mce_reply {
 #define DSP_SET_REP_BUF  0x09
 #define DSP_SET_DATA_BUF 0x0A
 
+#define DSP_SET_TAIL     0x11
 #define DSP_SEND_MCE     0x21
-#define DSP_TRIGGER_FAKE 0x31
 
 
 /* type codes for dsp_datagram */
 #define DGRAM_TYPE_DSP_REP    1
 #define DGRAM_TYPE_MCE_REP    2
-#define DGRAM_TYPE_MCE_DATA   3
-#define DGRAM_TYPE_BUF_STA    4
+#define DGRAM_TYPE_BUF_INFO   3
 
 
 #endif /* _DSP_H_ */

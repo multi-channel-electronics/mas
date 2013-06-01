@@ -1,4 +1,5 @@
-sudo rmmod mce_dsp
+echo Removing...
+sudo rmmod mce_dsp && sleep 1 || exit
 
 if [ "$1" == "new" ] ; then 
    echo New driver.

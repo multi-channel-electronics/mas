@@ -118,19 +118,25 @@ int data_qt_configure(int qt_interval, int card)
 
 #include <mce/new_dsp.h>
 
-int get_qt_command(frame_buffer_t *dframes, int qt_interval,
+int get_qt_command(frame_buffer_t *dframes, int enable, int qt_interval,
                    struct dsp_command *cmd)
 {
-        cmd->data[0] = dframes->base_busaddr;
+        cmd->cmd = DSP_SET_DATA_BUF;
+        if (enable)
+                cmd->data[0] = dframes->base_busaddr;
+        else
+                cmd->data[0] = 0;
         cmd->data[1] = dframes->n_frames;
         cmd->data[2] = dframes->frame_size;
         cmd->data[3] = dframes->data_size;
-        cmd->data[4] = qt_interval;
-        cmd->data[5] = DSP_INFORM_COUNTS;
-        cmd->data[6] = 0; /* head */
-        cmd->data[7] = 0; /* tail */
+        cmd->data[4] = dframes->update_interval;
+        cmd->data[5] = DSP_INFORM_COUNTS; // Timer expiry
+        cmd->data[6] = dframes->head_index;
+        cmd->data[7] = dframes->tail_index;
         cmd->data[8] = 0; /* drops */
         cmd->data_size = 9;
 
+        cmd->size = cmd->data_size + 1;
+        cmd->flags = DSP_EXPECT_DSP_REPLY;
         return 0;
 }

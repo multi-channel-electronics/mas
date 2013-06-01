@@ -148,7 +148,6 @@ int mcecmd_send_command_now(mce_context_t* context, mce_command *cmd)
 
 int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
 {
-    int j;
     struct dsp_datagram gram;
     struct mce_reply *rep0; //ouch
 	/* int error = read(C_cmd.fd, rep, sizeof(*rep)); */
@@ -157,9 +156,9 @@ int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
 		return -MCE_ERR_DEVICE;
     // Datagram->buffer contains "  RP", size, then only "size" valid words.
     rep0 = MCE_REPLY(&gram);
-    for (j=rep0->size; j<64; j++)
-        rep0->data[j] = 0;
-    memcpy(rep, rep0->data, sizeof(*rep));
+    memset(rep, 0, sizeof(*rep));
+    memcpy(rep, rep0->data, rep0->size * sizeof(__u32));
+
 	return 0;
 }
 

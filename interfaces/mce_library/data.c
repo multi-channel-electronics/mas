@@ -13,7 +13,8 @@
 #include <sys/mman.h>
 
 #include "mce/defaults.h"
-#include <mce/data_ioctl.h>
+//#include <mce/data_ioctl.h>
+#include <mce/new_dspioctl.h>
 
 /* Local header files */
 
@@ -36,7 +37,9 @@ int mcedata_open(mce_context_t *context)
 	if (C_data.connected)
     mcedata_close(context);
 
-    sprintf(dev_name, "/dev/mce_data%u", (unsigned)context->fibre_card);
+    printf("dev name hack in mce lib!\n");
+    sprintf(dev_name, "/dev/mce_test%u", (unsigned)context->fibre_card);
+    /* sprintf(dev_name, "/dev/mce_data%u", (unsigned)context->fibre_card); */
     C_data.fd = open(dev_name, O_RDWR);
     if (C_data.fd<0)
         return -MCE_ERR_DEVICE;
@@ -47,10 +50,11 @@ int mcedata_open(mce_context_t *context)
 /* 		return -MCE_ERR_DEVICE; */
 
 	// Obtain buffer size for subsequent mmap
-	map_size = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_BUFSIZE);
+	map_size = ioctl(C_data.fd, DSPIOCT_QUERY, QUERY_BUFSIZE);
 	if (map_size > 0) {
 		map = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
 			   MAP_SHARED, C_data.fd, 0);
+        printf("Map=%p\n", map);
 		if (map != NULL) {
 			C_data.map = map;
 			C_data.map_size = map_size;
@@ -90,64 +94,68 @@ int mcedata_ioctl(mce_context_t* context, int key, unsigned long arg)
 
 int mcedata_set_datasize(mce_context_t* context, int datasize)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_SET_DATASIZE, datasize);
+	return ioctl(C_data.fd, DSPIOCT_SET_DATASIZE, datasize);
 }
 
 int mcedata_empty_data(mce_context_t* context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_EMPTY);
+	return ioctl(C_data.fd, DSPIOCT_EMPTY);
 }
 
 int mcedata_fake_stopframe(mce_context_t* context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_FAKE_STOPFRAME);
+	return ioctl(C_data.fd, DSPIOCT_FAKE_STOPFRAME);
 }
 
 int mcedata_qt_enable(mce_context_t* context, int on)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_QT_ENABLE, on);
+	return ioctl(C_data.fd, DSPIOCT_QT_ENABLE, on);
 }
 
 int mcedata_qt_setup(mce_context_t* context, int frame_count)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_QT_CONFIG, frame_count);
+    return ioctl(C_data.fd, DSPIOCT_QT_CONFIG, frame_count);
 }
 
 void mcedata_buffer_query(mce_context_t* context, int *head, int *tail, int *count)
 {
-	*head = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_HEAD);
-	*tail = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_TAIL);
-	*count = ioctl(C_data.fd, DATADEV_IOCT_QUERY, QUERY_MAX);
+	*head = ioctl(C_data.fd, DSPIOCT_QUERY, QUERY_HEAD);
+	*tail = ioctl(C_data.fd, DSPIOCT_QUERY, QUERY_TAIL);
+	*count = ioctl(C_data.fd, DSPIOCT_QUERY, QUERY_MAX);
 }
 
 int mcedata_poll_offset(mce_context_t* context, int *offset)
 {
-	*offset = ioctl(C_data.fd, DATADEV_IOCT_FRAME_POLL);
+	*offset = ioctl(C_data.fd, DSPIOCT_FRAME_POLL);
 	return (*offset >= 0);
 }
 
 int mcedata_consume_frame(mce_context_t* context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_FRAME_CONSUME);
+	return ioctl(C_data.fd, DSPIOCT_FRAME_CONSUME);
 }
 
 int mcedata_lock_query(mce_context_t* context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_QUERY);
+	/* return ioctl(C_data.fd, DSPIOCT_LOCK, LOCK_QUERY); */
+    return 0;
 }
 
 int mcedata_lock_reset(mce_context_t* context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_RESET);
+	/* return ioctl(C_data.fd, DSPIOCT_LOCK, LOCK_RESET); */
+    return 0;
 }
 
 int mcedata_lock_down(mce_context_t* context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_DOWN);
+	/* return ioctl(C_data.fd, DSPIOCT_LOCK, LOCK_DOWN); */
+    return 0;
 }
 
 int mcedata_lock_up(mce_context_t* context)
 {
-	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_UP);
+	/* return ioctl(C_data.fd, DSPIOCT_LOCK, LOCK_UP); */
+    return 0;
 }
 
