@@ -335,10 +335,28 @@ static int set_transfer_params(mcedsp_t *dsp, int enable, int data_size,
         DSP_LOCK;
         dframes->head_index = 0;
         dframes->tail_index = 0;
+        dframes->last_grant = 0;
         DSP_UNLOCK;
 
         // Inform the card...
-        get_qt_command(dframes, enable, qt_inform, cmd);
+        cmd->cmd = DSP_CMD_SET_DATA_BUF;
+        cmd->flags = DSP_EXPECT_DSP_REPLY;
+        if (enable)
+                cmd->data[0] = dframes->base_busaddr;
+        else
+                cmd->data[0] = 0;
+        cmd->data[1] = dframes->n_frames;
+        cmd->data[2] = dframes->frame_size;
+        cmd->data[3] = dframes->data_size;
+        cmd->data[4] = dframes->update_interval;
+        cmd->data[5] = DSP_INFORM_COUNTS; // Timer expiry
+        cmd->data[6] = dframes->head_index;
+        cmd->data[7] = dframes->tail_index;
+        cmd->data[8] = 0; /* drops */
+        cmd->data_size = 9;
+
+        cmd->size = cmd->data_size + 1;
+
         err = try_send_cmd(dsp, cmd, 0);
         if (err != 0) {
                 PRINT_ERR(dsp->minor, "Command failure.\n");
@@ -372,6 +390,7 @@ void grant_task(unsigned long data)
 
         DSP_LOCK;
         tail = dsp->dframes.tail_index;
+        dsp->dframes.last_grant = tail;
         DSP_UNLOCK;
 
         cmd.cmd = DSP_CMD_SET_TAIL;
@@ -508,6 +527,7 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                         /* Some replies are just for hand-shaking and
                          * don't need to be processed */
                         if (DSP_REPLY(&gram)->cmd == DSP_CMD_SET_TAIL) {
+                                del_timer(&dsp->dsp_timer);
                                 dsp->dsp_state = DSP_IDLE;
                                 break;
                         }
@@ -550,10 +570,18 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                 report_packet = 0;
                 DSP_LOCK;
                 dsp->dframes.head_index = gram.buffer[0];
-
+                k = (dsp->dframes.head_index - dsp->dframes.last_grant + 
+                     dsp->dframes.n_frames) % dsp->dframes.n_frames;
                 DSP_UNLOCK;
                 /* PRINT_INFO(dsp->minor, "scheduling update!\n"); */
-                tasklet_schedule(&dsp->grantlet);
+                /* Limits updates to "rare".  The biggest reason to do
+                   this is to not bother in the case when only single
+                   frames are being read. */
+                if (k > dsp->dframes.n_frames / 4) {
+                        PRINT_INFO(dsp->minor, "scheduling grant of %i frames\n", k);
+                        tasklet_schedule(&dsp->grantlet);
+                }
+       
                 break;
         default:
                 PRINT_ERR(dsp->minor, "unknown DGRAM_TYPE\n");
@@ -1161,7 +1189,10 @@ int mcedsp_open(struct inode *inode, struct file *filp)
 
 int mcedsp_release(struct inode *inode, struct file *filp)
 {
+        mcedsp_t *dsp = filp->private_data;
 	module_put(THIS_MODULE);
+        if (dsp != NULL)
+                data_lock_operation(dsp, LOCK_UP, filp);
 	return 0;
 }
 
@@ -1235,13 +1266,15 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                                "   container:   %10i\n"
                                "   n_frames:    %10i\n"
                                "   head_idx:    %10i\n"
-                               "   tail_idx:    %10i\n",
+                               "   tail_idx:    %10i\n"
+                               "   last_grant:  %10i\n",
                                (int)dsp->dframes.size,
                                dsp->dframes.data_size,
                                dsp->dframes.frame_size,
                                dsp->dframes.n_frames,
                                dsp->dframes.head_index,
-                               dsp->dframes.tail_index);
+                               dsp->dframes.tail_index,
+                               dsp->dframes.last_grant);
         }
 
 	return len;

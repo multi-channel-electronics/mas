@@ -60,7 +60,8 @@ typedef struct {
 	int       head_index;
 	volatile
 	int       tail_index;
-
+        
+        int last_grant;
         int update_interval;
 
 	// Semaphore should be held when modifying structure, but
@@ -81,8 +82,5 @@ typedef struct {
 #define DSP_INTERNAL_FREQ  50e6
 #define DSP_INFORM_RATE    10 /* Hz */
 #define DSP_INFORM_COUNTS  (DSP_INTERNAL_FREQ / DSP_INFORM_RATE) 
-
-int get_qt_command(frame_buffer_t *dframes, int enable, int qt_interval,
-                   struct dsp_command *cmd);
 
 #endif

@@ -46,12 +46,7 @@ endif #REALTIME=yes
 
 # Set up source files
 
-#SOURCE_OBJ := mce_driver.o mce_ops.o \
-#	dsp_driver.o dsp_ops.o \
-#	data.o data_qt.o data_ops.o data_watcher.o \
-#	proc.o repeater.o
-
-SOURCE_OBJ := dsp_driver.o data_qt.o
+SOURCE_OBJ := dsp_driver.o
 
 ifeq ($(FAKEMCE),yes)
 
