@@ -82,11 +82,11 @@ int mcecmd_open (mce_context_t *context)
         return -MCE_ERR_DEVICE;
 
 	// Set up connection to prevent outstanding replies after release
-	ioctl(C_cmd.fd, MCEDEV_IOCT_SET,
-	      ioctl(C_cmd.fd, MCEDEV_IOCT_GET) | MCEDEV_CLOSE_CLEANLY);
+	/* ioctl(C_cmd.fd, MCEDEV_IOCT_SET, */
+	/*       ioctl(C_cmd.fd, MCEDEV_IOCT_GET) | MCEDEV_CLOSE_CLEANLY); */
 
 	// Most applications using this library will want to read their own replies...
-	mcecmd_lock_replies(context, 1);
+	//mcecmd_lock_replies(context, 1);
 
     /* connect to the logger, if necessary */
     if (context->maslog == NULL)
@@ -111,7 +111,7 @@ int mcecmd_close(mce_context_t *context)
 	return 0;
 }
 
-
+/*
 int mcecmd_lock_replies(mce_context_t *context, int lock)
 {
 	int flags = ioctl(C_cmd.fd, MCEDEV_IOCT_GET);
@@ -125,7 +125,7 @@ int mcecmd_lock_replies(mce_context_t *context, int lock)
     }
 	return err;
 }
-
+*/
 
 /* Basic device write/read routines */
 

@@ -1058,7 +1058,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 
 	case DSPIOCT_SET_DATASIZE:
                 // Configure QT stuff for the data payload size in arg.
-                PRINT_ERR(dsp->minor, "set frame size %i\n", (int)arg);
+                PRINT_INFO(dsp->minor, "set frame size %i\n", (int)arg);
                 return set_transfer_params(dsp, 1, arg, -1);
 /*
 	case DATADEV_IOCT_FAKE_STOPFRAME:
@@ -1073,12 +1073,12 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 return 0;
 
 	case DSPIOCT_QT_CONFIG:
-                PRINT_ERR(card, "configure Quiet Transfer mode "
+                PRINT_INFO(card, "configure Quiet Transfer mode "
 			   "[inform=%li]\n", arg);
 		return set_transfer_params(dsp, 1, -1, arg);
 
 	case DSPIOCT_QT_ENABLE:
-                PRINT_ERR(card, "enable/disable quiet Transfer mode "
+                PRINT_INFO(card, "enable/disable quiet Transfer mode "
 			   "[on=%li]\n", arg);
                 return set_transfer_params(dsp, arg, -1, -1);
 
@@ -1111,7 +1111,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 		return data_lock_operation(dsp, arg, filp);
 
 	default:
-                PRINT_ERR(card, "unknown ioctl\n");
+                PRINT_ERR(card, "unknown ioctl (%#x)\n", iocmd);
                 return -1;
 	}
 	return 0;

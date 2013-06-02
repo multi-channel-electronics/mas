@@ -70,11 +70,11 @@ int  main(int argc, char **argv)
 			break;
 		case 1:
 			printf("Unlocked mode.\n");	
-			mcecmd_lock_replies(mce1, 0);
+			/* mcecmd_lock_replies(mce1, 0); */
 			break;
 		case 2:
 			printf("Locked mode.\n");
-			mcecmd_lock_replies(mce1, 1);
+			/* mcecmd_lock_replies(mce1, 1); */
 			break;
 		}
 		// Can another connection steal the reply?
