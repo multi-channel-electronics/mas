@@ -150,6 +150,8 @@ typedef struct {
         dsp_state_t dsp_state;
         mce_state_t mce_state;
 
+        int dsp_cmd_flags;
+
 	int error;
 
 } mcedsp_t;
@@ -336,6 +338,7 @@ static int set_transfer_params(mcedsp_t *dsp, int enable, int data_size,
         dframes->head_index = 0;
         dframes->tail_index = 0;
         dframes->last_grant = 0;
+        dframes->qt_configs++;
         DSP_UNLOCK;
 
         // Inform the card...
@@ -394,7 +397,8 @@ void grant_task(unsigned long data)
         DSP_UNLOCK;
 
         cmd.cmd = DSP_CMD_SET_TAIL;
-        cmd.flags = DSP_EXPECT_DSP_REPLY; // But we're going to ignore it...
+        cmd.flags = DSP_EXPECT_DSP_REPLY | 
+                DSP_IGNORE_DSP_REPLY;
         cmd.owner = 0;
         cmd.timeout_us = 0;
         cmd.size = 2;
@@ -526,7 +530,7 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
                         report_packet = 0;
                         /* Some replies are just for hand-shaking and
                          * don't need to be processed */
-                        if (DSP_REPLY(&gram)->cmd == DSP_CMD_SET_TAIL) {
+                        if (dsp->dsp_cmd_flags & DSP_IGNORE_DSP_REPLY) {
                                 del_timer(&dsp->dsp_timer);
                                 dsp->dsp_state = DSP_IDLE;
                                 break;
@@ -886,17 +890,19 @@ static int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd, int nonblock)
         }
 
         // Update state depending on expections for reply.
-        if (cmd->flags & DSP_EXPECT_DSP_REPLY) {
+        dsp->dsp_cmd_flags = cmd->flags;
+        if (dsp->dsp_cmd_flags & DSP_EXPECT_MCE_REPLY) {
+                dsp->mce_state = MCE_CMD_SENT;
+                dsp->dsp_cmd_flags |= DSP_EXPECT_DSP_REPLY | 
+                        DSP_IGNORE_DSP_REPLY;
+                mod_timer(&dsp->mce_timer, jiffies + HZ);
+        }
+        if (dsp->dsp_cmd_flags & DSP_EXPECT_DSP_REPLY) {
                 dsp->dsp_state = DSP_CMD_SENT;
-                mod_timer(&dsp->dsp_timer, jiffies + HZ);
+                mod_timer(&dsp->dsp_timer, jiffies + HZ/2);
         } else {
                 dsp->dsp_state = DSP_IDLE;
         }
-        if (cmd->flags & DSP_EXPECT_MCE_REPLY) {
-                dsp->mce_state = MCE_CMD_SENT;
-                mod_timer(&dsp->mce_timer, jiffies + HZ);
-        }
-        
         wake_up_interruptible(&dsp->queue);
         DSP_UNLOCK;
 
@@ -1241,6 +1247,8 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                         continue;
 
                 len += sprintf(buf+len,"\nCARD: %d\n", card);
+		len += sprintf(buf+len, "    %-15s %25s\n",
+			       "  PCI bus address:", pci_name(dsp->pci));
                 len += sprintf(buf+len,"  Commander states:\n"
                                "   DSP channel: %2i\n"
                                "   MCE channel: %2i\n",
@@ -1254,7 +1262,7 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                                dsp_read_hctr(dsp->reg),
                                dsp_read_hcvr(dsp->reg));
                 len += sprintf(buf+len,
-                               "  Bus addresses:\n"
+                               "  Buffer physical addresses:\n"
                                "   reply: %#08x\n"
                                "   data:  %#08x\n",
                                (unsigned)dsp->reply_buffer_dma_handle,
@@ -1267,14 +1275,16 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                                "   n_frames:    %10i\n"
                                "   head_idx:    %10i\n"
                                "   tail_idx:    %10i\n"
-                               "   last_grant:  %10i\n",
+                               "   last_grant:  %10i\n"
+                               "   reconfigs:   %10i\n",
                                (int)dsp->dframes.size,
                                dsp->dframes.data_size,
                                dsp->dframes.frame_size,
                                dsp->dframes.n_frames,
                                dsp->dframes.head_index,
                                dsp->dframes.tail_index,
-                               dsp->dframes.last_grant);
+                               dsp->dframes.last_grant,
+                               dsp->dframes.qt_configs);
         }
 
 	return len;

@@ -63,6 +63,7 @@ typedef struct {
         
         int last_grant;
         int update_interval;
+        int qt_configs;
 
 	// Semaphore should be held when modifying structure, but
 	// interrupt routines may modify head_index at any time.
