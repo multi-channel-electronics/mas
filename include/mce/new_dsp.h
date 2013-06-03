@@ -9,6 +9,7 @@
 // Flags for dsp_command
 #define DSP_EXPECT_DSP_REPLY 0x01
 #define DSP_EXPECT_MCE_REPLY 0x02
+#define DSP_IGNORE_DSP_REPLY 0x04
 
 #define DSP_DEFAULT_TIMEOUT_US 1000000
 

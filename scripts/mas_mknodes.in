@@ -6,10 +6,12 @@ MCE_CARD_ID=/etc/mce/mce_card_id
 DSP_FILE=/dev/mce_dsp
 MCEC_FILE=/dev/mce_cmd
 MCED_FILE=/dev/mce_data
+MCEX_FILE=/dev/mce_dev
 
 DSP_DEV=mce_dsp
 MCEC_DEV=mce_cmd
 MCED_DEV=mce_data
+MCEX_DEV=mcedsX
 
 GRP=@MAS_GROUP@
 
@@ -62,6 +64,9 @@ MCEC_MAJOR=`awk "$awkp" /proc/devices`
 awkp="\$2==\"$MCED_DEV\" {print \$1;}"
 MCED_MAJOR=`awk "$awkp" /proc/devices`
 
+awkp="\$2==\"$MCEX_DEV\" {print \$1;}"
+MCEX_MAJOR=`awk "$awkp" /proc/devices`
+
 function do_card {
   local phy=$1
   local log=$2
@@ -76,6 +81,10 @@ function do_card {
   mknod $MCED_FILE$log c $MCED_MAJOR $phy
   chgrp $GRP $MCED_FILE$log
   chmod g+rw  $MCED_FILE$log
+
+  mknod $MCEX_FILE$log c $MCEX_MAJOR $phy
+  chgrp $GRP $MCEX_FILE$log
+  chmod g+rw  $MCEX_FILE$log
 }
 
 if [ "$ndev" == "pci" ]; then
