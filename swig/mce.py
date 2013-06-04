@@ -190,7 +190,7 @@ class mce:
         if count < 0: count = p.param.count - offset
         count_out = mcecmd_read_size(p, count)
 
-        d = i32array(count_out)
+        d = intarray(count_out)
         err = mcecmd_read_range(self.context, p, offset, \
                                 u32_from_int_p(d.cast()), count)
         if (err != 0):
@@ -208,10 +208,11 @@ class mce:
         if count > p.param.count - offset:
             raise ParamError, "Count is too big for parameter."
 
-        d = i32array(count)
+        d = intarray(count)
         for i in range(count): d[i] = data[i]
 
-        err = mcecmd_write_range(self.context, p, offset, u32_from_int_p(d.cast()), count)
+        err = mcecmd_write_range(self.context, p, offset,
+                u32_from_int_p(d.cast()), count)
         if err != 0:
             raise MCEError, mcelib_error_string(err)
 
@@ -260,8 +261,8 @@ class mce:
         hh = [ [d[frame_size*f + i] for i in range(43)] for f in range(count) ]
 
         # This will break if user asks for rows beyond num_rows_rep...
-        ii = i32array(frame_size*count)
-        u32_to_i32(ii.cast(), d.cast(), frame_size*count)
+        ii = intarray(frame_size*count)
+        u32_to_int(ii.cast(), d.cast(), frame_size*count)
         
         dd = [ [ii[frame_size*f + i] for i in indices] for f in range(count) ]
 
@@ -298,7 +299,7 @@ class mce:
 
         read_channels(self.context, d.cast(), cards, count, cc.cast(), 1);
 
-        ii = i32array(count)
-        u32_to_i32(ii.cast(), d.cast(), count)
+        ii = intarray(count)
+        u32_to_int(ii.cast(), d.cast(), count)
 
         return ii
