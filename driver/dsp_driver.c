@@ -1036,6 +1036,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 return 0;
 
         case DSPIOCT_COMMAND:
+                PRINT_INFO(card, "send command\n");
                 cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
                 copy_from_user(cmd, (const void __user *)arg, sizeof(*cmd));
                 err = try_send_cmd(dsp, cmd, nonblock) != 0;
@@ -1043,6 +1044,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 return err;
 
         case DSPIOCT_GET_DSP_REPLY:
+                PRINT_INFO(card, "get DSP reply\n");
                 gram = kmalloc(sizeof(*gram), GFP_KERNEL);
                 err = try_get_reply(dsp, gram, nonblock);
                 if (err == 0)
@@ -1051,6 +1053,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 return err;
 
         case DSPIOCT_GET_MCE_REPLY:
+                PRINT_INFO(card, "get MCE reply\n");
                 gram = kmalloc(sizeof(*gram), GFP_KERNEL);
                 err = try_get_mce_reply(dsp, gram, nonblock);
                 if (err == 0)
@@ -1227,7 +1230,7 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
         if (count < 100)
                 return 0;
 
-        len += sprintf(buf+len,"mce_dsp driver version %s\n", "<new!>");
+        len += sprintf(buf+len,"mce_dsp driver version %s\n", VERSION_STRING);
         if (count < 512) {
                 len += sprintf(buf+len,"    output abbreviated!\n");
                 return len;
@@ -1247,44 +1250,45 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                         continue;
 
                 len += sprintf(buf+len,"\nCARD: %d\n", card);
-		len += sprintf(buf+len, "    %-15s %25s\n",
-			       "  PCI bus address:", pci_name(dsp->pci));
+		len += sprintf(buf+len, "  %-20s %20s\n",
+			       "PCI bus address:", pci_name(dsp->pci));
                 len += sprintf(buf+len,"  Commander states:\n"
-                               "   DSP channel: %2i\n"
-                               "   MCE channel: %2i\n",
-                               dsp->dsp_state, dsp->mce_state);
+                               "    %-20s %18i\n"
+                               "    %-20s %18i\n",
+                               "DSP channel:", dsp->dsp_state,
+                               "MCE channel:", dsp->mce_state);
                 len += sprintf(buf+len,
                                "  PCI regs:\n"
-                               "   HSTR:  %#06x\n"
-                               "   HCTR:  %#06x\n"
-                               "   HCVR:  %#06x\n",
-                               dsp_read_hstr(dsp->reg),
-                               dsp_read_hctr(dsp->reg),
-                               dsp_read_hcvr(dsp->reg));
+                               "    %-30s %#08x\n"
+                               "    %-30s %#08x\n"
+                               "    %-30s %#08x\n",
+                               "HSTR:", dsp_read_hstr(dsp->reg),
+                               "HCTR:", dsp_read_hctr(dsp->reg),
+                               "HCVR:", dsp_read_hcvr(dsp->reg));
                 len += sprintf(buf+len,
                                "  Buffer physical addresses:\n"
-                               "   reply: %#08x\n"
-                               "   data:  %#08x\n",
-                               (unsigned)dsp->reply_buffer_dma_handle,
-                               (unsigned)dsp->dframes.base_busaddr);
+                               "    %-28s %#10x\n"
+                               "    %-28s %#10x\n",
+                               "reply:", (unsigned)dsp->reply_buffer_dma_handle,
+                               "data:", (unsigned)dsp->dframes.base_busaddr);
                 len += sprintf(buf+len,
                                "  Circular buffer state:\n"
-                               "   total_size:  %10i\n"
-                               "   data_size:   %10i\n"
-                               "   container:   %10i\n"
-                               "   n_frames:    %10i\n"
-                               "   head_idx:    %10i\n"
-                               "   tail_idx:    %10i\n"
-                               "   last_grant:  %10i\n"
-                               "   reconfigs:   %10i\n",
-                               (int)dsp->dframes.size,
-                               dsp->dframes.data_size,
-                               dsp->dframes.frame_size,
-                               dsp->dframes.n_frames,
-                               dsp->dframes.head_index,
-                               dsp->dframes.tail_index,
-                               dsp->dframes.last_grant,
-                               dsp->dframes.qt_configs);
+                               "    %-28s %10i\n"
+                               "    %-28s %10i\n"
+                               "    %-28s %10i\n"
+                               "    %-28s %10i\n"
+                               "    %-28s %10i\n"
+                               "    %-28s %10i\n"
+                               "    %-28s %10i\n"
+                               "    %-28s %10i\n",
+                               "total_size:", (int)dsp->dframes.size,
+                               "data_size:", dsp->dframes.data_size,
+                               "container:", dsp->dframes.frame_size,
+                               "n_frames:", dsp->dframes.n_frames,
+                               "head_index:", dsp->dframes.head_index,
+                               "tail_index:", dsp->dframes.tail_index,
+                               "last_grant:", dsp->dframes.last_grant,
+                               "reconfigs:", dsp->dframes.qt_configs);
         }
 
 	return len;
