@@ -8,6 +8,8 @@
 #include <getopt.h>
 #include <mce/defaults.h>
 
+#include "version.h"
+
 #include "../../defaults/config.h"
 
 #define OPT_HELP 1000
