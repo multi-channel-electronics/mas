@@ -222,6 +222,7 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
 {
 	frame_buffer_t *dframes = &dsp->dframes;
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
+        int i = 0;
         dma_addr_t bus;
         PRINT_INFO(dsp->minor, "entry\n");
 
@@ -244,13 +245,13 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
 	dframes->blocks[0].base_busaddr = bus;
 	dframes->blocks[0].size = mem_size;
         dframes->n_blocks = 1;
+        dframes->total_size = mem_size;
 
 #else
         // Allocate up to 20 x 1MB blocks
-        int i = 0;
         dframes->n_blocks = 0;
         dframes->total_size = 0;
-        for (i=0; i<MEM_MAXBLOCKS; i++) {
+        for (i=0; i<DSP_MAX_MEM_BLOCKS; i++) {
                 dsp_memblock_t *mem = &dsp->dframes.blocks[i];
                 mem->size = BLOCK_ALLOC_SIZE;
                 mem->base = dma_alloc_coherent(
@@ -261,6 +262,8 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
                 mem->base_busaddr = (unsigned long)bus;
                 dframes->total_size += mem->size;
                 dframes->n_blocks++;
+                if (dframes->total_size > mem_size)
+                        break;
         }
         PRINT_ERR(dsp->minor, "Allocated %i blocks of size %i "
                   "to data buffer\n", dframes->n_blocks, BLOCK_ALLOC_SIZE);
@@ -276,7 +279,7 @@ void data_free(mcedsp_t *dsp)
                 bigphysarea_free_pages((void*)dsp->dframes.blocks[0].base);
 #else
         int i;
-        for (i=0; i<MEM_MAXBLOCKS; i++) {
+        for (i=0; i<DSP_MAX_MEM_BLOCKS; i++) {
                 dsp_memblock_t *mem = &dsp->dframes.blocks[i];
                 dma_addr_t bus = mem->base_busaddr;
                 void* base = (void*)mem->base;
@@ -1276,6 +1279,8 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 
 int mcedsp_mmap(struct file *filp, struct vm_area_struct *vma)
 {
+        int i;
+        int offset = 0;
         mcedsp_t *dsp = (mcedsp_t*)filp->private_data;
 
 	// Mark memory as reserved (prevents core dump inclusion) and
@@ -1287,10 +1292,19 @@ int mcedsp_mmap(struct file *filp, struct vm_area_struct *vma)
 		   vma->vm_end - vma->vm_start, vma->vm_start);
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
-        // FIXME
-	remap_pfn_range(vma, vma->vm_start,
-			virt_to_phys(dsp->dframes.blocks[0].base) >> PAGE_SHIFT,
-			vma->vm_end - vma->vm_start, vma->vm_page_prot);
+        for (i=0; i<dsp->dframes.n_blocks; i++) {
+                dsp_memblock_t *mem = dsp->dframes.blocks + i;
+                if (mem->base == NULL)
+                        continue;
+                if (vma->vm_end - vma->vm_start - offset < mem->size) {
+                        PRINT_ERR(dsp->minor, "user space vma not large enough\n");
+                        break;
+                }
+                remap_pfn_range(vma, vma->vm_start + offset,
+                                virt_to_phys(mem->base) >> PAGE_SHIFT,
+                                mem->size, vma->vm_page_prot);
+                offset += mem->size;
+        }
 	return 0;
 }
 

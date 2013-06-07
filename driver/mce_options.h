@@ -62,7 +62,7 @@
 
 #ifndef BIGPHYS
 
-#  define BLOCK_ALLOC_SIZE (1024*1024)
+#  define BLOCK_ALLOC_SIZE (2*1024*1024)
 
 #else
 

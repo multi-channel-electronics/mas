@@ -53,7 +53,8 @@ typedef struct {
         int end_frame;
 } dsp_memblock_t;
 
-#define MEM_MAXBLOCKS 1
+/* This is a DSP firmware max; do not increase beyond 20. */
+#define DSP_MAX_MEM_BLOCKS 20
 
 typedef struct {
 
@@ -63,7 +64,7 @@ typedef struct {
         /* size_t    size; */
 
         int n_blocks;
-        dsp_memblock_t blocks[MEM_MAXBLOCKS];
+        dsp_memblock_t blocks[DSP_MAX_MEM_BLOCKS];
 
         int n_frames;
         int frame_size;
