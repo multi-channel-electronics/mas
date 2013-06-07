@@ -17,7 +17,7 @@ typedef enum { OPT_VERSION = OPT_HELP + 1, OPT_MULTICARD, OPT_PREFIX,
     OPT_GROUP, OPT_MAS_DATA, OPT_MAS_DATA_ROOT, OPT_MAS_TEMPLATE, OPT_MAS_BIN,
     OPT_MAS_TEMP, OPT_MAS_SCRIPT, OPT_MAS_IDL, OPT_MAS_PYTHON, OPT_MAS_ETC,
     OPT_MAS_TEST_SUITE, OPT_PATH_BASE, OPT_PATH, OPT_PYTHONPATH, OPT_MAS_ROOT,
-    OPT_PYTHONPATH_BASE, OPT_MAS_CONFIG, OPT_MAS_JAM
+    OPT_PYTHONPATH_BASE, OPT_MAS_CONFIG, OPT_MAS_JAM, OPT_INT_VERSION
 } parm_t;
 
 static char *strip_path(mce_context_t *mce, const char *var)
@@ -272,6 +272,8 @@ void __attribute__((noreturn)) Usage(int ret)
             "file\n"
             "  --idl-dir         the MCE script IDL directory (MAS_IDL in the "
             "environment)\n"
+            "  --int-version     the integer version number; see also "
+            "--version\n"
             "  --jam-dir         the location of the JAM firmware files "
             "(MAS_JAM_DIR in the\n"
             "                      environment)\n"
@@ -327,7 +329,7 @@ void __attribute__((noreturn)) Usage(int ret)
             "in the\n"
             "                      environment)\n"
             "  --user            the MAS username\n"
-            "  --version         the mas_var version\n"
+            "  --version         the mas_var version; see also --int-version\n"
             "\nIf -q is not specified, multiple parameters may be given.  The "
             "value of each\nparameter will be reported on standard output, one "
             "per line, in the order\nspecified.\n"
@@ -363,6 +365,7 @@ int main(int argc, char **argv)
         { "fibre-card", 0, NULL, OPT_FIBRE_CARD },
         { "bigphys", 0, NULL, OPT_BIGPHYS },
         { "fakemce", 0, NULL, OPT_FAKEMCE },
+        { "int-version", 0, NULL, OPT_INT_VERSION },
         { "max-fibre-card", 0, NULL, OPT_MAX_FIBRE_CARD },
         { "user", 0, NULL, OPT_USER },
         { "group", 0, NULL, OPT_GROUP },
@@ -507,6 +510,9 @@ int main(int argc, char **argv)
         switch(plist[i]) {
             case OPT_VERSION:
                 puts(VERSION_STRING);
+                break;
+            case OPT_INT_VERSION:
+                printf("%i\n", VERSION_NUM);
                 break;
             case OPT_MULTICARD:
 #if MULTICARD
