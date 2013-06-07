@@ -736,7 +736,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 
             // If user gave a card string, look up the code.
             if ( tokens[1].type == MASCMDTREE_SELECT ) {
-                mceconfig_cfg_card ((config_setting_t*)tokens[1].data,
+                mceconfig_cfg_card (mce, (config_setting_t*)tokens[1].data,
                         &mcep.card);
             } else {
                 mcep.card.id[0] = tokens[1].value;

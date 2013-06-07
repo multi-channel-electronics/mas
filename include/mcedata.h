@@ -22,6 +22,7 @@
  *  device file.
  */
 
+#include <stdlib.h>
 #include <mce/frame.h>
 #include <mce/acq.h>
 #include <mce/data_mode.h>
@@ -31,6 +32,9 @@
 int mcedata_open(mce_context_t *context);
 int mcedata_close(mce_context_t *context);
 
+
+/* low-level operations */
+ssize_t mcedata_read(mce_context_t *context, void *buf, size_t size);
 
 /* ioctl access to driver */
 
@@ -55,7 +59,7 @@ int mcedata_lock_up(mce_context_t* context);
 /* rambuff: a user-defined callback routine services each frame */
 
 typedef int (*rambuff_callback_t)(unsigned long user_data,
-				  int frame_size, u32 *buffer);
+				  int frame_size, uint32_t *buffer);
 
 mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
 					  unsigned long user_data);

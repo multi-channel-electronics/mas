@@ -9,7 +9,8 @@
 #include <libmaslog.h>
 
 struct maslog_struct {
-    int fd;       // ha ha, it's just an int.
+    int fd;
+    const mce_context_t *context; /* for configuration information */
 };
 
 /* Root configuration structure */
@@ -74,6 +75,11 @@ struct mce_context {
     struct config_t  *mas_cfg;        /* MAS configuration */
     int               fibre_card;     /* logical fibre card number */
 
+    /* the terminal output routine, this allows the caller to redirect terminal
+     * output somewhere else by providing a function
+     */
+    int (*termio)(int, const char *);
+
     char             *config_dir;     /* $(MAS_CONFIG} */
     char             *data_root;      /* the base data directory */
     char             *data_subdir;    /* "current_data", or whatever */
@@ -105,6 +111,10 @@ struct mce_context {
 #define  C_maslog_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
 
 int mcelib_warning(const mce_context_t *context, const char *fmt, ...)
+    __attribute__ ((format (printf, 2, 3)));
+int mcelib_error(const mce_context_t *context, const char *fmt, ...)
+    __attribute__ ((format (printf, 2, 3)));
+int mcelib_print(const mce_context_t *context, const char *fmt, ...)
     __attribute__ ((format (printf, 2, 3)));
 int mcelib_symlink(const char *symlink, const char *target);
 

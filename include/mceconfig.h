@@ -27,6 +27,7 @@
  */
 
 #include <libconfig.h>
+#include <stdint.h>
 
 
 /* Parameter type enumerator */
@@ -252,9 +253,11 @@ int mceconfig_cfg_cardtype(const config_setting_t *cfg, cardtype_t *ct);
 
 int mceconfig_cfg_paramset(const config_setting_t *cfg, paramset_t *ps);
 
-int mceconfig_cfg_param   (const config_setting_t *cfg, param_t    *p);
+int mceconfig_cfg_param   (const mce_context_t *context,
+    const config_setting_t *cfg, param_t    *p);
 
-int mceconfig_cfg_card    (const config_setting_t *cfg, card_t     *c);
+int mceconfig_cfg_card    (const mce_context_t *context,
+    const config_setting_t *cfg, card_t     *c);
 
 int mceconfig_cfg_maprange(const config_setting_t *cfg, maprange_t *mr);
 

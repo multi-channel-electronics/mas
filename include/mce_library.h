@@ -32,10 +32,20 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
         unsigned int flags);
 void mcelib_destroy(mce_context_t* context);
 
+/* terminal output redirection */
+#define MCELIB_PRINT 0
+#define MCELIB_WARN  1
+#define MCELIB_ERR   2
+void mcelib_set_termio(mce_context_t *context, int (*func)(int, const char*));
+
+/* this behaves identically to mcelib_create above, but it sets the termio
+ * function before doing anything interesting */
+mce_context_t* mcelib_create_termio(int fibre_card, const char *mas_config,
+        unsigned int flags, int (*func)(int, const char*));
 
 /* Error look-up, versioning */
 
-char* mcelib_error_string(int error);
-char* mcelib_version(void);
+const char* mcelib_error_string(int error);
+const char* mcelib_version(void);
 
 #endif

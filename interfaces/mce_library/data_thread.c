@@ -84,7 +84,7 @@ void *data_thread(void *p_void)
 		return (void*)d;
 	}		
 
-	printf("data_thread: entry\n");
+    mcelib_print(d->acq->context, "data_thread: entry");
 	//logger_print(&p->logger, "Data thread starting\n");
 
 	d->count = 0;
@@ -96,7 +96,7 @@ void *data_thread(void *p_void)
 	while (!done) {
 
 		if (acts->pre_frame != NULL && acts->pre_frame(d->acq)) {
-				fprintf(stderr, "pre_frame action failed\n");
+            mcelib_warning(d->acq->context, "pre_frame action failed\n");
 		}
 	
 		ret_val = read(fd, (char*)data + index, size - index);
@@ -106,8 +106,8 @@ void *data_thread(void *p_void)
 				usleep(1000);
 			} else {
 				// Error: clear rest of frame and quit
-				fprintf(stderr,
-					"read failed with code %i\n", ret_val);
+                mcelib_error(d->acq->context,
+                        "read failed with code %i\n", ret_val);
 				memset((char*)data + index, 0, size - index);
 				done = EXIT_READ;
 				break;
@@ -128,7 +128,7 @@ void *data_thread(void *p_void)
 		sort_columns( d->acq, data );
 
 		if ( (acts->post_frame != NULL) && acts->post_frame( d->acq, count, data ) ) {
-			fprintf(stderr, "post_frame action failed\n");
+            mcelib_warning(d->acq->context, "post_frame action failed\n");
 		}
 
 		index = 0;
