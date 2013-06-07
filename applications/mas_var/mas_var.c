@@ -226,7 +226,6 @@ void __attribute__((noreturn)) Usage(int ret)
             "                      environment for the specified (or default) "
             "MCE device.\n"
             "                      (See below for an example of use.)\n"
-#if MULTICARD
             "  -x                when used with -c or -s, only define required "
             "environmental\n"
             "                      variables, specifically: MAS_MCE_DEV, "
@@ -238,9 +237,6 @@ void __attribute__((noreturn)) Usage(int ret)
             "                      variables from the environment.  Ignored if "
             "not used\n"
             "                      with -c or -s.\n"
-#else
-            "  -x                ignored\n"
-#endif
             "  --help            display this help and exit\n"
             "\n"
 
@@ -440,9 +436,7 @@ int main(int argc, char **argv)
         } else if (option == 's') {
             do_env = 0;
         } else if (option == 'x') {
-#if MULTICARD
             mini_env = 1;
-#endif
         } else if (option == '?')
             Usage(1);
         else if (option == OPT_HELP)
