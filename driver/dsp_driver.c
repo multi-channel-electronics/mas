@@ -223,17 +223,16 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
 	frame_buffer_t *dframes = &dsp->dframes;
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
         dma_addr_t bus;
-
         PRINT_INFO(dsp->minor, "entry\n");
 
 	mem_size = npg * PAGE_SIZE;
 
 #ifdef BIGPHYS
         // Virtual address?
-	dframes->base = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
+	dframes->blocks[0].base = bigphysarea_alloc_pages(npg, 0, GFP_KERNEL);
         PRINT_ERR(dsp->minor, "BIGPHYS selected\n");
 
-	if (dframes->base==NULL) {
+	if (dframes->blocks[0].base==NULL) {
                 PRINT_ERR(dsp->minor, "bigphysarea_alloc_pages failed!\n");
 		return -ENOMEM;
 	}
@@ -241,41 +240,51 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
 	// Save physical address for hardware
 	// Note virt_to_bus is on the deprecation list... we will want
 	// to switch to the DMA-API, dma_map_single does what we want.
-        bus = virt_to_bus(dframes->base);
-	dframes->base_busaddr = bus;
+        bus = virt_to_bus(dframes->blocks[0].base);
+	dframes->blocks[0].base_busaddr = bus;
+	dframes->blocks[0].size = mem_size;
+        dframes->n_blocks = 1;
 
-	// Save the maximum size
-	dframes->size = mem_size;
 #else
-
-        dframes->size = mem_size;
-        dframes->base = dma_alloc_coherent(
-                &dsp->pci->dev, dframes->size, &bus, GFP_KERNEL);
-        dframes->base_busaddr = (unsigned long)bus;
-
+        // Allocate up to 20 x 1MB blocks
+        int i = 0;
+        dframes->n_blocks = 0;
+        dframes->total_size = 0;
+        for (i=0; i<MEM_MAXBLOCKS; i++) {
+                dsp_memblock_t *mem = &dsp->dframes.blocks[i];
+                mem->size = BLOCK_ALLOC_SIZE;
+                mem->base = dma_alloc_coherent(
+                        &dsp->pci->dev, mem->size, &bus, GFP_KERNEL);
+                if (mem->base == NULL) {
+                        break;
+                } 
+                mem->base_busaddr = (unsigned long)bus;
+                dframes->total_size += mem->size;
+                dframes->n_blocks++;
+        }
+        PRINT_ERR(dsp->minor, "Allocated %i blocks of size %i "
+                  "to data buffer\n", dframes->n_blocks, BLOCK_ALLOC_SIZE);
 #endif
 
-	//Debug
-        PRINT_INFO(dsp->minor, "buffer: base=%lx, size %li\n",
-		   (unsigned long)dframes->base, 
-		   (long)dframes->size);
-	
 	return 0;
 }
 
 void data_free(mcedsp_t *dsp)
 {
-        if (dsp->dframes.base != NULL) {
 #ifdef BIGPHYS
-                bigphysarea_free_pages((void*)dsp->dframes.base);
+        if (dsp->dframes.blocks[0].base != NULL)
+                bigphysarea_free_pages((void*)dsp->dframes.blocks[0].base);
 #else
-                dma_free_coherent(&dsp->pci->dev, dsp->dframes.size,
-                                  dsp->dframes.base,
-                                  (dma_addr_t)dsp->dframes.base_busaddr);
-#endif
+        int i;
+        for (i=0; i<MEM_MAXBLOCKS; i++) {
+                dsp_memblock_t *mem = &dsp->dframes.blocks[i];
+                dma_addr_t bus = mem->base_busaddr;
+                void* base = (void*)mem->base;
+                if (base != NULL)
+                        dma_free_coherent(&dsp->pci->dev, mem->size, base, bus);
+                mem->base = NULL;
         }
-                
-        dsp->dframes.base = NULL;
+#endif
 }
 
 
@@ -294,6 +303,7 @@ void data_free(mcedsp_t *dsp)
  * is not updated.
  */
 
+#ifdef DFADF
 static int set_transfer_params(mcedsp_t *dsp, int enable, int data_size,
                                int qt_inform)
 {
@@ -378,40 +388,134 @@ free_and_exit:
                 kfree(gram);
         return err;
 }
+#endif
 
-
-void grant_task(unsigned long data)
+static int set_transfer_params_multi(mcedsp_t *dsp, int enable, int data_size)
 {
         DSP_LOCK_DECLARE_FLAGS;
-        int err;
-        mcedsp_t *dsp = (mcedsp_t *)data;
+        int err = -ENOMEM;
+        int block_i;
+        int start_frame = 0;
+        int frame_size;
+        struct dsp_command *cmd;
+        struct dsp_datagram *gram;
+        frame_buffer_t *dframes = &dsp->dframes;
+
+        /* This isn't really an option; the card resets the buffer
+         * when it gets the SET_DATA_BUF command. */
+        DSP_LOCK;
+        dframes->head_index = 0;
+        dframes->tail_index = 0;
+        dframes->last_grant = 0;
+        dframes->qt_configs++;
+
+        if (data_size <= 0)
+                data_size = 1024;
+
+        /* Redivide the buffers */
+        frame_size = (data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
+        for (block_i=0; block_i<dframes->n_blocks; block_i++) {
+                int n_frames = dframes->blocks[block_i].size / frame_size;
+                dframes->blocks[block_i].start_frame = start_frame;
+                start_frame += n_frames;
+                dframes->blocks[block_i].end_frame = start_frame;
+                PRINT_INFO(dsp->minor, "data block: %i %i %i %i\n",
+                          dframes->blocks[block_i].size,
+                          frame_size,
+                          dframes->blocks[block_i].start_frame,
+                          dframes->blocks[block_i].end_frame);
+        }
+        dframes->n_frames = start_frame;
+        dframes->data_size = data_size;
+        dframes->frame_size = frame_size;
+        DSP_UNLOCK;
+
+        /* Create the command for DSP */
+        cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+        gram = kmalloc(sizeof(*gram), GFP_KERNEL);
+        if (cmd == NULL || gram == NULL)
+                goto free_and_exit;
+        
+        cmd->cmd = DSP_CMD_SET_DATA_MULTI;
+        cmd->flags = DSP_EXPECT_DSP_REPLY;
+        cmd->data[0] = dframes->n_frames;
+        cmd->data[1] = dframes->frame_size;
+        cmd->data[2] = dframes->data_size;
+        cmd->data[3] = 0;
+        for (block_i=0; block_i<dframes->n_blocks; block_i++) {
+                // Don't store trivial blocks...
+                int start = dframes->blocks[block_i].start_frame;
+                int end = dframes->blocks[block_i].end_frame;
+                if (start == end)
+                        continue;
+                cmd->data[4+cmd->data[3]*3+0] =
+                        dframes->blocks[block_i].base_busaddr;
+                cmd->data[4+cmd->data[3]*3+1] = start;
+                cmd->data[4+cmd->data[3]*3+2] = end;
+                cmd->data[3]++;
+        }
+        cmd->data_size = 4 + cmd->data[3]*3;
+        cmd->size = cmd->data_size + 1;
+
+        err = try_send_cmd(dsp, cmd, 0);
+        if (err != 0) {
+                PRINT_ERR(dsp->minor, "Command failure.\n");
+                goto free_and_exit;
+        }
+        err = try_get_reply(dsp, gram, 0);
+        if (err != 0) {
+                PRINT_ERR(dsp->minor, "Reply failure.\n");
+                goto free_and_exit;
+        }
+
+free_and_exit:
+        if (cmd != NULL)
+                kfree(cmd);
+        if (gram != NULL)
+                kfree(gram);
+        return err;
+}
+
+
+static int send_set_tail_inform(mcedsp_t *dsp, int inform_count, int nonblock)
+{
+        DSP_LOCK_DECLARE_FLAGS;
         struct dsp_command cmd;
         __u32 tail;
 
         if (!dsp->enabled)
-                return;
+                return -ENODEV;
 
         DSP_LOCK;
         tail = dsp->dframes.tail_index;
         dsp->dframes.last_grant = tail;
         DSP_UNLOCK;
 
-        cmd.cmd = DSP_CMD_SET_TAIL;
+        cmd.cmd = DSP_CMD_SET_TAIL_INF;
         cmd.flags = DSP_EXPECT_DSP_REPLY | 
                 DSP_IGNORE_DSP_REPLY;
         cmd.owner = 0;
         cmd.timeout_us = 0;
-        cmd.size = 2;
-        cmd.data_size = 1;
+        cmd.size = 3;
+        cmd.data_size = 2;
         cmd.data[0] = tail;
+        cmd.data[1] = inform_count;
 
-        PRINT_INFO(dsp->minor,
-                  "granting tail=%i\n", tail);
+        return try_send_cmd(dsp, &cmd, nonblock);
+}
 
-        if ((err=try_send_cmd(dsp, &cmd, 1)) != 0) {
-                PRINT_ERR(dsp->minor, "failed to grant tail=%i, err=%i\n",
-                          tail, err);
-        }
+/* In the grant task, we send updates of the tail_index to the DSP.
+ * We don't update the inform interval, and don't block (it's a
+ * tasklet).
+ */
+
+void grant_task(unsigned long data)
+{
+        mcedsp_t *dsp = (mcedsp_t*)data;
+        int err = 0;
+        if ((err=send_set_tail_inform(dsp, 0, 1)) != 0)
+                PRINT_ERR(dsp->minor, "failed to grant, err=%i\n",
+                          err);
 }
 
 
@@ -754,10 +858,10 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
                 goto fail;
         }
 
-        if (set_transfer_params(dsp, 1, 1000, 1000) != 0) {
-                PRINT_ERR(card, "could not configure data buffer.\n");
-                goto fail;
-        }        
+        /* if (set_transfer_params(dsp, 1, 1000, 1000) != 0) { */
+        /*         PRINT_ERR(card, "could not configure data buffer.\n"); */
+        /*         goto fail; */
+        /* }         */
 
         return 0;
 
@@ -843,7 +947,7 @@ static int raw_send_data(mcedsp_t *dsp, __u32 *buf, int count)
                 while (!(dsp_read_hstr(dsp->reg) & HSTR_HTRQ) &&
                        ++n_wait < n_wait_max);
                 dsp_write_htxr(dsp->reg, buf16[i]);
-                /* PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, (int)buf16[i]); */
+                PRINT_INFO(dsp->minor, "wrote %i=%x\n", i, (int)buf16[i]);
         }
         if (n_wait >= n_wait_max) {
                 PRINT_ERR(dsp->minor,
@@ -858,7 +962,10 @@ static int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd, int nonblock)
 {
         DSP_LOCK_DECLARE_FLAGS;
         int need_mce = cmd->flags & DSP_EXPECT_MCE_REPLY;
-        
+ 
+        PRINT_INFO(dsp->minor, "DSP command code=%#x, size=%#x, flags %#x\n",
+                   cmd->cmd, cmd->size, cmd->flags);
+      
         // Require DSP_IDLE and possibly MCE_IDLE.  Block if allowed.
         DSP_LOCK;
         while ((dsp->dsp_state != DSP_IDLE) ||
@@ -1079,7 +1186,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 		case QUERY_FRAMESIZE:
 			return dsp->dframes.frame_size;
 		case QUERY_BUFSIZE:
-			return dsp->dframes.size;
+			return dsp->dframes.total_size;
 /*                case QUERY_LTAIL:
                         return fpdata->leech_tail;
                 case QUERY_LPARTIAL:
@@ -1096,7 +1203,12 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 	case DSPIOCT_SET_DATASIZE:
                 // Configure QT stuff for the data payload size in arg.
                 PRINT_INFO(dsp->minor, "set frame size %i\n", (int)arg);
-                return set_transfer_params(dsp, 1, arg, -1);
+                return set_transfer_params_multi(dsp, 1, arg);
+
+	case DSPIOCT_SET_NFRAMES:
+                // Set the number of frames to expect.
+                PRINT_INFO(dsp->minor, "set n_frames %i\n", (int)arg);
+                return send_set_tail_inform(dsp, (int)arg, nonblock);
 /*
 	case DATADEV_IOCT_FAKE_STOPFRAME:
                 PRINT_ERR(card, "fake_stopframe initiated!\n");
@@ -1108,7 +1220,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 dsp->dframes.tail_index = 0;
                 DSP_UNLOCK;
                 return 0;
-
+/*
 	case DSPIOCT_QT_CONFIG:
                 PRINT_INFO(card, "configure Quiet Transfer mode "
 			   "[inform=%li]\n", arg);
@@ -1118,18 +1230,26 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 PRINT_INFO(card, "enable/disable quiet Transfer mode "
 			   "[on=%li]\n", arg);
                 return set_transfer_params(dsp, arg, -1, -1);
-
+*/
         case DSPIOCT_FRAME_POLL:
-                // Return index offset of next frame, or -1 if no new data.
-                /* x = dsp->dframes.tail_index * dsp->dframes.frame_size; */
-                /* PRINT_ERR(card, "Offset %i = %i\n", x, */
-                /*           ((__s32*)dsp->dframes.base)[x]); */
+                /* Return offset into memmapped buffer of the next
+                   consumable frame, or -1 if none available. */
                 DSP_LOCK;
                 x = dsp->dframes.tail_index;
                 if (x == dsp->dframes.head_index)
                         x = -1;
-                else
-                        x = x * dsp->dframes.frame_size;
+                else {
+                        int offset = 0;
+                        int block_i = 0;
+                        while (x < dsp->dframes.blocks[block_i].start_frame ||
+                               x >= dsp->dframes.blocks[block_i].end_frame) {
+                                offset += dsp->dframes.blocks[block_i].size;
+                                block_i++;
+                        }
+                        offset += dsp->dframes.frame_size *
+                                (x - dsp->dframes.blocks[block_i].start_frame);
+                        x = offset;
+                }
                 DSP_UNLOCK;
                 return x;
 
@@ -1167,8 +1287,9 @@ int mcedsp_mmap(struct file *filp, struct vm_area_struct *vma)
 		   vma->vm_end - vma->vm_start, vma->vm_start);
 
 	//remap_pfn_range(vma, virt, phys_page, size, vma->vm_page_prot);
+        // FIXME
 	remap_pfn_range(vma, vma->vm_start,
-			virt_to_phys(dsp->dframes.base) >> PAGE_SHIFT,
+			virt_to_phys(dsp->dframes.blocks[0].base) >> PAGE_SHIFT,
 			vma->vm_end - vma->vm_start, vma->vm_page_prot);
 	return 0;
 }
@@ -1222,7 +1343,7 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                        int *eof, void *data)
 {
 	int len = 0;
-	int card;
+	int card, i;
 
         // You only get one shot.
         *eof = 1;
@@ -1268,9 +1389,13 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                 len += sprintf(buf+len,
                                "  Buffer physical addresses:\n"
                                "    %-28s %#10x\n"
-                               "    %-28s %#10x\n",
+                               "    %-28s\n",
                                "reply:", (unsigned)dsp->reply_buffer_dma_handle,
-                               "data:", (unsigned)dsp->dframes.base_busaddr);
+                               "data:");
+                for (i=0; i<dsp->dframes.n_blocks; i++)
+                        len += sprintf(buf+len, "      %24i @ %#010x\n",
+                                       (int)dsp->dframes.blocks[i].size,
+                                       (unsigned)dsp->dframes.blocks[i].base_busaddr);
                 len += sprintf(buf+len,
                                "  Circular buffer state:\n"
                                "    %-28s %10i\n"
@@ -1281,7 +1406,7 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                                "    %-28s %10i\n"
                                "    %-28s %10i\n"
                                "    %-28s %10i\n",
-                               "total_size:", (int)dsp->dframes.size,
+                               "total_size:", (int)dsp->dframes.total_size,
                                "data_size:", dsp->dframes.data_size,
                                "container:", dsp->dframes.frame_size,
                                "n_frames:", dsp->dframes.n_frames,

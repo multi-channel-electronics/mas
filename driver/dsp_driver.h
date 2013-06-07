@@ -43,17 +43,32 @@
 #define DSP_POLL_FREQ       100
 #define DSP_POLL_JIFFIES    (HZ / DSP_POLL_FREQ + 1)
 
-
 typedef struct {
-
 	volatile
         void*     base;
 	unsigned long base_busaddr;
         size_t    size;
 
+        int start_frame;
+        int end_frame;
+} dsp_memblock_t;
+
+#define MEM_MAXBLOCKS 1
+
+typedef struct {
+
+	/* volatile */
+        /* void*     base; */
+	/* unsigned long base_busaddr; */
+        /* size_t    size; */
+
+        int n_blocks;
+        dsp_memblock_t blocks[MEM_MAXBLOCKS];
+
         int n_frames;
         int frame_size;
         int data_size;
+        int total_size;
 
         // New data is written at head, consumer data is read at tail.
 	volatile
