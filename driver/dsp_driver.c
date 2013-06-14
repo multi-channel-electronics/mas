@@ -176,6 +176,18 @@ static int try_get_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
 static int try_get_mce_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
                              int nonblock);
 
+static int dsp_vector_command(mcedsp_t *dsp, u32 vector)
+{
+        PRINT_INFO(dsp->minor, "sending vector %#x\n", vector);
+	if (dsp_read_hcvr(dsp->reg) & HCVR_HC) {
+                PRINT_ERR(dsp->minor, "HCVR blocking\n");
+		return -EAGAIN;
+	}
+	dsp_write_hcvr(dsp->reg, vector | HCVR_HC);
+	return 0;
+}
+
+
 static int upload_rep_buffer(mcedsp_t *dsp, int enable, int n_tries) {
         int err = -ENOMEM;
         struct dsp_command *cmd;
@@ -747,12 +759,45 @@ void mcedsp_mce_timeout(unsigned long data)
         mcedsp_set_state_wake(dsp, DSP_IGNORE, MCE_IDLE);
 }
 
+int mcedsp_do_handshake(mcedsp_t *dsp)
+{
+        int n_waits = 100000;
+        __u32 hctr;
+
+        // Raise flag
+        hctr = dsp_read_hctr(dsp->reg);
+        dsp_write_hctr(dsp->reg, hctr | HCTR_HF2);
+
+        // Wait for DSP to ack support of this driver
+        while (n_waits-- > 0) {
+                if (dsp_read_hstr(dsp->reg) & HSTR_HC4)
+                        break;
+        }
+        if (n_waits < 0) {
+                dsp_write_hctr(dsp->reg, hctr & ~HCTR_HF2);
+                PRINT_ERR(dsp->minor, "card did not hand-shake.\n");
+                return -1;
+        }
+
+        //Ok, we made it.
+        dsp->enabled = 1;
+
+        // Configure reply and data buffers
+        if (upload_rep_buffer(dsp, 1, 10000) != 0) {
+                PRINT_ERR(dsp->minor, "could not configure reply buffer.\n");
+                dsp->enabled = 0;
+                return -1;
+        }
+
+        return 0;
+}
+
 
 int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	int card;
         int err = 0;
-        int hctr;
+//        int hctr;
         int n_waits;
 	mcedsp_t *dsp = NULL;
         PRINT_INFO(NOCARD, "entry\n");
@@ -827,23 +872,7 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 		goto fail;
 	}
 
-        // Raise handshake bit.
-        hctr = dsp_read_hctr(dsp->reg);
-        dsp_write_hctr(dsp->reg, hctr | HCTR_HF2);
-
-        // Wait for DSP to ack support of this driver
-        n_waits = 100000;
-        while (n_waits-- > 0) {
-                if (dsp_read_hstr(dsp->reg) & HSTR_HC4)
-                        break;
-        }
-        if (n_waits <= 0) {
-                dsp_write_hctr(dsp->reg, hctr & ~HCTR_HF2);
-                PRINT_ERR(card, "card did not hand-shake.\n");
-                goto fail;
-        }
-
-        // Interrupt handler?  Maybe this can wait til later...
+        // Install interrupt handler before setting the reply buffer...
 	err = request_irq(pci->irq, (irq_handler_t)mcedsp_int_handler,
                           IRQ_FLAGS, DEVICE_NAME, dsp);
 	if (err!=0) {
@@ -852,19 +881,9 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
                 goto fail;
 	}
 
-        //Ok, we made it.
-        dsp->enabled = 1;
-
-        // Configure reply and data buffers
-        if (upload_rep_buffer(dsp, 1, 10000) != 0) {
-                PRINT_ERR(card, "could not configure reply buffer.\n");
+        // This will set dsp->enabled = 1 and set the reply buffer addr.
+        if (mcedsp_do_handshake(dsp) != 0)
                 goto fail;
-        }
-
-        /* if (set_transfer_params(dsp, 1, 1000, 1000) != 0) { */
-        /*         PRINT_ERR(card, "could not configure data buffer.\n"); */
-        /*         goto fail; */
-        /* }         */
 
         return 0;
 
@@ -1024,8 +1043,6 @@ static int try_send_mce_cmd(mcedsp_t *dsp, __u32 *mce_cmd, int nonblock)
 {
         int err = -ENOMEM;
         struct dsp_command *cmd;
-        int i;
-
 
         cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
         if (cmd == NULL)
@@ -1188,6 +1205,21 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
         case DSPIOCT_W_HCTR:
                 dsp_write_hctr(dsp->reg, (int)arg);
                 return 0;
+
+        case DSPIOCT_RESET_SOFT:
+                return -1;
+
+        case DSPIOCT_RESET_DSP:
+                /* Lower handshake bit */
+                dsp_write_hctr(dsp->reg, dsp_read_hctr(dsp->reg) & ~HCTR_HF2);
+                /* Reset the card */
+                dsp_vector_command(dsp, HCVR_SYS_RST);
+                /* Re-init. */
+                return mcedsp_do_handshake(dsp);
+
+        case DSPIOCT_RESET_MCE:
+                return dsp_vector_command(dsp, HCVR_MCE_RST);
+
 
         case DSPIOCT_COMMAND:
                 PRINT_INFO(card, "send command\n");

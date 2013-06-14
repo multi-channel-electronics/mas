@@ -29,6 +29,9 @@
 #define HCVR_HC          0x0001               /* Do-this-now bit */
 #define HCVR_HNMI        0x8000               /* Non-maskable HI-32 interrupt */
 
+#define HCVR_SYS_RST     (HCVR_HNMI | 0x008B) /* Immediate system reset */
+#define HCVR_MCE_RST     (HCVR_HNMI | 0x008D) /* Reset MCE comms circuits */
+
 /* HCTR default */
 
 #define DSP_PCI_MODE_BASE        0x000900    /* for 32->24 bit conversion */
