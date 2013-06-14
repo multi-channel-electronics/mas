@@ -119,6 +119,8 @@ typedef enum {
 typedef struct {
         int minor;
         int enabled;
+        int fw_version;
+        char fw_verstr[16];
 
 	struct pci_dev *pci;
 	dsp_reg_t *reg;
@@ -215,6 +217,11 @@ static int upload_rep_buffer(mcedsp_t *dsp, int enable, int n_tries) {
                 PRINT_ERR(dsp->minor, "Reply failed. [%i]\n", err);
                 goto free_and_out;
         }
+       
+        dsp->fw_version = gram->fw_version & 0xffffff;
+        dsp->fw_verstr[0] = dsp->fw_version >> 16;
+        sprintf(dsp->fw_verstr+1, "%04x", dsp->fw_version & 0xffff);
+        PRINT_ERR(dsp->minor, "DSP code version is %s\n", dsp->fw_verstr);
 
 free_and_out:
         if (gram != NULL)
@@ -1363,6 +1370,8 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                 len += sprintf(buf+len,"\nCARD: %d\n", card);
 		len += sprintf(buf+len, "  %-20s %20s\n",
 			       "PCI bus address:", pci_name(dsp->pci));
+		len += sprintf(buf+len, "  %-20s %20s\n",
+			       "Firmware revision:", dsp->fw_verstr);
                 len += sprintf(buf+len,"  Commander states:\n"
                                "    %-20s %18i\n"
                                "    %-20s %18i\n"
