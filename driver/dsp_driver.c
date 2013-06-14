@@ -793,7 +793,7 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
         }
 
         // Allocate DMA-ready reply buffer.
-        dsp->reply_buffer_size = 1024;
+        dsp->reply_buffer_size = 2048;
         dsp->reply_buffer_dma_virt =
                 dma_alloc_coherent(&pci->dev, dsp->reply_buffer_size,
                                    &dsp->reply_buffer_dma_handle,
@@ -1020,6 +1020,49 @@ static int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd, int nonblock)
 }
 
 
+static int try_send_mce_cmd(mcedsp_t *dsp, __u32 *mce_cmd, int nonblock)
+{
+        int err = -ENOMEM;
+        struct dsp_command *cmd;
+        int i;
+
+
+        cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+        if (cmd == NULL)
+                goto free_and_out;
+        // Either way...
+        cmd->flags = DSP_EXPECT_DSP_REPLY | DSP_EXPECT_MCE_REPLY;
+        cmd->owner = 0;
+        cmd->timeout_us = 0;
+        if (1) {
+                /* Copy command to RAM and tell the DSP where to find
+                 * it.  This method is marginally faster than the
+                 * alternative, and can be used during data
+                 * acquisition.  We leave the other method here as
+                 * well because it does not rely on the DSP doing PCI
+                 * reads as master. */
+                cmd->cmd = DSP_CMD_POST_MCE;
+                cmd->size = 2;
+                cmd->data_size = 1;
+                cmd->data[0] = dsp->reply_buffer_dma_handle + 1024;
+                memcpy((char*)dsp->reply_buffer_dma_virt + 1024, mce_cmd, 256);
+        } else {
+                /* Write command directly to the DSP */
+                cmd->cmd = DSP_CMD_SEND_MCE;
+                cmd->data_size = 64;
+                cmd->size = cmd->data_size + 1;
+                memcpy(&cmd->data, mce_cmd, 256);
+        }
+        err = try_send_cmd(dsp, cmd, nonblock);
+
+free_and_out:
+        if (cmd != NULL)
+                kfree(cmd);
+        return err;
+}
+
+
+
 static int try_get_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
                          int nonblock)
 {
@@ -1117,6 +1160,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 
         struct dsp_command *cmd;
         struct dsp_datagram *gram;
+        __u32* mce_cmd;
         int x, err;
 
         DSP_LOCK_DECLARE_FLAGS;
@@ -1151,6 +1195,15 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 copy_from_user(cmd, (const void __user *)arg, sizeof(*cmd));
                 err = try_send_cmd(dsp, cmd, nonblock) != 0;
                 kfree(cmd);
+                return err;
+
+        case DSPIOCT_MCE_COMMAND:
+                PRINT_INFO(card, "send command\n");
+                mce_cmd = kmalloc(64*sizeof(__u32), GFP_KERNEL);
+                copy_from_user(mce_cmd, (const void __user *)arg,
+                               64*sizeof(__u32));
+                err = try_send_mce_cmd(dsp, mce_cmd, nonblock);
+                kfree(mce_cmd);
                 return err;
 
         case DSPIOCT_GET_DSP_REPLY:

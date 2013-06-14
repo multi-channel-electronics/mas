@@ -65,9 +65,12 @@ struct mce_reply {
 
 #define DSP_CMD_SET_REP_BUF  0x09
 #define DSP_CMD_SET_DATA_BUF 0x0A
+#define DSP_CMD_SET_DATA_MULTI 0x0B
 
 #define DSP_CMD_SET_TAIL     0x11
+#define DSP_CMD_SET_TAIL_INF 0x12
 #define DSP_CMD_SEND_MCE     0x21
+#define DSP_CMD_POST_MCE     0x22
 
 
 /* type codes for dsp_datagram */

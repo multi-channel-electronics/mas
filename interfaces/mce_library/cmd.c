@@ -131,14 +131,7 @@ int mcecmd_lock_replies(mce_context_t *context, int lock)
 
 int mcecmd_send_command_now(mce_context_t* context, mce_command *cmd)
 {
-    struct dsp_command dsp;
-    dsp.flags = DSP_EXPECT_MCE_REPLY;
-    memcpy(dsp.data, cmd, sizeof(*cmd));
-    dsp.data_size = sizeof(*cmd) / sizeof(u32);
-    dsp.size = dsp.data_size + 1;
-    dsp.cmd = DSP_CMD_SEND_MCE;
-
-    int error = ioctl(C_cmd.fd, DSPIOCT_COMMAND, (unsigned long)&dsp);
+    int error = ioctl(C_cmd.fd, DSPIOCT_MCE_COMMAND, (unsigned long)cmd);
 	if (error < 0)
 		return -MCE_ERR_DEVICE;
 	return 0;
@@ -148,7 +141,6 @@ int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
 {
     struct dsp_datagram gram;
     struct mce_reply *rep0; //ouch
-	/* int error = read(C_cmd.fd, rep, sizeof(*rep)); */
     int error = ioctl(C_cmd.fd, DSPIOCT_GET_MCE_REPLY, (unsigned long)&gram);
 	if (error < 0)
 		return -MCE_ERR_DEVICE;

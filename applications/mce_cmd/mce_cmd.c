@@ -56,8 +56,6 @@ enum {
 	SPECIAL_LOCK_RESET,
 	SPECIAL_LOCK_DOWN,
 	SPECIAL_LOCK_UP,
-	SPECIAL_QT_CONFIG,
-	SPECIAL_QT_ENABLE,
 	SPECIAL_MRESET,
 	SPECIAL_DRESET,
 	SPECIAL_REPLY_LOCK,
@@ -68,6 +66,7 @@ enum {
 	SPECIAL_SLEEP,
 	SPECIAL_COMMENT,
 	SPECIAL_FRAME,
+	SPECIAL_NFRAMES,
 	SPECIAL_DISPLAY,
 	SPECIAL_DEF,
 	SPECIAL_DEC,
@@ -166,8 +165,6 @@ mascmdtree_opt_t root_opts[] = {
     { SEL_NO, "ACQ_MULTI_END", 0, 0, SPECIAL_ACQ_MULTI_END, NULL},
     { SEL_NO, "ACQ_OPTION", 3, -1, SPECIAL_ACQ_OPTION, option_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
-	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
-	{ SEL_NO, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
 	{ SEL_NO, "LOCK_RESET", 0, 0, SPECIAL_LOCK_RESET, NULL},
 	{ SEL_NO, "LOCK_DOWN" , 0, 0, SPECIAL_LOCK_DOWN, NULL},
@@ -176,6 +173,7 @@ mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
 	{ SEL_NO, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
 	{ SEL_NO, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
+	{ SEL_NO, "NFRAMES" , 1, 1, SPECIAL_NFRAMES , integer_opts},
 	{ SEL_NO, "DISPLAY" , 1, 1, SPECIAL_DISPLAY , display_opts},
 	{ SEL_NO, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
 	{ SEL_NO, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
@@ -976,14 +974,6 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 ret_val = mcedata_lock_up(mce);
                 break;
 
-            case SPECIAL_QT_ENABLE:
-                ret_val = mcedata_qt_enable(mce, tokens[1].value);
-                break;
-
-            case SPECIAL_QT_CONFIG:
-                ret_val = mcedata_qt_setup(mce, tokens[1].value);
-                break;
-
             case SPECIAL_MRESET:
                 ret_val = mcecmd_hardware_reset(mce);
                 break;
@@ -1020,6 +1010,10 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 if (ret_val != 0) {
                     sprintf(errmsg, "mce_library error %i", ret_val);
                 }
+                break;
+
+            case SPECIAL_NFRAMES:
+                ret_val = mcedata_set_nframes(mce, tokens[1].value);
                 break;
 
             case SPECIAL_DISPLAY:

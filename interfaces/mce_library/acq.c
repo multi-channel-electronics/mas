@@ -177,7 +177,7 @@ static int set_n_frames(mce_acq_t *acq, int n_frames, int dsp_only)
 	u32 args[2];
 
 	// Inform DSP/driver
-	if (mcedata_qt_setup(acq->context, n_frames)) {
+	if (mcedata_set_nframes(acq->context, n_frames)) {
 		fprintf(stderr, "Failed to set quiet transfer interval!\n");
 		return -MCE_ERR_DEVICE;
 	}
