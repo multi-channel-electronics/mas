@@ -105,20 +105,14 @@ static inline void dsp_write_hctr(dsp_reg_t *dsp, u32 value) {
 
 typedef enum {
         DSP_IDLE = 0,
-//        DSP_CMD_QUED = 1,
-        DSP_CMD_SENT = 2,
-        DSP_REP_RECD = 3,
-//        DSP_REP_HNDL = 4,
-        DSP_IGNORE = 1000
+        DSP_CMD_SENT = 1,
+        DSP_REP_RECD = 2,
 } dsp_state_t;
 
 typedef enum {
         MCE_IDLE = 0,
-//        MCE_CMD_QUED = 1,
-        MCE_CMD_SENT = 2,
-        MCE_REP_RECD = 3,
-//        MCE_REP_HNDL = 4,
-        MCE_IGNORE = 1000
+        MCE_CMD_SENT = 1,
+        MCE_REP_RECD = 2,
 } mce_state_t;
 
 
@@ -234,7 +228,6 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
 {
 	frame_buffer_t *dframes = &dsp->dframes;
 	int npg = (mem_size + PAGE_SIZE-1) / PAGE_SIZE;
-        int i = 0;
         dma_addr_t bus;
         PRINT_INFO(dsp->minor, "entry\n");
 
@@ -261,10 +254,12 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
 
 #else
         // Allocate up to 20 x 1MB blocks
-        dframes->n_blocks = 0;
+        dsp_memblock_t *mem;
         dframes->total_size = 0;
-        for (i=0; i<DSP_MAX_MEM_BLOCKS; i++) {
-                dsp_memblock_t *mem = &dsp->dframes.blocks[i];
+        for (dframes->n_blocks = 0;
+             dframes->n_blocks < DSP_MAX_MEM_BLOCKS;
+             dframes->n_blocks++) {
+                dsp_memblock_t *mem = &dsp->dframes.blocks[dframes->n_blocks];
                 mem->size = BLOCK_ALLOC_SIZE;
                 mem->base = dma_alloc_coherent(
                         &dsp->pci->dev, mem->size, &bus, GFP_KERNEL);
@@ -273,7 +268,6 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
                 } 
                 mem->base_busaddr = (unsigned long)bus;
                 dframes->total_size += mem->size;
-                dframes->n_blocks++;
                 if (dframes->total_size > mem_size)
                         break;
         }
@@ -303,107 +297,15 @@ void data_free(mcedsp_t *dsp)
 }
 
 
-/* set_transfer_params
+/* set_transfer_params_multi
  *
  * Update data transfer parameters internally, and write them to the
- * card.
+ * card.  The buffer divisions are reset and recomputed for the
+ * provided data_size (the frame data size, in bytes).
  *
- * enable should be 0 or 1, to disable / enable data transfers.
- * Disabling transfers results in bus address 0 being written to the
- * card.
+ * enable should be 0 or 1.  But it's currently ignored, so whatever.
  *
- * If data_size <= 0, the buffer division parameters are not updated.
- *
- * If qt_inform <= 0, the information frame count trigger information
- * is not updated.
  */
-
-#ifdef DFADF
-static int set_transfer_params(mcedsp_t *dsp, int enable, int data_size,
-                               int qt_inform)
-{
-        DSP_LOCK_DECLARE_FLAGS;
-        int err = -ENOMEM;
-        struct dsp_command *cmd;
-        struct dsp_datagram *gram;
-        frame_buffer_t *dframes = &dsp->dframes;
-
-        cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
-        gram = kmalloc(sizeof(*gram), GFP_KERNEL);
-        if (cmd == NULL || gram == NULL)
-                goto free_and_exit;
-
-        if (data_size > 0) {
-                // Note that dividing by 0 causes a kernel panic, so don't do it.
-                int frame_size = (data_size + DMA_ADDR_ALIGN - 1) & DMA_ADDR_MASK;
-                int n_frames = dframes->size / frame_size;
-                if (enable && (data_size <=0 || n_frames <= 0)) {
-                        PRINT_ERR(dsp->minor,
-                                  "invalid configuration: %i frames of "
-                                  "size %i, payload %i.\n",
-                                  n_frames, frame_size, data_size);
-                        err = -1; // Hmm..
-                        goto free_and_exit;
-                }
-                DSP_LOCK;
-                dframes->frame_size = frame_size;
-                dframes->data_size = data_size;
-                dframes->n_frames = n_frames;
-                DSP_UNLOCK;
-        }
-        if (qt_inform > 0) {
-                DSP_LOCK;
-                dframes->update_interval = qt_inform;
-                DSP_UNLOCK;
-        }
-
-        /* This isn't really an option; the card resets the buffer
-         * when it gets the SET_DATA_BUF command. */
-        DSP_LOCK;
-        dframes->head_index = 0;
-        dframes->tail_index = 0;
-        dframes->last_grant = 0;
-        dframes->qt_configs++;
-        DSP_UNLOCK;
-
-        // Inform the card...
-        cmd->cmd = DSP_CMD_SET_DATA_BUF;
-        cmd->flags = DSP_EXPECT_DSP_REPLY;
-        if (enable)
-                cmd->data[0] = dframes->base_busaddr;
-        else
-                cmd->data[0] = 0;
-        cmd->data[1] = dframes->n_frames;
-        cmd->data[2] = dframes->frame_size;
-        cmd->data[3] = dframes->data_size;
-        cmd->data[4] = dframes->update_interval;
-        cmd->data[5] = DSP_INFORM_COUNTS; // Timer expiry
-        cmd->data[6] = dframes->head_index;
-        cmd->data[7] = dframes->tail_index;
-        cmd->data[8] = 0; /* drops */
-        cmd->data_size = 9;
-
-        cmd->size = cmd->data_size + 1;
-
-        err = try_send_cmd(dsp, cmd, 0);
-        if (err != 0) {
-                PRINT_ERR(dsp->minor, "Command failure.\n");
-                goto free_and_exit;
-        }
-        err = try_get_reply(dsp, gram, 0);
-        if (err != 0) {
-                PRINT_ERR(dsp->minor, "Reply failure.\n");
-                goto free_and_exit;
-        }
-
-free_and_exit:
-        if (cmd != NULL)
-                kfree(cmd);
-        if (gram != NULL)
-                kfree(gram);
-        return err;
-}
-#endif
 
 static int set_transfer_params_multi(mcedsp_t *dsp, int enable, int data_size)
 {
@@ -531,24 +433,6 @@ void grant_task(unsigned long data)
         if ((err=send_set_tail_inform(dsp, 0, 1)) != 0)
                 PRINT_ERR(dsp->minor, "failed to grant, err=%i\n",
                           err);
-}
-
-
-static void inline mcedsp_set_state_wake(mcedsp_t *dsp,
-                                         dsp_state_t new_dsp_state,
-                                         mce_state_t new_mce_state) {
-        DSP_LOCK_DECLARE_FLAGS;
-        DSP_LOCK;
-        if (new_dsp_state < DSP_IGNORE) {
-                PRINT_INFO(dsp->minor, "%i -> dsp_state\n", new_dsp_state);
-                dsp->dsp_state = new_dsp_state;
-        }
-        if (new_mce_state < MCE_IGNORE) {
-                PRINT_INFO(dsp->minor, "%i -> mce_state\n", new_mce_state);
-                dsp->mce_state = new_mce_state;
-        }
-        wake_up_interruptible(&dsp->queue);
-        DSP_UNLOCK;
 }
 
 
@@ -736,27 +620,39 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 void mcedsp_dsp_timeout(unsigned long data)
 {
 	mcedsp_t *dsp = (mcedsp_t*)data;
+        DSP_LOCK_DECLARE_FLAGS;
+
+        DSP_LOCK;
         if (dsp->dsp_state == DSP_IDLE) {
                 PRINT_INFO(dsp->minor, "Unexpected timeout.\n");
+                DSP_UNLOCK;
                 return;
         }
 
         PRINT_ERR(dsp->minor, "DSP command timed out in state=%i\n",
                   dsp->dsp_state);
-        mcedsp_set_state_wake(dsp, DSP_IDLE, MCE_IGNORE);
+        dsp->dsp_state = DSP_IDLE;
+        wake_up_interruptible(&dsp->queue);
+        DSP_UNLOCK;
 }
 
 void mcedsp_mce_timeout(unsigned long data)
 {
 	mcedsp_t *dsp = (mcedsp_t*)data;
+        DSP_LOCK_DECLARE_FLAGS;
+
+        DSP_LOCK;
         if (dsp->mce_state == MCE_IDLE) {
                 PRINT_INFO(dsp->minor, "Unexpected timeout.\n");
+                DSP_UNLOCK;
                 return;
         }
 
         PRINT_ERR(dsp->minor, "MCE command timed out in state=%i\n",
                   dsp->mce_state);
-        mcedsp_set_state_wake(dsp, DSP_IGNORE, MCE_IDLE);
+        dsp->mce_state = MCE_IDLE;
+        wake_up_interruptible(&dsp->queue);
+        DSP_UNLOCK;
 }
 
 int mcedsp_do_handshake(mcedsp_t *dsp)
@@ -797,8 +693,6 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	int card;
         int err = 0;
-//        int hctr;
-        int n_waits;
 	mcedsp_t *dsp = NULL;
         PRINT_INFO(NOCARD, "entry\n");
 
@@ -1064,7 +958,8 @@ static int try_send_mce_cmd(mcedsp_t *dsp, __u32 *mce_cmd, int nonblock)
                 cmd->data[0] = dsp->reply_buffer_dma_handle + 1024;
                 memcpy((char*)dsp->reply_buffer_dma_virt + 1024, mce_cmd, 256);
         } else {
-                /* Write command directly to the DSP */
+                /* Write command directly to the DSP; use as fallback
+                 * if there are PCI issues with commanding. */
                 cmd->cmd = DSP_CMD_SEND_MCE;
                 cmd->data_size = 64;
                 cmd->size = cmd->data_size + 1;
@@ -1184,8 +1079,6 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 
         int nonblock = (filp->f_flags & O_NONBLOCK);
 
-//        PRINT_INFO(card, "entry! minor=%d\n", card);
-
 	switch(iocmd) {
         case DSPIOCT_R_HRXS:
                 return dsp_read_hrxs(dsp->reg);
@@ -1267,8 +1160,6 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 			return dsp->dframes.tail_index;
 		case QUERY_MAX:
 			return dsp->dframes.n_frames;
-		/* case QUERY_PARTIAL: */
-		/* 	return dsp->dframes.partial; */
 		case QUERY_DATASIZE:			
 			return dsp->dframes.data_size;
 		case QUERY_FRAMESIZE:
@@ -1474,9 +1365,12 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
 			       "PCI bus address:", pci_name(dsp->pci));
                 len += sprintf(buf+len,"  Commander states:\n"
                                "    %-20s %18i\n"
+                               "    %-20s %18i\n"
                                "    %-20s %18i\n",
                                "DSP channel:", dsp->dsp_state,
-                               "MCE channel:", dsp->mce_state);
+                               "MCE channel:", dsp->mce_state,
+                               "Data lock:",
+                               data_lock_operation(dsp,LOCK_QUERY, NULL));
                 len += sprintf(buf+len,
                                "  PCI regs:\n"
                                "    %-30s %#08x\n"
