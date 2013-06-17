@@ -130,6 +130,9 @@ char *mcelib_error_string(int error)
 	case MCE_ERR_FRAME_COLS:
 		return "Frame columns could not be determined or was invalid.";
 
+	case MCE_ERR_FRAME_KILL:
+		return "Acquisition stopped due to driver signal.";
+
 	case 0:
 		return "Success.";
 	}

@@ -30,7 +30,9 @@ struct dsp_datagram {
 	__s16 version;
 	__s16 total_size;
 	__s16 type;
-	__s16 unused1[13];
+	__s16 unused1;
+	__s32 fw_version;
+	__s16 unused2[10];
 	__s32 buffer[DSP_DATAGRAM_BUFFER_SIZE];
 };
 

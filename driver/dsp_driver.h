@@ -97,6 +97,9 @@ typedef struct {
 
 	void *data_lock;	
 
+        // Kill switch, signals data reader to give up.
+        int force_exit;
+
 } frame_buffer_t;
 
 #define DSP_INTERNAL_FREQ  50e6

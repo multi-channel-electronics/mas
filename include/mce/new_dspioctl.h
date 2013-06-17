@@ -25,7 +25,6 @@
 #define      QUERY_HEAD      0
 #define      QUERY_TAIL      1
 #define      QUERY_MAX       2
-/* #define      QUERY_PARTIAL   3 */
 #define      QUERY_DATASIZE  4
 #define      QUERY_FRAMESIZE 5
 #define      QUERY_BUFSIZE   6

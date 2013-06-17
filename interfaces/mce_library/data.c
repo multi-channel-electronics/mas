@@ -118,8 +118,13 @@ void mcedata_buffer_query(mce_context_t* context, int *head, int *tail, int *cou
 
 int mcedata_poll_offset(mce_context_t* context, int *offset)
 {
+    int ok = 1;
 	*offset = ioctl(C_data.fd, DSPIOCT_FRAME_POLL);
-	return (*offset >= 0);
+    if (*offset < 0) {
+        ok = 0;
+        *offset = errno;
+    }
+	return ok;
 }
 
 int mcedata_consume_frame(mce_context_t* context)

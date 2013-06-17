@@ -132,8 +132,15 @@ int mcecmd_lock_replies(mce_context_t *context, int lock)
 int mcecmd_send_command_now(mce_context_t* context, mce_command *cmd)
 {
     int error = ioctl(C_cmd.fd, DSPIOCT_MCE_COMMAND, (unsigned long)cmd);
-	if (error < 0)
-		return -MCE_ERR_DEVICE;
+	if (error < 0) {
+        switch(errno) {
+        case ENODATA:
+            return -MCE_ERR_INT_TIMEOUT;
+        case EIO:
+            return -MCE_ERR_INT_FAILURE;
+        }
+        return -MCE_ERR_INT_UNKNOWN;
+    }
 	return 0;
 }
 
@@ -142,8 +149,15 @@ int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
     struct dsp_datagram gram;
     struct mce_reply *rep0; //ouch
     int error = ioctl(C_cmd.fd, DSPIOCT_GET_MCE_REPLY, (unsigned long)&gram);
-	if (error < 0)
-		return -MCE_ERR_DEVICE;
+	if (error < 0) {
+        switch(errno) {
+        case ENODATA:
+            return -MCE_ERR_TIMEOUT;
+        default:
+            return -MCE_ERR_INT_UNKNOWN;
+        }
+    }
+
     // Datagram->buffer contains "  RP", size, then only "size" valid words.
     rep0 = MCE_REPLY(&gram);
     memset(rep, 0, sizeof(*rep));

@@ -23,8 +23,6 @@
 
 static int copy_frames_mmap(mce_acq_t *acq);
 
-static int copy_frames_read(mce_acq_t *acq);
-
 static int set_n_frames(mce_acq_t *acq, int n_frames, int dsp_only);
 
 static int get_n_frames(mce_acq_t *acq);
@@ -372,9 +370,8 @@ int copy_frames_mmap(mce_acq_t *acq)
 	int done = 0;
 	int count = 0;
 	u32 *data;
-
-	int waits = 0;
-	int max_waits = 1000;
+    int waits;
+	int max_waits = 5000; // 5 second time out
 	
 	acq->n_frames_complete = 0;
 
@@ -386,14 +383,21 @@ int copy_frames_mmap(mce_acq_t *acq)
 				fprintf(stderr, "pre_frame action failed\n");
 		}
 
+        waits = 0;
 		while (mcedata_poll_offset(acq->context, &ret_val) == 0) {
+            if (ret_val != EAGAIN) {
+                done = EXIT_KILL;
+                break;
+            }
 			usleep(1000);
 			waits++;
-			if (waits >= max_waits)
+			if (waits >= max_waits) {
 				done = EXIT_TIMEOUT;
-			continue;
+                break;
+            }
 		}
-		waits = 0;
+        if (done)
+            break;
 
 		// New frame at offset ret_val
 		data = acq->context->data.map + ret_val;
@@ -424,132 +428,25 @@ int copy_frames_mmap(mce_acq_t *acq)
 	switch (done) {
 	case EXIT_COUNT:
 	case EXIT_LAST:
-		acq->status = MCEDATA_IDLE;
+		acq->status = 0;
 		break;
 
 	case EXIT_TIMEOUT:
-		acq->status = MCEDATA_TIMEOUT;
+		acq->status = -MCE_ERR_FRAME_TIMEOUT;
 		break;
 
 	case EXIT_STOP:
-		acq->status = MCEDATA_STOP;
+		acq->status = -MCE_ERR_FRAME_STOP;
 		break;
 		
-	case EXIT_READ:
-	case EXIT_WRITE:
-	case EXIT_EOF:
+    case EXIT_KILL:
 	default:
-		acq->status = MCEDATA_ERROR;
+		acq->status = -MCE_ERR_FRAME_DEVICE;
 		break;
 	}
 
 	acq->n_frames_complete = count;
 
-	return 0;
-}
-
-int copy_frames_read(mce_acq_t *acq)
-{
-	int ret_val = 0;
-	int done = 0;
-	int count = 0;
-	int index = 0;
-	u32 *data = malloc(acq->frame_size * sizeof(*data));
-
-	int waits = 0;
-	int max_waits = 1000;
-	
-	acq->n_frames_complete = 0;
-
-	if (data==NULL) {
-		fprintf(stderr, "Could not allocate frame buffer of size %i\n",
-			acq->frame_size);
-		return -MCE_ERR_FRAME_SIZE;
-	}
-
-	/* read method loop */
-	while (!done) {
-
-		if (acq->storage->pre_frame != NULL &&
-		    acq->storage->pre_frame(acq) != 0) {
-				fprintf(stderr, "pre_frame action failed\n");
-		}
-
-		ret_val = read(acq->context->data.fd, (void*)data + index,
-			       acq->frame_size*sizeof(*data) - index);
-
-		if (ret_val<0) {
-			if (errno==EAGAIN) {
-				usleep(1000);
-				waits++;
-				if (waits >= max_waits)
-					done = EXIT_TIMEOUT;
-			} else {
-				// Error: clear rest of frame and quit
-				fprintf(stderr,
-					"read failed with code %i\n", ret_val);
-				memset((void*)data + index, 0,
-				       acq->frame_size*sizeof(*data) - index);
-				done = EXIT_READ;
-				break;
-			}
-		} else if (ret_val==0) {
-			done = EXIT_EOF;
-		} else {
-			index += ret_val;
-			waits = 0;
-		}
-
-		// Only dump complete frames to disk
-		if (index < acq->frame_size*sizeof(*data))
-			continue;
-
-		// Logical formatting
-		sort_columns( acq, data );
-
-		if ( (acq->storage->post_frame != NULL) &&
-		     acq->storage->post_frame( acq, count, data ) ) {
-			fprintf(stderr, "post_frame action failed\n");
-		}
-
-		index = 0;
-		if (++count >= acq->n_frames)
-			done = EXIT_COUNT;
-
-		if (frame_property(data, &frame_header_v6, status_v6)
-		    & FRAME_STATUS_V6_STOP)
-			done = EXIT_STOP;
-
-		if (frame_property(data, &frame_header_v6, status_v6)
-		    & FRAME_STATUS_V6_LAST)
-			done = EXIT_LAST;
-	}
-
-	switch (done) {
-	case EXIT_COUNT:
-	case EXIT_LAST:
-		acq->status = MCEDATA_IDLE;
-		break;
-
-	case EXIT_TIMEOUT:
-		acq->status = MCEDATA_TIMEOUT;
-		break;
-
-	case EXIT_STOP:
-		acq->status = MCEDATA_STOP;
-		break;
-		
-	case EXIT_READ:
-	case EXIT_WRITE:
-	case EXIT_EOF:
-	default:
-		acq->status = MCEDATA_ERROR;
-		break;
-	}
-
-	acq->n_frames_complete = count;
-
-	free(data);
 	return 0;
 }
 

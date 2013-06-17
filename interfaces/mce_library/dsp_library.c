@@ -22,16 +22,8 @@
 #include <mce/new_dspioctl.h>
 #include <mce/defaults.h>
 
-/*
-static inline int mem_type_valid(dsp_memory_code mem) {
-    return (mem==DSP_MEMX) || (mem==DSP_MEMY) || (mem==DSP_MEMP);
-}
-*/
-
 #define CHECK_OPEN(cntx)   if (!cntx->dsp.opened) \
                                    return -DSP_ERR_DEVICE
-//#define CHECK_MEM_TYPE(mt) if (!mem_type_valid(mt)) 
-//                                   return -DSP_ERR_MEMTYPE
 #define CHECK_WORD(w)      if (w & ~0xffffff) \
                                    return -DSP_ERR_BOUNDS;
 
@@ -134,17 +126,25 @@ int mcedsp_send_command(mce_context_t *context,
         cmd->size = cmd->data_size + 1;
 
     err = mcedsp_ioctl(context, DSPIOCT_COMMAND, (unsigned long)cmd);
-    if (err < 0) {
-        printf("err on write\n");
-        return -DSP_ERR_DEVICE;
-    }
+    if (err < 0) goto exit_err;
+
     err = mcedsp_ioctl(context, DSPIOCT_GET_DSP_REPLY, (unsigned long)gram);
-    if (err < 0) {
-        printf("err on read\n");
-        return -DSP_ERR_DEVICE;
-    }
+    if (err < 0) goto exit_err;
     
     return 0;
+
+exit_err:
+    switch(errno) {
+    case ENODATA:
+        return -DSP_ERR_TIMEOUT;
+    case EINTR:
+        return -DSP_ERR_INTERRUPTED;
+    case EIO:
+        return -DSP_ERR_IO;
+    case EAGAIN:
+        return -DSP_ERR_WOULDBLOCK;
+    }
+    return -DSP_ERR_UNKNOWN;
 }
 
 int mcedsp_version(mce_context_t *context)

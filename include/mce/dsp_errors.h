@@ -16,8 +16,8 @@
 #define DSP_ERR_STATE           (DSP_ERR_BASE + 0x0015)
 #define DSP_ERR_MEMTYPE         (DSP_ERR_BASE + 0x0016)
 #define DSP_ERR_TIMEOUT         (DSP_ERR_BASE + 0x0017)
-#define DSP_ERR_ACTIVE          (DSP_ERR_BASE + 0x0018)
-#define DSP_ERR_NOT_ACTIVE      (DSP_ERR_BASE + 0x0019)
+#define DSP_ERR_INTERRUPTED     (DSP_ERR_BASE + 0x0018)
+#define DSP_ERR_WOULDBLOCK      (DSP_ERR_BASE + 0x0019)
 #define DSP_ERR_UNKNOWN         (DSP_ERR_BASE + 0x001a)
 
 #endif

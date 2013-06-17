@@ -165,10 +165,8 @@ static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
 	int i;
 	int thresh = f->data_size / 2;
 	char filename[MCE_LONG];
-	int name_offset;
 
 	strcpy(filename, f->basename);
-	name_offset = strlen(filename);
 
 	int writes = 0;
 	for (i=0; i<f->channel_count; i++) {

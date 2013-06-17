@@ -5,6 +5,16 @@
 
 #include <mce_library.h>
 
+#define EXIT_LAST      1
+#define EXIT_READ      2
+#define EXIT_WRITE     3
+#define EXIT_STOP      4
+#define EXIT_EOF       5
+#define EXIT_COUNT     6 
+#define EXIT_TIMEOUT   7
+#define EXIT_KILL      8
+
+
 typedef struct data_thread_struct {
 	
 	pthread_t thread;

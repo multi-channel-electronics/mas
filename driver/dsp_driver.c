@@ -331,6 +331,7 @@ static int set_transfer_params_multi(mcedsp_t *dsp, int enable, int data_size)
         dframes->head_index = 0;
         dframes->tail_index = 0;
         dframes->last_grant = 0;
+        dframes->force_exit = 0;
         dframes->qt_configs++;
 
         if (data_size <= 0)
@@ -880,6 +881,13 @@ static int raw_send_data(mcedsp_t *dsp, __u32 *buf, int count)
         return 0;
 }
 
+/* try_send_cmd
+ *
+ * Copy the dsp_command to the PCI card.
+ *
+ * Returns 0 on success.  Will return -EAGAIN if channels are busy and
+ * nonblock!=0.  Returns -EIO if there is a PCI issue.
+ */
 
 static int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd, int nonblock)
 {
@@ -900,7 +908,7 @@ static int try_send_cmd(mcedsp_t *dsp, struct dsp_command *cmd, int nonblock)
                 if (nonblock) {
                         PRINT_ERR(dsp->minor,
                                   "nonblock.  turns out state=%i\n", last_dsp);
-                        return -EBUSY;
+                        return -EAGAIN;
                 }
                 if (wait_event_interruptible(
                             dsp->queue,
@@ -981,6 +989,14 @@ free_and_out:
 }
 
 
+/* try_get_reply
+ *
+ * If a DSP reply is available, copy it into *gram.
+ *
+ * If dsp_state goes idle, returns -ENODATA to indicate that no reply
+ * is forthcoming.  If a reply could be forthcoming, blocks unless
+ * nonblock!=0, in which case -EAGAIN is returned.
+ */
 
 static int try_get_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
                          int nonblock)
@@ -991,8 +1007,10 @@ static int try_get_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
         while (dsp->dsp_state != DSP_REP_RECD) {
                 int last_state = dsp->dsp_state;
                 DSP_UNLOCK;
-                if (nonblock || dsp->dsp_state == DSP_IDLE)
-                        return -EBUSY;
+                if (last_state == DSP_IDLE)
+                        return -ENODATA;
+                if (nonblock)
+                        return -EAGAIN;
                 if (wait_event_interruptible(
                             dsp->queue, (dsp->dsp_state!=last_state))!=0)
                         return -ERESTARTSYS;
@@ -1017,8 +1035,10 @@ static int try_get_mce_reply(mcedsp_t *dsp, struct dsp_datagram *gram,
         while (dsp->mce_state != MCE_REP_RECD) {
                 int last_state = dsp->mce_state;
                 DSP_UNLOCK;
-                if (nonblock || dsp->mce_state == MCE_IDLE)
-                        return -EBUSY;
+                if (dsp->mce_state == MCE_IDLE)
+                        return -ENODATA;
+                if (nonblock)
+                        return -EAGAIN;
                 if (wait_event_interruptible(
                             dsp->queue, (dsp->mce_state != last_state))!=0)
                         return -ERESTARTSYS;
@@ -1173,13 +1193,6 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 			return dsp->dframes.frame_size;
 		case QUERY_BUFSIZE:
 			return dsp->dframes.total_size;
-/*                case QUERY_LTAIL:
-                        return fpdata->leech_tail;
-                case QUERY_LPARTIAL:
-                        return fpdata->leech_partial;
-                case QUERY_LVALID:
-                        return (int)(fpdata->leech_acq == dsp->dframes.acq_index);
-*/
 		default:
 			return -1;
 		}
@@ -1195,35 +1208,34 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 // Set the number of frames to expect.
                 PRINT_INFO(dsp->minor, "set n_frames %i\n", (int)arg);
                 return send_set_tail_inform(dsp, (int)arg, nonblock);
-/*
-	case DATADEV_IOCT_FAKE_STOPFRAME:
+
+	case DSPIOCT_FAKE_STOPFRAME:
                 PRINT_ERR(card, "fake_stopframe initiated!\n");
-		return data_frame_fake_stop(card);
-*/
+                DSP_LOCK;
+                dsp->dframes.force_exit = 1;
+                DSP_UNLOCK;
+                return 0;
+
 	case DSPIOCT_EMPTY:
                 DSP_LOCK;
                 dsp->dframes.head_index = 0;
                 dsp->dframes.tail_index = 0;
                 DSP_UNLOCK;
                 return 0;
-/*
-	case DSPIOCT_QT_CONFIG:
-                PRINT_INFO(card, "configure Quiet Transfer mode "
-			   "[inform=%li]\n", arg);
-		return set_transfer_params(dsp, 1, -1, arg);
+                
+        case DSPIOCT_GET_VERSION:
+                return dsp->fw_version;
 
-	case DSPIOCT_QT_ENABLE:
-                PRINT_INFO(card, "enable/disable quiet Transfer mode "
-			   "[on=%li]\n", arg);
-                return set_transfer_params(dsp, arg, -1, -1);
-*/
         case DSPIOCT_FRAME_POLL:
                 /* Return offset into memmapped buffer of the next
                    consumable frame, or -1 if none available. */
                 DSP_LOCK;
                 x = dsp->dframes.tail_index;
-                if (x == dsp->dframes.head_index)
-                        x = -1;
+                if (dsp->dframes.force_exit) {
+                        dsp->dframes.force_exit = 0;
+                        x = -ENODATA;
+                } else if (x == dsp->dframes.head_index)
+                        x = -EAGAIN;
                 else {
                         int offset = 0;
                         int block_i = 0;
@@ -1330,8 +1342,6 @@ struct file_operations mcedsp_fops =
 	.open=    mcedsp_open,
 	.release= mcedsp_release,
         .mmap=    mcedsp_mmap,
-	/* .read=    dsp_read, */
-	/* .write=   dsp_write, */
 	.unlocked_ioctl= mcedsp_ioctl,
 };
 

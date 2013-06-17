@@ -3,14 +3,6 @@
 
 #include "mce/types.h"
 
-#define EXIT_LAST      1
-#define EXIT_READ      2
-#define EXIT_WRITE     3
-#define EXIT_STOP      4
-#define EXIT_EOF       5
-#define EXIT_COUNT     6 
-#define EXIT_TIMEOUT   7
-
 /* Generic frame header description.
 
 The value of each variable is the offset in the frame header of the
