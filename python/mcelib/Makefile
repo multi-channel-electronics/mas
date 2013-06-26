@@ -16,7 +16,7 @@ all: .build
 	touch .build
 
 install: default
-	python setup.py install
+	python setup.py install --install-lib=$(MAS_INSTALL_PYTHON)
 
 _default_setup.py:
 	-rm _default_setup.py
