@@ -82,6 +82,7 @@ int main(int argc, char **argv)
             break;
 
         case CRAWLER_CFG:
+        case CRAWLER_CFX:
             cfg_crawler(&options, &crawler);
             break;
 
