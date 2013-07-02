@@ -67,17 +67,26 @@ int cfg_cleanup(unsigned long user_data)
 int cfg_item(unsigned long user_data, const mce_param_t *p)
 {
 	int i;
+    char flag = ' ';
 	cfg_t *cfg = (cfg_t*) user_data;
 	maprange_t mr;
 
 	switch (p->card.nature) {
 	case MCE_NATURE_PHYSICAL:
 		
-        if (cfg->xtend)
-            fprintf(cfg->out, "physical   %-10s %-20s x%02i %#04x %2i cards:",
-                    p->card.name, p->param.name, p->param.count, p->param.id,
-                    p->card.card_count);
-        else
+        if (cfg->xtend) {
+            if (!(p->card.flags & MCE_PARAM_STAT) ||
+                    !(p->param.flags & MCE_PARAM_STAT) ||
+                    (p->param.flags & MCE_PARAM_WONLY) )
+                flag = '!';
+	
+            if (p->param.type != MCE_CMD_MEM)
+                flag = '!';
+            fprintf(cfg->out,
+                    "physical   %-10s %-20s x%02i %c %#04x %2i cards:",
+                    p->card.name, p->param.name, p->param.count, flag,
+                    p->param.id, p->card.card_count);
+        } else
             fprintf(cfg->out, "physical   %-10s %-20s %#04x %2i cards:",
                     p->card.name, p->param.name, p->param.id,
                     p->card.card_count);
