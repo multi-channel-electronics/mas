@@ -81,7 +81,8 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	ret_val = mcedata_set_datasize(acq->context,
             acq->frame_size * sizeof(uint32_t));
 	if (ret_val != 0) {
-        mcelib_error(context, "Could not set data size [%i]\n", ret_val);
+        mcelib_error(context, "Could not set data size to %i [%i]\n",
+                acq->frame_size, ret_val);
 		return -MCE_ERR_FRAME_SIZE;
 	}
 

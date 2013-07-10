@@ -12,6 +12,7 @@ functionality. */
 %{
 
 #include "../include/mce_library.h"
+#include "../include/mcedata.h"
 #include "../defaults/config.h"
 #include "../include/mce/defaults.h"
 

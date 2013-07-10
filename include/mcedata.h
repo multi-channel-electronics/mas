@@ -99,11 +99,20 @@ mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
 
 /* multisync storage class -- container for multiple storage objects */
 
+enum mcedata_stage {mcedata_acq_init, mcedata_acq_cleanup,
+    mcedata_acq_pre_frame, mcedata_acq_flush, mcedata_acq_post_frame};
+typedef enum mcedata_stage mcedata_stage_t;
+
+typedef int (*multisync_err_callback_t)(void *user_data, int sync_num, int err,
+        mcedata_stage_t stage);
+
 mcedata_storage_t* mcedata_multisync_create(int options);
 
 int mcedata_multisync_add(mce_acq_t *multisync_acq,
                           mcedata_storage_t *sync);
 
+void mcedata_multisync_errcallback(mce_acq_t *multisync_acq,
+        multisync_err_callback_t callback, void *user_data);
 
 int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
 		       int options, int cards, int rows_reported, 
@@ -114,7 +123,5 @@ int mcedata_acq_destroy(mce_acq_t *acq);
 mce_acq_t *mcedata_acq_duplicate(mce_acq_t *acq);
 
 int mcedata_acq_go(mce_acq_t *acq, int n_frames);
-
-
 
 #endif

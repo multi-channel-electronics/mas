@@ -36,8 +36,12 @@
 
 typedef struct multisync_struct {
     int max_syncs;
+    int stopped[MAX_SYNCS];
     int options[MAX_SYNCS];
     mce_acq_t *syncs[MAX_SYNCS];
+
+    multisync_err_callback_t err_callback;
+    void *user_data;
 } multisync_t;
 
 
@@ -45,7 +49,7 @@ typedef struct multisync_struct {
 
 /* Use a template for all the ones that just want an mce_acq_t*: */
 
-#define DECLARE_MULTISYNC(MEMBER) \
+#define DECLARE_MULTISYNC(MEMBER,STOP_OVERRIDE) \
   static int multisync_ ## MEMBER(mce_acq_t* acq)               \
   {                                                             \
     multisync_t *f = (multisync_t*)acq->storage->action_data;   \
@@ -54,17 +58,23 @@ typedef struct multisync_struct {
     for (i=0; i<f->max_syncs && f->syncs[i] != NULL; i++) {     \
         if (f->syncs[i]->storage->MEMBER == NULL)               \
             continue;                                           \
+        if (!(STOP_OVERRIDE) && f->stopped[i])                  \
+            continue;                                           \
         err = f->syncs[i]->storage->MEMBER(f->syncs[i]);        \
-        if (err != 0)                                           \
+        if (err != 0) {                                         \
+            if (f->err_callback)                                \
+              f->stopped[i] = f->err_callback(f->user_data,     \
+                      i, err, mcedata_acq_ ## MEMBER);          \
             break;                                              \
+        }                                                       \
     }                                                           \
     return err;                                                 \
 }
 
-DECLARE_MULTISYNC(init)
-DECLARE_MULTISYNC(cleanup)
-DECLARE_MULTISYNC(pre_frame)
-DECLARE_MULTISYNC(flush)
+DECLARE_MULTISYNC(init, 0)
+DECLARE_MULTISYNC(cleanup, 1)
+DECLARE_MULTISYNC(pre_frame, 0)
+DECLARE_MULTISYNC(flush, 0)
 
 static int multisync_post_frame(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
@@ -74,9 +84,15 @@ static int multisync_post_frame(mce_acq_t *acq, int frame_index, uint32_t *data)
     for (i=0; i<f->max_syncs && f->syncs[i] != NULL; i++) {
         if (f->syncs[i]->storage->post_frame == NULL)
             continue;
+        if (f->stopped[i])
+            continue;
         err = f->syncs[i]->storage->post_frame(f->syncs[i], frame_index, data);
-        if (err != 0)
+        if (err != 0) {
+            if (f->err_callback)
+                f->stopped[i] = f->err_callback(f->user_data, i, err,
+                        mcedata_acq_post_frame);
             break;
+        }
     }
     return err;
 }
@@ -168,4 +184,13 @@ int mcedata_multisync_add(mce_acq_t *multisync_acq,
 
     // No room left...
     return -2;
+}
+
+/* set a user-provided callback for when acq's fail */
+void mcedata_multisync_errcallback(mce_acq_t *multisync_acq,
+        multisync_err_callback_t callback, void *user_data)
+{
+    multisync_t *f = (multisync_t*)multisync_acq->storage->action_data;
+    f->err_callback = callback;
+    f->user_data = user_data;
 }
