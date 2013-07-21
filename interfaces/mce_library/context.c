@@ -212,11 +212,14 @@ void mcelib_destroy(mce_context_t* context)
         return;
 
     mceconfig_close(context);
+#ifndef NO_MCE_OPS
     mcedata_close(context);
     mcecmd_close(context);
+#endif
 
     maslog_close(context->maslog);
-    config_destroy(context->mas_cfg);
+    if (context->mas_cfg)
+        config_destroy(context->mas_cfg);
     free(context->mas_cfg);
 
     free(context->config_dir);
