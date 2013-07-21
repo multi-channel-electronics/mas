@@ -20,7 +20,8 @@ LIB_SUFFIX=.a
 endif
 
 # Special includes
-PYTHON_INC = @PYTHON_DIR@
+PYTHON_CPPFLAGS=@PYTHON_CPPFLAGS@
+PYTHON_LIBS=@PYTHON_LIBS@
 
 #the built library (for dependency tracking in Makefiles)
 LIBDEP=$(MCELIB_F)/lib$(MCELIB)$(LIB_SUFFIX)

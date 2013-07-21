@@ -3,6 +3,12 @@
  */
 #define _GNU_SOURCE
 
+#include "mce_library.h"
+
+#ifdef NO_MCE_OPS
+MAS_UNSUPPORTED(int mcedata_close(mce_context_t *context))
+#else
+
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -156,4 +162,4 @@ int mcedata_lock_up(mce_context_t* context)
 {
 	return ioctl(C_data.fd, DATADEV_IOCT_LOCK, LOCK_UP);
 }
-
+#endif

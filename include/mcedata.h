@@ -23,6 +23,7 @@
  */
 
 #include <stdlib.h>
+#include <sys/types.h>
 #include <mce/frame.h>
 #include <mce/acq.h>
 #include <mce/data_mode.h>

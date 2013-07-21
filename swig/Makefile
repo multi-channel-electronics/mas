@@ -3,11 +3,11 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-INCLUDE=-I$(MAS_INCLUDE_F) -I$(PYTHON_INC)
+INCLUDE=-I$(MAS_INCLUDE_F) ${PYTHON_CPPFLAGS}
 
 LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 	-L$(LOGLIB_F) -l$(LOGLIB) \
-	-lconfig
+	-lconfig ${PYTHON_LIBS}
 
 CFLAGS += $(INCLUDE) -Wall $(DEFS) -fPIC -fno-stack-protector -fno-strict-aliasing
 CC=gcc

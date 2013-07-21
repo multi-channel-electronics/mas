@@ -1,4 +1,4 @@
-default: check
+default: all
 
 BASE = ../
 include $(BASE)Makefile.children
@@ -7,6 +7,10 @@ HEADERS = mcecmd.h mceconfig.h mcedata.h \
 	libmaslog.h mcedsp.h mce_library.h
 
 HEADERS_MCE = $(shell ls mce |sed 's/^/mce\//g' )
+
+all: mce_library.h check
+
+mce_library.h: mce_library.h.in 
 
 check: $(HEADERS) $(HEADERS_MCE)
 	@echo "Headers are present, do 'make install' to install them."

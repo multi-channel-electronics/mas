@@ -13,7 +13,8 @@ install_dirs = include interfaces applications scripts python config2
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h makefiles/Makefile.install \
 					 makefiles/Makefile.paths scripts/mas scripts/mas_mknodes \
-					 applications/mas_var/Makefile config2/Makefile config2/mas.cin
+					 applications/mas_var/Makefile config2/Makefile config2/mas.cin \
+					 include/mce_library.h applications/Makefile
 clean_deps = clean_driver
 install_deps = all
 
@@ -32,13 +33,13 @@ endif
 default: all
 
 all: $(all_deps)
-	for d in $(all_dirs); do ${MAKE} -C $$d || exit 1; done
+	for d in $(all_dirs); do ( cd $$d && ${MAKE} ) || exit 1; done
 
 clean: $(clean_deps)
-	for d in $(clean_dirs); do ${MAKE} -C $$d clean || exit 1; done
+	for d in $(clean_dirs); do ( cd $$d && ${MAKE} clean ) || exit 1; done
 
 install: $(install_deps)
-	for d in $(install_dirs); do ${MAKE} -C $$d install || exit 1; done
+	for d in $(install_dirs); do ( cd $$d && ${MAKE} install ) || exit 1; done
 
 .PHONY: default all clean install
 
@@ -46,6 +47,9 @@ install: $(install_deps)
 
 .PRECIOUS: Makefile
 Makefile: config.status Makefile.in
+	$(SHELL) ./config.status $@
+
+applications/Makefile: config.status applications/Makefile.in
 	$(SHELL) ./config.status $@
 
 applications/mas_var/Makefile: config.status applications/mas_var/Makefile.in
@@ -58,6 +62,9 @@ config2/mas.cin: config.status config2/mas.cin.in
 	$(SHELL) ./config.status $@
 
 driver/Makefile: config.status driver/Makefile.in
+	$(SHELL) ./config.status $@
+
+include/mce_library.h: config.status include/mce_library.h.in
 	$(SHELL) ./config.status $@
 
 makefiles/Makefile.install: config.status makefiles/Makefile.install.in

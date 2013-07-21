@@ -11,6 +11,10 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
+#include <mce_library.h>
+
+#ifdef NO_MCE_OPS
+#else
 #include <mce/data_ioctl.h>
 
 #include "context.h"
@@ -636,3 +640,4 @@ int mcelib_symlink(const char *newpath, const char *target)
     free(tmp);
     return 0;
 }
+#endif

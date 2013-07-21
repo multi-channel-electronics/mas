@@ -3,9 +3,14 @@ from distutils.core import setup, Extension
 import os
 import _default_setup as defaults
 
+includes = defaults.inc_dir.split()
+
+import numpy
+includes.append(numpy.get_include())
+
 module1 = Extension('pymce.mcelib',
                     sources = ['base.c'],
-                    include_dirs=defaults.inc_dir.split(),
+                    include_dirs=includes,
                     library_dirs=defaults.lib_dir.split(),
                     libraries=defaults.lib.split())
 

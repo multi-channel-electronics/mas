@@ -1,6 +1,12 @@
 #ifndef _MCE_TYPES_H_
 #define _MCE_TYPES_H_
 
+#ifdef NO_MCE_OPS
+#include <stdint.h>
+typedef uint32_t u32;
+typedef  int32_t i32;
+typedef uint16_t u16;
+#else
 #include <linux/types.h>
 #include <linux/unistd.h>
 
@@ -8,6 +14,7 @@
 typedef __u32 u32;
 typedef __s32 i32;
 typedef __u16 u16;
+#endif
 #endif
 
 /* String lengths... */

@@ -1,12 +1,17 @@
+#These shouldn't be built if MCE_OPS is disabled
+@MAKE_IF_MCE_OPS@OPS_SUB_DIRS=dsp_cmd dsp_status mas_mon maslog mce_cmd \
+	mce_jam mce_status mce_ramp mux_lock psc_status raw_acq testing
 
 # Don't make example dir by default, it's not really in our build system
-SUB_DIRS = dsp_cmd dsp_status mas_mon mas_param mas_var maslog mce_cmd \
-	mce_jam mce_ramp mce_status mux_lock psc_status raw_acq testing
+SUB_DIRS = mas_param mas_var ${OPS_SUB_DIRS}
 
 sub-dirs:
 	  @for d in ${SUB_DIRS}; do \
 			( cd $$d && ${MAKE}; ) || exit 1;\
 		done
+
+Makefile: Makefile.in ../config.status
+	cd .. && ${MAKE} applications/Makefile
 
 install:
 	@for d in ${SUB_DIRS}; do \

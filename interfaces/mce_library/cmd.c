@@ -7,6 +7,12 @@
 
 *******************************************************/
 
+#include "mce_library.h"
+
+#ifdef NO_MCE_OPS
+MAS_UNSUPPORTED(int mcecmd_close(mce_context_t *context))
+#else
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -459,3 +465,4 @@ int mcecmd_hardware_reset(mce_context_t* context)
 {
 	return ioctl(C_cmd.fd, MCEDEV_IOCT_HARDWARE_RESET);
 }
+#endif
