@@ -18,14 +18,15 @@
 #define FILE_OPEN(X, filename) X->fd = open(filename, O_WRONLY | O_CREAT)
 #define FILE_CLOSE(X) close(X->fd)
 #define FILE_CLEAR(X) X->fd=-1
-#define FILE_WRITE(X, data, size) write(X->fd, data, size)
+#define FILE_WRITE(X, data, size) (write(X->fd, data, size) < 0)
 #define FILE_OK(X) (X->fd >= 0)
-#define FILE_FLUSH(X) X = X;
+#define FILE_FLUSH(X) 0
 #else
 #define FILE_OPEN(X, filename) X->fout = fopen(filename, "a");
 #define FILE_CLOSE(X) fclose(X->fout)
 #define FILE_CLEAR(X) X->fout=NULL
-#define FILE_WRITE(X, data, size) fwrite(data, size, 1, X->fout)
+#define FILE_WRITE(X, data, size) \
+    (fwrite(data, size, 1, X->fout) == 0 && ferror(X->fout))
 #define FILE_OK(X) (X->fout != NULL)
 #define FILE_FLUSH(X) fflush(X->fout)
 #endif
@@ -68,7 +69,7 @@ static int fileseq_cycle(mce_acq_t *acq, fileseq_t *f, int this_frame)
 	if (f->fout == NULL) {
 		sprintf(acq->errstr, "Failed to open file '%s'", f->filename);
 		return -1;
-	}
+    }
 
         /* Update the indirection, maybe */
         mcelib_symlink(f->symlink, f->filename);
@@ -104,20 +105,28 @@ static int fileseq_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 		if (fileseq_cycle(acq, f, f->frame_count)) {
 			return -1;
 		}
-	}	
-	
-	if (f->fout == NULL) return -1;
-	fwrite(data, acq->frame_size*sizeof(*data), 1, f->fout);
+    }
 
-	return 0;
+    if (f->fout == NULL)
+        return -1;
+
+    if (fwrite(data, acq->frame_size*sizeof(*data), 1, f->fout) == 0
+            && ferror(f->fout))
+    {
+        return -1;
+    }
+
+    return 0;
 }
 
 static int fileseq_flush(mce_acq_t *acq)
 {
-	fileseq_t *f = (fileseq_t*)acq->storage->action_data;
-	if (f->fout != NULL)
-		fflush(f->fout);
-	return 0;
+    fileseq_t *f = (fileseq_t*)acq->storage->action_data;
+    if (f->fout != NULL)
+        if(fflush(f->fout))
+            return -1;
+
+    return 0;
 }
 
 mcedata_storage_t fileseq_actions = {
@@ -156,8 +165,8 @@ static int flatfile_init(mce_acq_t *acq)
 		}
 	}
 
-        /* Update the indirection, maybe */
-        mcelib_symlink(f->symlink, f->filename);
+    /* Update the indirection, maybe */
+    mcelib_symlink(f->symlink, f->filename);
 
 	return 0;
 }
@@ -176,19 +185,23 @@ static int flatfile_cleanup(mce_acq_t *acq)
 
 static int flatfile_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
-	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
-	if (!FILE_OK(f)) return -1;
-        FILE_WRITE(f, data, acq->frame_size*sizeof(*data));
-	return 0;
+    flatfile_t *f = (flatfile_t*)acq->storage->action_data;
+
+    if (!FILE_OK(f))
+        return -1;
+
+    if (FILE_WRITE(f, data, acq->frame_size*sizeof(*data)))
+        return -1;
+
+    return 0;
 }
 
 static int flatfile_flush(mce_acq_t *acq)
 {
-	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
-	FILE_FLUSH(f);
-/* 	if (f->fd  != NULL) */
-/* 		fflush(f->fout); */
-	return 0;
+    flatfile_t *f = (flatfile_t*)acq->storage->action_data;
+    if (FILE_FLUSH(f))
+        return -1;
+    return 0;
 }
 
 mcedata_storage_t flatfile_actions = {
