@@ -74,6 +74,13 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 	acq->frame_size = acq->rows * acq->cols * acq->n_cards + 
 		MCEDATA_HEADER + MCEDATA_FOOTER;
 
+    // Check that it is a reasonable size.
+    if (acq->frame_size > MCEDATA_PACKET_MAX) {
+        fprintf(stderr, "MCE packet size too large (%i dwords), failing.\n",
+                acq->frame_size);
+        return -MCE_ERR_FRAME_SIZE;
+    }
+
 	// Lookup "cc ret_dat_s" (frame count) or fail
 	if ((ret_val=mcecmd_load_param(
 		     acq->context, &acq->ret_dat_s, "cc", "ret_dat_s")) != 0) {

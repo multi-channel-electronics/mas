@@ -2,6 +2,7 @@
  *      vim: sw=4 ts=4 et tw=80
  */
 #include <string.h>
+#include <assert.h>
 
 #include "context.h"
 #include "frame_manip.h"
@@ -68,6 +69,8 @@ int sort_columns( mce_acq_t *acq, uint32_t *data )
 
 	if (cards_out == 1 && cards_in == 1)
 		return 0;
+
+	assert(acq->frame_size <= MCEDATA_PACKET_MAX);
 
 	memcpy(temp, data, header_size*sizeof(*temp));
 	memset(temp + header_size, 0, data_size_out*sizeof(*temp));
