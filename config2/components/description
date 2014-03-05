@@ -93,10 +93,10 @@ echo " *\n";
 
 /* RC features */
 
-echo " *  - RC integral clamp support:      " . (fw_range("rc", $min=0x500000d)
+echo " *  - RC integral clamp support:      " . ($has_iterm_clamp
 ? "yes" : "no") .  "\n";
 
-echo " *  - RC configurable filter support: " . (fw_range("rc", $min=0x5010000)
+echo " *  - RC configurable filter support: " . ($has_filt_cfg
 ? "yes" : "no") .  "\n";
 
 echo " *  - RC p-term decay support:        " . ($has_pterm ? "yes" : "no")

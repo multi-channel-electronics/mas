@@ -139,20 +139,20 @@
                     default_set = 3;
                 },
 <? } ?>
-<? if (fw_range("rc", $min=0x500000a)) { ?>
+<? if ($has_filt_cfg) { ?>
                 {
                     name = "fltr_type";
                     id = 0x65;
                 },
 <? } ?>
-<? if (fw_range("rc", $min=0x500000d)) { ?>
+<? if ($has_iterm_clamp) { ?>
                 {
                     name = "integral_clamp";
                     id = 0x66;
                     default_set = 0;
                 },
 <? } ?>
-<? if (fw_range("rc", $min=0x5010000)) { ?>
+<? if ($has_filt_cfg) { ?>
                 {
                     name = "fltr_coeff";
                     id = 0x1A;
