@@ -120,7 +120,7 @@ char *mcelib_default_masfile(void)
 {
     if (getenv("MAS_MAS_CFG"))
         return mcelib_shell_expand(NULL, "${MAS_MAS_CFG}");
-    return mcelib_shell_expand(NULL, DEFAULT_MASFILE);
+    return mcelib_shell_expand(NULL, MAS_ETCDIR "/mas.cfg");
 }
 
 const char *mcelib_lookup_dir(mce_context_t *context, int index)

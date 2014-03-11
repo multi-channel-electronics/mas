@@ -116,8 +116,8 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
                 free(realpath);
             }
         } else {
-            /* no mas.cfg: just use a default value */
-            c->etc_dir = strdup("/etc/mce");
+            /* no mas.cfg: use the configure-time default */
+            c->etc_dir = strdup(MAS_ETCDIR);
         }
     }
 
@@ -131,51 +131,25 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
             CONFIG_TYPE_STRING ||
             config_setting_length(config_item) <= c->fibre_card)
     {
-        c->data_root = malloc(20);
+        /* fallback to configure-time default if not specified */
 #if MULTICARD
-        sprintf(c->data_root, "/data/mce%i", c->fibre_card);
+        c->data_root = malloc(sizeof(MAS_DATAROOT) + 20);
+        sprintf(c->data_root, MAS_DATAROOT "%i", c->fibre_card);
 #else
-        strcpy(c->data_root, "/data/cryo");
+        c->data_root = strdup(MAS_DATAROOT);
 #endif
     } else
         c->data_root = strdup(config_setting_get_string_elem(config_item,
                     c->fibre_card));
 
-    /* other dirs */
-    c->config_dir = get_default_dir(c, masconfig, "confdir",
-            MAS_PREFIX "/config");
-    c->temp_dir =  get_default_dir(c, masconfig, "tmpdir", "/tmp");
-    c->data_subdir = get_default_dir(c, masconfig, "datadir", "current_data");
-    c->mas_root = get_default_dir(c, masconfig, "masroot",
-            MAS_PREFIX "/mce_script");
+    /* other dirs -- fallback to configure-time defaults if not specified */
+    c->config_dir = get_default_dir(c, masconfig, "confdir", MAS_CONFDIR);
+    c->temp_dir =  get_default_dir(c, masconfig, "tmpdir", MAS_TEMPDIR);
+    c->data_subdir = get_default_dir(c, masconfig, "datadir", MAS_DATADIR);
+    c->mas_root = get_default_dir(c, masconfig, "masroot", MAS_ROOTDIR);
 
     /* jam dir */
-    c->jam_dir = get_default_dir(c, masconfig, "jamdir",
-#if MULTICARD
-            MAS_PREFIX "/firmware"
-#else
-            NULL
-#endif
-            );
-
-#if ! MULTICARD
-    /* in the single card case, we use MAS_ROOT/firmware if it exists for
-     * backwards compatibility
-     */
-    if (c->jam_dir == NULL) {
-        struct stat statbuf;
-
-        c->jam_dir = malloc(strlen(c->mas_root) + sizeof("/firmware") + 1);
-        sprintf(c->jam_dir, "%s/firmware", c->mas_root);
-
-        /* does it exist and is it a directory? */
-        if (stat(c->jam_dir, &statbuf) || !S_ISDIR(statbuf.st_mode)) {
-            free(c->jam_dir);
-            c->jam_dir = strdup(MAS_PREFIX "/firmware");
-        }
-    }
-#endif
-
+    c->jam_dir = get_default_dir(c, masconfig, "jamdir", MAS_JAMDIR);
     free(mas_cfg);
 
     return c;

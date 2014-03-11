@@ -59,6 +59,20 @@ MAS_INSTALL=@MAS_PREFIX@
 MAS_PREFIX=@MAS_PREFIX@
 CPPFLAGS += -DMAS_PREFIX="\"${MAS_PREFIX}\""
 
+# these substituions MAY ONLY BE USED in the no-mas.cfg fallback code in
+# interfaces/mce_library/context.c and for the default location of mas.cfg
+# in interfaces/mce_library/defaults.c.
+#
+# Using them elsewhere will break path abstraction.
+#
+MAS_ROOTDIR=@MAS_ROOTDIR_MAKE@
+MAS_ETCDIR=@MAS_ETCDIR@
+MAS_CONFDIR=@MAS_CONFDIR_MAKE@
+MAS_JAMDIR=@MAS_JAMDIR_MAKE@
+MAS_TEMPDIR=@MAS_TEMPDIR@
+MAS_DATAROOT=@MAS_DATAROOT@
+MAS_DATADIR=@MAS_DATADIR@
+
 MAS_INSTALL_BIN=$(MAS_INSTALL)/bin/
 MAS_INSTALL_LIB=$(MAS_INSTALL)/lib/
 MAS_INSTALL_INC=$(MAS_INSTALL)/include/

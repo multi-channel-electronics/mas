@@ -5,6 +5,17 @@ include $(BASE)Makefile.children
 
 LIBNAME = lib$(MCELIB)
 
+# the following definitions may only used in the no-mas.cfg fallback code in
+# context.c and as the default location for mas.cfg in defaults.c.  Using them
+# elsewhere will break path abstraction.
+CPPFLAGS += -DMAS_ETCDIR="\"${MAS_ETCDIR}\"" \
+						-DMAS_CONFDIR="\"${MAS_CONFIDR}\"" \
+						-DMAS_JAMDIR="\"${MAS_JAMDIR}\"" \
+						-DMAS_ROOTDIR="\"${MAS_ROOTDIR}\"" \
+						-DMAS_TEMPDIR="\"${MAS_TEMPDIR}\"" \
+						-DMAS_DATAROOT="\"${MAS_DATAROOT}\"" \
+						-DMAS_DATADIR="\"${MAS_DATADIR}\""
+
 OBJECTS = \
 					acq.o \
 					cmd.o \
