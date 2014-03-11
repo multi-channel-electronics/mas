@@ -1,7 +1,10 @@
 <?php
 
-/* install prefix */
+/* MAS prefix */
 $prefix = "@prefix@";
+
+/* mce_script prefix */
+$mas_root = @MAS_ROOTDIR_PHP@;
 
 /* The network host and port for the logger daemon */
 $log_address = "localhost:7884";
@@ -14,9 +17,8 @@ $n_cards = @MAX_FIBRE_CARD@;
 
 /* directories */
 $etc_dir = "@MAS_ETCDIR@";
-$conf_dir = @MAS_CONFDIR@;
-$jam_dir = @MAS_JAMDIR@;
-$mas_root = @MAS_ROOTDIR@;
+$conf_dir = @MAS_CONFDIR_PHP@;
+$jam_dir = @MAS_JAMDIR_PHP@;
 $mas_temp = "@MAS_TEMPDIR@";
 $data_root = "@MAS_DATAROOT@";
 $data_dir = "@MAS_DATADIR@";

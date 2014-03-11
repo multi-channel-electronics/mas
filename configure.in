@@ -142,16 +142,6 @@ fi
 AC_DEFINE_UNQUOTED([DEFAULT_MCE], [$DEFAULT_MCE],
                    [ Define to the number of the default fibre card. ])
 
-AC_ARG_VAR([DEFAULT_MASFILE],
-           [the default MAS configuration file (/etc/mce/mas.cfg is used if ]
-           [not specified)])
-if test -z "$DEFAULT_MASFILE"; then
-  DEFAULT_MASFILE="/etc/mce/mas.cfg"
-fi
-AC_DEFINE_UNQUOTED([DEFAULT_MASFILE], ["$DEFAULT_MASFILE"],
-                   [ Define to the default MAS configuration file. ])
-
-
 # Some driver options.
 
 AC_ARG_ENABLE([quiet-driver], [AS_HELP_STRING([--enable-quiet-driver],
@@ -415,6 +405,7 @@ AC_ARG_WITH([jam-dir], [AS_HELP_STRING([--with-jam-dir=DIR],
             [For single-card MAS, "MAS_ROOT/firmware" is used if present, ]
             [otherwise "PREFIX/firmware" is used.)])],
             [MAS_JAMDIR="${withval}"], [MAS_JAMDIR="no"])
+legacy_jamdir=false
 if test "x$MAS_JAMDIR" = "xno" -a $MAX_FIBRE_CARD -eq 1; then
   # look for an existing $MAS_ROOT/firmware
   if test "x$MAS_ROOTDIR" = "xno"; then
@@ -424,43 +415,61 @@ prefix=$prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 echo \$prefix/mce_script
 EOF
-
+    mas_root=`$SHELL conftest.sh`
   else
     mas_root=$MAS_ROOTDIR
   fi
   if test -d $mas_root/firmware; then
-    #(there is some embedded php syntax happening here...)
-    MAS_JAMDIR="\$mas_root . \"/firmware\""
+    legacy_jamdir=true
   fi
 fi
 
-#(there is some embedded php syntax happening here...)
-if test "x$MAS_JAMDIR" = "xno"; then
-  MAS_JAMDIR="\$prefix . \"/firmware\""
-else
-  MAS_JAMDIR="\"$MAS_JAMDIR\""
-fi
-AC_SUBST([MAS_JAMDIR])
+dnl in all of the following path malarkey the _PHP variables contain embedded
+dnl php syntax while the _MAKE variables contain embedded make syntax.  If we
+dnl were to use php to generate the makefile, we could get rid of this
+dnl duplication.  Then we'd have a m4 -> sh -> php -> make -> CPP -> C chain to
+dnl resolve paths.  Fun times for all.
+dnl
+dnl Note to self: after doing that, remember to replace this hard-coded
+dnl configure.in with a python script that pipes the output of a perl script
+dnl through a ruby script to generate this file.
 
-#(there is some embedded php syntax happening here...)
-if test "x$MAS_ROOTDIR" = "xno"; then
-  MAS_ROOTDIR="\$prefix . \"/mce_script\""
+if test "x$MAS_JAMDIR" != "xno"; then
+  MAS_JAMDIR_PHP="\"$MAS_JAMDIR\""
+  MAS_JAMDIR_MAKE="${MAS_JAMDIR}"
+elif $legacy_jamdir; then
+  MAS_JAMDIR_PHP="\$mas_root . \"/firmware\""
+  MAS_JAMDIR_MAKE="\$(MAS_DATAROOT)/firmware"
 else
-  MAS_ROOTDIR="\"$MAS_ROOTDIR\""
+  MAS_JAMDIR_PHP="\$prefix . \"/firmware\""
+  MAS_JAMDIR_MAKE="\$(prefix)/firmware"
 fi
-AC_SUBST([MAS_ROOTDIR])
+AC_SUBST([MAS_JAMDIR_PHP])
+AC_SUBST([MAS_JAMDIR_MAKE])
+
+if test "x$MAS_ROOTDIR" = "xno"; then
+  MAS_ROOTDIR_PHP="\$prefix . \"/mce_script\""
+  MAS_ROOTDIR_MAKE="\$(prefix)/mce_script"
+else
+  MAS_ROOTDIR_PHP="\"$MAS_ROOTDIR\""
+  MAS_ROOTDIR_MAKE="$MAS_ROOTDIR"
+fi
+AC_SUBST([MAS_ROOTDIR_PHP])
+AC_SUBST([MAS_ROOTDIR_MAKE])
 
 AC_ARG_WITH([mas-config], [AS_HELP_STRING([--with-mas-config=DIR],
             [the default MCE Script configuration directory. ]
             [(PREFIX/config is used if not specified.)])],
             [MAS_CONFDIR="${withval}"], [MAS_CONFDIR="no"])
-#(there is some embedded php syntax happening here...)
 if test "x$MAS_CONFDIR" = "xno"; then
-  MAS_CONFDIR="\$prefix . \"/config\""
+  MAS_CONFDIR_PHP="\$prefix . \"/config\""
+  MAS_CONFDIR_MAKE="\$(prefix)/config"
 else
-  MAS_CONFDIR="\"$MAS_CONFDIR\""
+  MAS_CONFDIR_PHP="\"$MAS_CONFDIR\""
+  MAS_CONFDIR_MAKE="$MAS_CONFDIR"
 fi
-AC_SUBST([MAS_CONFDIR])
+AC_SUBST([MAS_CONFDIR_PHP])
+AC_SUBST([MAS_CONFDIR_MAKE])
 
 AC_ARG_WITH([mas-temp], [AS_HELP_STRING([--with-mas-temp=DIR],
             [the temporary directory for use by MAS and MCE Script. ]
@@ -541,9 +550,9 @@ fi
 echo "  MAS user/group:          ${MAS_USER}/${MAS_GROUP}"
 echo
 echo "  etc dir:                 \"${MAS_ETCDIR}\""
-echo "  config dir:              ${MAS_CONFDIR}"
-echo "  jam dir:                 ${MAS_JAMDIR}"
-echo "  mce_script dir:          ${MAS_ROOTDIR}"
+echo "  config dir:              ${MAS_CONFDIR_PHP}"
+echo "  jam dir:                 ${MAS_JAMDIR_PHP}"
+echo "  mce_script dir:          ${MAS_ROOTDIR_PHP}"
 echo "  temp dir:                \"${MAS_TEMPDIR}\""
 echo "  data root:               \"${MAS_DATAROOT}\""
 echo "  data subdir:             \"${MAS_DATADIR}\""
