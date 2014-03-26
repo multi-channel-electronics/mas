@@ -11,8 +11,6 @@
 #ifndef _MCECONFIG_H_
 #define _MCECONFIG_H_
 
-#include <stdint.h>
-
 /*! \file mceconfig.h
  *
  *  \brief Routines for parsing the hardware configuration file using
