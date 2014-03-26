@@ -2,10 +2,9 @@
 
 import sys
 import time
+import os
 import subprocess as sp
 from optparse import OptionParser
-
-BIN_DIR = '/usr/mce/bin/'
 
 class dspError(Exception):
     pass
@@ -13,8 +12,33 @@ class dspError(Exception):
 class dsp:
     X, Y, P = 'X', 'Y', 'P'
 
+    def __init__(self):
+        # figure out bindir
+        try:
+            self.__bin_dir__ = os.environ["MAS_BIN"]
+        except KeyError:
+            # no bindir, look for mas_var
+            try: 
+                mas_var = os.environ["MAS_VAR"]
+            except KeyError: 
+                # sensible default
+                mas_var = '/usr/mce/bin/mas_var'
+
+            # does mas_var exist and is it executable?
+            if not (os.path.isfile(mas_var) and os.access(mas_var, os.X_OK)):
+                raise dspError, \
+                    "Unable to determine bindir; set MAS_VAR or MAS_BIN"
+
+            p = sp.Popen([mas_var, "--bin-dir"], stdout=sp.PIPE)
+            if (p.returncode):
+                raise dspError, \
+                    "Unable to determine bindir; set MAS_VAR or MAS_BIN"
+            out, err = p.communicate()
+            self.__bin_dir__ = out.strip();
+
     def cmd(self, args):
-        cmd = [BIN_DIR + 'dsp_cmd', '-qpx'] + [str(x) for x in args]
+        cmd = [os.path.join(self.__bin_dir__, 'dsp_cmd'), '-qpx'] \
+                + [str(x) for x in args]
         p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.STDOUT)
         out, err = p.communicate()
         out = out.strip()
