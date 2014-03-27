@@ -5,7 +5,7 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-DEFS += -DVERSION_STRING="$(REPO_VER)" -DMCE_STATIC_LIBS="\"$(LIBS)\""
+DEFS += -DMCE_STATIC_LIBS="\"$(LIBS)\""
 
 LIBRARY=$(MCE_LIBS)
 
@@ -14,20 +14,40 @@ CFLAGS += $(DEFS)
 # targets
 
 OBJECTS = mas_var.o
-HEADERS = ../../defaults/config.h $(LIBHEADERS)
+HEADERS = version.h ../../defaults/config.h $(LIBHEADERS)
 
 all: Makefile mas_var
 
 mas_var: $(OBJECTS) $(LIBDEP)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
-$(OBJECTS): $(HEADERS)
+mas_var.o: mas_var.c $(HEADERS)
+
+version.h: version.stamp
+	@if test ! -f $@; then \
+		rm -f $<; \
+		$(MAKE) $<; \
+		fi
+
+version.stamp: version.h.new
+	@if test -e version.h && diff -q version.h version.h.new; then \
+		echo version.h unchanged; \
+		rm -f version.h.new; \
+		else \
+		echo "version.h updated"; \
+		mv -f version.h.new version.h; \
+		fi
+	@touch $@
+
+version.h.new:
+	@echo "#define VERSION_STRING ${REPO_VER}" > $@
+	@echo "#define VERSION_NUM ${INT_VER}" >> $@
 
 tidy:
-	rm -f *~ *.o
+	rm -f *~ *.o version.h.new
 
 clean:	tidy
-	rm -f mas_var
+	rm -f mas_var version.stamp version.h
 
 # Make the install__mas_var rule
 INSTALL_TARGET=mas_var

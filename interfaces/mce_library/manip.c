@@ -10,7 +10,7 @@
 
 #include "context.h"
 
-int mcecmd_prewrite_manip(const mce_param_t* param, u32* data, int count)
+int mcecmd_prewrite_manip(const mce_param_t* param, uint32_t* data, int count)
 {
 	int i;
 	const param_t *p = &param->param;
@@ -25,7 +25,7 @@ int mcecmd_prewrite_manip(const mce_param_t* param, u32* data, int count)
 	return 0;
 }
 
-int mcecmd_postread_manip(const mce_param_t* param, u32* data, int count)
+int mcecmd_postread_manip(const mce_param_t* param, uint32_t* data, int count)
 {
 	int i;
 	const param_t *p = &param->param;

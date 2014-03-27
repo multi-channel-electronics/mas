@@ -22,6 +22,8 @@
  *  device file.
  */
 
+#include <stdlib.h>
+#include <sys/types.h>
 #include <mce/frame.h>
 #include <mce/acq.h>
 #include <mce/data_mode.h>
@@ -31,6 +33,8 @@
 int mcedata_open(mce_context_t *context);
 int mcedata_close(mce_context_t *context);
 
+/* low-level operations */
+ssize_t mcedata_read(mce_context_t *context, void *buf, size_t size);
 
 /* ioctl access to driver */
 
@@ -54,7 +58,7 @@ int mcedata_lock_up(mce_context_t* context);
 /* rambuff: a user-defined callback routine services each frame */
 
 typedef int (*rambuff_callback_t)(unsigned long user_data,
-				  int frame_size, u32 *buffer);
+        int frame_size, uint32_t *buffer);
 
 mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
 					  unsigned long user_data);
@@ -94,11 +98,20 @@ mcedata_storage_t* mcedata_dirfileseq_create(const char *basename, int interval,
 
 /* multisync storage class -- container for multiple storage objects */
 
+enum mcedata_stage {mcedata_acq_init, mcedata_acq_cleanup,
+    mcedata_acq_pre_frame, mcedata_acq_flush, mcedata_acq_post_frame};
+typedef enum mcedata_stage mcedata_stage_t;
+
+typedef int (*multisync_err_callback_t)(void *user_data, int sync_num, int err,
+        mcedata_stage_t stage);
+
 mcedata_storage_t* mcedata_multisync_create(int options);
 
 int mcedata_multisync_add(mce_acq_t *multisync_acq,
                           mcedata_storage_t *sync);
 
+void mcedata_multisync_errcallback(mce_acq_t *multisync_acq,
+        multisync_err_callback_t callback, void *user_data);
 
 int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
 		       int options, int cards, int rows_reported, 

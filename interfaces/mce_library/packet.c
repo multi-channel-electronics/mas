@@ -6,9 +6,9 @@
 #include <string.h>
 #include "context.h"
 
-int mcecmd_load_command(mce_command *cmd, u32 command,
-		     u32 card_id, u32 para_id, 
-		     int count, int data_count, const u32 *data)
+int mcecmd_load_command(mce_command *cmd, uint32_t command,
+        uint32_t card_id, uint32_t para_id, 
+        int count, int data_count, const uint32_t *data)
 {
 	int i;
 
@@ -22,7 +22,7 @@ int mcecmd_load_command(mce_command *cmd, u32 command,
 	cmd->count = count;
 
 	for (i=0; i<data_count && i<MCE_CMD_DATA_MAX; i++)
-		cmd->data[i] = data[i];
+		cmd->data[i] = (u32)(data[i]);
 	
 	cmd->checksum = mcecmd_cmd_checksum(cmd);
 
@@ -36,18 +36,18 @@ int mcecmd_load_command(mce_command *cmd, u32 command,
 
 /* Specialty */
 
-u32 mcecmd_cmd_checksum( const mce_command *cmd )
+uint32_t mcecmd_cmd_checksum( const mce_command *cmd )
 {
-	u32 chksum = 0;
-	u32 *p = (u32*) &cmd->command;
-	while (p < (u32*) &cmd->checksum )
+    uint32_t chksum = 0;
+    uint32_t *p = (uint32_t*) &cmd->command;
+    while (p < (uint32_t*) &cmd->checksum )
 		chksum ^= *p++;
 	return chksum;
 }
 
-u32 mcecmd_checksum( const u32 *data, int count )
+uint32_t mcecmd_checksum( const uint32_t *data, int count )
 {
-	u32 chksum = 0;
+    uint32_t chksum = 0;
 	while (count>0)
 		chksum ^= data[--count];	
 	return chksum;

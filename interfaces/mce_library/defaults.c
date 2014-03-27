@@ -220,8 +220,8 @@ const char *mcelib_lookup_dir(mce_context_t *context, int index)
             }
             break;
         default:
-            fprintf(stderr, "mcelib: ERROR: can't find directory #%i in %s\n",
-                    index, __func__);
+            mcelib_error(context, "can't find directory #%i in %s\n", index,
+                    __func__);
     }
 
     return dir;

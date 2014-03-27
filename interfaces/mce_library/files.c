@@ -18,14 +18,15 @@
 #define FILE_OPEN(X, filename) X->fd = open(filename, O_WRONLY | O_CREAT)
 #define FILE_CLOSE(X) close(X->fd)
 #define FILE_CLEAR(X) X->fd=-1
-#define FILE_WRITE(X, data, size) write(X->fd, data, size)
+#define FILE_WRITE(X, data, size) (write(X->fd, data, size) < 0)
 #define FILE_OK(X) (X->fd >= 0)
-#define FILE_FLUSH(X) X = X;
+#define FILE_FLUSH(X) 0
 #else
 #define FILE_OPEN(X, filename) X->fout = fopen(filename, "a");
 #define FILE_CLOSE(X) fclose(X->fout)
 #define FILE_CLEAR(X) X->fout=NULL
-#define FILE_WRITE(X, data, size) fwrite(data, size, 1, X->fout)
+#define FILE_WRITE(X, data, size) \
+    (fwrite(data, size, 1, X->fout) == 0 && ferror(X->fout))
 #define FILE_OK(X) (X->fout != NULL)
 #define FILE_FLUSH(X) fflush(X->fout)
 #endif
@@ -94,7 +95,7 @@ static int fileseq_cleanup(mce_acq_t *acq)
 	
 	return 0;
 }
-static int fileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int fileseq_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	fileseq_t *f = (fileseq_t*)acq->storage->action_data;
 
@@ -106,8 +107,14 @@ static int fileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
 		}
 	}	
 	
-	if (f->fout == NULL) return -1;
-	fwrite(data, acq->frame_size*sizeof(*data), 1, f->fout);
+	if (f->fout == NULL)
+        return -1;
+
+	if (fwrite(data, acq->frame_size*sizeof(*data), 1, f->fout) == 0
+            && ferror(f->fout))
+    {
+        return -1;
+    }
 
 	return 0;
 }
@@ -116,7 +123,8 @@ static int fileseq_flush(mce_acq_t *acq)
 {
 	fileseq_t *f = (fileseq_t*)acq->storage->action_data;
 	if (f->fout != NULL)
-		fflush(f->fout);
+        if (fflush(f->fout))
+            return -1;
 	return 0;
 }
 
@@ -174,20 +182,23 @@ static int flatfile_cleanup(mce_acq_t *acq)
 	return 0;
 }
 
-static int flatfile_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int flatfile_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
-	if (!FILE_OK(f)) return -1;
-        FILE_WRITE(f, data, acq->frame_size*sizeof(*data));
+	if (!FILE_OK(f))
+        return -1;
+
+    if (FILE_WRITE(f, data, acq->frame_size*sizeof(*data)))
+        return -1;
+
 	return 0;
 }
 
 static int flatfile_flush(mce_acq_t *acq)
 {
 	flatfile_t *f = (flatfile_t*)acq->storage->action_data;
-	FILE_FLUSH(f);
-/* 	if (f->fd  != NULL) */
-/* 		fflush(f->fout); */
+    if (FILE_FLUSH(f))
+        return -1;
 	return 0;
 }
 
@@ -206,7 +217,7 @@ mcedata_storage_t flatfile_actions = {
 typedef struct rambuff_struct {
 
 	int frame_size;
-	u32 *buffer;
+    uint32_t *buffer;
 	
 	unsigned long user_data;
 	rambuff_callback_t callback;
@@ -219,7 +230,7 @@ static int rambuff_init(mce_acq_t *acq)
 	rambuff_t *f = (rambuff_t*)acq->storage->action_data;
 	int b_size = acq->frame_size*sizeof(f->buffer);
 	if (f->buffer != NULL) free(f->buffer);
-	f->buffer = (u32*) malloc(b_size);
+    f->buffer = (uint32_t*) malloc(b_size);
 	if (f->buffer == NULL) {
 		sprintf(acq->errstr, "rambuff could not allocate %i bytes", b_size);
 		return -1;
@@ -236,7 +247,7 @@ static int rambuff_cleanup(mce_acq_t *acq)
 	return 0;
 }
 
-static int rambuff_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int rambuff_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	rambuff_t *f = (rambuff_t*)acq->storage->action_data;
 

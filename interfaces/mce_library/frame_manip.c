@@ -44,9 +44,9 @@ static int count_bits( int bits )
 }
 
 
-int sort_columns( mce_acq_t *acq, u32 *data )
+int sort_columns( mce_acq_t *acq, uint32_t *data )
 {
-	u32 temp[MCEDATA_PACKET_MAX];
+    uint32_t temp[MCEDATA_PACKET_MAX];
 
 	int header_size = MCEDATA_HEADER;
 	int footer_size = MCEDATA_FOOTER;

@@ -35,7 +35,7 @@ static inline int get_last_error(mce_context_t *context)
 }
 
 
-static int log_data(maslog_t *logger, u32 *buffer, int count, int min_raw,
+static int log_data(maslog_t *logger, uint32_t *buffer, int count, int min_raw,
         char *msg, int level)
 {
 	char out[2048];
@@ -161,7 +161,7 @@ int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
     // Datagram->buffer contains "  RP", size, then only "size" valid words.
     rep0 = MCE_REPLY(&gram);
     memset(rep, 0, sizeof(*rep));
-    memcpy(rep, rep0->data, rep0->size * sizeof(__u32));
+    memcpy(rep, rep0->data, rep0->size * sizeof(uint32_t));
 
 	return 0;
 }
@@ -176,7 +176,7 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 	char errstr[MCE_LONG];
 	C_cmd_check;
 
-	log_data(context->maslog, (u32*)cmd + 2, 62, 2, "command",
+    log_data(context->maslog, (uint32_t*)cmd + 2, 62, 2, "command",
 		 LOG_LEVEL_CMD);
 
 	/* Loop the attempts to protect against very rare partial
@@ -201,7 +201,7 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 		}
 
 		// Analysis of received packet
-		err = mcecmd_checksum((u32*)rep, sizeof(*rep) / sizeof(u32)) ?
+        err = mcecmd_checksum((uint32_t*)rep, sizeof(*rep) / sizeof(uint32_t)) ?
 			-MCE_ERR_CHKSUM : 0;
 
 		if (!err) err = mcecmd_cmd_match_rep(cmd, rep);
@@ -211,32 +211,32 @@ int mcecmd_send_command(mce_context_t* context, mce_command *cmd, mce_reply *rep
 	switch (-err) {
 
 	case MCE_ERR_CHKSUM:
-		log_data(context->maslog, (u32*)rep, 60, 2,
+        log_data(context->maslog, (uint32_t*)rep, 60, 2,
 			 "reply [checksum error] ",
 			 LOG_LEVEL_REP_ER);
 		break;
 
 	case MCE_ERR_FAILURE:
-		log_data(context->maslog, (u32*)rep, 60, 2,
+        log_data(context->maslog, (uint32_t*)rep, 60, 2,
 			 "reply [command failed] ",
 			 LOG_LEVEL_REP_ER);
 		break;
 
 	case MCE_ERR_REPLY:
-		log_data(context->maslog, (u32*)rep, 60, 2,
+        log_data(context->maslog, (uint32_t*)rep, 60, 2,
 			 "reply [consistency error] ",
 			 LOG_LEVEL_REP_ER);
 		break;
 
 	case 0:
-		log_data(context->maslog, (u32*)rep, 60, 2, "reply  ",
+        log_data(context->maslog, (uint32_t*)rep, 60, 2, "reply  ",
 			 LOG_LEVEL_REP_OK);
 		break;
 
 	default:
 		sprintf(errstr, "reply [strange error '%s'] ",
 			mcelib_error_string(err));
-		log_data(context->maslog, (u32*)rep, 60, 2,
+        log_data(context->maslog, (uint32_t*)rep, 60, 2,
 			 errstr, LOG_LEVEL_REP_ER);
 	}
 
@@ -252,28 +252,28 @@ int mcecmd_load_param(mce_context_t* context, mce_param_t *param,
 
 
 int mcecmd_write_block(mce_context_t* context, const mce_param_t *param,
-		       int count, u32 *data)
+        int count, uint32_t *data)
 {
 	// This used to run the show, but these days we pass it to write_range
 	return mcecmd_write_range(context, param, 0, data, count);
 }
 
 int mcecmd_read_block(mce_context_t* context, const mce_param_t *param,
-		      int count, u32 *data)
+        int count, uint32_t *data)
 {
     // Boring...
     return mcecmd_read_range(context, param, 0, data, count);
 }
 
 #define QUICK_FILL(cmd, card, para, n) {		\
-		.preamble = {PREAMBLE_0, PREAMBLE_1},	\
-			.command  = cmd,		\
-				 .card_id  = card,	\
-				 .para_id  = para,	\
-				 .count    = n }
+    .preamble = {PREAMBLE_0, PREAMBLE_1},	\
+    .command  = (u32)(cmd),		\
+    .card_id  = (u16)(card),	\
+    .para_id  = (u16)(para),	\
+    .count    = (u32)(n) }
 
 int mcecmd_send_command_simple(mce_context_t* context, int card_id, int para_id,
-			       u32 cmd_code)
+			       uint32_t cmd_code)
 {
 	mce_command cmd = QUICK_FILL(cmd_code, card_id, para_id, 1);
 	cmd.data[0] = 1;
@@ -335,11 +335,11 @@ int mcecmd_read_size(const mce_param_t *p, int count)
 /* MCE special commands - these provide additional logical support */
 
 int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
-		       int data_index, u32 *data, int count)
+        int data_index, uint32_t *data, int count)
 {
 	int error = 0;
-	u32 _block[MCE_CMD_DATA_MAX];
-	u32* block = _block;
+    uint32_t _block[MCE_CMD_DATA_MAX];
+    uint32_t* block = _block;
 	int i;
 
 	C_cmd_check;
@@ -389,7 +389,7 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 }
 
 int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
-		      int data_index, u32 *data, int count)
+        int data_index, uint32_t *data, int count)
 {
 	int error = 0, i;
 
@@ -414,7 +414,7 @@ int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
 		if (error) return error;
 
 		// I guess the data must be valid then.
-		memcpy(data+i*count, rep.data+data_index, count*sizeof(u32));
+        memcpy(data+i*count, rep.data+data_index, count*sizeof(uint32_t));
 	}
 
 	// Post-process the reply data before returning?
@@ -424,22 +424,22 @@ int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
 }
 
 int mcecmd_write_element(mce_context_t* context, const mce_param_t *param,
-			 int data_index, u32 datum)
+        int data_index, uint32_t datum)
 {
 	return mcecmd_write_range(context, param, data_index, &datum, 1);
 }
 
 int mcecmd_read_element(mce_context_t* context, const mce_param_t *param,
-			int data_index, u32 *datum)
+        int data_index, uint32_t *datum)
 {
 	return mcecmd_read_range(context, param, data_index, datum, 1);
 }
 
 int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
-			     int count, u32 *data, int retries)
+        int count, uint32_t *data, int retries)
 {
 	int i, error;
-	u32 readback[MCE_CMD_DATA_MAX];
+    uint32_t readback[MCE_CMD_DATA_MAX];
 	int done = 0;
 
 	if (param->card.card_count != 1)

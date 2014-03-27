@@ -1,4 +1,7 @@
-/******************************************************
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
+ /******************************************************
   mceconfig.h - header file for MCE API, config module
 
   Matthew Hasselfield, 08.01.02
@@ -22,6 +25,7 @@
  */
 
 #include <libconfig.h>
+#include <stdint.h>
 
 
 /* Parameter type enumerator */
@@ -124,9 +128,9 @@ typedef struct {
 
 	int count;
 
-	int flags;
-	u32 min;
-	u32 max;
+    int flags;
+    uint32_t min;
+    uint32_t max;
 	config_setting_t *defaults;
 
 	int map_count;
@@ -144,8 +148,8 @@ typedef struct {
 	mce_cardnature_t nature;
 
 	char name[MCE_SHORT];
-	char type[MCE_SHORT];
-	u32 error_bits;
+    char type[MCE_SHORT];
+    uint32_t error_bits;
 
 	int flags;
 	int card_count;
@@ -182,8 +186,7 @@ int mceconfig_lookup(const mce_context_t *mce,
 /* Static function for verifying that data obeys parameter constraints */
 
 int mceconfig_check_data(const card_t *c, const param_t *p, int count,
-			 const u32 *data, unsigned block_flags,
-			 char *errmsg);
+        const uint32_t *data, unsigned block_flags, char *errmsg);
 
 
 /* Loading of root data from configuration */
@@ -248,9 +251,11 @@ int mceconfig_cfg_cardtype(const config_setting_t *cfg, cardtype_t *ct);
 
 int mceconfig_cfg_paramset(const config_setting_t *cfg, paramset_t *ps);
 
-int mceconfig_cfg_param   (const config_setting_t *cfg, param_t    *p);
+int mceconfig_cfg_param   (const mce_context_t *context,
+        const config_setting_t *cfg, param_t    *p);
 
-int mceconfig_cfg_card    (const config_setting_t *cfg, card_t     *c);
+int mceconfig_cfg_card    (const mce_context_t *context,
+        const config_setting_t *cfg, card_t     *c);
 
 int mceconfig_cfg_maprange(const config_setting_t *cfg, maprange_t *mr);
 

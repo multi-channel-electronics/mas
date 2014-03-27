@@ -176,11 +176,11 @@ int load_param_or_exit(mce_context_t* mce, mce_param_t* p,
 
 
 void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
-        int start, i32* data, int count,
+        int start, int32_t* data, int count,
         const char *opmsg)
 {
     char temp[1024];
-    int error = mcecmd_write_range(mce, p, start, (u32*)data, count);
+    int error = mcecmd_write_range(mce, p, start, (uint32_t*)data, count);
     if (error != 0) {
 
         sprintf (temp, "mcecmd_write_range %s with code %d", opmsg, error);
@@ -225,7 +225,7 @@ int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
             ERRPRINT("Could not load " SQ2_CARD " " SQ2_FB_MUX " to check fast-SQ2 setting.");
             exit(ERR_MCE_PARA);
         }
-        u32 mux_mode[MAXCOLS];
+        uint32_t mux_mode[MAXCOLS];
         if (mcecmd_read_range(mce, &mux, col0, mux_mode, 1)) {
             ERRPRINT("Failed to read " SQ2_CARD " " SQ2_FB_MUX " to check fast-SQ2 setting.");
             exit(ERR_MCE_PARA);
@@ -273,13 +273,13 @@ int check_mux11d(mce_context_t* mce, mce_param_t* safb,
     return 1;
 }
 
-void duplicate_fill(i32 value, i32 *data, int count)
+void duplicate_fill(int32_t value, int32_t *data, int count)
 {
     int i;
     for (i=0; i<count; i++) data[i] = value;
 }
 
-void rerange(i32 *dest, i32 *src, int n_data,
+void rerange(int32_t *dest, int32_t *src, int n_data,
         int *quanta, int n_quanta)
 {
     for (int i=0; i<n_data; i++) {

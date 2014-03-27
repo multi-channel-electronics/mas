@@ -27,7 +27,7 @@
 #define DIRFILE_CHANNELS      (MCEDATA_CARDS*MCEDATA_COLUMNS*MCEDATA_ROWS)
 
 typedef struct {
-	u32 *data;                 // buffer for this channel's data
+    uint32_t *data;            // buffer for this channel's data
 	int count;                 // number of data in buffer
 	int decimation;            // If non-zero, indicates how often to record a data point
 	int decimation_count;      // Decimation counter
@@ -100,10 +100,11 @@ frame_item header_items[] = {
 			     else memset(X, 0, n*sizeof(*X));
 #define FREE_NOT_NULL(X)     if (X!=NULL) { free(X); X = NULL; }
 
-static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
+static int dirfile_alloc(const mce_context_t *context,
+        dirfile_t *d, int n, int fieldsize, int bufsize)
 {
 	int i;
-	u32* base_data;
+    uint32_t* base_data;
 	char* base_names;
 	char* base_files;
 	int err = 0;
@@ -111,9 +112,9 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 	// Surely all of these will succeed.
 	ALLOC_N(d->channels, n, err);
 	if (err) {
-		fprintf(stderr, "First stage alloc failed in dirfile_alloc!\n");
-		printf("n = %i\n", (int)(n*sizeof(*d->channels)));
-		return -1;
+        mcelib_error(context, "First stage alloc failed in dirfile_alloc! "
+                "(n = %i)\n", (int)(n*sizeof(*d->channels)));
+        return -1;
 	}
 
 	// Large buffers
@@ -122,7 +123,7 @@ static int dirfile_alloc(dirfile_t *d, int n, int fieldsize, int bufsize)
 	ALLOC_N(base_names, n*fieldsize, err);
 	
 	if (err) {
-		fprintf(stderr, "Second stage alloc failed in dirfile_alloc!\n");
+        mcelib_error(context, "Second stage alloc failed in dirfile_alloc!\n");
 		return -1;
 	}
 
@@ -175,7 +176,7 @@ static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
 			continue;
 		if (c->fout == NULL)
 			continue;
-		fwrite(c->data, c->count, sizeof(u32), c->fout);
+        fwrite(c->data, c->count, sizeof(uint32_t), c->fout);
 		c->count = 0;
 		writes++;
 	}
@@ -184,7 +185,7 @@ static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
 }
 
 /* Write the format file into the dirfile folder */
-int write_format_file(dirfile_t* f)
+int write_format_file(const mce_context_t *context, dirfile_t* f)
 {
 	char filename[MCE_LONG];
 	FILE* format;
@@ -264,7 +265,7 @@ int write_format_file(dirfile_t* f)
         if (infile != NULL)
             fprintf(format, "\n\n#Extra metadata\nINCLUDE format.extra\n");
         else
-            fprintf(stderr, "can't open %s for input: %m", f->include);
+            mcelib_warning(context, "can't open %s for input: %m", f->include);
     }
 
 	fclose(format);
@@ -377,7 +378,8 @@ static int dirfile_init(mce_acq_t *acq)
 		strcat(f->basename, "/");
 	}
 	if (mkdir(f->basename, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
-		fprintf(stderr, "Could not create dirfile %s\n", f->basename);
+        mcelib_error(acq->context, "Could not create dirfile %s\n",
+                f->basename);
 		return -1;
 	}
 
@@ -396,7 +398,7 @@ static int dirfile_init(mce_acq_t *acq)
 
 	// Allocate buffer memory.  Size target 1 / 2 frames
 	f->data_size = n_fields * 2;
-	dirfile_alloc(f, n_fields, MCE_SHORT, f->data_size);
+    dirfile_alloc(acq->context, f, n_fields, MCE_SHORT, f->data_size);
 	
 	// How often should we call the write routines?
 	f->write_period = f->data_size / 2;
@@ -421,8 +423,8 @@ static int dirfile_init(mce_acq_t *acq)
 	add_item(f, &checksum);
 
 	// Write format file
-	if (write_format_file(f)) {
-		fprintf(stderr, "Could not write format file.\n");
+	if (write_format_file(acq->context, f)) {
+		mcelib_error(acq->context, "Could not write format file.\n");
 		return -1;
 	}
 
@@ -433,7 +435,8 @@ static int dirfile_init(mce_acq_t *acq)
 		sprintf(filename, "%s%s", f->basename, c->filename);
 		c->fout = fopen64(filename, "a");
 		if (c->fout == NULL) {
-			fprintf(stderr, "Could not open %ith channel file.\n", i);
+            mcelib_error(acq->context, "Could not open %ith channel file.\n",
+                    i);
 			return -1;
 		}
 	}
@@ -466,7 +469,7 @@ static int dirfile_cleanup(mce_acq_t *acq)
 	return 0;
 }
 
-static int dirfile_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int dirfile_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	dirfile_t *f = (dirfile_t*)acq->storage->action_data;
 	int i;
@@ -609,7 +612,7 @@ static int dirfileseq_init(mce_acq_t *acq)
 	return 0;
 }
 
-static int dirfileseq_post(mce_acq_t *acq, int frame_index, u32 *data)
+static int dirfileseq_post(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
 	dirfileseq_t *f = (dirfileseq_t*)acq->storage->action_data;
 

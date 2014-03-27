@@ -138,7 +138,7 @@ int massock_listen(const char *addr)
         return MASSOCK_SOCKET;
     }
 
-    if (setsockopt(sock,SOL_TCP,TCP_NODELAY,&yes,sizeof(int)) == -1) {
+    if (setsockopt(sock,IPPROTO_TCP,TCP_NODELAY,&yes,sizeof(int)) == -1) {
         return MASSOCK_SOCKET;
     }
 

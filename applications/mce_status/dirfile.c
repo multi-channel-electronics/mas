@@ -68,7 +68,7 @@ static int dirfile_card(unsigned long user_data, const card_t *c)
 static int dirfile_item(unsigned long user_data, const mce_param_t *p)
 {
     dirfile_t *dirfile = (dirfile_t*) user_data;
-    u32 buf[MCE_REP_DATA_MAX];
+    uint32_t buf[MCE_REP_DATA_MAX];
 
     if (!(p->card.flags & MCE_PARAM_STAT) ||
             !(p->param.flags & MCE_PARAM_STAT) ||

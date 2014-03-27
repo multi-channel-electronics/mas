@@ -60,7 +60,7 @@ int mcedsp_close(mce_context_t *context)
 
 /* IOCTL wrappers */
 
-static int mcedsp_ioctl(mce_context_t *context, unsigned int iocmd, unsigned long arg)
+int mcedsp_ioctl(mce_context_t *context, unsigned int iocmd, unsigned long arg)
 {
     CHECK_OPEN(context);
     return ioctl(context->dsp.fd, iocmd, arg);
@@ -202,7 +202,7 @@ int mcedsp_read_word_P(mce_context_t *context, int address)
 
 
 int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
-        u32 value)
+        uint32_t value)
 {
     struct dsp_command cmd;
     struct dsp_datagram gram;
@@ -233,17 +233,17 @@ int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
     return mcedsp_send_command(context, &cmd, &gram);
 }
 
-int mcedsp_write_word_X(mce_context_t *context, int address, u32 value)
+int mcedsp_write_word_X(mce_context_t *context, int address, uint32_t value)
 {
     return mcedsp_write_word(context, DSP_MEMX, address, value);
 }
 
-int mcedsp_write_word_Y(mce_context_t *context, int address, u32 value)
+int mcedsp_write_word_Y(mce_context_t *context, int address, uint32_t value)
 {
     return mcedsp_write_word(context, DSP_MEMY, address, value);
 }
 
-int mcedsp_write_word_P(mce_context_t *context, int address, u32 value)
+int mcedsp_write_word_P(mce_context_t *context, int address, uint32_t value)
 {
     return mcedsp_write_word(context, DSP_MEMP, address, value);
 }

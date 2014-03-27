@@ -67,12 +67,12 @@ int fibre_card = MCE_DEFAULT_MCE;
 
 struct {
 	int count; // Number of bit pairs
-	u32 data[MAX_PAYLOAD];
+    uint32_t data[MAX_PAYLOAD];
 } write_buffer;
 
 struct {
 	int count; // Number of bits read
-	u32 data[MAX_PAYLOAD];
+    uint32_t data[MAX_PAYLOAD];
 } read_buffer;
 
 static int verbose = 1;
@@ -143,7 +143,7 @@ void initialize_mce(int frequency)
 	//}
 
 	// Set timing
-	u32 datum = tck_half_period;
+    uint32_t datum = tck_half_period;
 	mcecmd_write_block(mce, par_addrs + TCK_HALF_PERIOD, 1, &datum);
 
 	if (verbose) printf(">> initialize_mce(): tdo_sample_delay = %d clock cycles.\n", TDO_SAMPLE_DELAY);
@@ -151,7 +151,7 @@ void initialize_mce(int frequency)
 	mcecmd_write_block(mce, par_addrs + TDO_DELAY, 1, &datum);
 
 	// Enable JTAG programming
-	u32 data[] = {0, 0, 2}; // Like byteblaster, write 2 to enable.
+    uint32_t data[] = {0, 0, 2}; // Like byteblaster, write 2 to enable.
 	if (mcecmd_write_block(mce, par_addrs + JTAG0, 1, data+0) ||
 	    mcecmd_write_block(mce, par_addrs + JTAG1, 1, data+1) ||
 	    mcecmd_write_block(mce, par_addrs + JTAG2, 1, data+2)) {
@@ -187,7 +187,7 @@ void close_mce(void)
 	if (verbose) printf(">> close_mce(): %d us spent delaying.\n", total_delay);
 	if (verbose) printf(">> close_mce(): %d stack pushes for reads (=flush), %d stack pushes for writes.\n", reads, writes);
 
-	u32 data[] = {0}; // Like bitblaster, write 0 to disable
+    uint32_t data[] = {0}; // Like bitblaster, write 0 to disable
 	write_buffer.count = 0;
 	write_mce_single(0,0,0);
 
@@ -212,7 +212,7 @@ int flush_stack(int do_read)
 	packetization_stats[write_buffer.count - 1]++;
 
 	int n_data = (write_buffer.count + MAX_PACKING - 1) / MAX_PACKING;
-	u32 data[MCE_CMD_DATA_MAX];
+    uint32_t data[MCE_CMD_DATA_MAX];
 	data[0] = write_buffer.count*2;
 	for (int i=0; i < n_data; i++)
 		data[i+1] = write_buffer.data[i];
@@ -247,7 +247,7 @@ int flush_stack(int do_read)
 
 void set_bits(int idx, int tms, int tdi)
 {
-	u32 *dest = write_buffer.data + idx / MAX_PACKING;
+    uint32_t *dest = write_buffer.data + idx / MAX_PACKING;
 	int bit_idx = (idx % MAX_PACKING)*2;
 	*dest &= ~(0x3 << bit_idx);
 	*dest |= (((tms&1)<<1)|(tdi&1)) << bit_idx;
@@ -255,7 +255,7 @@ void set_bits(int idx, int tms, int tdi)
 
 int get_bit(int idx)
 {
-	u32 *src = read_buffer.data + idx / MAX_PACKING;
+    uint32_t *src = read_buffer.data + idx / MAX_PACKING;
 	int bit_idx = idx % MAX_PACKING;
 	if (read_buffer.count / MAX_PACKING == idx / MAX_PACKING) {
 		bit_idx = read_buffer.count - idx - 1;

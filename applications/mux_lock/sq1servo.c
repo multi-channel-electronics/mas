@@ -56,20 +56,20 @@ struct {
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 		mce_param_t *m_sq2fb_col, int biasing_ac,
-		i32 *data, int offset, int count);
+		int32_t *data, int offset, int count);
 
 
 /***********************************************************
  * frame_callback: to store the frame to a file and fill row_data
  * 
  **********************************************************/
-int frame_callback(unsigned long user_data, int frame_size, u32 *data)
+int frame_callback(unsigned long user_data, int frame_size, uint32_t *data)
 {
   //Re-type 
   servo_t *myservo = (servo_t*)user_data;
 
   // Write frame to our data file
-  fwrite(data, sizeof(u32), frame_size, myservo->df);
+  fwrite(data, sizeof(uint32_t), frame_size, myservo->df);
 
   // Copy header and data into myservo struct
   memcpy(myservo->last_header, data, HEADER_OFFSET*sizeof(*data));
@@ -125,7 +125,7 @@ int main ( int argc, char **argv )
    char full_datafilename[MAXLINE]; /*full path for datafile*/
    const char *datadir;
    
-   i32 temparr[MAXTEMP];
+   int32_t temparr[MAXTEMP];
   
    int i, j, snum;          /* loop counters */
  
@@ -135,7 +135,7 @@ int main ( int argc, char **argv )
    char init_line2[MAXLINE];    /* record a line of init values and pass it to genrunfile*/
 
    char *endptr;
-   i32 sq2fb[MAXCOLS];      /* sq2 feedback voltages */
+   int32_t sq2fb[MAXCOLS];      /* sq2 feedback voltages */
    
    int error=0;
    char errmsg_temp[MAXLINE];
@@ -338,7 +338,8 @@ int main ( int argc, char **argv )
       if (control.bias_active) {
 	// Write *all* sq1bias here, or row-order destroys you.
 	duplicate_fill(control.bias + j*control.dbias, temparr, MAXROWS);
-        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (u32*)temparr)) != 0) 
+        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
+                        (uint32_t*)temparr)) != 0) 
           error_action("mcecmd_write_block sq1bias", error);
       }
 
@@ -390,7 +391,8 @@ int main ( int argc, char **argv )
    
    if (control.bias_active) {
      duplicate_fill(0, temparr, MAXROWS);
-     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (u32*)temparr)) != 0) 
+     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
+                     (uint32_t*)temparr)) != 0) 
        error_action("mcecmd_write_block sq1bias", error);
    }
    else
@@ -415,11 +417,11 @@ int main ( int argc, char **argv )
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 		 mce_param_t *m_sq2fb_col, int biasing_ac,
-		 i32 *data, int offset, int count)
+         int32_t *data, int offset, int count)
 {
 	if (biasing_ac) {
 		int i;
-		i32 temparr[MAXROWS];
+        int32_t temparr[MAXROWS];
 		for (i=0; i<count; i++) {
 		        duplicate_fill(data[i], temparr, MAXROWS);
 			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");

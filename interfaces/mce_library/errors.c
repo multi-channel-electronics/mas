@@ -7,24 +7,58 @@
 #include "mce/mce_errors.h"
 #include "context.h"
 
-int mcelib_warning(const mce_context_t *c, const char *fmt, ...)
+#define MCELIB_ERR_STRING "mcelib: ERROR: "
+#define MCELIB_ERR_LENGTH (sizeof(MCELIB_ERR_STRING) - 1)
+int mcelib_error(const mce_context_t *c, const char *fmt, ...)
 {
     va_list ap;
-    int ret;
+    char buffer[1024 + MCELIB_ERR_LENGTH] = MCELIB_ERR_STRING;
 
     if (c->flags & MCELIB_QUIET)
         return 0;
 
-    fputs("mcelib: Warning: ", stderr);
     va_start(ap, fmt);
-    ret = vfprintf(stderr, fmt, ap);
+    vsnprintf(buffer + MCELIB_ERR_LENGTH, 1024, fmt, ap);
     va_end(ap);
-    fputc('\n', stderr);
 
-    return ret;
+    return c->termio(MCELIB_ERR, buffer);
 }
 
-char *mcelib_error_string(int error)
+#define MCELIB_WARN_STRING "mcelib: Warning: "
+#define MCELIB_WARN_LENGTH (sizeof(MCELIB_WARN_STRING) - 1)
+int mcelib_warning(const mce_context_t *c, const char *fmt, ...)
+{
+    va_list ap;
+    char buffer[1024 + MCELIB_WARN_LENGTH] = MCELIB_WARN_STRING;
+
+    if (c->flags & MCELIB_QUIET)
+        return 0;
+
+    va_start(ap, fmt);
+    vsnprintf(buffer + MCELIB_WARN_LENGTH, 1024, fmt, ap);
+    va_end(ap);
+
+    return c->termio(MCELIB_WARN, buffer);
+}
+
+#define MCELIB_PRINT_STRING "mcelib: "
+#define MCELIB_PRINT_LENGTH (sizeof(MCELIB_PRINT_STRING) - 1)
+int mcelib_print(const mce_context_t *c, const char *fmt, ...)
+{
+    va_list ap;
+    char buffer[1024 + MCELIB_PRINT_LENGTH] = MCELIB_PRINT_STRING;
+
+    if (c->flags & MCELIB_QUIET)
+        return 0;
+
+    va_start(ap, fmt);
+    vsnprintf(buffer + MCELIB_PRINT_LENGTH, 1024, fmt, ap);
+    va_end(ap);
+
+    return c->termio(MCELIB_PRINT, buffer);
+}
+
+const char *mcelib_error_string(int error)
 {
 	switch (-error) {
 

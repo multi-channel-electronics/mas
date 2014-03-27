@@ -34,8 +34,26 @@ static char *get_default_dir(const mce_context_t *c,
     return strdup(config_setting_get_string(config_item));
 }
 
-mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
-        unsigned int flags)
+static int mcelib_output(int severity, const char *message)
+{
+    fputs(message, stderr);
+
+    /* append a newline if necessary */
+    if (message[strlen(message) - 1] != '\n')
+        fputc('\n', stderr);
+
+    return 0;
+}
+
+/* Change the terminal output function used by the library -- passing NULL
+ * resets this to the default value */
+void mcelib_set_termio(mce_context_t *c, int (*func)(int, const char*))
+{
+    c->termio = func ? func : mcelib_output;
+}
+
+mce_context_t* mcelib_create_termio(int fibre_card, const char *mas_config,
+        unsigned int flags, int (*termio_func)(int, const char*))
 {
     char *mas_cfg;
     config_setting_t *masconfig = NULL;
@@ -53,6 +71,7 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
         c->fibre_card = fibre_card;
 
     c->flags = flags;
+    mcelib_set_termio(c, termio_func);
 
     /* load mas.cfg */
     if (mas_config)
@@ -60,8 +79,7 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
     else {
         mas_cfg = mcelib_default_masfile();
         if (mas_cfg == NULL) {
-            fprintf(stderr,
-                    "mcelib: Unable to obtain path to default MAS config!\n");
+            mcelib_error(c, "Unable to obtain path to default MAS config!\n");
             free(c);
             return NULL;
         }
@@ -73,7 +91,7 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
     /* read mas.cfg */
     if (!config_read_file(c->mas_cfg, mas_cfg)) {
         mcelib_warning(c, "Could not read config file '%s':", mas_cfg);
-        mcelib_warning(c, "    %s on lne %i", config_error_text(c->mas_cfg),
+        mcelib_warning(c, "    %s on line %i", config_error_text(c->mas_cfg),
                 config_error_line(c->mas_cfg));
         mcelib_warning(c, "Using configuration defaults.");
 
@@ -155,6 +173,11 @@ mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
     return c;
 }
 
+mce_context_t* mcelib_create(int fibre_card, const char *mas_config,
+        unsigned int flags)
+{
+    return mcelib_create_termio(fibre_card, mas_config, flags, NULL);
+}
 
 void mcelib_destroy(mce_context_t* context)
 {
@@ -166,7 +189,8 @@ void mcelib_destroy(mce_context_t* context)
     mcecmd_close(context);
 
     maslog_close(context->maslog);
-    config_destroy(context->mas_cfg);
+    if (context->mas_cfg)
+        config_destroy(context->mas_cfg);
     free(context->mas_cfg);
 
     free(context->config_dir);
@@ -186,7 +210,7 @@ void mcelib_destroy(mce_context_t* context)
 }
 
 
-char* mcelib_version()
+const char* mcelib_version()
 {
     return VERSION_STRING;
 }

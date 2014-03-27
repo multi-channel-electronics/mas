@@ -23,6 +23,7 @@ USAGE_OPTION_N \
 "  -f <output filename>   filename for output (stdout by default)\n"\
 "  -s                     snapshot style, civilized output\n"\
 "  -g                     dump parameter mapping\n"\
+"  -G                     dump parameter mapping with extra information\n"\
 "  -d                     Dirfile mode\n"\
 "\n"\
 "  -v                     print version string and exit\n"\
@@ -34,7 +35,7 @@ int process_options(options_t* options, int argc, char **argv)
 	char *s;
 #endif
 	int option;
-    while ( (option = getopt(argc, argv, "?hn:c:m:o:f:gvsd")) >=0) {
+    while ( (option = getopt(argc, argv, "?hn:c:m:o:f:Ggvsd")) >=0) {
 
 		switch(option) {
 		case '?':
@@ -75,6 +76,10 @@ int process_options(options_t* options, int argc, char **argv)
 		case 'o':
 			strcpy(options->output_path, optarg);
 			break;
+
+        case 'G':
+            options->mode = CRAWLER_CFX;
+            break;
 
 		case 'g':
 			options->mode = CRAWLER_CFG;

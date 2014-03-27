@@ -38,7 +38,7 @@ int  main(int argc, char **argv)
 	mcecmd_load_param(mce2, &p2, "rc1", "num_rows");
 
 	// Go
-	u32 d1[10], d2[10];
+	uint32_t d1[10], d2[10];
 	mce_command cmd1, cmd2;
 	mce_reply rep1, rep2;
 	int err1, err2;

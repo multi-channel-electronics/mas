@@ -24,7 +24,7 @@ int main (int argc, char **argv)
     char temp[10];
     long int templ;
     float tempf;
-    u32 data[20]; 
+    uint32_t data[20]; 
     char card_id[9];
  
     long int i;

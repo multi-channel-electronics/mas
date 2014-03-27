@@ -11,6 +11,7 @@ typedef struct {
 	options_t *options;
 	int error_count;
 	int echo_only;
+    int xtend;
 } cfg_t;
 
 int cfg_init(unsigned long user_data, const options_t *options);
@@ -41,6 +42,7 @@ int  cfg_init(unsigned long user_data, const options_t *options)
 {
 	cfg_t *cfg = (cfg_t*)user_data;
 	cfg->out = stdout;
+    cfg->xtend = (options->mode == CRAWLER_CFX) ? 1 : 0;
 	
 	if (cfg->options->output_on && 
 	    (cfg->out=fopen(cfg->options->output_file, "w")) == NULL) {
@@ -65,14 +67,29 @@ int cfg_cleanup(unsigned long user_data)
 int cfg_item(unsigned long user_data, const mce_param_t *p)
 {
 	int i;
+    char flag = ' ';
 	cfg_t *cfg = (cfg_t*) user_data;
 	maprange_t mr;
 
 	switch (p->card.nature) {
 	case MCE_NATURE_PHYSICAL:
 		
-		fprintf(cfg->out, "physical   %-10s %-20s %#04x %2i cards:",
-			p->card.name, p->param.name, p->param.id, p->card.card_count);
+        if (cfg->xtend) {
+            if (!(p->card.flags & MCE_PARAM_STAT) ||
+                    !(p->param.flags & MCE_PARAM_STAT) ||
+                    (p->param.flags & MCE_PARAM_WONLY) )
+                flag = '!';
+	
+            if (p->param.type != MCE_CMD_MEM)
+                flag = '!';
+            fprintf(cfg->out,
+                    "physical   %-10s %-20s x%02i %c %#04x %2i cards:",
+                    p->card.name, p->param.name, p->param.count, flag,
+                    p->param.id, p->card.card_count);
+        } else
+            fprintf(cfg->out, "physical   %-10s %-20s %#04x %2i cards:",
+                    p->card.name, p->param.name, p->param.id,
+                    p->card.card_count);
 		
 		for (i=0; i<p->card.card_count; i++) {
 			fprintf(cfg->out, " %#04x", p->card.id[i]);
@@ -81,8 +98,12 @@ int cfg_item(unsigned long user_data, const mce_param_t *p)
 	       
 	case MCE_NATURE_VIRTUAL:
 
-		fprintf(cfg->out, "virtual    %-10s %-20s maps:",
-			p->card.name, p->param.name);
+        if (cfg->xtend)
+            fprintf(cfg->out, "virtual    %-10s %-20s x%02i maps:",
+                    p->card.name, p->param.name, p->param.count);
+        else
+            fprintf(cfg->out, "virtual    %-10s %-20s maps:",
+                    p->card.name, p->param.name);
 
 		for (i=0; i<p->param.map_count; i++) {
 			mceconfig_param_maprange(cfg->options->context,

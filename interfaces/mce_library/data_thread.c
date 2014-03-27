@@ -64,7 +64,7 @@ int data_reset(params_t *p)
 
 inline int stop_bit(char *packet) {
 	//Stop flag is bit 0 of first word
-	return *( (u32*)packet + 0) & 1;
+    return *( (uint32_t*)packet + 0) & 1;
 }
 
  
@@ -72,10 +72,10 @@ void *data_thread(void *p_void)
 {
 	int ret_val;
 	data_thread_t *d =(data_thread_t*) p_void;
-	int size = d->acq->frame_size*sizeof(u32);
+    int size = d->acq->frame_size*sizeof(uint32_t);
 	int fd = d->acq->context->data.fd;
 	mcedata_storage_t *acts = d->acq->storage;
-	u32 *data = malloc(size);
+    uint32_t *data = malloc(size);
 	int done = 0;
 
 	if (data==NULL) {
@@ -84,7 +84,7 @@ void *data_thread(void *p_void)
 		return (void*)d;
 	}		
 
-	printf("data_thread: entry\n");
+    mcelib_print(d->acq->context, "data_thread: entry");
 	//logger_print(&p->logger, "Data thread starting\n");
 
 	d->count = 0;
@@ -96,19 +96,19 @@ void *data_thread(void *p_void)
 	while (!done) {
 
 		if (acts->pre_frame != NULL && acts->pre_frame(d->acq)) {
-				fprintf(stderr, "pre_frame action failed\n");
+            mcelib_warning(d->acq->context, "pre_frame action failed\n");
 		}
 	
-		ret_val = read(fd, (void*)data + index, size - index);
+        ret_val = read(fd, (char*)data + index, size - index);
 
 		if (ret_val<0) {
 			if (errno==EAGAIN) {
 				usleep(1000);
 			} else {
 				// Error: clear rest of frame and quit
-				fprintf(stderr,
+                mcelib_error(d->acq->context,
 					"read failed with code %i\n", ret_val);
-				memset((void*)data + index, 0, size - index);
+				memset((char*)data + index, 0, size - index);
 				done = EXIT_READ;
 				break;
 			}
@@ -128,7 +128,7 @@ void *data_thread(void *p_void)
 		sort_columns( d->acq, data );
 
 		if ( (acts->post_frame != NULL) && acts->post_frame( d->acq, count, data ) ) {
-			fprintf(stderr, "post_frame action failed\n");
+			mcelib_warning(d->acq->context, "post_frame action failed\n");
 		}
 
 		index = 0;
