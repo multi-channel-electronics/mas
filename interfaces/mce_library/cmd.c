@@ -469,10 +469,10 @@ int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
 
 int mcecmd_interface_reset(mce_context_t* context)
 {
-	return ioctl(C_cmd.fd, MCEDEV_IOCT_INTERFACE_RESET);
+	return ioctl(C_cmd.fd, DSPIOCT_RESET_DSP);
 }
 
 int mcecmd_hardware_reset(mce_context_t* context)
 {
-	return ioctl(C_cmd.fd, MCEDEV_IOCT_HARDWARE_RESET);
+	return ioctl(C_cmd.fd, DSPIOCT_RESET_MCE);
 }

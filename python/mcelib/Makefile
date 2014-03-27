@@ -5,6 +5,8 @@ include $(BASE)Makefile.children
 
 # Module name
 MOD = pymce
+CPPFLAGS="${CPPFLAGS} ${PYTHON_CPPFLAGS}"
+LDFLAGS="${LDFLAGS} ${PYTHON_LIBS}"
 
 # Source files
 SOURCE = $(MOD)/__init__.py $(MOD)/basic.py $(MOD)/compat.py base.c
@@ -16,7 +18,7 @@ all: .build
 	touch .build
 
 install: default
-	python setup.py install
+	python setup.py install --install-lib=$(MAS_INSTALL_PYTHON)
 
 _default_setup.py:
 	-rm _default_setup.py

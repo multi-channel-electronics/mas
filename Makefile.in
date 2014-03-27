@@ -6,9 +6,9 @@ MAKE_DRIVER=@DO_MAS_DRIVER@
 MAKE_SWIG=@DO_MAS_SWIG@
 
 # Set up the sets of folders to recurse into for each target
-all_dirs = interfaces applications config2
-clean_dirs = interfaces applications scripts swig config2
-install_dirs = include interfaces applications scripts config2
+all_dirs = interfaces applications python config2
+clean_dirs = interfaces applications scripts swig python config2
+install_dirs = include interfaces applications scripts swig python config2
 
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h makefiles/Makefile.install \
@@ -32,13 +32,13 @@ endif
 default: all
 
 all: $(all_deps)
-	for d in $(all_dirs); do ${MAKE} -C $$d || exit 1; done
+	for d in $(all_dirs); do ( cd $$d && ${MAKE} ) || exit 1; done
 
 clean: $(clean_deps)
-	for d in $(clean_dirs); do ${MAKE} -C $$d clean || exit 1; done
+	for d in $(clean_dirs); do ( cd $$d && ${MAKE} clean ) || exit 1; done
 
 install: $(install_deps)
-	for d in $(install_dirs); do ${MAKE} -C $$d install || exit 1; done
+	for d in $(install_dirs); do ( cd $$d && ${MAKE} install ) || exit 1; done
 
 .PHONY: default all clean install
 
