@@ -426,8 +426,9 @@ AC_CONFIG_FILES([config2/Makefile])
 AC_CONFIG_FILES([config2/mas.cin])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
-AC_CONFIG_FILES([scripts/mas scripts/mas_mknodes],
+AC_CONFIG_FILES([scripts/mas scripts/mas_make_card_id scripts/mas_mknodes],
                 [chmod a+x $ac_file])
+AC_CONFIG_FILES([scripts/91-mas.rules])
 AC_OUTPUT
 
 dnl Handy configure summary

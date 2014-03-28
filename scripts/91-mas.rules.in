@@ -1,4 +1,6 @@
 # udev rule for MCE/MAS
+# @configure_input@
+#
 #  Matthew Hasselfield, 2009-07-22
 #  D. V. Wiebe          2010-09-24
 #
@@ -13,10 +15,10 @@ GOTO="mas_done"
 LABEL="mas_device"
 
 # Load driver
-PROGRAM="/sbin/modprobe mce_dsp"
+PROGRAM="/sbin/modprobe @DRIVER_NAME@"
 
 # Make nodes for this device
-PROGRAM="/usr/mce/bin/mas_mknodes pci $env{PCI_SLOT_NAME}"
+PROGRAM="@prefix@/bin/mas_mknodes pci $env{PCI_SLOT_NAME}"
 
 # Exit
 LABEL="mas_done"

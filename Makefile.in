@@ -13,6 +13,7 @@ install_dirs = include interfaces applications scripts swig python config2
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h makefiles/Makefile.install \
 					 makefiles/Makefile.paths scripts/mas scripts/mas_mknodes \
+					 scripts/91-mas.rules \
 					 applications/mas_var/Makefile config2/Makefile config2/mas.cin
 clean_deps = clean_driver
 install_deps = all
@@ -67,6 +68,12 @@ makefiles/Makefile.paths: config.status makefiles/Makefile.paths.in
 	$(SHELL) ./config.status $@
 
 scripts/mas: config.status scripts/mas.in
+	$(SHELL) ./config.status $@
+
+scripts/mas_make_card_id: config.status scripts/mas_make_card_id.in
+	$(SHELL) ./config.status $@
+
+scripts/91-mas.rules: config.status scripts/91-mas.rules.in
 	$(SHELL) ./config.status $@
 
 scripts/mas_mknodes: config.status scripts/mas_mknodes.in

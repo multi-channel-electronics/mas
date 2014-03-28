@@ -1,7 +1,7 @@
 #!/bin/bash
 # @configure_input@
 
-MCE_CARD_ID=/etc/mce/mce_card_id
+MCE_CARD_ID=@MAS_ETCDIR@/mce_card_id
 
 DSP_FILE=/dev/mce_dsp
 MCEC_FILE=/dev/mce_cmd
@@ -70,21 +70,29 @@ MCEX_MAJOR=`awk "$awkp" /proc/devices`
 function do_card {
   local phy=$1
   local log=$2
-  mknod $DSP_FILE$log c $DSP_MAJOR $phy
-  chgrp $GRP $DSP_FILE$log
-  chmod g+rw  $DSP_FILE$log
+  if [ "x$DSP_MAJOR" != "x" ]; then
+    mknod $DSP_FILE$log c $DSP_MAJOR $phy
+    chgrp $GRP $DSP_FILE$log
+    chmod g+rw  $DSP_FILE$log
+  fi
 
-  mknod $MCEC_FILE$log c $MCEC_MAJOR $phy
-  chgrp $GRP $MCEC_FILE$log
-  chmod g+rw  $MCEC_FILE$log
+  if [ "x$MCEC_MAJOR" != "x" ]; then
+    mknod $MCEC_FILE$log c $MCEC_MAJOR $phy
+    chgrp $GRP $MCEC_FILE$log
+    chmod g+rw  $MCEC_FILE$log
+  fi
 
-  mknod $MCED_FILE$log c $MCED_MAJOR $phy
-  chgrp $GRP $MCED_FILE$log
-  chmod g+rw  $MCED_FILE$log
+  if [ "x$MCED_MAJOR" != "x" ]; then
+    mknod $MCED_FILE$log c $MCED_MAJOR $phy
+    chgrp $GRP $MCED_FILE$log
+    chmod g+rw  $MCED_FILE$log
+  fi
 
-  mknod $MCEX_FILE$log c $MCEX_MAJOR $phy
-  chgrp $GRP $MCEX_FILE$log
-  chmod g+rw  $MCEX_FILE$log
+  if [ "x$MCEX_MAJOR" != "x" ]; then
+    mknod $MCEX_FILE$log c $MCEX_MAJOR $phy
+    chgrp $GRP $MCEX_FILE$log
+    chmod g+rw  $MCEX_FILE$log
+  fi
 }
 
 if [ "$ndev" == "pci" ]; then

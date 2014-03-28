@@ -1,4 +1,6 @@
 #!/bin/bash
+# @configure_input@
+
 # (C) 2010 D. V. Wibe
 #
 # mas_make_card_id
@@ -16,13 +18,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-MCE_CARD_ID=/etc/mce/mce_card_id
+MCE_CARD_ID=@MAS_ETCDIR@/mce_card_id
 MCE_CARD_MAX=99 # that right: no more than 100 cards per computer
 
 if [ "$1" == '--help' ]; then
   echo "Usage: $0 [-a]"
   echo
-  echo "Generates /etc/mce/mce_card_id to match the configuration of the"
+  echo "Generates @MAS_ETCDIR@/mce_card_id to match the configuration of the"
   echo "currently running system.  If -a is specified, cards present in the"
   echo "system but not currently enumerated, will be automatically enumerated"
   echo "by this script; otherwise, unenumerated cards will be skipped."
