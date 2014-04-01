@@ -264,8 +264,7 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
         dsp_memblock_t *mem;
         dframes->total_size = 0;
         for (dframes->n_blocks = 0;
-             dframes->n_blocks < DSP_MAX_MEM_BLOCKS;
-             dframes->n_blocks++) {
+             dframes->n_blocks < DSP_MAX_MEM_BLOCKS;) {
                 dsp_memblock_t *mem = &dsp->dframes.blocks[dframes->n_blocks];
                 mem->size = BLOCK_ALLOC_SIZE;
                 mem->base = dma_alloc_coherent(
@@ -275,6 +274,7 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
                 } 
                 mem->base_busaddr = (unsigned long)bus;
                 dframes->total_size += mem->size;
+                dframes->n_blocks++;
                 if (dframes->total_size > mem_size)
                         break;
         }
