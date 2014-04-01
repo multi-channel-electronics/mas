@@ -21,7 +21,6 @@
 #include <readline/history.h>
 
 #include <mce/cmdtree.h>
-#include <mce/data_ioctl.h>
 #include <mce/defaults.h>
 
 #include "cmd.h"

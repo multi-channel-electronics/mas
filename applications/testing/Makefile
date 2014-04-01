@@ -7,7 +7,7 @@ VER_TARGET := .
 include $(MAKERULES)Makefile.version
 
 # targets
-TARGETS = mce_state peek
+TARGETS = mce_state
 
 OBJECTS = mce_state.o peek.o
 HEADERS = $(LIBHEADERS)

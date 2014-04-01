@@ -16,7 +16,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <mce/mce_ioctl.h>
 #include <mce/new_dspioctl.h>
 #include <mce/new_dsp.h>
 
@@ -27,12 +26,6 @@
 #define LOG_LEVEL_CMD     MASLOG_DETAIL
 #define LOG_LEVEL_REP_OK  MASLOG_DETAIL
 #define LOG_LEVEL_REP_ER  MASLOG_INFO
-
-
-static inline int get_last_error(mce_context_t *context)
-{
-	return ioctl(C_cmd.fd, MCEDEV_IOCT_LAST_ERROR);
-}
 
 
 static int log_data(maslog_t *logger, uint32_t *buffer, int count, int min_raw,

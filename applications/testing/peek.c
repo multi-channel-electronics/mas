@@ -1,3 +1,7 @@
+/* Note this has not been updated for driver_hacking (U0107+), but it
+ * could me.  You need to mmap the buffer and then query ioctl for the
+ * tail position. */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
