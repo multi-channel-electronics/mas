@@ -181,7 +181,7 @@ $has_pterm = fw_range("rc", $min=0x5010009) && $hw_rev["rc"] >= "revE";
 $does_servo_rst = fw_range("rc", $min=0x5020000) && $hw_rev["rc"] >= "revE";
 
 /* Does RC support configurable filter? */
-$has_filt_cfg = fw_range("rc", $min=0x5010000) && $hw_rev["rc"] >= "revE";
+$has_filt_cfg = fw_range("rc", $min=0x5010000);
 
 /* Does RC support integral clamp? */
 $has_iterm_clamp = fw_range("rc", $min=0x500000d) && $hw_rev["rc"] >= "revE";
