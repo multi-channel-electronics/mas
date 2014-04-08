@@ -13,6 +13,7 @@ install_dirs = include interfaces applications scripts python config2
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h makefiles/Makefile.install \
 					 makefiles/Makefile.paths scripts/mas scripts/mas_mknodes \
+					 scripts/91-mas.rules scripts/mas_make_card_id \
 					 applications/mas_var/Makefile config2/Makefile config2/mas.cin \
 					 include/mce_library.h applications/Makefile
 clean_deps = clean_driver
@@ -76,9 +77,16 @@ makefiles/Makefile.paths: config.status makefiles/Makefile.paths.in
 scripts/mas: config.status scripts/mas.in
 	$(SHELL) ./config.status $@
 
+scripts/mas_make_card_id: config.status scripts/mas_make_card_id.in
+	$(SHELL) ./config.status $@
+
+scripts/91-mas.rules: config.status scripts/91-mas.rules.in
+	$(SHELL) ./config.status $@
+
 scripts/mas_mknodes: config.status scripts/mas_mknodes.in
 	$(SHELL) ./config.status $@
 
+.PRECIOUS: config.status
 config.status: configure
 	$(SHELL) ./config.status --recheck
 

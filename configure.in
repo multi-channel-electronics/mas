@@ -44,6 +44,14 @@ AC_ARG_WITH([driver],
       [use --enable-driver or --disable-driver instead.])
       DO_MAS_DRIVER=$withval], [])
 
+# Rename the kernel module, if requested
+AC_ARG_WITH([driver-name],
+            [AS_HELP_STRING([--with-driver-name=NAME],
+                            [call the compiled kernel module NAME; the ]
+                            [default is mce_dsp.])],
+            [DRIVER_NAME=$withval], [DRIVER_NAME=mce_dsp])
+AC_SUBST(DRIVER_NAME)
+
 dnl Allow disabling of the installation of the init script
 AC_ARG_ENABLE([init-script],
               [AS_HELP_STRING([--disable-init-script], [don't install the ]dnl'
@@ -79,14 +87,6 @@ AC_SUBST([DEFINE_NO_MCE_OPS])
 AC_SUBST([DO_CONFIG2])
 AC_SUBST([DO_MAS_DRIVER])
 AC_SUBST([INSTALL_INITD_MAS])
-
-# Rename the kernel module, if requested
-AC_ARG_WITH([driver-name],
-            [AS_HELP_STRING([--with-driver-name=NAME],
-                            [call the compiled kernel module NAME; the ]
-                            [default is mce_dsp.])],
-            [DRIVER_NAME=$withval], [DRIVER_NAME=mce_dsp])
-AC_SUBST(DRIVER_NAME)
 
 dnl Allow disabling of symlinks in /usr/local
 AC_ARG_ENABLE([sys-links],
@@ -248,7 +248,6 @@ AC_ARG_ENABLE([python],
                [AS_HELP_STRING([--disable-python],
                                [don't compile the python or swig components])],
                                [DO_MAS_SWIG=${enableval}], [DO_MAS_SWIG=yes])
-
 
 # MAS user and group are configurable
 
@@ -527,8 +526,9 @@ AC_CONFIG_FILES([config2/mas.cin])
 AC_CONFIG_FILES([driver/Makefile])
 AC_CONFIG_FILES([include/mce_library.h])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
-AC_CONFIG_FILES([scripts/mas scripts/mas_mknodes],
+AC_CONFIG_FILES([scripts/mas scripts/mas_make_card_id scripts/mas_mknodes],
                 [chmod a+x $ac_file])
+AC_CONFIG_FILES([scripts/91-mas.rules])
 AC_OUTPUT
 
 dnl Handy configure summary

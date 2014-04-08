@@ -8,7 +8,7 @@
 # a two digit number specifying the step at which the script should
 # run during init.
 
-install__$(INSTALL_TARGET): $(INSTALL_TARGET)
+install__$(INSTALL_TARGET): $(INSTALL_TARGET) 91-mas.rules
 	if [ "x$(MAS_INSTALL_INIT)" != "x" ]; then \
 		install -m u+rwx,g+rwx,o+rx --owner=root --group=$(MAS_GROUP) \
 			$(@:install__%=%) $(MAS_INSTALL_INIT); \
