@@ -41,51 +41,22 @@ echo map_array("fb_col", $num_columns, "bc1", 41);
             );
         },
 
-<? /* Transitional -- map SQ2 FB and SQ1 bias to the same place.
-      In the future, SQ2 ref will be removed. */
-?>
-        {
-            name = "sq2_mapping";
-            parameters = (
-                {
-                    name = "fb";
-                    count = <?=$num_columns?>;
-                    maps = (
-                        {
-                            start = 0; count = <?=$num_columns?>; card = "bc2";
-                            param = "flux_fb"; offset = 0;
-                        }
-                    );
-                },
-<? /* Expose fast switching of SQ1 BIAS as sq2 fb */
-echo map_array("fb_col", $num_columns, "bc2", 41);
-?>
-                {
-                    name = "enbl_mux";
-                    count = <?=$num_columns?>;
-                    maps = (
-                        {
-                            start = 0; count = <?=$num_columns?>; card = "bc2";
-                            param = "enbl_mux"; offset = 0;
-                        }
-                    );
-                }
-            );
-        },
-<? /* End transitional... */?>
         {
             name = "sq1_mapping";
             parameters = (
 <? /* Expose fast switching on SQ1 BIAS */
-echo map_array("fb_col", $num_columns, "bc1", 41, "bias_col",16,0);
+echo map_array("fb_col", $num_columns, $mux11d_sq1_bc, 41, "bias_col",
+               $mux11d_sq1_offset,0);
 ?>
                 {
                     name = "enbl_mux";
                     count = <?=$num_columns?>;
                     maps = (
                         {
-                            start = 0; count = <?=$num_columns?>; card = "bc1";
-                            param = "enbl_mux"; offset = 16;
+                            start = 0; count = <?=$num_columns?>;
+			    card = "<?=$mux11d_sq1_bc?>";
+                            param = "enbl_mux";
+			    offset = <?=$mux11d_sq1_offset?>;
                         }
                     );
                 },
@@ -94,8 +65,10 @@ echo map_array("fb_col", $num_columns, "bc1", 41, "bias_col",16,0);
                     count = <?=$num_columns?>;
                     maps = (
                         {
-                            start = 0; count = <?=$num_columns?>; card = "bc1";
-                            param = "flux_fb"; offset = 16;
+                            start = 0; count = <?=$num_columns?>;
+			    card = "<?=$mux11d_sq1_bc?>";
+                            param = "flux_fb";
+			    offset = <?=$mux11d_sq1_offset?>;
                         }
                     );
                 },

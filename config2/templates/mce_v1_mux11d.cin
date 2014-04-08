@@ -16,6 +16,11 @@ $hw_subrack = "full";
 
 $hw_mux11d = 1;
 
+/* These are only used if hw_mux11d != 0; they specify the bias card
+   and offset of the flux_fb register used for the SQ1 bias. */
+$mux11d_sq1_bc = "bc2";
+$mux11d_sq1_offset = 0;
+
 
 /* In $card_list, list all cards present in your MCE.  The order
  * probably doesn't matter.
@@ -86,7 +91,7 @@ $fw_rev = array(
  * except to add "heater".
  */
 
-$virt_list = array("rcs", "rca", "sys", "sa", "sq2", "sq1", "row", "tes");
+$virt_list = array("rcs", "rca", "sys", "sa", "sq1", "row", "tes");
 
 
 

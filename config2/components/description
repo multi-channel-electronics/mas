@@ -40,7 +40,10 @@ foreach ($card_candidates as $candidate) {
 if ($missing_cards != "") echo " *  - Missing physical cards: $missing_cards\n";
 
 if ($hw_bac) echo " *  - Biasing address card (BAC) present\n";
-if ($hw_mux11d) echo " *  - MUX 11D: enabled\n";
+if ($hw_mux11d) {
+  echo " *  - MUX 11D: enabled (SQ1 bias on $mux11d_sq1_bc " .
+       "flux_fb+$mux11d_sq1_offset)\n";
+}
 echo " *\n";
 
 
@@ -90,11 +93,14 @@ echo " *\n";
 
 /* RC features */
 
-echo " *  - RC integral clamp support:      " . (fw_range("rc", $min=0x500000d)
+echo " *  - RC integral clamp support:      " . ($has_iterm_clamp
 ? "yes" : "no") .  "\n";
 
-echo " *  - RC configurable filter support: " . (fw_range("rc", $min=0x5010000)
+echo " *  - RC configurable filter support: " . ($has_filt_cfg
 ? "yes" : "no") .  "\n";
 
 echo " *  - RC p-term decay support:        " . ($has_pterm ? "yes" : "no")
-. "\n"; /* 0x5010009 */
+. "\n"; /* 0x5010009 / revE */
+
+echo " *  - RC servo reset support:         " . ($does_servo_rst ? "yes" : "no")
+. "\n"; /* 0x5020000 / revE */

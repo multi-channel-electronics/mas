@@ -139,25 +139,37 @@
                     default_set = 3;
                 },
 <? } ?>
-<? if (fw_range("rc", $min=0x500000a)) { ?>
+<? if ($has_filt_cfg) { ?>
                 {
                     name = "fltr_type";
                     id = 0x65;
                 },
 <? } ?>
-<? if (fw_range("rc", $min=0x500000d)) { ?>
+<? if ($has_iterm_clamp) { ?>
                 {
                     name = "integral_clamp";
                     id = 0x66;
                     default_set = 0;
                 },
 <? } ?>
-<? if (fw_range("rc", $min=0x5010000)) { ?>
+<? if ($has_filt_cfg) { ?>
                 {
                     name = "fltr_coeff";
                     id = 0x1A;
                     count = 6;
                 },
+<? } ?>
+<? if (fw_range("rc", $min=0x5020000)) { ?>
+                { name = "servo_rst_col0"; id = 0xF0; count = 41; },
+                { name = "servo_rst_col1"; id = 0xF1; count = 41; },
+                { name = "servo_rst_col2"; id = 0xF2; count = 41; },
+                { name = "servo_rst_col3"; id = 0xF3; count = 41; },
+                { name = "servo_rst_col4"; id = 0xF4; count = 41; },
+                { name = "servo_rst_col5"; id = 0xF5; count = 41; },
+                { name = "servo_rst_col6"; id = 0xF6; count = 41; },
+                { name = "servo_rst_col7"; id = 0xF7; count = 41; },
+                { name = "servo_rst_arm"; id = 0xF8; count = 1; },
+
 <? } ?>
                 {
                     name = "flx_lp_init";

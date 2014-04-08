@@ -2,11 +2,11 @@
 function check_bcs($bc1, $bc2, $bc3) {
   global $card_list, $tes_para;
       if ($bc1 && !in_array("bc1", $card_list))
-        throw new Exception("BC1 requied for TES map $tes_para missing from card list.");
+        throw new Exception("BC1 required for TES map $tes_para missing from card list.");
       if ($bc2 && !in_array("bc2", $card_list))
-        throw new Exception("BC2 requied for TES map $tes_para missing from card list.");
+        throw new Exception("BC2 required for TES map $tes_para missing from card list.");
       if ($bc3 && !in_array("bc3", $card_list))
-        throw new Exception("BC3 requied for TES map $tes_para missing from card list.");
+        throw new Exception("BC3 required for TES map $tes_para missing from card list.");
 }
 ?>
         {
