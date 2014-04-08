@@ -55,6 +55,10 @@ struct {
   int quanta[MAXCOLS];
   int columns_off[MAXCOLS];
 
+  /* For single row mode, on slow SA... */
+  int super_servo;
+  int row_choice[MAXCOLS];
+
 } control;
 
 
@@ -69,7 +73,7 @@ int frame_callback(unsigned long user_data, int frame_size, uint32_t *data)
 
   // Write frame to our data file?
   if (myservo->df != NULL)
-    fwrite(data, sizeof(uint32_t), frame_size, myservo->df);
+      fwrite(data, sizeof(uint32_t), frame_size, myservo->df);
 
   // Copy header and data into myservo struct
   memcpy(myservo->last_header, data, HEADER_OFFSET*sizeof(*data));
@@ -115,6 +119,10 @@ int load_exp_config(const char *filename)
 		 control.column_0, control.column_n, control.quanta);
   load_int_array(cfg, "columns_off",
 		 control.column_0, control.column_n, control.columns_off);
+
+  load_int(cfg, "config_mux11d_all_rows", &control.super_servo);
+  load_int_array(cfg, "mux11d_row_choice",
+		 control.column_0, control.column_n, control.row_choice);
   
   return 0;
 }
@@ -317,11 +325,13 @@ int main(int argc, char **argv)
      sprintf(init_line1 + strlen(init_line1), " %d", safb[j][0]);
 
    /** generate a runfile **/
-   sprintf(init_line2, "<super_servo> 1");
+   sprintf(init_line2, "<super_servo> %i", control.super_servo);
    error=genrunfile (full_datafilename, control.filename, 4, control.rc,
 		     control.bias, control.dbias, control.nbias, control.bias_active,
 		     control.fb, control.dfb, control.nfb, 
-		     init_line1, init_line2);
+                     init_line1, init_line2,
+                     control.column_n, control.super_servo, 
+                     control.gain, control.quanta);
    if (error != 0){
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);
@@ -355,6 +365,11 @@ int main(int argc, char **argv)
 	// Write all rows fb to each series array
 	for (snum=0; snum<control.column_n; snum++) {
 	  rerange(temparr, safb[snum], MAXROWS, control.quanta+snum, 1);
+      if (!control.super_servo) {
+        //Actually write them as all the same.
+        for (int r=0; r<MAXROWS; r++)
+          temparr[r] = temparr[control.row_choice[snum]];
+      }
 	  write_range_or_exit(mce, m_safb_col+snum, 0, temparr, MAXROWS, "safb_col");
 	}
 
@@ -376,26 +391,44 @@ int main(int argc, char **argv)
 	  }
 	}
 
+    // If ramping, write to file
 	if (i >= 0) {
+     if (control.super_servo) {
 	  // Write errors and computed feedbacks to .bias file.
 	  for (r=0; r<control.rows; r++) {
 	    fprintf(bias_out, "%2i %4i %2i ", j, i, r);
 	    for (snum=0; snum<control.column_n; snum++)	 
-		fprintf(bias_out, "%13d ", sq1servo.last_frame[r*control.column_n + snum]);
+        fprintf(bias_out, "%13d ", sq1servo.last_frame[r*control.column_n + snum]);
 	    for (snum=0; snum<control.column_n; snum++)	 
 		fprintf(bias_out, "%13d ", safb[snum][r]);
 	    fprintf (bias_out, "\n" );
 	  }
+     } else {
+      // Chosen rows only.
+      fprintf(bias_out, "%2i %4i %2i ", j, i, 0);
+      for (snum=0; snum<control.column_n; snum++) {
+              r = control.row_choice[snum];
+              fprintf(bias_out, "%13d ", sq1servo.last_frame[
+                              r*control.column_n + snum]);
+      }
+      for (snum=0; snum<control.column_n; snum++) {
+              r = control.row_choice[snum];
+              fprintf(bias_out, "%13d ", safb[snum][r]);
+      }
+      fprintf (bias_out, "\n" );
+     }
 	}
 
       }
-   }
+      }
 
    /* reset values back to 0 */
-   duplicate_fill(0, temparr, control.column_n);
-   write_range_or_exit(mce, &m_safb, control.column_0, temparr, control.column_n, "safb");
- 
    duplicate_fill(0, temparr, MAXROWS);
+   for (snum=0; snum<control.column_n; snum++) {
+	  write_range_or_exit(mce, m_safb_col+snum, 0, temparr,
+                          MAXROWS, "safb_col");
+   }
+
    write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXROWS, "rowsel");	
    
    if (control.bias_active) {

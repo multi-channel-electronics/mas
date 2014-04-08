@@ -4,6 +4,17 @@
 #ifndef _MCE_LIBRARY_H_
 #define _MCE_LIBRARY_H_
 
+#include <stdio.h>
+
+/* If NO_MCE_OPS is defined below, the interfaces needed to control MCE subracks
+ * are not present in the library
+ */
+@DEFINE_NO_MCE_OPS@
+
+/* prototype for missing functionality */
+#define MAS_UNSUPPORTED(prototype) \
+    prototype { fprintf(stderr, "FATAL: Call to unsupported MAS interface " #prototype "\n"); abort(); }
+
 #include <mce/types.h>
 #include <mce/mce_errors.h>
 
@@ -42,7 +53,6 @@ void mcelib_set_termio(mce_context_t *context, int (*func)(int, const char*));
  * function before doing anything interesting */
 mce_context_t* mcelib_create_termio(int fibre_card, const char *mas_config,
         unsigned int flags, int (*func)(int, const char*));
-
 
 /* Error look-up, versioning */
 

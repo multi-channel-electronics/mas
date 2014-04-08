@@ -185,8 +185,10 @@ void mcelib_destroy(mce_context_t* context)
         return;
 
     mceconfig_close(context);
+#ifndef NO_MCE_OPS
     mcedata_close(context);
     mcecmd_close(context);
+#endif
 
     maslog_close(context->maslog);
     if (context->mas_cfg)

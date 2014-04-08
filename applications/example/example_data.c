@@ -1,9 +1,13 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <stdio.h>
 #include <stdlib.h>
 
 /* This is the MCE include file; it should be in /usr/local/include or something */
 
 #include <mce_library.h>
+#include <inttypes.h>
 
 /* Our buffer size */
 
@@ -17,7 +21,7 @@ typedef struct {
 } my_counter_t;
 
 
-int frame_callback(unsigned long user_data, int size, u32 *data)
+int frame_callback(unsigned long user_data, int size, uint32_t *data)
 {
 	//Re-type 
 	my_counter_t *c = (my_counter_t*)user_data;
@@ -31,11 +35,11 @@ int frame_callback(unsigned long user_data, int size, u32 *data)
 	return 0;
 }
 
-void print_u32(u32 *data, int count)
+void print_u32(uint32_t *data, int count)
 {
 	int i;
 	for (i=0; i<count; i++) {
-		printf("%u ", data[i]);
+        printf("%" PRIu32 " ", data[i]);
  	}
 	printf("\n");
 }

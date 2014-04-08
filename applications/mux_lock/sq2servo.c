@@ -55,7 +55,7 @@ struct {
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 		mce_param_t *m_sq2fb_col, int fast_sq2,
-		int32_t *data, int offset, int count);
+        int32_t *data, int offset, int count);
 
 
 /***********************************************************
@@ -119,7 +119,7 @@ int main (int argc, char **argv)
    char full_datafilename[MAXLINE]; /*full path for datafile*/
    const char *datadir;
    
-   int32_t temparr[MAXTEMP];    /* This must have at least rows, channels elements */
+   int32_t temparr[MAXTEMP]; // This must have at least rows, channels elements
   
    int i, j, snum;          /* loop counters */
    
@@ -301,7 +301,7 @@ int main (int argc, char **argv)
    error=genrunfile (full_datafilename, control.filename, 2, control.rc, 
 		     control.bias, control.dbias, control.nbias, control.bias_active,
 		     control.fb, control.dfb, control.nfb, 
-		     init_line, NULL);
+                     init_line, NULL, 0, 0, NULL, NULL);
    if (error != 0) {
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", full_datafilename, error);
      ERRPRINT(errmsg_temp);
@@ -402,11 +402,11 @@ int main (int argc, char **argv)
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 		 mce_param_t *m_sq2fb_col, int fast_sq2,
-		 int32_t *data, int offset, int count)
+         int32_t *data, int offset, int count)
 {
 	if (fast_sq2) {
 		int i;
-		int32_t temparr[MAXROWS];
+        int32_t temparr[MAXROWS];
 		for (i=0; i<count; i++) {
 			duplicate_fill(data[i], temparr, MAXROWS);
 			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");

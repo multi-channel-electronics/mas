@@ -20,8 +20,6 @@ dnl Allow the user to suppress doing the config2 stuff
 AC_ARG_ENABLE([mce-cfg], [AS_HELP_STRING([--disable-mce-cfg],
               [disable building or installing mce.cfg file(s)])],
               [DO_CONFIG2=$enableval], [DO_CONFIG2=yes])
-AC_SUBST(DO_CONFIG2)
-
 
 # Shared libraries
 AC_ARG_ENABLE([shared], [AS_HELP_STRING([--enable-shared],
@@ -45,7 +43,6 @@ AC_ARG_WITH([driver],
       [AC_MSG_WARN([--with-driver and --without-driver are deprecated, ]
       [use --enable-driver or --disable-driver instead.])
       DO_MAS_DRIVER=$withval], [])
-AC_SUBST(DO_MAS_DRIVER)
 
 # Rename the kernel module, if requested
 AC_ARG_WITH([driver-name],
@@ -65,8 +62,32 @@ AC_ARG_ENABLE([init-script],
                  (*)  INSTALL_INITD_MAS=1 ;;
                esac
               ], [INSTALL_INITD_MAS=1])
+
+dnl Allow user to disable the driver interface (for non-linux systems)
+AC_ARG_ENABLE([mce-ops],
+              [AS_HELP_STRING([--disable-mce-ops],
+                              [disable userspace-kernel driver capabilities; ]
+                              [implies "--disable-driver --disable-init-script ]
+                              [--disable-mce-cfg" ]
+                              [(useful for non-linux builds)])],
+            [DO_KERNEL_IO=$enableval], [DO_KERNEL_IO=yes])
+
+if test "x$DO_KERNEL_IO" != "xyes"; then
+  INSTALL_INITD_MAS=no
+  DO_MAS_DRIVER=no
+  DO_CONFIG2=no
+  DEFINE_NO_MCE_OPS="#define NO_MCE_OPS"
+  MAKE_IF_MCE_OPS=#
+else
+  DEFINE_NO_MCE_OPS="#undef NO_MCE_OPS"
+  MAKE_IF_MCE_OPS=
+fi
+AC_SUBST([MAKE_IF_MCE_OPS])
+AC_SUBST([DEFINE_NO_MCE_OPS])
+AC_SUBST([DO_CONFIG2])
+AC_SUBST([DO_MAS_DRIVER])
 AC_SUBST([INSTALL_INITD_MAS])
-                   
+
 dnl Allow disabling of symlinks in /usr/local
 AC_ARG_ENABLE([sys-links],
               [AS_HELP_STRING([--disable-sys-links], [don't create ]dnl'
@@ -159,6 +180,22 @@ if test "x$DRIVER_VERBOSE" = "xyes"; then
             [ Define to 1 to add debugging messages to the kernel driver. ])
 fi
 
+AC_ARG_ENABLE([bigphysarea],
+            [AS_HELP_STRING([--disable-bigphysarea], [compile driver without ]
+             [bigphysarea support])],
+            [DRIVER_BIGPHYS=$enableval], [DRIVER_BIGPHYS=yes])
+AC_ARG_WITH([bigphysarea],
+            [AS_HELP_STRING([--without-bigphysarea],
+                            [deprecated: use --disable-bigphysarea instead])],
+            [AC_MSG_WARN([--with-bigphysarea and --without-bigphysarea are ]
+            [deprecated, use --enable-bigphysarea or --disable-bigphysarea ]
+            [instead.])
+            DRIVER_BIGPHYS=$withval], [])
+if test "x$DRIVER_BIGPHYS" = "xyes"; then
+  AC_DEFINE(BIGPHYS, [1],
+            [ Define to 1 to use bigphysarea in the kernel driver. ])
+fi
+
 AC_ARG_ENABLE([fakemce],
             [AS_HELP_STRING([--enable-fakemce], [build the fakemce device ]
             [into the kernel driver])],
@@ -177,7 +214,7 @@ AC_SUBST(DRIVER_FAKEMCE)
 
 
 dnl Always off, but here so autoheader picks it up.
-if /bin/false; then
+if false; then
   AC_DEFINE(REALTIME, [1],
             [ Define to 1 to enable realtime in the kernel driver. ])
 fi
@@ -202,17 +239,15 @@ AC_SUBST(KERNEL_DIR)
 
 # Allow the user to suppress/relocate swig/python compile/install
 
-PYTHON_VERSION=`echo 'import sys; print sys.version[[:3]]' | python`
-PYTHON_DIR=/usr/include/python${PYTHON_VERSION}/
+AC_ARG_VAR([PYTHON], [Set to the full path to the python interpreter])
 AC_ARG_WITH([python],
-            [AS_HELP_STRING([--with-python=(PATH|yes|no)],
-                            [enable/disable swig/python compilation and ]
-                            [installation, PATH default is $PYTHON_DIR])],
-            [PYTHON_DIR=$withval])
-AC_SUBST(PYTHON_DIR)
-DO_MAS_SWIG=yes
-test "$PYTHON_DIR" = "no" && DO_MAS_SWIG=no
-AC_SUBST(DO_MAS_SWIG)
+            [AS_HELP_STRING([--with-python=PATH],
+                            [use the python located at PATH])],
+                            [PYTHON=$withval], [PYTHON=python])
+AC_ARG_ENABLE([python],
+               [AS_HELP_STRING([--disable-python],
+                               [don't compile the python or swig components])],
+                               [DO_MAS_SWIG=${enableval}], [DO_MAS_SWIG=yes])
 
 # MAS user and group are configurable
 
@@ -281,15 +316,78 @@ AC_SEARCH_LIBS([readline], [readline], , [
 
 
 
+# Check for bigphysarea.
+
+if test "$DO_MAS_DRIVER" != "no" && test "$DRIVER_BIGPHYS" != "no"; then
+BIGPHYS_H=${KERNEL_DIR}/build/include/linux/bigphysarea.h
+AC_CHECK_HEADER([$BIGPHYS_H],
+                [],
+                [AC_MSG_FAILURE([could not find bigphysarea.h in the ]
+                [kernel build tree; perhaps you want --without-bigphysarea])])
+fi
+
+
 dnl Check for swig and python dev headers.
 
-if test "$PYTHON_DIR" != "no"; then
-   AC_CHECK_PROG(HAS_SWIG, swig, yes, no)
-   test "$HAS_SWIG" != "yes" && \
-      AC_MSG_FAILURE([please install swig package or pass --without-python.])
-   AC_CHECK_HEADER([$PYTHON_DIR/Python.h], ,
+if test "$DO_MAS_SWIG" != "no"; then
+  PYTHON_VERSION=`$PYTHON -c "import sys; print sys.version[[:3]]"`
+  PYTHON_PREFIX=`$PYTHON -c "import sys; print sys.prefix"`
+  PYTHON_EXEC_PREFIX=`$PYTHON -c "import sys; print sys.exec_prefix"`
+  PYTHON_LIBDIR=`$PYTHON -c "from distutils import sysconfig; print sysconfig.get_config_var('LIBDIR')"`
+  PYTHON_SYSLIBS=`$PYTHON -c "from distutils import sysconfig; print sysconfig.get_config_var('SYSLIBS')"`
+  PYTHON_SHLIBS=`$PYTHON -c "from distutils import sysconfig; print sysconfig.get_config_var('SHLIBS')"`
+  PYTHON_MODLIBS=`$PYTHON -c "from distutils import sysconfig; print sysconfig.get_config_var('MODLIBS')"`
+
+  PYTHON_CPPFLAGS=-I${PYTHON_PREFIX}/include/python${PYTHON_VERSION}
+  if test "x${PYTHON_PREFIX}" != "x${PYTHON_EXEC_PREFIX}"; then
+    PYTHON_CPPFLAGS="${PYTHON_CPPFLAGS} -I${PYTHON_EXEC_PREFIX}/include/python${PYTHON_VERSION}"
+  fi
+  PYTHON_LIBS="-L${PYTHON_LIBDIR} ${PYTHON_SYSLIBS} ${PYTHON_SHLIBS} ${PYTHON_MODLIBS} -lpython${PYTHON_VERSION}"
+
+  AC_SUBST([PYTHON])
+  AC_MSG_CHECKING([Python includes])
+  AC_MSG_RESULT([$PYTHON_CPPFLAGS])
+  AC_MSG_CHECKING([Python libraries])
+  AC_MSG_RESULT([$PYTHON_LIBS])
+
+  AC_CHECK_PROG(HAS_SWIG, swig, yes, no)
+  if test "$HAS_SWIG" != "yes"; then
+    AC_MSG_FAILURE([please install swig package or pass --disable-python.])
+  fi
+  saved_CPPFLAGS=${CPPFLAGS}
+  CPPFLAGS="${CPPFLAGS} ${PYTHON_CPPFLAGS}"
+  AC_CHECK_HEADER([Python.h], ,
                    [AC_MSG_FAILURE([could not find Python.h; perhaps you want ]
-                   [--with-python=... or you need to install python-dev])])
+                   [--with-python=... or --disable-python, or you need to install python-dev])])
+
+  AC_MSG_CHECKING([for NumPy])
+  cat > conftest.py << EOF
+import sys
+try:
+  import numpy
+except ImportError:
+  sys.exit(1)
+EOF
+  if ! ${PYTHON} conftest.py > /dev/null 2>&1; then
+    AC_MSG_FAILURE([could not import Numpy; perhaps you want ]
+    [--disable-python, or you need to install python-numpy])
+  fi
+  AC_MSG_RESULT([yes])
+  AC_MSG_CHECKING([NumPy includes])
+  NUMPY_CPPFLAGS=-I`$PYTHON -c "import numpy; print numpy.get_include()"`
+  AC_MSG_RESULT([$NUMPY_CPPFLAGS])
+  PYTHON_CPPFLAGS="${PYTHON_CPPFLAGS} ${NUMPY_CPPFLAGS}"
+  CPPFLAGS="${CPPFLAGS} ${NUMPY_CPPFLAGS}"
+
+  AC_CHECK_HEADERS([numpy/arrayobject.h],,
+                   [AC_MSG_FAILURE([could not find numpy/arrayobject.h; perhaps you want ]
+                   [--disable-python, or you need to install python-numpy])],
+                   [
+                    #include<Python.h>
+                    ])
+  CPPFLAGS=$saved_CPPFLAGS
+  AC_SUBST([PYTHON_CPPFLAGS])
+  AC_SUBST([PYTHON_LIBS])
 fi
 
 
@@ -421,10 +519,12 @@ dnl Write.
 
 AC_CONFIG_HEADERS([defaults/config.h])
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([applications/Makefile])
 AC_CONFIG_FILES([applications/mas_var/Makefile])
 AC_CONFIG_FILES([config2/Makefile])
 AC_CONFIG_FILES([config2/mas.cin])
 AC_CONFIG_FILES([driver/Makefile])
+AC_CONFIG_FILES([include/mce_library.h])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
 AC_CONFIG_FILES([scripts/mas scripts/mas_make_card_id scripts/mas_mknodes],
                 [chmod a+x $ac_file])
@@ -437,11 +537,13 @@ echo "Configure summary:"
 echo "  kernel driver:           ${DO_MAS_DRIVER}"
 if test "$DO_MAS_DRIVER" != "no"; then
   echo "    ... name:              ${DRIVER_NAME}"
+  echo "    ... bigphysarea:       ${DRIVER_BIGPHYS}"
   echo "    ... fakemce:           ${DRIVER_FAKEMCE}"
   echo "    ... verbose debugging: ${DRIVER_VERBOSE}"
   echo "    ... disable error msg: ${DRIVER_QUIET}"
   echo
 fi
+echo "  MCE ops:                 ${DO_KERNEL_IO}"
 echo "  shared libraries:        ${SHARED}"
 if test $MAX_FIBRE_CARD -eq 1; then
   echo "  Multicard support:       no"

@@ -199,7 +199,9 @@ void __attribute__((noreturn)) Usage(int ret)
             "(See below for an\n"
             "                      example of use.)\n"
             "  -e                ignore any MAS_... environment varaibles."
+#if MULTICARD
             " See also -x below."
+#endif
             "\n"
             "  -m <file>         read MAS configuration from the specified "
             "file instead of\n"
@@ -434,9 +436,7 @@ int main(int argc, char **argv)
         } else if (option == 's') {
             do_env = 0;
         } else if (option == 'x') {
-#if MULTICARD
             mini_env = 1;
-#endif
         } else if (option == '?')
             Usage(1);
         else if (option == OPT_HELP)

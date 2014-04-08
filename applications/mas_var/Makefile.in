@@ -5,7 +5,7 @@ include $(BASE)Makefile.children
 
 VER_TARGET := .
 include $(MAKERULES)Makefile.version
-DEFS += -DMCE_STATIC_LIBS="\"$(LIBS)\""
+DEFS += -DVERSION_STRING="$(REPO_VER)" -DMCE_STATIC_LIBS="\"$(LIBS)\""
 
 LIBRARY=$(MCE_LIBS)
 
@@ -19,7 +19,7 @@ HEADERS = version.h ../../defaults/config.h $(LIBHEADERS)
 all: Makefile mas_var
 
 mas_var: $(OBJECTS) $(LIBDEP)
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY)
 
 mas_var.o: mas_var.c $(HEADERS)
 
@@ -33,10 +33,10 @@ version.stamp: version.h.new
 	@if test -e version.h && diff -q version.h version.h.new; then \
 		echo version.h unchanged; \
 		rm -f version.h.new; \
-		else \
+	else \
 		echo "version.h updated"; \
 		mv -f version.h.new version.h; \
-		fi
+	fi
 	@touch $@
 
 version.h.new:

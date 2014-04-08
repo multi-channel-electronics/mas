@@ -56,7 +56,7 @@ struct {
 
 int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
 		mce_param_t *m_sq2fb_col, int biasing_ac,
-		int32_t *data, int offset, int count);
+        int32_t *data, int offset, int count);
 
 
 /***********************************************************
@@ -316,8 +316,9 @@ int main ( int argc, char **argv )
    /** generate a runfile **/
    error=genrunfile (full_datafilename, control.filename, 1, control.rc,
 		     control.bias, control.dbias, control.nbias,
-		     control.fb, control.dfb, control.nfb, control.bias_active,
-		     init_line1, init_line2);
+                     control.bias_active,
+		     control.fb, control.dfb, control.nfb,
+                     init_line1, init_line2, 0, 0, NULL, NULL);
    if (error != 0) {
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);
@@ -339,8 +340,10 @@ int main ( int argc, char **argv )
 	// Write *all* sq1bias here, or row-order destroys you.
 	duplicate_fill(control.bias + j*control.dbias, temparr, MAXROWS);
         if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
-                        (uint32_t*)temparr)) != 0) 
+                        (uint32_t*)temparr)) != 0)
+        {
           error_action("mcecmd_write_block sq1bias", error);
+        }
       }
 
       // Initialize SQ1 FB
@@ -373,11 +376,11 @@ int main ( int argc, char **argv )
 
 	if (i >= 0) {
 	  // Record
-	  for (snum=0; snum<control.column_n; snum++)	 
-	    fprintf(fd, "%11d ", sq1servo.last_frame[snum]);
-	  for (snum=0; snum<control.column_n; snum++)
-	    fprintf ( fd, "%11d ", sq2fb[snum]);
-	  fprintf ( fd, "\n" );
+        for (snum=0; snum<control.column_n; snum++)
+            fprintf(fd, "%11d ", sq1servo.last_frame[snum]);
+        for (snum=0; snum<control.column_n; snum++)
+            fprintf ( fd, "%11d ", sq2fb[snum]);
+        fprintf ( fd, "\n" );
 	}
       }
    }
@@ -387,13 +390,15 @@ int main ( int argc, char **argv )
    write_range_or_exit(mce, &m_sq2fb, control.column_0, temparr, control.column_n, "sq2fb");
  
    duplicate_fill(-8192, temparr, control.column_n);
-   write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");	
+   write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
    
    if (control.bias_active) {
      duplicate_fill(0, temparr, MAXROWS);
      if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
-                     (uint32_t*)temparr)) != 0) 
-       error_action("mcecmd_write_block sq1bias", error);
+                     (uint32_t*)temparr)) != 0)
+     {
+         error_action("mcecmd_write_block sq1bias", error);
+     }
    }
    else
       printf("No SQ1 bias is applied!\n"); 

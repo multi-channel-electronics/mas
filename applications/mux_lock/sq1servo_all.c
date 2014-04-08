@@ -335,7 +335,7 @@ int main(int argc, char **argv)
    error=genrunfile (full_datafilename, control.filename, 1, control.rc,
 		     control.bias, control.dbias, control.nbias, control.bias_active,
 		     control.fb, control.dfb, control.nfb, 
-		     init_line1, init_line2);
+                     init_line1, init_line2, 0, 1, NULL, NULL);
    if (error != 0){
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);
@@ -345,10 +345,12 @@ int main(int argc, char **argv)
    /* generate the header line for the bias files*/
    for (i=0; i<control.rows; i++) {
        for (snum=0; snum<control.column_n; snum++)
-	   fprintf (bias_fd[i], "<error%02d_r%02i> ", snum + control.column_0, i);
+           fprintf(bias_fd[i], "<error%02d_r%02i> ", snum + control.column_0,
+                   i);
        for (snum=0; snum<control.column_n; snum++)
-	   fprintf (bias_fd[i], "<sq2fb%02d_r%02i> ", snum + control.column_0, i); 
-       fprintf (bias_fd[i], "\n");
+           fprintf(bias_fd[i], "<sq2fb%02d_r%02i> ", snum + control.column_0,
+                   i);
+       fprintf(bias_fd[i], "\n");
    }
 
    /* start the servo*/
@@ -357,8 +359,11 @@ int main(int argc, char **argv)
       if (control.bias_active) {
 	// Write *all* sq1bias here, or row-order destroys you.
 	duplicate_fill(control.bias + j*control.dbias, temparr, MAXROWS);
-        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (uint32_t*)temparr)) != 0) 
-          error_action("mcecmd_write_block sq1bias", error);
+        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
+                        (uint32_t*)temparr)) != 0)
+        {
+            error_action("mcecmd_write_block sq1bias", error);
+        }
       }
 
       // Initialize SQ1 FB -- "off" columns will be held to fb_const.
@@ -420,8 +425,11 @@ int main(int argc, char **argv)
    
    if (control.bias_active) {
      duplicate_fill(0, temparr, MAXROWS);
-     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS, (uint32_t*)temparr)) != 0) 
-       error_action("mcecmd_write_block sq1bias", error);
+     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
+                     (uint32_t*)temparr)) != 0)
+     {
+         error_action("mcecmd_write_block sq1bias", error);
+     }
    }
    else
       printf("No SQ1 bias is applied!\n"); 

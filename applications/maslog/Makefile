@@ -18,10 +18,10 @@ SCRIPT := maslog
 all: $(LOGAPP) $(CLIENT)
 
 $(LOGAPP): $(SOURCE) $(HEADER) $(SOCK) $(LIBDEP)
-	$(CC) $(CFLAGS) $(SOURCE) -o$@ $(SOCK) $(LIBRARY)
+	$(CC) $(CFLAGS) $(SOURCE) -o $@ $(SOCK) $(LIBRARY)
 
 $(CLIENT): client.c $(LIBDEP)
-	$(CC) $(CFLAGS) $< -o$@ $(LIBRARY)
+	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY)
 
 tidy:
 	rm -f *~ *.o

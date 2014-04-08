@@ -6,6 +6,9 @@
   API for SDSU DSP for MCE
 
 ***************************/
+#include "mce_library.h"
+#ifndef NO_MCE_OPS
+
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -325,3 +328,4 @@ char *mcedsp_memtoa(int mem) {
 
 	return "?";
 }
+#endif

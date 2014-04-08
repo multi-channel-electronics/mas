@@ -221,8 +221,9 @@ int flush_stack(int do_read)
 		exit(1);
 	}
 
-	// delay [us] = number_of_bits [bits] * delay_per_bit [ns/bit] / 1000 [ns/us]
-	int delay = ((int32_t)write_buffer.count * delay_per_bit) / (1000*FUDGE_FACTOR);
+    // delay [us] = number_of_bits [bits] * delay_per_bit [ns/bit] / 1000 [ns/us]
+    int delay = ((int32_t)write_buffer.count * delay_per_bit) /
+        (1000 * FUDGE_FACTOR);
 	// Add one to delay, so that any fractions of a us are topped up.
 	delay++;
 	total_delay += delay;

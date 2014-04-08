@@ -1,6 +1,7 @@
 /* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  *      vim: sw=4 ts=4 et tw=80
  */
+#include <stdint.h>
 #include <stdio.h>
 #include <mce_library.h>
 #include <mce/defaults.h>
@@ -57,8 +58,7 @@ mce_context_t* connect_mce_or_exit(option_t* options);
 int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
 			const char *card, const char *para, int no_exit);
 void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
-			 int start, int32_t *data, int count,
-			 const char *opmsg);
+        int start, int32_t *data, int count, const char *opmsg);
 int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
 		   mce_param_t* sq2fb_col, int col0, int n_col);
 int check_mux11d(mce_context_t* mce, mce_param_t* safb,
@@ -75,7 +75,11 @@ int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
 int  which_rc,
 int  bias, int bstep, int nbias, int bias_active,
 int feed, int fstep, int nfeed,
-char *initline1, char *initline2 /*init lines to be included in <servo_init> section*/
+char *initline1, char *initline2, /*init lines to be included in <servo_init> section*/
+int n_cols,
+int servo,
+double *gains,
+int *quanta
 );
 
 

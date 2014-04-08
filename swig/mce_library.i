@@ -12,6 +12,7 @@ functionality. */
 %{
 
 #include "../include/mce_library.h"
+#include "../include/mcedata.h"
 #include "../defaults/config.h"
 #include "../include/mce/defaults.h"
 
@@ -19,10 +20,9 @@ functionality. */
 
 /* Types we want to manipulate directly should be described */
 
-%typedef unsigned u32;
-%typedef int      i32;
+%typedef uint32_t u32;
 %array_class(u32, u32array)
-%array_class(i32, i32array) 
+%array_class(int, intarray)
 
 /* Prototypes to wrap */
 
@@ -98,17 +98,17 @@ functionality. */
 		return 0;
 	}
 
-	int u32_to_i32(i32 *dst, u32 *src, int n) {
+  int u32_to_int(int *dst, u32 *src, int n) {
 		int i;
 		for (i=0; i<n; i++) {
-			dst[i] = (int)src[i];
+      dst[i] = (int)src[i];
 		}
 		return 0;
 	}
 
-	u32* u32_from_int_p(int *i) {
+    u32* u32_from_int_p(int *i) {
 	        return (u32*)i;
-	}	     
+    }
 
 %}
 
@@ -117,7 +117,7 @@ int read_frames(mce_context_t *context, u32 *buf, int cards, int count);
 int read_channels(mce_context_t *context, u32 *buf, int cards, int count,
 		  u32 *channels, int n_channels);
 
-int u32_to_i32(i32 *dst, u32 *src, int n);
+int u32_to_int(int *dst, u32 *src, int n);
 
 u32* u32_from_int_p(int *i);
 

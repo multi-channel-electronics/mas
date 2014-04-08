@@ -3,11 +3,11 @@ default: all
 BASE := ../
 include $(BASE)Makefile.children
 
-INCLUDE=-I$(MAS_INCLUDE_F) -I$(PYTHON_INC)
+INCLUDE=-I$(MAS_INCLUDE_F) ${PYTHON_CPPFLAGS}
 
 LIBRARY=-L$(MCELIB_F) -l$(MCELIB) \
 	-L$(LOGLIB_F) -l$(LOGLIB) \
-	-lconfig
+	-lconfig ${PYTHON_LIBS}
 
 CFLAGS += $(INCLUDE) -Wall $(DEFS) -fPIC -fno-stack-protector -fno-strict-aliasing
 CC=gcc
@@ -15,7 +15,7 @@ CC=gcc
 all: _mce_library.so
 
 _mce_library.so: mce_library_wrap.o $(LIBDEP)
-	ld -shared -fPIC -fno-stack-protector -o $@ $^ $(LIBRARY)
+	ld -shared -fPIC -fno-stack-protector -o $@ $< $(LIBRARY)
 
 mce_library_wrap.o: mce_library_wrap.c ../defaults/config.h
 

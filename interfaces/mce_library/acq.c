@@ -10,6 +10,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "mce_library.h"
+#ifdef NO_MCE_OPS
+/* omit everything */
+#else
+
 #include "context.h"
 #include "data_thread.h"
 #include "frame_manip.h"
@@ -530,3 +535,4 @@ int mcelib_symlink(const char *newpath, const char *target)
     free(tmp);
     return 0;
 }
+#endif

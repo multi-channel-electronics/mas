@@ -8,13 +8,14 @@ MAKE_SWIG=@DO_MAS_SWIG@
 # Set up the sets of folders to recurse into for each target
 all_dirs = interfaces applications scripts python config2
 clean_dirs = interfaces applications scripts swig python config2
-install_dirs = include interfaces applications scripts swig python config2
+install_dirs = include interfaces applications scripts python config2
 
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h makefiles/Makefile.install \
 					 makefiles/Makefile.paths scripts/mas scripts/mas_mknodes \
 					 scripts/91-mas.rules \
-					 applications/mas_var/Makefile config2/Makefile config2/mas.cin
+					 applications/mas_var/Makefile config2/Makefile config2/mas.cin \
+					 include/mce_library.h applications/Makefile
 clean_deps = clean_driver
 install_deps = all
 
@@ -49,6 +50,9 @@ install: $(install_deps)
 Makefile: config.status Makefile.in
 	$(SHELL) ./config.status $@
 
+applications/Makefile: config.status applications/Makefile.in
+	$(SHELL) ./config.status $@
+
 applications/mas_var/Makefile: config.status applications/mas_var/Makefile.in
 	$(SHELL) ./config.status $@
 
@@ -59,6 +63,9 @@ config2/mas.cin: config.status config2/mas.cin.in
 	$(SHELL) ./config.status $@
 
 driver/Makefile: config.status driver/Makefile.in
+	$(SHELL) ./config.status $@
+
+include/mce_library.h: config.status include/mce_library.h.in
 	$(SHELL) ./config.status $@
 
 makefiles/Makefile.install: config.status makefiles/Makefile.install.in
@@ -79,6 +86,7 @@ scripts/91-mas.rules: config.status scripts/91-mas.rules.in
 scripts/mas_mknodes: config.status scripts/mas_mknodes.in
 	$(SHELL) ./config.status $@
 
+.PRECIOUS: config.status
 config.status: configure
 	$(SHELL) ./config.status --recheck
 

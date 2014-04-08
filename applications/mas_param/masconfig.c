@@ -3,6 +3,9 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "masconfig.h"
 
@@ -20,9 +23,33 @@ int mas_load(const char *filename, config_t *cfg)
 	return 0;
 }
 
+/* for safety's sake, do an out-of-place write */
 int mas_save(const char *filename, config_t *cfg)
 {
-	return config_write_file(cfg, filename) == CONFIG_TRUE ? 0 : -1;
+    int fd;
+    FILE *stream;
+    char *tempname = malloc(strlen(filename) + 8);
+
+    sprintf(tempname, "%s.XXXXXX", filename);
+    fd = mkstemp(tempname);
+    if (fd < 0) {
+        perror("Unable to create temporary file");
+        free(tempname);
+        return -1;
+    }
+    stream = fdopen(fd, "w");
+    config_write(cfg, stream);
+    fclose(stream);
+    chmod(tempname, 0775);
+
+    /* move the temporary file in to place */
+    if (rename(tempname, filename)) {
+        perror("Error writing config");
+        unlink(tempname);
+        return -1;
+    }
+
+    return 0;
 }
 
 

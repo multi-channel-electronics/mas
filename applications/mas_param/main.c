@@ -58,8 +58,7 @@ int main(int argc, char **argv)
 
 	case MODE_SET:
 		status = param_save(&options);
-		if ((status == 0) &&
-		    (config_write_file(&cfg, options.source_file) != CONFIG_TRUE )) {
+        if ((status == 0) && mas_save(options.source_file, &cfg)) {
 			fprintf(stderr, "Could not save to '%s'.\n",
 				options.source_file);
 				status = 1;

@@ -19,7 +19,7 @@ HEADERS = $(LIBHEADERS)
 all: mas_mon
 
 mas_mon: mas_mon.o $(LIBDEP)
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+	$(CC) $(CFLAGS) mas_mon.o -o $@ $(LIBRARY)
 
 $(OBJECTS): $(HEADERS)
 
