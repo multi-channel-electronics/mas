@@ -6,7 +6,7 @@ MAKE_DRIVER=@DO_MAS_DRIVER@
 MAKE_SWIG=@DO_MAS_SWIG@
 
 # Set up the sets of folders to recurse into for each target
-all_dirs = interfaces applications python config2
+all_dirs = interfaces applications scripts python config2
 clean_dirs = interfaces applications scripts swig python config2
 install_dirs = include interfaces applications scripts python config2
 
