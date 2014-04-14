@@ -774,8 +774,10 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 		goto fail;
 	}
 
-        /* Make sure handshake bit is low, and then reset the card (it likes being reset). */
-        dsp_write_hctr(dsp->reg, dsp_read_hctr(dsp->reg) & ~HCTR_HF2);
+        /* Set word conversion mode: 32 <-> 24 bit with truncation. */
+        dsp_write_hctr(dsp->reg, DSP_PCI_MODE_BASE);
+
+        /* Reset the card (it likes being reset). */
         dsp_vector_command(dsp, HCVR_SYS_RST);
 
         // Install interrupt handler before setting the reply buffer...
@@ -1135,7 +1137,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 
         case DSPIOCT_RESET_DSP:
                 /* Lower handshake bit */
-                dsp_write_hctr(dsp->reg, dsp_read_hctr(dsp->reg) & ~HCTR_HF2);
+                dsp_write_hctr(dsp->reg, DSP_PCI_MODE_BASE);
                 /* Reset the card */
                 dsp_vector_command(dsp, HCVR_SYS_RST);
                 /* Re-init. */
