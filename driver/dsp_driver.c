@@ -774,6 +774,10 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 		goto fail;
 	}
 
+        /* Make sure handshake bit is low, and then reset the card (it likes being reset). */
+        dsp_write_hctr(dsp->reg, dsp_read_hctr(dsp->reg) & ~HCTR_HF2);
+        dsp_vector_command(dsp, HCVR_SYS_RST);
+
         // Install interrupt handler before setting the reply buffer...
 	err = request_irq(pci->irq, (irq_handler_t)mcedsp_int_handler,
                           IRQ_FLAGS, DEVICE_NAME, dsp);
