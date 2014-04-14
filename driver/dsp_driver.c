@@ -16,6 +16,7 @@
 #include <linux/fcntl.h>
 #include <linux/sched.h>
 #include <linux/pci.h>
+#include <linux/delay.h>
 
 #include "mce_options.h"
 #include "kversion.h"
@@ -665,19 +666,15 @@ void mcedsp_mce_timeout(unsigned long data)
 
 int mcedsp_do_handshake(mcedsp_t *dsp)
 {
-        int n_waits = 100000;
         __u32 hctr;
 
         // Raise flag
         hctr = dsp_read_hctr(dsp->reg);
         dsp_write_hctr(dsp->reg, hctr | HCTR_HF2);
 
-        // Wait for DSP to ack support of this driver
-        while (n_waits-- > 0) {
-                if (dsp_read_hstr(dsp->reg) & HSTR_HC4)
-                        break;
-        }
-        if (n_waits < 0) {
+        /* Wait 1ms or so, and check for HC4. */
+        usleep_range(1000, 10000);
+        if ((dsp_read_hstr(dsp->reg) & HSTR_HC4)==0) {
                 dsp_write_hctr(dsp->reg, hctr & ~HCTR_HF2);
                 PRINT_ERR(dsp->minor, "card did not hand-shake.\n");
                 return -1;
@@ -779,6 +776,7 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 
         /* Reset the card (it likes being reset). */
         dsp_vector_command(dsp, HCVR_SYS_RST);
+        usleep_range(1000, 10000);
 
         // Install interrupt handler before setting the reply buffer...
 	err = request_irq(pci->irq, (irq_handler_t)mcedsp_int_handler,
@@ -844,6 +842,18 @@ void mcedsp_remove(struct pci_dev *pci)
                                   dsp->reply_buffer_dma_handle);
 
         data_free(dsp);
+
+        /* Restore baseline mode; handshake down. */
+        dsp_write_hctr(dsp->reg, DSP_PCI_MODE_BASE);
+
+        /* Wait 1ms or so and check */
+        usleep_range(1000, 10000);
+        if (dsp_read_hstr(dsp->reg) & HSTR_HC4) {
+                PRINT_ERR(dsp->minor, "card did not de-hand-shake.\n");
+                PRINT_ERR(dsp->minor, "HSTR: %#10x\n", dsp_read_hstr(dsp->reg));
+                PRINT_ERR(dsp->minor, "HCTR: %#10x\n", dsp_read_hctr(dsp->reg));
+                PRINT_ERR(dsp->minor, "HCVR: %#10x\n", dsp_read_hcvr(dsp->reg));
+        }
 
         //Unmap i/o...
         if (dsp->reg != NULL)
@@ -1140,6 +1150,7 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
                 dsp_write_hctr(dsp->reg, DSP_PCI_MODE_BASE);
                 /* Reset the card */
                 dsp_vector_command(dsp, HCVR_SYS_RST);
+                usleep_range(1000, 10000);
                 /* Re-init. */
                 return mcedsp_do_handshake(dsp);
 
