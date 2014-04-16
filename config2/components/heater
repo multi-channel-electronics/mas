@@ -1,4 +1,4 @@
-<?
+<?php
    if (!isset($heater_count) || !isset($heater_mapping)) {
      throw new Exception('Define $heater_count and $heater_mapping.');
    }
@@ -10,7 +10,7 @@
                     name = "bias";
                     count = <?=$heater_count?>;
                     maps = (
-<? $s = "\n";
+<?php $s = "\n";
    $indent = "                        ";
    foreach ($heater_mapping as $map) {
      $s .=

@@ -15,14 +15,14 @@
                     name = "bias";
                     count = <?=$num_columns?>;
                     maps = (
-<? echo rc_map("sa_bias"); ?>
+<?php echo rc_map("sa_bias"); ?>
                     );
                 },
                 {
                     name = "offset";
                     count = <?=$num_columns?>;
                     maps = (
-<? echo rc_map("offset"); ?>
+<?php echo rc_map("offset"); ?>
                     );
                 }
             );
@@ -32,7 +32,7 @@
             name = "sq2_mapping";
             parameters = (
 
-<? /* Biasing address card - map "sq2 fb_col%i" to "bac fb_col%i"
+<?php /* Biasing address card - map "sq2 fb_col%i" to "bac fb_col%i"
       and have single enbl_mux switch.  */
    if ($hw_bac) {
      /* bac */
@@ -48,7 +48,7 @@
                         }
                     );
                 },
-<?   /* bac */
+<?php   /* bac */
    } else {
      if ($fw_rev_bc_fast) {
        /* bc-fast */
@@ -65,7 +65,7 @@
                         }
                     );
                 },
-<?   }  /* fw_rev_bc_fast */   ?>
+<?php   }  /* fw_rev_bc_fast */   ?>
                 {
                     name = "fb";
                     count = <?=$num_columns?>;
@@ -76,10 +76,10 @@
                         }
                     );
                 },
-<? } /* if bac */ ?>
+<?php } /* if bac */ ?>
 
-<? /* SQ2 bias comes from bc3 or bc1 depending on sub-rack size. */ ?>
-<?    if ($hw_subrack == "full") { ?>
+<?php /* SQ2 bias comes from bc3 or bc1 depending on sub-rack size. */ ?>
+<?php    if ($hw_subrack == "full") { ?>
                 {
                     name = "bias";
                     count = <?=$num_columns?>;
@@ -90,7 +90,7 @@
                         }
                     );
                 }
-<?    } else { ?>
+<?php    } else { ?>
                 {
                     name = "bias";
                     count = <?=$num_columns?>;
@@ -101,7 +101,7 @@
                         }
                     );
                 }
-<?    } ?>
+<?php    } ?>
             );
         },
 
@@ -132,14 +132,14 @@
                     name = "fb_const";
                     count = <?=$num_columns?>;
                     maps = (
-<? echo rc_map("fb_const"); ?>
+<?php echo rc_map("fb_const"); ?>
                     );
                 },
                 {
                     name = "servo_mode";
                     count = <?=$num_columns?>;
                     maps = (
-<? echo rc_map("servo_mode"); ?>
+<?php echo rc_map("servo_mode"); ?>
                     );
                 }
             );

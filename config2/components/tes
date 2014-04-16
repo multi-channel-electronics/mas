@@ -1,4 +1,4 @@
-<?
+<?php
 function check_bcs($bc1, $bc2, $bc3) {
   global $card_list, $tes_para;
       if ($bc1 && !in_array("bc1", $card_list))
@@ -15,7 +15,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                 {
                     name = "bias";
 
-<? if ($tes_para == "classic") { check_bcs(1,1,1); ?>
+<?php if ($tes_para == "classic") { check_bcs(1,1,1); ?>
                     count = 3;
                     maps = (
                         {
@@ -31,7 +31,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                             param = "bias"; offset = 0;
                         }
                     );
-<? } elseif ($tes_para == "small16") { check_bcs(0,0,1); ?>
+<?php } elseif ($tes_para == "small16") { check_bcs(0,0,1); ?>
                     count = 16;
                     maps = (
                         {
@@ -39,7 +39,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                             param = "flux_fb"; offset = 0;
                         }
                     );
-<? } elseif ($tes_para == "small_2bc") { check_bcs(0,1,0); ?>
+<?php } elseif ($tes_para == "small_2bc") { check_bcs(0,1,0); ?>
                     count = 16;
                     maps = (
                         {
@@ -47,7 +47,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                             param = "flux_fb"; offset = 16;
                         }
                     );
-<? } elseif ($tes_para == "revF_32") { check_bcs(1,1,1); ?>
+<?php } elseif ($tes_para == "revF_32") { check_bcs(1,1,1); ?>
                     count = 32;
                     maps = (
                         {
@@ -71,7 +71,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                             param = "bias"; offset = 11;
                         }
                     );
-<? } elseif ($tes_para == "bc1_f_24_31") { check_bcs(1,0,0); ?>
+<?php } elseif ($tes_para == "bc1_f_24_31") { check_bcs(1,0,0); ?>
                     count = 8;
                     maps = (
                         {
@@ -79,7 +79,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                             param = "flux_fb"; offset = 24;
                         }
                     );
-<? } elseif ($tes_para == "bc3_f_24_31") { check_bcs(0,0,1); ?>
+<?php } elseif ($tes_para == "bc3_f_24_31") { check_bcs(0,0,1); ?>
                     count = 8;
                     maps = (
                         {
@@ -87,7 +87,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                             param = "flux_fb"; offset = 24;
                         }
                     );
-<? } elseif ($tes_para == "bc2_fu_00_15") { check_bcs(0,1,0); ?>
+<?php } elseif ($tes_para == "bc2_fu_00_15") { check_bcs(0,1,0); ?>
                     count = 16;
                     maps = (
                         {
@@ -95,7 +95,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                             param = "flux_fb_upper"; offset = 0;
                         }
                     );
-<? } elseif ($tes_para == "none") { ?>
+<?php } elseif ($tes_para == "none") { ?>
                     count = 0;
                     maps = (
                         {
@@ -103,14 +103,14 @@ function check_bcs($bc1, $bc2, $bc3) {
                             params = ""; offset = 0;
                         }
                     );
-<? } elseif ($tes_para == "map") {
+<?php } elseif ($tes_para == "map") {
      if (!isset($tes_bias_mapping) || !isset($tes_bias_count)) {
        throw new Exception('Define $tes_para and $tes_bias_count for map.');
      }
 ?>
                     count = <?=$tes_bias_count?>;
                     maps = (
-<? $s = "";
+<?php $s = "";
    $indent = "                        ";
    foreach ($tes_bias_mapping as $map) {
      $s .=
@@ -123,7 +123,7 @@ function check_bcs($bc1, $bc2, $bc3) {
    echo $s;
 ?>
                     );
-<? } else {
+<?php } else {
       throw new Exception("Unhandled value for \$tes_para: \"$tes_para\".");
    } /* $tes_para */ ?>
                 }

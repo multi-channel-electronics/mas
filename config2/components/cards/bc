@@ -11,21 +11,21 @@
                 {
                     name = "bias";
                     id = 0x21;
-<? if ($hw_12tes) { ?>
+<?php if ($hw_12tes) { ?>
                     count = 12;
                     op_xor = 0x8000;
-<? } ?>
+<?php } ?>
                 }
-<? if ($hw_subrack == "small") { ?>
+<?php if ($hw_subrack == "small") { ?>
                 ,
                 {
                     name = "flux_fb_upper";
                     id = 0x24;
                     count = 16;
                 }
-<? } ?>
+<?php } ?>
 
-<? if (fw_range("bc", $min=0x5030000)) { ?>
+<?php if (fw_range("bc", $min=0x5030000)) { ?>
                 ,
                 {
                     name = "enbl_flux_fb_mod";
@@ -42,7 +42,7 @@
                     id = 0x27;
                     count = 32;
                 }
-<? } ?>
+<?php } ?>
 /*,
                 {
                     name = "sa_htr0";
@@ -62,13 +62,13 @@
             name = "bias-fast commands";
 
             parameters = (
-<? if ($fw_rev_bc_fast) { ?>
+<?php if ($fw_rev_bc_fast) { ?>
                 {
                     name = "enbl_mux";
                     id = 0x05;
                     count = 32;
                 },
-<?
+<?php
       $output = "";
       for ($i=0; $i<32; $i++) {
          $id = sprintf("0x%02X", 0xc0 + $i);

@@ -1,4 +1,4 @@
-<?  include 'header';  ?>
+<?php  include 'header';  ?>
 /*
  *  MCE Hardware configuration file.
  *
@@ -8,7 +8,7 @@
  *  Date  : <?=`date`?>
  *
  *  MAS configuration for this subrack:
-<?  include 'description'; ?>
+<?php  include 'description'; ?>
  */
 
 
@@ -41,7 +41,7 @@ include "cards/bac";
 
     mappings = (
 
-<?
+<?php
 if ($hw_mux11d)
 include "squids_mux11d";
 else
@@ -60,7 +60,7 @@ include "heater";
         }
     );
 
-<?
+<?php
 include "card-types";
 
 include "subrack";
