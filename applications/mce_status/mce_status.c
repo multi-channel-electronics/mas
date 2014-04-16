@@ -34,7 +34,7 @@ int crawl_festival(crawler_t *crawler);
 
 int main(int argc, char **argv)
 {
-    maslog_t *logger;
+    maslog_t *logger = NULL;
 	char msg[MCE_LONG];
 
 	if (process_options(&options, argc, argv)) {
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
         exit(2);
     }
 
-    // Connect to MCE
+    // Connect to MCE, if necessary
     if ((options.context = mcelib_create(options.fibre_card,
                     options.config_file, 0)) == NULL)
     {
@@ -50,14 +50,17 @@ int main(int argc, char **argv)
         return 3;
     }
 
-    logger = maslog_connect(options.context, "mce_status");
-    sprintf(msg, "initiated with hardware config '%s'", options.config_file);
-    maslog_print(logger, msg);
+    if (options.mode != CRAWLER_CFG && options.mode != CRAWLER_CFX) {
+        logger = maslog_connect(options.context, "mce_status");
+        sprintf(msg, "initiated with hardware config '%s'",
+                options.config_file);
+        maslog_print(logger, msg);
 
-    if (mcecmd_open(options.context) != 0) {
-        sprintf(msg, "Could not open CMD device\n");
-        error_log_exit(logger, msg, 3);
-	}
+        if (mcecmd_open(options.context) != 0) {
+            sprintf(msg, "Could not open CMD device\n");
+            error_log_exit(logger, msg, 3);
+        }
+    }
 
     // Load configuration
     if (mceconfig_open(options.context, 
@@ -149,7 +152,8 @@ int crawl_festival(crawler_t *crawler)
 
 void error_log_exit(maslog_t* logger, const char *msg, int error)
 {
-    maslog_print(logger, msg);
+    if (logger)
+        maslog_print(logger, msg);
     fprintf(stderr, "%s", msg);
     exit(error);
 }
