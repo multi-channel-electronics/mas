@@ -87,6 +87,9 @@ ADDRS = {
     'MODE': 1,
     'VERSION': 3,
     }
+
+# STATUS bit that tells us new comms (U0107) protocol is active
+status_newcomm_bit = 15
     
 status_bits_U0104 = [
     ('APPLICATION_RUNNING', 0),
@@ -121,12 +124,30 @@ status_bits_U0105 = [
     ('MAIN_LOOP_POLL', 23),
     ]
 
-status_bit_sets = {
+status_bits_U0107 = [
+    ('COMM_REP', 0),
+    ('COMM_CMD', 1),
+    ('COMM_MCEREP', 2),
+    ('COMM_MCEDATA', 3),
+    ('COMM_ERR', 9),
+    ('COMM_REP_ENABLED', 10),
+    ('COMM_BUF_UPDATE', 11),
+    ('COMM_TFR_YMEM', 16),
+    ('COMM_ACTIVE', 17),
+    ]
+
+classic_status_bit_sets = {
     0x550104: status_bits_U0104,
     0x550105: status_bits_U0105,
     0x550106: status_bits_U0105,
+    0x550107: status_bits_U0105,
     'default': status_bits_U0105,
 }
+
+newcomm_status_bit_sets = {
+    0x550107: status_bits_U0107,
+    'default': status_bits_U0107,
+    }
 
 mode_bits = [
     ( 'MODE_APPLICATION', 0),
@@ -180,15 +201,25 @@ if __name__ == '__main__':
 
     print formatter('CODE_VERSION', '%#x' % vers, indent=1)
  
+    stat = d.read("X", ADDRS['STATUS'])
+
+    if get_bit(stat, status_newcomm_bit):
+        comms_version = 7  # New comms mode introduced in U0107.
+        status_bit_sets = newcomm_status_bit_sets
+    else:
+        comms_version = 3  # Classic.
+        status_bit_sets = classic_status_bit_sets
+    
+    print formatter('COMMS_VERSION', '%#x' % comms_version, indent=1)
+
     status_bits = status_bit_sets.get(vers, status_bit_sets['default'])
     status_dict = dict(status_bits)
 
-    stat = d.read("X", ADDRS['STATUS'])
     print formatter('STATUS', '%#06x' % stat, indent=1)
     for k,b in status_bits:
         print formatter(k, '%i' % get_bit(stat, b), indent=2)
 
-    if vers >= 0x550105 and vers < 0x560000:
+    if comms_version < 7:
         mode = d.read('X', ADDRS['MODE'])
         print formatter('MODE', '%#06x' % mode, indent=1)
         for k,b in mode_bits:
