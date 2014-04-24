@@ -88,9 +88,6 @@ ADDRS = {
     'VERSION': 3,
     }
 
-# STATUS bit that tells us new comms (U0107) protocol is active
-status_newcomm_bit = 15
-    
 status_bits_U0104 = [
     ('APPLICATION_RUNNING', 0),
     ('SEND_IO_TO_HOST', 1),
@@ -149,11 +146,14 @@ newcomm_status_bit_sets = {
     'default': status_bits_U0107,
     }
 
+MODE_C7_ACTIVE = 4
+
 mode_bits = [
     ( 'MODE_APPLICATION', 0),
     ( 'MODE_MCE', 1),
     ( 'MODE_QT', 2),
     ( 'MODE_RP_BUFFER', 3),
+    ( 'MODE_C7_ACTIVE', MODE_C7_ACTIVE),
     ]
 
 pcidma_errors_U0104 = [
@@ -202,8 +202,9 @@ if __name__ == '__main__':
     print formatter('CODE_VERSION', '%#x' % vers, indent=1)
  
     stat = d.read("X", ADDRS['STATUS'])
+    mode = d.read('X', ADDRS['MODE'])
 
-    if get_bit(stat, status_newcomm_bit):
+    if get_bit(mode, MODE_C7_ACTIVE):
         comms_version = 7  # New comms mode introduced in U0107.
         status_bit_sets = newcomm_status_bit_sets
     else:
@@ -219,12 +220,11 @@ if __name__ == '__main__':
     for k,b in status_bits:
         print formatter(k, '%i' % get_bit(stat, b), indent=2)
 
-    if comms_version < 7:
-        mode = d.read('X', ADDRS['MODE'])
-        print formatter('MODE', '%#06x' % mode, indent=1)
-        for k,b in mode_bits:
-            print formatter(k, '%i' % get_bit(mode, b), indent=2)
+    print formatter('MODE', '%#06x' % mode, indent=1)
+    for k,b in mode_bits:
+        print formatter(k, '%i' % get_bit(mode, b), indent=2)
 
+    if comms_version < 7:
         stat = set_bit(stat, status_dict['MAIN_LOOP_POLL'])
         d.write('X', ADDRS['STATUS'], stat)
         time.sleep(.1)
