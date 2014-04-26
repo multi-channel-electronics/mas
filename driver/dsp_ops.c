@@ -321,12 +321,6 @@ int dsp_open(struct inode *inode, struct file *filp)
 		return -ENODEV;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
-	MOD_INC_USE_COUNT;
-#else
-	if(!try_module_get(THIS_MODULE))
-		return -1;
-#endif   
 	fpdata = kmalloc(sizeof(struct filp_pdata), GFP_KERNEL);
         fpdata->minor = iminor(inode);
 	filp->private_data = fpdata;
@@ -347,11 +341,6 @@ int dsp_release(struct inode *inode, struct file *filp)
 	} else
                 PRINT_ERR(card, "called with NULL private_data!\n");
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
-	MOD_DEC_USE_COUNT;
-#else
-	module_put(THIS_MODULE);
-#endif
         PRINT_INFO(card, "ok\n");
 	return 0;
 }
