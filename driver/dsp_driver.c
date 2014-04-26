@@ -1333,10 +1333,6 @@ int mcedsp_open(struct inode *inode, struct file *filp)
 		return -ENODEV;
 	}
 
-        // FIXME: populate .owner in fops?
-	if(!try_module_get(THIS_MODULE))
-		return -1;
-
 	filp->private_data = dspdata + minor;
 
         PRINT_INFO(minor, "ok\n");
@@ -1346,7 +1342,6 @@ int mcedsp_open(struct inode *inode, struct file *filp)
 int mcedsp_release(struct inode *inode, struct file *filp)
 {
         mcedsp_t *dsp = filp->private_data;
-	module_put(THIS_MODULE);
         if (dsp != NULL)
                 data_lock_operation(dsp, LOCK_UP, filp);
 	return 0;
