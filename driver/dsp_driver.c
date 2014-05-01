@@ -584,20 +584,27 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
         case DGRAM_TYPE_BUF_INFO:
                 PRINT_INFO(dsp->minor, "info received; %i\n", gram.buffer[0]);
                 report_packet = 0;
-                DSP_LOCK;
-                dsp->dframes.head_index = gram.buffer[0];
-                k = (dsp->dframes.head_index - dsp->dframes.last_grant + 
-                     dsp->dframes.n_frames) % dsp->dframes.n_frames;
-                DSP_UNLOCK;
-                /* PRINT_INFO(dsp->minor, "scheduling update!\n"); */
-                /* Limits updates to "rare".  The biggest reason to do
-                   this is to not bother in the case when only single
-                   frames are being read. */
-                if (k > dsp->dframes.n_frames / 4) {
-                        PRINT_INFO(dsp->minor, "scheduling grant of %i frames\n", k);
-                        tasklet_schedule(&dsp->grantlet);
+                /* Sanity check this... and no not divide by 0 in an IRQ. */
+                if ((dsp->dframes.n_frames > 0) && 
+                    (gram.buffer[0] < dsp->dframes.n_frames)) {
+                        DSP_LOCK;
+                        dsp->dframes.head_index = gram.buffer[0];
+                        k = (dsp->dframes.head_index - dsp->dframes.last_grant + 
+                             dsp->dframes.n_frames) % dsp->dframes.n_frames;
+                        DSP_UNLOCK;
+                        /* PRINT_INFO(dsp->minor, "scheduling update!\n"); */
+                        /* Limits updates to "rare".  The biggest reason to do
+                           this is to not bother in the case when only single
+                           frames are being read. */
+                        if (k > dsp->dframes.n_frames / 4) {
+                                PRINT_INFO(dsp->minor,
+                                           "scheduling grant of %i frames\n", k);
+                                tasklet_schedule(&dsp->grantlet);
+                        }
+                } else {
+                        PRINT_ERR(dsp->minor, "invalid buffer inform (%i >= %i)\n",
+                                  gram.buffer[0], dsp->dframes.n_frames);
                 }
-       
                 break;
         default:
                 PRINT_ERR(dsp->minor, "unknown DGRAM_TYPE\n");
@@ -677,6 +684,9 @@ int mcedsp_do_handshake(mcedsp_t *dsp)
         if ((dsp_read_hstr(dsp->reg) & HSTR_HC4)==0) {
                 dsp_write_hctr(dsp->reg, hctr & ~HCTR_HF2);
                 PRINT_ERR(dsp->minor, "card did not hand-shake.\n");
+                PRINT_ERR(dsp->minor, "HSTR: %#10x\n", dsp_read_hstr(dsp->reg));
+                PRINT_ERR(dsp->minor, "HCTR: %#10x\n", dsp_read_hctr(dsp->reg));
+                PRINT_ERR(dsp->minor, "HCVR: %#10x\n", dsp_read_hcvr(dsp->reg));
                 return -1;
         }
 
@@ -698,6 +708,7 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	int card;
         int err = 0;
+        int hstr;
 	mcedsp_t *dsp = NULL;
         PRINT_INFO(NOCARD, "entry\n");
 
@@ -778,6 +789,26 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
         dsp_vector_command(dsp, HCVR_SYS_RST);
         usleep_range(1000, 10000);
 
+        /* Sanity checks. */
+        hstr = dsp_read_hstr(dsp->reg);
+        if (hstr & HSTR_HRRQ) {
+                int j;
+                PRINT_ERR(card, "card asserting HTRQ (%#x); reading (and "
+                          "aborting):\n", hstr);
+                for (j=0; j<40; j++) {
+                        if (!(dsp_read_hstr(dsp->reg) & 0x04))
+                                 break;
+                         PRINT_ERR(card, " word %2i  %#08x\n", j, 
+                                   dsp_read_hrxs(dsp->reg));
+                 }
+                goto fail;
+         }
+        if (hstr & HSTR_HINT) {
+                PRINT_ERR(card, "card asserting INTA (%#x); aborting.\n",
+                        hstr);
+                goto fail;
+        }
+
         // Install interrupt handler before setting the reply buffer...
 	err = request_irq(pci->irq, (irq_handler_t)mcedsp_int_handler,
                           IRQ_FLAGS, DEVICE_NAME, dsp);
@@ -828,7 +859,19 @@ void mcedsp_remove(struct pci_dev *pci)
         dsp->enabled = 0;
         DSP_UNLOCK;
 
-	// Disable higher-level features first
+        /* Restore baseline mode; handshake down. */
+        dsp_write_hctr(dsp->reg, DSP_PCI_MODE_BASE);
+
+        /* Wait 1ms or so and check */
+        usleep_range(1000, 10000);
+        if (dsp_read_hstr(dsp->reg) & HSTR_HC4) {
+                PRINT_ERR(dsp->minor, "card did not de-hand-shake.\n");
+                PRINT_ERR(dsp->minor, "HSTR: %#10x\n", dsp_read_hstr(dsp->reg));
+                PRINT_ERR(dsp->minor, "HCTR: %#10x\n", dsp_read_hctr(dsp->reg));
+                PRINT_ERR(dsp->minor, "HCVR: %#10x\n", dsp_read_hcvr(dsp->reg));
+        }
+
+	// Now disable higher-level internal features
 	del_timer_sync(&dsp->dsp_timer);
 	del_timer_sync(&dsp->mce_timer);
         tasklet_kill(&dsp->grantlet);
@@ -842,18 +885,6 @@ void mcedsp_remove(struct pci_dev *pci)
                                   dsp->reply_buffer_dma_handle);
 
         data_free(dsp);
-
-        /* Restore baseline mode; handshake down. */
-        dsp_write_hctr(dsp->reg, DSP_PCI_MODE_BASE);
-
-        /* Wait 1ms or so and check */
-        usleep_range(1000, 10000);
-        if (dsp_read_hstr(dsp->reg) & HSTR_HC4) {
-                PRINT_ERR(dsp->minor, "card did not de-hand-shake.\n");
-                PRINT_ERR(dsp->minor, "HSTR: %#10x\n", dsp_read_hstr(dsp->reg));
-                PRINT_ERR(dsp->minor, "HCTR: %#10x\n", dsp_read_hctr(dsp->reg));
-                PRINT_ERR(dsp->minor, "HCVR: %#10x\n", dsp_read_hcvr(dsp->reg));
-        }
 
         //Unmap i/o...
         if (dsp->reg != NULL)
