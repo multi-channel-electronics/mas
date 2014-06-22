@@ -25,7 +25,7 @@ all: Makefile $(TARGET)
 
 # General rule...
 %.cfg : %.cin components/
-	php $< > $@ || ( rm -f $@ && exit 1 )
+	php -c php.ini $< > $@ || ( rm -f $@ && exit 1 )
 
 # we only die if the first .cin doesn't exist, because the user may only have
 # one fibre card.
