@@ -13,6 +13,7 @@
 #include <linux/errno.h>
 #include <linux/types.h>
 #include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 #include <linux/fcntl.h>
 #include <linux/sched.h>
 #include <linux/pci.h>
@@ -262,7 +263,6 @@ int data_alloc(mcedsp_t *dsp, int mem_size)
 
 #else
         // Allocate up to 20 x 1MB blocks
-        dsp_memblock_t *mem;
         dframes->total_size = 0;
         for (dframes->n_blocks = 0;
              dframes->n_blocks < DSP_MAX_MEM_BLOCKS;) {
@@ -1326,9 +1326,14 @@ int mcedsp_mmap(struct file *filp, struct vm_area_struct *vma)
         int offset = 0;
         mcedsp_t *dsp = (mcedsp_t*)filp->private_data;
 
-	// Mark memory as reserved (prevents core dump inclusion) and
-	// IO (prevents caching)
-	vma->vm_flags |= VM_IO | VM_RESERVED;
+	// Mark memory as reserved (prevents core dump inclusion and caching)
+#ifdef VM_DONTDUMP
+        /* 3.0.+ kernels */
+        vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;
+#else
+        /* 2.6.x kernels */
+        vma->vm_flags |= VM_IO | VM_RESERVED;
+#endif
 
 	// Do args checking on vma... start, end, prot.
         PRINT_INFO(dsp->minor, "mapping %#lx bytes to user address %#lx\n",
@@ -1389,25 +1394,13 @@ struct file_operations mcedsp_fops =
 };
 
 
-static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
-                       int *eof, void *data)
+static int mcedsp_proc_show(struct seq_file *sfile, void *data)
 {
-	int len = 0;
 	int card, i;
 
-        // You only get one shot.
-        *eof = 1;
+        seq_printf(sfile, "mce_dsp driver version %s\n", VERSION_STRING);
 
-        if (count < 100)
-                return 0;
-
-        len += sprintf(buf+len,"mce_dsp driver version %s\n", VERSION_STRING);
-        if (count < 512) {
-                len += sprintf(buf+len,"    output abbreviated!\n");
-                return len;
-        }
-
-        len += sprintf(buf+len,"    bigphys:  "
+        seq_printf(sfile, "    bigphys:  "
 #ifdef BIGPHYS
                        "yes\n"
 #else
@@ -1420,12 +1413,12 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                 if (!dsp->enabled)
                         continue;
 
-                len += sprintf(buf+len,"\nCARD: %d\n", card);
-		len += sprintf(buf+len, "  %-20s %20s\n",
+                seq_printf(sfile, "\nCARD: %d\n", card);
+		seq_printf(sfile, "  %-20s %20s\n",
 			       "PCI bus address:", pci_name(dsp->pci));
-		len += sprintf(buf+len, "  %-20s %20s\n",
+		seq_printf(sfile,  "  %-20s %20s\n",
 			       "Firmware revision:", dsp->fw_verstr);
-                len += sprintf(buf+len,"  Commander states:\n"
+                seq_printf(sfile, "  Commander states:\n"
                                "    %-20s %18i\n"
                                "    %-20s %18i\n"
                                "    %-20s %18i\n",
@@ -1433,7 +1426,7 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                                "MCE channel:", dsp->mce_state,
                                "Data lock:",
                                data_lock_operation(dsp,LOCK_QUERY, NULL));
-                len += sprintf(buf+len,
+                seq_printf(sfile,
                                "  PCI regs:\n"
                                "    %-30s %#08x\n"
                                "    %-30s %#08x\n"
@@ -1441,17 +1434,17 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                                "HSTR:", dsp_read_hstr(dsp->reg),
                                "HCTR:", dsp_read_hctr(dsp->reg),
                                "HCVR:", dsp_read_hcvr(dsp->reg));
-                len += sprintf(buf+len,
+                seq_printf(sfile,
                                "  Buffer physical addresses:\n"
                                "    %-28s %#10x\n"
                                "    %-28s\n",
                                "reply:", (unsigned)dsp->reply_buffer_dma_handle,
                                "data:");
                 for (i=0; i<dsp->dframes.n_blocks; i++)
-                        len += sprintf(buf+len, "      %24i @ %#010x\n",
+                        seq_printf(sfile, "      %24i @ %#010x\n",
                                        (int)dsp->dframes.blocks[i].size,
                                        (unsigned)dsp->dframes.blocks[i].base_busaddr);
-                len += sprintf(buf+len,
+                seq_printf(sfile,
                                "  Circular buffer state:\n"
                                "    %-28s %10i\n"
                                "    %-28s %10i\n"
@@ -1471,9 +1464,21 @@ static int mcedsp_proc(char *buf, char **start, off_t offset, int count,
                                "reconfigs:", dsp->dframes.qt_configs);
         }
 
-	return len;
-
+	return 0;
 }
+
+static int mcedsp_proc_open(struct inode *inode, struct file *file)
+{
+        return single_open(file, &mcedsp_proc_show, NULL);
+}
+
+static const struct file_operations mcedsp_proc_ops = {
+        .owner = THIS_MODULE,
+        .open = mcedsp_proc_open,
+        .read = seq_read,
+        .llseek = seq_lseek,
+        .release = single_release
+};
 
 
 inline int mcedsp_driver_init(void)
@@ -1500,7 +1505,7 @@ inline int mcedsp_driver_init(void)
 	err = register_chrdev(0, DEVICE_NAME, &mcedsp_fops);
         major = err;
 
-        create_proc_read_entry("mce_dsp", 0, NULL, mcedsp_proc, NULL);
+        proc_create_data("mce_dsp", 0, NULL, &mcedsp_proc_ops, NULL);
 
         PRINT_INFO(NOCARD, "ok\n");
 	return 0;
