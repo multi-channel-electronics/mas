@@ -9,7 +9,17 @@
 #include "mce/defaults.h"
 #include "jam_mce.h"
 
-#define MAX_PAYLOAD 56
+/* "MAX_PAYLOAD" is the maximum number of 32-bit words that can be
+   buffered before writing to MCE.  In principle you can fit 58 data
+   words into an MCE command, but one word is needed to communicate
+   the total number of bits in the payload (which is not necessary a
+   nice multiple of the word size).  So then you are limited to 57.
+   We used 56 here for a while, but reading back TDO fails for 56, for
+   some reason, so now we set it to 55. */
+#define MAX_PAYLOAD 55
+
+/* "MAX_PACKING" is the number of bits actually stored in each 32-bit
+   command word. */
 #define MAX_PACKING 16
 #define MAX_TBITS (MAX_PAYLOAD * MAX_PACKING)
 #define TDO_SAMPLE_DELAY 2
@@ -203,6 +213,8 @@ void close_mce(void)
 
 int flush_stack(int do_read)
 {
+    int mce_err = 0;
+
 	if (write_buffer.count <= 0) {
 		fprintf(stderr, "MCE: flush_stack called with no data.\n");
 		read_buffer.count = 0;
@@ -216,8 +228,9 @@ int flush_stack(int do_read)
 	data[0] = write_buffer.count*2;
 	for (int i=0; i < n_data; i++)
 		data[i+1] = write_buffer.data[i];
-	if (mcecmd_write_block(mce, par_addrs + TMS_TDI, n_data+1, data)!=0) {
+	if ((mce_err=mcecmd_write_block(mce, par_addrs + TMS_TDI, n_data+1, data))!=0) {
 		fprintf(stderr, "MCE does not like TMS_TDI commands.\n");
+        fprintf(stderr, "mcelib error: %s\n", mcelib_error_string(mce_err));
 		exit(1);
 	}
 
@@ -233,14 +246,16 @@ int flush_stack(int do_read)
 	//if (verbose) printf(".");
 
 	if (do_read) {
-		if (mcecmd_read_block(mce, par_addrs + TDO, n_data, read_buffer.data)!=0) {
-			fprintf(stderr, "MCE does not like TDO commands.\n");
+		if ((mce_err=mcecmd_read_block(mce, par_addrs + TDO, n_data, read_buffer.data))!=0) {
+			fprintf(stderr, "MCE failed to read from TDO (%i words; "
+                    "write count is %i).\n", n_data, write_buffer.count);
+            fprintf(stderr, "mcelib error: %s\n", mcelib_error_string(mce_err));
 			exit(1);
 		}
 		read_buffer.count = write_buffer.count;
 	}
 
-	// Flah the write buffer as 'empty.'
+	// Flag the write buffer as 'empty.'
 	write_buffer.count = 0;
 	memset(write_buffer.data, 0, MAX_PAYLOAD *sizeof(*write_buffer.data));
 	return 0;
