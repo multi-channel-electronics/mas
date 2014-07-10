@@ -159,9 +159,14 @@ int data_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct filp_pdata *fpdata = filp->private_data;
 	frame_buffer_t *dframes = data_frames + fpdata->minor;
 
-	// Mark memory as reserved (prevents core dump inclusion) and
-	// IO (prevents caching)
-	vma->vm_flags |= VM_IO | VM_RESERVED;
+	// Mark memory as reserved (prevents core dump inclusion and caching)
+#ifdef VM_DONTDUMP
+        /* 3.0.+ kernels */
+        vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;
+#else
+        /* 2.6.x kernels */
+        vma->vm_flags |= VM_IO | VM_RESERVED;
+#endif
 
 	// Do args checking on vma... start, end, prot.
         PRINT_INFO(fpdata->minor, "mapping %#lx bytes to user address %#lx\n",
