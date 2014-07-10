@@ -19,6 +19,7 @@
 #include "data_qt.h"
 #include "mce_driver.h"
 #include "memory.h"
+#include "proc.h"
 
 #ifdef BIGPHYS
 # include <linux/bigphysarea.h>
@@ -570,54 +571,43 @@ int data_lock_operation(int card, int operation, void *filp)
 
 /* Proc! */
 
-int data_proc(char *buf, int count, int card)
+int data_proc(struct seq_file *sfile, void *data)
 {
+        int card = (unsigned long)data;
 	frame_buffer_t *dframes = data_frames + card;
+        char sstr[64];
 
-	int len = 0;
 	if (dframes->size <= 0)
 		return 0;
-	if (len < count) {
-		if (sizeof(long) > 4) {
-			len += sprintf(buf+len, "    %-22s %#018lx\n",
-				       "virtual:", (unsigned long)dframes->base);
-			len += sprintf(buf+len, "    %-22s %#018lx\n",
-				       "bus:", (unsigned long)dframes->base_busaddr);
-		} else {
-			len += sprintf(buf+len, "    %-30s %#010lx\n",
-				       "virtual:", (unsigned long)dframes->base);
-			len += sprintf(buf+len, "    %-30s %#010lx\n",
-				       "bus:", (unsigned long)dframes->base_busaddr);
-		}
-	}
-	if (len < count)
-		len += sprintf(buf+len, "    %-15s %25i\n", "count:", dframes->max_index);
-	if (len < count)
-		len += sprintf(buf+len, "    %-15s %25i\n", "head:", dframes->head_index);
-	if (len < count)
-		len += sprintf(buf+len, "    %-15s %25i\n", "tail:", dframes->tail_index);
-	if (len < count)
-		len += sprintf(buf+len, "    %-15s %25i\n", "drops:", dframes->dropped);
-	if (len < count)
-		len += sprintf(buf+len, "    %-15s %#25x\n", "size:", dframes->frame_size);
-	if (len < count)
-		len += sprintf(buf+len, "    %-15s %#25x\n", "data:", dframes->data_size);
-	if (len < count)
-		len += sprintf(buf+len, "    %-15s %25i\n", "configs:", dframes->acq_index);
-        if (len < count) {
-		char sstr[64];
-		switch (dframes->data_mode) {
-		case DATAMODE_CLASSIC:
-			strcpy(sstr, "classic notify");
-			break;
-		case DATAMODE_QUIET:
-			strcpy(sstr, "quiet mode");
-			break;
-		}
-		len += sprintf(buf+len, "    %-15s %25s\n", "mode:", sstr);
-	}
+        if (sizeof(long) > 4) {
+                seq_printf(sfile, "    %-22s %#018lx\n",
+                           "virtual:", (unsigned long)dframes->base);
+                seq_printf(sfile, "    %-22s %#018lx\n",
+                           "bus:", (unsigned long)dframes->base_busaddr);
+        } else {
+                seq_printf(sfile, "    %-30s %#010lx\n",
+                           "virtual:", (unsigned long)dframes->base);
+                seq_printf(sfile, "    %-30s %#010lx\n",
+                           "bus:", (unsigned long)dframes->base_busaddr);
+        }
+        seq_printf(sfile, "    %-15s %25i\n", "count:", dframes->max_index);
+        seq_printf(sfile, "    %-15s %25i\n", "head:", dframes->head_index);
+        seq_printf(sfile, "    %-15s %25i\n", "tail:", dframes->tail_index);
+        seq_printf(sfile, "    %-15s %25i\n", "drops:", dframes->dropped);
+        seq_printf(sfile, "    %-15s %#25x\n", "size:", dframes->frame_size);
+        seq_printf(sfile, "    %-15s %#25x\n", "data:", dframes->data_size);
+        seq_printf(sfile, "    %-15s %25i\n", "configs:", dframes->acq_index);
+        switch (dframes->data_mode) {
+        case DATAMODE_CLASSIC:
+                strcpy(sstr, "classic notify");
+                break;
+        case DATAMODE_QUIET:
+                strcpy(sstr, "quiet mode");
+                break;
+        }
+        seq_printf(sfile, "    %-15s %25s\n", "mode:", sstr);
 
-	return len;
+	return 0;
 }
 
 

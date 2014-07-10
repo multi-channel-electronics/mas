@@ -4,8 +4,14 @@
 #ifndef __PROC_H__
 #define __PROC_H__
 
-int read_proc(char *page, char **start, off_t offset, int count, int *eof,
-	      void *data);
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+
+int mce_proc(struct seq_file *sfile, void *data);
+int dsp_proc(struct seq_file *sfile, void *data);
+int data_proc(struct seq_file *sfile, void *data);
+
+extern const struct file_operations mcedsp_proc_ops;
 
 
 #endif

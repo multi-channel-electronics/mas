@@ -1096,47 +1096,38 @@ int dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card)
 }
 
 
-int dsp_proc(char *buf, int count, int card)
+int dsp_proc(struct seq_file *sfile, void *data)
 {
+        int card = (unsigned long)data;
 	struct dsp_dev_t *dev = dsp_dev + card;
-	int len = 0;
 
         PRINT_INFO(card, "card = %d\n", card);
 	if (dev->pci == NULL) 
-		return len;
-	if (len < count) {
-		len += sprintf(buf+len, "    %-15s %25s\n",
-			       "bus address:", pci_name(dev->pci));
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-15s %25s\n",
-			       "interrupt:",
-			       (dev->comm_mode & DSP_PCI_MODE_NOIRQ) ? "polling" : "enabled");
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-32s %#08x\n    %-32s %#08x\n"
-			       "    %-32s %#08x\n",
-			       "hstr:", dsp_read_hstr(dev->dsp),
-			       "hctr:", dsp_read_hctr(dev->dsp),
-			       "hcvr:", dsp_read_hcvr(dev->dsp));
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-20s %20s\n",
-			       "firmware version:", dev->version_string);
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-30s ", "state:");
-		if (dev->state & DDAT_CMD)
-			len += sprintf(buf+len, "commanded");
-		else
-			len += sprintf(buf+len, "     idle");
-		if (dev->state & DDAT_RESERVE)
-			len += sprintf(buf+len, " (reserved)\n");
-		else
-			len += sprintf(buf+len, "\n");
-	}
+		return 0;
+        seq_printf(sfile, "    %-15s %25s\n", "bus address:",
+                   pci_name(dev->pci));
+        seq_printf(sfile, "    %-15s %25s\n",
+                   "interrupt:",
+                   (dev->comm_mode & DSP_PCI_MODE_NOIRQ) ? "polling" : "enabled");
+        seq_printf(sfile, "    %-32s %#08x\n    %-32s %#08x\n"
+                   "    %-32s %#08x\n",
+                   "hstr:", dsp_read_hstr(dev->dsp),
+                   "hctr:", dsp_read_hctr(dev->dsp),
+                   "hcvr:", dsp_read_hcvr(dev->dsp));
+        seq_printf(sfile, "    %-20s %20s\n",
+                   "firmware version:", dev->version_string);
+        seq_printf(sfile, "    %-30s ", "state:");
 
-	return len;
+        if (dev->state & DDAT_CMD)
+                seq_printf(sfile, "commanded");
+        else
+                seq_printf(sfile, "     idle");
+
+        if (dev->state & DDAT_RESERVE)
+                seq_printf(sfile, " (reserved)\n");
+        else
+                seq_printf(sfile, "\n");
+	return 0;
 }
 
 
@@ -1425,7 +1416,7 @@ inline int dsp_driver_init(void)
 		memset(dev, 0, sizeof(*dev));
 	}
   
-	create_proc_read_entry("mce_dsp", 0, NULL, read_proc, NULL);
+        proc_create_data("mce_dsp", 0, NULL, &mcedsp_proc_ops, NULL);
 
 	err = dsp_ops_init();
 	if(err != 0) goto out;

@@ -2,7 +2,7 @@
  *      vim: sw=8 ts=8 et tw=80
  */
 
-#include <linux/proc_fs.h>
+#include "proc.h"
 
 #include "mce_options.h"
 #include "data.h"
@@ -16,64 +16,60 @@
 #  include "dsp_driver.h"
 #endif
 
-int read_proc(char *buf, char **start, off_t offset, int count, int *eof,
-	      void *data)
+static int proc_show(struct seq_file *sfile, void *data)
 {
-	int i = 0;
-	int len = 0;
-	int limit = count - 80;
+        int i;
 
-	if (len < limit) {
-		len += sprintf(buf+len,"\nmce_dsp driver version %s\n",
-			       VERSION_STRING);
-		len += sprintf(buf+len,"    fakemce:  "
+        seq_printf(sfile,"\nmce_dsp driver version %s\n",
+                   VERSION_STRING);
+        seq_printf(sfile,"    fakemce:  "
 #ifdef FAKEMCE
-			       "yes\n"
+                   "yes\n"
 #else
-			       "no\n"
+                   "no\n"
 #endif
-			);
-		len += sprintf(buf+len,"    realtime: "
+                   );
+        seq_printf(sfile,"    realtime: "
 #ifdef REALTIME
-			       "yes\n"
+                   "yes\n"
 #else
-			       "no\n"
+                   "no\n"
 #endif
-			);
-		len += sprintf(buf+len,"    bigphys:  "
+                   );
+        seq_printf(sfile,"    bigphys:  "
 #ifdef BIGPHYS
-			       "yes\n"
+                   "yes\n"
 #else
-			       "no\n"
+                   "no\n"
 #endif
-			);
-	}
+                   );
 
-	for(i=0; i<MAX_CARDS; i++) {
-		
+	for (i=0; i<MAX_CARDS; i++) {
+                void *data = (void*)(unsigned long)i;
                 PRINT_INFO(NOCARD, "i=%d\n", i);
-		if (len < limit) {
-			len += sprintf(buf+len,"\nCARD: %d\n\n", i);
-		}
-		if (len < limit) {
-			len += sprintf(buf+len,"  data buffer:\n");
-			len += data_proc(buf+len, limit-len, i);
-		}
-		if (len < limit) {
-			len += sprintf(buf+len,"  mce commander:\n");
-			len += mce_proc(buf+len, limit-len, i);
-		}
-		if (len < limit) {
-			len += sprintf(buf+len,"  dsp commander:\n");
-			len += dsp_proc(buf+len, limit-len, i);
-		}
-		*eof = 1;
-		
+                seq_printf(sfile,"\nCARD: %d\n\n", i);
+                seq_printf(sfile,"  data buffer:\n");
+                data_proc(sfile, data);
+                seq_printf(sfile,"  mce commander:\n");
+                mce_proc(sfile, data);
+                seq_printf(sfile,"  dsp commander:\n");
+                dsp_proc(sfile, data);
 	}
 	
-	if (len < limit) {
-	  len += sprintf(buf+len,"\n");
-	}
+        seq_printf(sfile,"\n");
 
-	return len;
+	return 0;
 }
+
+static int mcedsp_proc_open(struct inode *inode, struct file *file)
+{
+        return single_open(file, &proc_show, NULL);
+}
+ 
+const struct file_operations mcedsp_proc_ops = {
+        .owner = THIS_MODULE,
+        .open = mcedsp_proc_open,
+        .read = seq_read,
+        .llseek = seq_lseek,
+        .release = single_release
+};

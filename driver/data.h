@@ -142,6 +142,4 @@ int data_tail_increment(int card);
 
 int data_lock_operation(int card, int operation, void *filp);
 
-int data_proc(char *buf, int count, int card);
-
 #endif

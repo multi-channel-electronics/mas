@@ -20,6 +20,7 @@
 #include "data.h"
 #include "data_ops.h"
 #include "dsp_driver.h"
+#include "proc.h"
 
 #define MAX_FERR 100
 
@@ -676,13 +677,13 @@ int mce_buffer_free(mce_comm_buffer *buffer)
 }
 
 
-int mce_proc(char *buf, int count, int card)
+int mce_proc(struct seq_file *sfile, void *data)
 {
+    int card = (unsigned long)data;
  	struct mce_control *mdat = mce_dat + card;
-	int len = 0;
 	if (!mdat->initialized)
-		return len;
-	if (len < count) {
+		return 0;
+    if (1) {
 		char sstr[64];
 		switch (mdat->state) {
 		case MDAT_IDLE:
@@ -704,21 +705,16 @@ int mce_proc(char *buf, int count, int card)
 			strcpy(sstr, "error");
 			break;
 		}
-		len += sprintf(buf+len, "    %-15s %25s\n", "state:", sstr);
-	}
-	if (len < count) {
-		len += sprintf(buf+len, "    %-15s %25s\n", "quiet_RP:",
-			       mdat->quiet_rp ? "on" : "off");
-	}
-    if (len < count) {
-        len += sprintf(buf+len, "    %-15s %#25x\n", "base:",
-                mdat->buff.reply_busaddr);
+        seq_printf(sfile, "    %-15s %25s\n", "state:", sstr);
     }
-    if (len < count) {
-        len += sprintf(buf+len, "    %-15s %#25x\n", "size:",
-                sizeof(mce_reply));
-    }
-	return len;
+
+    seq_printf(sfile, "    %-15s %25s\n", "quiet_RP:",
+               mdat->quiet_rp ? "on" : "off");
+    seq_printf(sfile, "    %-15s %#25x\n", "base:",
+               mdat->buff.reply_busaddr);
+    seq_printf(sfile, "    %-15s %#25lx\n", "size:",
+               sizeof(mce_reply));
+    return 0;
 }
 
 

@@ -128,8 +128,6 @@ int   dsp_request_grant(int card, int new_tail);
 
 int   dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
 
-int   dsp_proc(char *buf, int count, int card);
-
 int   dsp_set_msg_handler(u32 code, dsp_handler handler, unsigned long data,
 			  int card);
 
