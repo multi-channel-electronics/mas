@@ -314,11 +314,12 @@ int main ( int argc, char **argv )
    }
 
    /** generate a runfile **/
-   error=genrunfile (full_datafilename, control.filename, 1, control.rc,
-		     control.bias, control.dbias, control.nbias,
-                     control.bias_active,
-		     control.fb, control.dfb, control.nfb,
-                     init_line1, init_line2, 0, 0, NULL, NULL);
+   error = genrunfile(
+       full_datafilename, control.filename,
+       CLASSIC_SQ1_SERVO_SINGLE_ROW, control.rc,
+       control.bias, control.dbias, control.nbias, control.bias_active,
+       control.fb, control.dfb, control.nfb,
+       init_line1, init_line2, 0, 0, NULL, NULL);
    if (error != 0) {
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);

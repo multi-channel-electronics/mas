@@ -27,6 +27,30 @@ int error_action(char *msg, int code){
     exit (code);  
 }  
 
+const char *get_string(struct string_table *table, int id, int column,
+                       char *def) {
+    if (column >= STR_TABLE_NCOL)
+        return def;
+    while (table->id >= 0) {
+        if (table->id == id) {
+            return table->values[column];
+        }
+        table++;
+    }
+    return def;
+}
+
+struct string_table servo_var_codes[] = {
+    {CLASSIC_SQ2_SERVO,            {"sq2bias", "sq2fb", "safb"}},
+    {CLASSIC_SQ1_SERVO_SINGLE_ROW, {"sq1bias", "sq1fb", "sq2fb"}},
+    {CLASSIC_SQ1_SERVO_ALL_ROWS,   {"sq1bias", "sq1fb", "sq2fb"}},
+    {CLASSIC_SQ1_SERVO_SA_FB,      {"sq1bias", "sq1fb", "safb"}},
+    {MUX11D_SQ1_SERVO_SA,          {"sq1bias", "sq1fb", "safb"}},
+    {MUX11D_RS_SERVO,              {"sq1bias", "rowsel","safb"}},
+    {-1, {"","",""}}
+};
+
+
 char *bias_codes[] = {
     "",         /* 0 */
     "sq1bias",  /* 1 - sq1servo */
@@ -48,7 +72,7 @@ char *flux_codes[] = {
 int genrunfile (
         char *full_datafilename, /* datafilename including the path*/
         char *datafile,          /* datafilename */
-        int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
+        enum servo_type_t servo_type,  /* Type of servo */
         int  which_rc,
         int bias, int bstep, int nbias, int bias_active,
         int feed, int fstep, int nfeed,
@@ -98,12 +122,16 @@ int genrunfile (
             "      <par_title loop1 par1> %s\n"
             "      <par_step loop1 par1> %d %d %d\n"
             "      <par_active loop1 par1> %d\n",
-            bias_codes[which_servo], bias, bstep, nbias, bias_active);
+             get_string(servo_var_codes, servo_type, SV_BIAS, "unknown"),
+             bias, bstep, nbias, bias_active);
     fprintf (runfile,
             "    <par_list loop2> par1\n"
             "      <par_title loop2 par1> %s\n"
             "      <par_step loop2 par1> %d %d %d\n",
-            flux_codes[which_servo], feed, fstep, nfeed);
+             get_string(servo_var_codes, servo_type, SV_FLUX, "unknown"),
+             feed, fstep, nfeed);
+    fprintf (runfile, "  <par_servo_target> %s\n",
+             get_string(servo_var_codes, servo_type, SV_SERVO, "unknown"));
     fprintf (runfile, "</par_ramp>\n\n");
 
     /*<servo_params> section*/

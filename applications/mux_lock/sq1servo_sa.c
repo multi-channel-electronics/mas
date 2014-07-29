@@ -331,11 +331,13 @@ int main(int argc, char **argv)
 
    /** generate a runfile **/
    sprintf(init_line2, "<super_servo> %i", control.super_servo);
-   error=genrunfile (full_datafilename, control.filename, 3, control.rc,
-		     control.bias, control.dbias, control.nbias, control.bias_active,
-		     control.fb, control.dfb, control.nfb, 
-                     init_line1, init_line2, 0, control.super_servo,
-                     control.gain, control.quanta);
+   error = genrunfile(
+       full_datafilename, control.filename,
+       MUX11D_SQ1_SERVO_SA, control.rc,
+       control.bias, control.dbias, control.nbias, control.bias_active,
+       control.fb, control.dfb, control.nfb, 
+       init_line1, init_line2, 0, control.super_servo,
+       control.gain, control.quanta);
    if (error != 0){
      sprintf(errmsg_temp, "genrunfile %s.run failed with %d", control.filename, error);
      ERRPRINT(errmsg_temp);
