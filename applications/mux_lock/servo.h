@@ -27,10 +27,11 @@ enum servo_type_t {
 };
 
 /* For looking up names of bias, ramp_fb, servo_fb. */
-#define STR_TABLE_NCOL 3
-#define SV_BIAS  0
-#define SV_FLUX  1
-#define SV_SERVO 2
+#define STR_TABLE_NCOL 4
+#define SV_DESCRIPTION 0
+#define SV_BIAS  1
+#define SV_FLUX  2
+#define SV_SERVO 3
 struct string_table {
     int id;
     const char *values[STR_TABLE_NCOL];

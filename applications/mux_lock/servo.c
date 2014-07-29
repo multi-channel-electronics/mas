@@ -41,30 +41,21 @@ const char *get_string(struct string_table *table, int id, int column,
 }
 
 struct string_table servo_var_codes[] = {
-    {CLASSIC_SQ2_SERVO,            {"sq2bias", "sq2fb", "safb"}},
-    {CLASSIC_SQ1_SERVO_SINGLE_ROW, {"sq1bias", "sq1fb", "sq2fb"}},
-    {CLASSIC_SQ1_SERVO_ALL_ROWS,   {"sq1bias", "sq1fb", "sq2fb"}},
-    {CLASSIC_SQ1_SERVO_SA_FB,      {"sq1bias", "sq1fb", "safb"}},
-    {MUX11D_SQ1_SERVO_SA,          {"sq1bias", "sq1fb", "safb"}},
-    {MUX11D_RS_SERVO,              {"sq1bias", "rowsel","safb"}},
+    {CLASSIC_SQ2_SERVO,            
+     {"classic_sq2_servo"           , "sq2bias", "sq2fb", "safb"}},
+    {CLASSIC_SQ1_SERVO_SINGLE_ROW,
+     {"classic_sq1_servo_single_row", "sq1bias", "sq1fb", "sq2fb"}},
+    {CLASSIC_SQ1_SERVO_ALL_ROWS,
+     {"classic_sq1_servo_all_rows"  , "sq1bias", "sq1fb", "sq2fb"}},
+    {CLASSIC_SQ1_SERVO_SA_FB,
+     {"classic_sq1_servo_sa_fb"     , "sq1bias", "sq1fb", "safb"}},
+    {MUX11D_SQ1_SERVO_SA,
+     {"mux11d_sq1_servo_sa"         , "sq1bias", "sq1fb", "safb"}},
+    {MUX11D_RS_SERVO,
+     {"mux11d_rs_servo"             , "sq1bias", "rowsel","safb"}},
     {-1, {"","",""}}
 };
 
-
-char *bias_codes[] = {
-    "",         /* 0 */
-    "sq1bias",  /* 1 - sq1servo */
-    "sq2bias",  /* 2 - sq2servo */
-    "sq1bias",  /* 3 - sq1servo_sa */
-    "sq1bias",  /* 4 - rs_servo */
-};
-char *flux_codes[] = {
-    "",        /* 0 */
-    "sq1fb",   /* 1 - sq1servo */
-    "sq2fb",   /* 2 - sq2servo */
-    "sq1fb",   /* 3 - sq1servo_sa */
-    "rowsel",  /* 4 - rs_servo */
-};
 
 /***********************************************************
  * genrunfile - creates a runfile
@@ -108,12 +99,14 @@ int genrunfile (
         return 1;
     }
     /*<servo_init section*/
-    if (servo_init1 != NULL){
+    fprintf(runfile, "<servo_init>\n");
+    fprintf(runfile, "  <servo_description> %s\n", get_string(
+                servo_var_codes, servo_type, SV_DESCRIPTION, "unknown"));
+    if (servo_init1 != NULL)
         fprintf (runfile,"<servo_init>\n  %s\n", servo_init1);
-        if (servo_init2 != NULL)
-            fprintf (runfile,"  %s\n", servo_init2);
-        fprintf (runfile, "</servo_init>\n\n");    
-    }
+    if (servo_init2 != NULL)
+        fprintf (runfile,"  %s\n", servo_init2);
+    fprintf (runfile, "</servo_init>\n\n");    
 
     /*<par_ramp> section*/  
     fprintf (runfile,"<par_ramp>\n  <loop_list> loop1 loop2\n");
