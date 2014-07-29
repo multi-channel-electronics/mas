@@ -115,4 +115,5 @@ int load_int_array(config_setting_t *cfg, char *name, int start, int count, int 
 int load_double_array(config_setting_t *cfg, char *name, int start, int count, double *data);
 int load_double(config_setting_t *cfg, char *name, double *dest);
 int load_int(config_setting_t *cfg, char *name, int *dest);
+int load_int_if_present(config_setting_t *cfg, char *name, int *dest);
 

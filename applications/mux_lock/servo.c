@@ -426,3 +426,12 @@ int load_int(config_setting_t *cfg, char *name, int *dest)
     *dest = config_setting_get_int(n);
     return 0;
 }
+
+int load_int_if_present(config_setting_t *cfg, char *name, int *dest)
+{
+    config_setting_t *n = config_setting_get_member(cfg, name);
+    if (n==NULL)
+        return -1;
+    *dest = config_setting_get_int(n);
+    return 0;
+}
