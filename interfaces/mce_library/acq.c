@@ -423,13 +423,17 @@ int copy_frames_mmap(mce_acq_t *acq)
         if (++count >= acq->n_frames)
             done = EXIT_COUNT;
 
-        if (frame_property(data, &frame_header_v6, status_v6)
+        // Validate the checksum before interpreting status bits.
+        uint32_t cs = mcecmd_checksum(data, acq->frame_size);
+        if (cs == 0) {
+            if (frame_property(data, &frame_header_v6, status_v6)
                 & FRAME_STATUS_V6_STOP)
-            done = EXIT_STOP;
+                done = EXIT_STOP;
 
-        if (frame_property(data, &frame_header_v6, status_v6)
+            if (frame_property(data, &frame_header_v6, status_v6)
                 & FRAME_STATUS_V6_LAST)
-            done = EXIT_LAST;
+                done = EXIT_LAST;
+        }
 
         // Inform driver of consumption
         mcedata_consume_frame(acq->context);
