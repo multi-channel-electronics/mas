@@ -713,7 +713,7 @@ int mce_proc(struct seq_file *sfile, void *data)
     seq_printf(sfile, "    %-15s %#25x\n", "base:",
                mdat->buff.reply_busaddr);
     seq_printf(sfile, "    %-15s %#25lx\n", "size:",
-               sizeof(mce_reply));
+               (unsigned long)sizeof(mce_reply));
     return 0;
 }
 
