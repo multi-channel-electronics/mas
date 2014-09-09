@@ -17,15 +17,16 @@
 #define USAGE_MESSAGE \
 "Usage:\n\t%s [options]\n"\
 USAGE_OPTION_N \
-"  -c <hardware config>   choose a particular mce config file\n"\
-"  -m <mas config>        choose a particular mce config file\n"\
-"  -o <output directory>  destination folder for output\n"\
+"  -c <hardware config>   choose a particular hardware config file\n"\
+"  -d                     snapshot style, dirfile output\n"\
 "  -f <output filename>   filename for output (stdout by default)\n"\
-"  -s                     snapshot style, civilized output\n"\
 "  -g                     dump parameter mapping\n"\
 "  -G                     dump parameter mapping with extra information\n"\
-"  -d                     Dirfile mode\n"\
+"  -m <mas config>        choose a particular mce config file\n"\
+"  -o <output directory>  destination folder for output\n"\
+"  -s                     snapshot style, civilized output\n"\
 "\n"\
+"  -h or -?               show this usage information and exit\n"\
 "  -v                     print version string and exit\n"\
 ""
 
