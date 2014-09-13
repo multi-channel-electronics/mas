@@ -205,35 +205,34 @@ int mce_CON_dsp_callback(int error, dsp_message *msg, int card)
 
 int mce_NFY_RP_handler( int error, dsp_message *msg, int card)
 {
-	unsigned long irqflags;
- 	struct mce_control *mdat = mce_dat + card;
+    unsigned long irqflags;
+    struct mce_control *mdat = mce_dat + card;
 
-	MDAT_LOCK;
+    MDAT_LOCK;
 
-	// We'll just trust the NFY for now, assuming no error.
-	if ( error || (msg==NULL) ) {
-                PRINT_ERR(card, "called error=%i, msg=%lx\n", error,
-                                (unsigned long)msg);
-		mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL, card);
-		dsp_unreserve(card);
-		MDAT_UNLOCK;
-		return 0;
-	}
+    // We'll just trust the NFY for now, assuming no error.
+    if ( error || (msg==NULL) ) {
+        PRINT_ERR(card, "called error=%i, msg=%p\n", error, msg);
+        mce_command_do_callback(-MCE_ERR_INT_SURPRISE, NULL, card);
+        dsp_unreserve(card);
+        MDAT_UNLOCK;
+        return 0;
+    }
 
-	if (mdat->state != MDAT_CONOK) {
-                PRINT_ERR(card, "unexpected state=%i\n", mdat->state);
-		MDAT_UNLOCK;
-		return -1;
-	}
+    if (mdat->state != MDAT_CONOK) {
+        PRINT_ERR(card, "unexpected state=%i\n", mdat->state);
+        MDAT_UNLOCK;
+        return -1;
+    }
 
-	mdat->state = MDAT_NFY;
-	mdat->hst_sched_count = 0;
-	dsp_unreserve(card);
-	MDAT_UNLOCK;
-	
-	/* do_HST needs the lock not held. */
-	mce_do_HST_or_schedule( (unsigned long)mdat );
-	return 0;
+    mdat->state = MDAT_NFY;
+    mdat->hst_sched_count = 0;
+    dsp_unreserve(card);
+    MDAT_UNLOCK;
+
+    /* do_HST needs the lock not held. */
+    mce_do_HST_or_schedule( (unsigned long)mdat );
+    return 0;
 }
 
 
@@ -335,6 +334,8 @@ int mce_NFY_RPQ_handler( int error, dsp_message *msg, int card)
 {
 	unsigned long irqflags;
  	struct mce_control *mdat = mce_dat + card;
+
+    PRINT_INFO(card, "%s(%i, %p, %i) entry\n", __func__, error, msg, card);
 
 	MDAT_LOCK;
 
@@ -509,43 +510,43 @@ up_and_out:
 
 int mce_da_hst_callback(int error, dsp_message *msg, int card)
 {
-	//FIX ME: "error" case should be natural and handled smoothly.
-	// What will happen to this "data"?
- 	struct mce_control *mdat = mce_dat + card;
+    //FIX ME: "error" case should be natural and handled smoothly.
+    // What will happen to this "data"?
+    struct mce_control *mdat = mce_dat + card;
 
-	if (error || msg==NULL) {
+    if (error || msg==NULL) {
 
-		if (!mce_error_register(card)) return -1;
+        if (!mce_error_register(card)) return -1;
 
-                PRINT_ERR(card, "called with error = %i\n", error);
-		if (msg==NULL) {
-                        PRINT_ERR(card, "dsp_message is NULL\n");
-		} else {
-                        PRINT_INFO(card, "dsp_message="
-                                        "(%06x, %06x, %06x, %06x)\n",
-                                        msg->type, msg->command,
-                                        msg->reply, msg->data);
-		}
-		mdat->data_flags &= ~MDAT_HST;
-		return -1;
-	}
+        PRINT_ERR(card, "called with error = %i\n", error);
+        if (msg==NULL) {
+            PRINT_ERR(card, "dsp_message is NULL\n");
+        } else {
+            PRINT_INFO(card, "dsp_message="
+                    "(%06x, %06x, %06x, %06x)\n",
+                    msg->type, msg->command,
+                    msg->reply, msg->data);
+        }
+        mdat->data_flags &= ~MDAT_HST;
+        return -1;
+    }
 
-	if (mdat->data_flags != (MDAT_DHST)) {
-		if (mce_error_register(card))
-                        PRINT_ERR(card, "unexpected flags state %#x\n",
-				  mdat->data_flags);
-		mdat->data_flags = 0;
-		return -1;
-	}
+    if (mdat->data_flags != (MDAT_DHST)) {
+        if (mce_error_register(card))
+            PRINT_ERR(card, "unexpected flags state %#x\n",
+                    mdat->data_flags);
+        mdat->data_flags = 0;
+        return -1;
+    }
 
-	if (data_frame_increment(card) && mce_error_register(card)) {
-                PRINT_ERR(card, "frame_increment error; packet lost\n");
-	}
+    if (data_frame_increment(card) && mce_error_register(card)) {
+        PRINT_ERR(card, "frame_increment error; packet lost\n");
+    }
 
-	//Only action is to increment tail pointer or whatever
+    //Only action is to increment tail pointer or whatever
 
-	mdat->data_flags &= ~MDAT_DHST;
-	return 0;
+    mdat->data_flags &= ~MDAT_DHST;
+    return 0;
 }
 
 int mce_da_hst_now(int card)
@@ -582,85 +583,92 @@ int mce_da_hst_now(int card)
 
 int mce_int_handler( dsp_message *msg, unsigned long data )
 {
-	struct mce_control *mdat = (struct mce_control *)data;
-	dsp_notification *note = (dsp_notification*) msg;
-	int packet_size = (note->size_lo | (note->size_hi << 16)) * 4;
-	int card = mdat - mce_dat;
-	frame_buffer_t *dframes = data_frames + card;
+    int card = (int)data;
+    dsp_notification *note = (dsp_notification*) msg;
+    int packet_size = (note->size_lo | (note->size_hi << 16)) * 4;
+    frame_buffer_t *dframes = data_frames + card;
 
-       	if (note->type != DSP_NFY) {
-                PRINT_ERR(card, "message is not NFY!\n");
-		return -1;
-	}
+    PRINT_INFO(card, "%s(%p, 0x%lX) entry\n", __func__, msg, data);
 
-	switch(note->code) {
+    /* Don't go crazy */
+    if (card < 0 || card >= MAX_FIBRE_CARD) {
+        PRINT_ERR(-1, "Bad card: %i\n", card);
+        return -1;
+    }
 
-	case DSP_RP:
+    if (note->type != DSP_NFY) {
+        PRINT_ERR(card, "message is not NFY!\n");
+        return -1;
+    }
 
-                PRINT_INFO(card, "NFY RP identified\n");
-		mce_NFY_RP_handler(0, msg, card);
+    switch(note->code) {
 
-		break;
+        case DSP_RP:
 
-	case DSP_RPQ:
+            PRINT_INFO(card, "NFY RP identified\n");
+            mce_NFY_RP_handler(0, msg, card);
 
-                PRINT_INFO(card, "NFY RPQ identified\n");
-		mce_NFY_RPQ_handler(0, msg, card);
+            break;
 
-		break;
+        case DSP_RPQ:
 
-	case DSP_DA:
-		if (packet_size != dframes->data_size) {
-			if (mce_error_register(card))
-                                PRINT_ERR(card, "unexpected DA packet size"
-					  "%i bytes; dropping.\n",
-					  packet_size);
-			return -1;
-		} else
-			mce_da_hst_now(card);
-		break;
+            PRINT_INFO(card, "NFY RPQ identified\n");
+            mce_NFY_RPQ_handler(0, msg, card);
 
-	default:
-                PRINT_ERR(card, "unknown packet type, ignoring\n");
-	}
-	return 0;
+            break;
+
+        case DSP_DA:
+            if (packet_size != dframes->data_size) {
+                if (mce_error_register(card))
+                    PRINT_ERR(card, "unexpected DA packet size"
+                            "%i bytes; dropping.\n",
+                            packet_size);
+                return -1;
+            } else
+                mce_da_hst_now(card);
+            break;
+
+        default:
+            PRINT_ERR(card, "unknown packet type, ignoring\n");
+    }
+    return 0;
 }
 
 //mce_send_command_wait (_callback) lived here once upon a time...
 
 int mce_buffer_allocate(mce_comm_buffer *buffer, int card)
 {
-	unsigned long bus;
+    unsigned long bus;
 
-	// Create DMA-able area.  Use only one call since the two
-	// buffers are so small.
+    // Create DMA-able area.  Use only one call since the two
+    // buffers are so small.
 
-	int offset = ( sizeof(mce_command) + (DMA_ADDR_ALIGN-1) ) &
-		DMA_ADDR_MASK;
+    int offset = ( sizeof(mce_command) + (DMA_ADDR_ALIGN-1) ) &
+        DMA_ADDR_MASK;
 
-	int size = offset + sizeof(mce_reply);
+    int size = offset + sizeof(mce_reply);
 
-	buffer->command = (mce_command*) dsp_allocate_dma(size, &bus);
-	if (buffer->command==NULL)
-		return -ENOMEM;
-	if ((bus >> 16) >> 16 != 0) {
-                PRINT_ERR(card, "dsp_allocate returned out of bounds "
-                                "address %lx\n", bus);
-		return -ENOMEM;
-	}
-	buffer->command_busaddr = (u32)bus;
+    PRINT_INFO(card, "mce_buffer_allocate(%p) entry\n", buffer);
 
-	buffer->reply = (mce_reply*) ((char*)buffer->command + offset);
-	buffer->reply_busaddr = buffer->command_busaddr + offset;
-	buffer->dma_size = size;
-	
-        PRINT_INFO(card, "cmd/rep[virt->bus]: [%lx->%lx]/[%lx->%lx]\n",
-		   (long unsigned int)buffer->command,
-		   (long unsigned int)virt_to_bus(buffer->command),
-		   (long unsigned int)buffer->reply,
-		   (long unsigned int)virt_to_bus(buffer->reply));
-	
-	return 0;
+    buffer->command = (mce_command*) dsp_allocate_dma(size, &bus);
+    if (buffer->command==NULL)
+        return -ENOMEM;
+    if ((bus >> 16) >> 16 != 0) {
+        PRINT_ERR(card, "dsp_allocate returned out of bounds "
+                "address %lx\n", bus);
+        return -ENOMEM;
+    }
+    buffer->command_busaddr = (u32)bus;
+
+    buffer->reply = (mce_reply*) ((char*)buffer->command + offset);
+    buffer->reply_busaddr = buffer->command_busaddr + offset;
+    buffer->dma_size = size;
+
+    PRINT_INFO(card, "cmd/rep[virt->bus]: [%p->%lx]/[%p->%lx]\n",
+            buffer->command, (unsigned long int)virt_to_bus(buffer->command),
+            buffer->reply, (unsigned long int)virt_to_bus(buffer->reply));
+
+    return 0;
 }
 
 int mce_buffer_free(mce_comm_buffer *buffer)
@@ -787,10 +795,9 @@ int mce_ready(int card) {
 int mce_probe(int card, int dsp_version)
 {
  	struct mce_control *mdat = mce_dat + card;
-	frame_buffer_t *dframes = data_frames + card;
 	int err = 0;
 
-        PRINT_INFO(card, "(%i, %i) entry\n", card, dsp_version);
+    PRINT_INFO(card, "(%i, %i) entry\n", card, dsp_version);
 
 	memset(mdat, 0, sizeof(*mdat));
 
@@ -820,15 +827,15 @@ int mce_probe(int card, int dsp_version)
 	err = data_probe(dsp_version, card, FRAME_BUFFER_SIZE, DEFAULT_DATA_SIZE);
 	if (err !=0 ) goto out;
 
-        err = mce_buffer_allocate(&mdat->buff, card);
+    err = mce_buffer_allocate(&mdat->buff, card);
 	if (err != 0) goto out;
 
 	err = mce_ops_probe(card);
 	if (err != 0) goto out;
 
 	// Set up command and quiet transfer handlers
-	dsp_set_msg_handler(DSP_QTI, mce_qti_handler, (unsigned long)dframes, card);
-	dsp_set_msg_handler(DSP_NFY, mce_int_handler, (unsigned long)mdat, card);
+	dsp_set_msg_handler(DSP_QTI, mce_qti_handler, card, card);
+	dsp_set_msg_handler(DSP_NFY, mce_int_handler, card, card);
 	
 	if (dsp_version >= DSP_U0105) {
 		mce_quiet_RP_config(1, card);

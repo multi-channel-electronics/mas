@@ -1,5 +1,5 @@
-/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *      vim: sw=8 ts=8 et tw=80
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
  */
 /*
   data_qt.c
@@ -35,27 +35,27 @@
 
 int mce_qti_handler (dsp_message *msg, unsigned long data)
 {
-	frame_buffer_t *dframes = (frame_buffer_t *)data;
-	int card = dframes - data_frames;
-	dsp_qtinform *qti = (dsp_qtinform*)msg;
+    int card = (int)data;
+    frame_buffer_t *dframes = data_frames + card;
+    dsp_qtinform *qti = (dsp_qtinform*)msg;
 
-        PRINT_INFO(card,
-		   "update head to %u with %u drops; active tail is %u (%u)\n",
-		   qti->dsp_head, qti->dsp_drops,
-                  qti->dsp_tail, dframes->tail_index);
+    PRINT_INFO(card,
+            "update head to %u with %u drops; active tail is %u (%u)\n",
+            qti->dsp_head, qti->dsp_drops,
+            qti->dsp_tail, dframes->tail_index);
 
-        /* Are we dropping frames? */
+    /* Are we dropping frames? */
 
-        if (dframes->dropped != qti->dsp_drops) {
-                PRINT_ERR(card, "DSP has dropped %i frames to date.\n", qti->dsp_drops);
-                dframes->dropped = qti->dsp_drops;
-        }
+    if (dframes->dropped != qti->dsp_drops) {
+        PRINT_ERR(card, "DSP has dropped %i frames to date.\n", qti->dsp_drops);
+        dframes->dropped = qti->dsp_drops;
+    }
 
-	/* Check consistency of buffer_index */
+    /* Check consistency of buffer_index */
 
- 	data_frame_contribute(qti->dsp_head, card);
-	
-	return 0;
+    data_frame_contribute(qti->dsp_head, card);
+
+    return 0;
 }
 
 int data_qt_enable(int on, int card) 

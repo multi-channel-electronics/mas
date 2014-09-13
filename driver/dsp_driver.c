@@ -1,5 +1,5 @@
-/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *      vim: sw=8 ts=8 et tw=80
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
  */
 /*
   dsp_driver.c
@@ -1025,32 +1025,32 @@ int dsp_clear_handler(u32 code, int card)
 int dsp_set_msg_handler(u32 code, dsp_handler handler, unsigned long data,
                 int card)
 {
-	struct dsp_dev_t *dev = dsp_dev + card;
-	int i;
+    struct dsp_dev_t *dev = dsp_dev + card;
+    int i;
 
-        PRINT_INFO(card, "entry\n");
+    PRINT_INFO(card, "entry (%X: %p: %lX; %i)\n", code, handler, data, card);
 
-	// Replace handler if it exists
-	for (i=0; i<dev->n_handlers; i++) {
-		if (dev->handlers[i].code == code) {
-			dev->handlers[i].handler = handler;
-			dev->handlers[i].data = data;
-			return 0;
-		}
-	}
+    // Replace handler if it exists
+    for (i=0; i<dev->n_handlers; i++) {
+        if (dev->handlers[i].code == code) {
+            dev->handlers[i].handler = handler;
+            dev->handlers[i].data = data;
+            return 0;
+        }
+    }
 
-	// Add to end of list
-	if (i < MAX_HANDLERS) {
-		dev->handlers[i].code = code;
-		dev->handlers[i].handler = handler;
-		dev->handlers[i].data = data;
-	        dev->n_handlers++;
-                PRINT_INFO(card, "ok\n");
-		return 0;
-	}
+    // Add to end of list
+    if (i < MAX_HANDLERS) {
+        dev->handlers[i].code = code;
+        dev->handlers[i].handler = handler;
+        dev->handlers[i].data = data;
+        dev->n_handlers++;
+        PRINT_INFO(card, "ok\n");
+        return 0;
+    }
 
-        PRINT_ERR(card, "no available handler slots\n");
-	return -1;
+    PRINT_ERR(card, "no available handler slots\n");
+    return -1;
 }
 
 
