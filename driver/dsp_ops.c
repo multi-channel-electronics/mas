@@ -9,13 +9,13 @@
 #include <linux/fs.h>
 #include <linux/errno.h>
 #include <linux/types.h>
+#include <linux/interrupt.h>
 #include <linux/proc_fs.h>
 #include <linux/fcntl.h>
 #include <linux/sched.h>
 
 #include <asm/uaccess.h>
 
-#include "kversion.h"
 #include "mce_options.h"
 
 #include "mce/dsp_errors.h"

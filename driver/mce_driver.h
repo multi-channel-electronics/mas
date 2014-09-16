@@ -4,7 +4,8 @@
 #ifndef _MCE_DRIVER_H
 #define _MCE_DRIVER_H
 
-#include "kversion.h"
+#include <linux/interrupt.h>
+
 #include "mce/dsp.h"
 #include "mce/types.h"
 

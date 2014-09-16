@@ -3,6 +3,7 @@
  */
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
@@ -10,7 +11,6 @@
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
-#include "kversion.h"
 #include "mce_options.h"
 
 #include "dsp_driver.h"

@@ -14,7 +14,6 @@
 #include <linux/sched.h>
 
 #include "mce_options.h"
-#include "kversion.h"
 #include "version.h"
 
 #ifdef REALTIME
