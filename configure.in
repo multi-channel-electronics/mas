@@ -248,6 +248,7 @@ AC_ARG_ENABLE([python],
                [AS_HELP_STRING([--disable-python],
                                [don't compile the python or swig components])],
                                [DO_MAS_SWIG=${enableval}], [DO_MAS_SWIG=yes])
+AC_SUBST([DO_MAS_SWIG])
 
 # MAS user and group are configurable
 
