@@ -39,6 +39,7 @@ $hw_rev = array(
  * Some basic ones:
  *   "classic"       one line from each bias card (rev D)
  *   "small16"       on 3-MDM subracks, 16 lines from bc3 flux_fb[:16]
+ *   "revF_32"       32 lines from rev. F bias cards with 12 dedicated DACs. The 32-value virtual register is mapped to backplane signals in the following order: LN_BIAS_0, LN_BIAS_1, ..., LN_BIAS_29, PXL_HTR, DET_BIAS_ORG. 
  *   "none"          none
  *   "map"           use map described by $tes_bias_count, $tes_bias_mapping.
  */

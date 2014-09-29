@@ -1,4 +1,9 @@
 <?php
+
+/* alias */
+if ($tes_para == "revF_32")
+  $tes_para = "full32";
+
 function check_bcs($bc1, $bc2, $bc3) {
   global $card_list, $tes_para;
       if ($bc1 && !in_array("bc1", $card_list))
@@ -47,7 +52,7 @@ function check_bcs($bc1, $bc2, $bc3) {
                             param = "flux_fb"; offset = 16;
                         }
                     );
-<?php } elseif ($tes_para == "revF_32") { check_bcs(1,1,1); ?>
+<?php } elseif ($tes_para == "full32") { check_bcs(1,1,1); ?>
                     count = 32;
                     maps = (
                         {
