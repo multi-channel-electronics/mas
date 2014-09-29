@@ -37,9 +37,10 @@ $hw_rev = array(
  * by setting $tes_para.  See mcewiki entry on "mce.cfg" for options.
  *
  * Some basic ones:
- *   "classic"       one line from each bias card (rev D)
+ *   "classic"       on 5-MDM subracks, one line from each bias card (rev D)
+ *   "full32"        on 5-MDM subracks, 10 or 11 lines from each bc (rev F)
  *   "small16"       on 3-MDM subracks, 16 lines from bc3 flux_fb[:16]
- *   "revF_32"       32 lines from rev. F bias cards with 12 dedicated DACs. The 32-value virtual register is mapped to backplane signals in the following order: LN_BIAS_0, LN_BIAS_1, ..., LN_BIAS_29, PXL_HTR, DET_BIAS_ORG. 
+ *   "small_2bc"     on 3-MDM subracks modified for only two bias cards
  *   "none"          none
  *   "map"           use map described by $tes_bias_count, $tes_bias_mapping.
  */
