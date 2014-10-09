@@ -52,6 +52,7 @@ enum {
 	SPECIAL_ACQ_FLUSH,
 	SPECIAL_ACQ_MULTI_BEGIN,
 	SPECIAL_ACQ_MULTI_END,
+	SPECIAL_ACQ_TIMEOUT,
 	SPECIAL_LOCK_QUERY,
 	SPECIAL_LOCK_RESET,
 	SPECIAL_LOCK_DOWN,
@@ -166,6 +167,7 @@ mascmdtree_opt_t root_opts[] = {
     { SEL_NO, "ACQ_MULTI_END", 0, 0, SPECIAL_ACQ_MULTI_END, NULL},
     { SEL_NO, "ACQ_OPTION", 3, -1, SPECIAL_ACQ_OPTION, option_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
+    { SEL_NO, "ACQ_TIMEOUT_MS", 1, 1, SPECIAL_ACQ_TIMEOUT, integer_opts},
 	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
 	{ SEL_NO, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
@@ -963,6 +965,12 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 }
                 // Put into multisync mode?
                 acq_multisync = (tokens[0].value == SPECIAL_ACQ_MULTI_BEGIN);
+                break;
+
+            case SPECIAL_ACQ_TIMEOUT:
+                // Note this must be specified after the acq is created.
+                if (acq != NULL)
+                    acq->timeout_ms = tokens[1].value;
                 break;
 
             case SPECIAL_LOCK_QUERY:

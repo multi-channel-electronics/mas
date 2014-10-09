@@ -102,6 +102,9 @@ int mcedata_acq_create(mce_acq_t *acq, mce_context_t* context,
 		return -MCE_ERR_FRAME_OUTPUT;
 	}
 
+    // Sensible defaults.
+    acq->timeout_ms = 1000;
+
 	acq->ready = 1;
 	return 0;
 }
@@ -380,36 +383,40 @@ int load_ret_dat(mce_acq_t *acq)
 }
 
 
+#define COPY_FRAMES_SLEEP_US 1000
+
 int copy_frames_mmap(mce_acq_t *acq)
 {
 	int ret_val = 0;
 	int done = 0;
 	int count = 0;
-	int index = 0;
     uint32_t *data;
 
-	int waits = 0;
-	int max_waits = 1000;
+    int max_waits = (acq->timeout_ms * 1000 + COPY_FRAMES_SLEEP_US/2)  /
+        COPY_FRAMES_SLEEP_US;
+    if (max_waits == 0 && acq->timeout_ms > 0)
+        max_waits = 1;
 
 	acq->n_frames_complete = 0;
 
 	/* memmap loop */
 	while (!done) {
 
+        int waits = 0;
+		while (!done) {
+            if (mcedata_poll_offset(acq->context, &ret_val) != 0)
+               break;
+            usleep(COPY_FRAMES_SLEEP_US);
+            if (max_waits > 0 && ++waits >= max_waits)
+                done = EXIT_TIMEOUT;
+        }
+        if (done)
+            break;
+
 		if (acq->storage->pre_frame != NULL &&
-                acq->storage->pre_frame(acq) != 0)
-        {
+            acq->storage->pre_frame(acq) != 0) {
             mcelib_warning(acq->context, "pre_frame action failed\n");
 		}
-
-		while (mcedata_poll_offset(acq->context, &ret_val) == 0) {
-			usleep(1000);
-			waits++;
-			if (waits >= max_waits)
-				done = EXIT_TIMEOUT;
-			continue;
-		}
-		waits = 0;
 
 		// New frame at offset ret_val
 		data = acq->context->data.map + ret_val;
@@ -422,7 +429,6 @@ int copy_frames_mmap(mce_acq_t *acq)
             mcelib_warning(acq->context, "post_frame action failed\n");
 		}
 
-		index = 0;
 		if (++count >= acq->n_frames)
 			done = EXIT_COUNT;
 
