@@ -136,7 +136,7 @@ class BasicMCE:
                     d.data.shape = (d.n_rows, d.n_cols*d.n_rc, -1)
             d.fast_axis = 'time'
         if fields != None:
-            return d.extract(fields, unfilter=unfilter)
+            d.data = dict(zip(fields, d.extract(fields, unfilter=unfilter)))
         return d
 
     def lock_query(self):
@@ -178,7 +178,7 @@ class MCEBinaryData(mce_data.SmallMCEFile):
         elif field == 'all':
             field = dm_data.fields
         if not isinstance(field, str):
-            return [self.get_field(f) for f in field]
+            return [self.extract(f, unfilter) for f in field]
         data = dm_data[field].extract(self.data)
         if field == 'fb_filt' and unfilter == 'DC':
             ftype = self.mce.read('rc1', 'fltr_type')[0]
