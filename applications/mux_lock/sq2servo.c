@@ -329,26 +329,21 @@ int main (int argc, char **argv)
       write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, fast_sq2, temparr, control.column_0, control.column_n);
 	      
       // Preservo and run the FB ramp.
-      for (i=-options.preservo; i<control.nfb; i++) {
+      i = -options.preservo;  // the frame index
+      const int n_dwell = 1;
+      int i_dwell = 0;
+      while (i<control.nfb) {
 
 	 // Write SA FB
 	 rerange(temparr, ssafb, control.column_n, control.quanta, control.column_n);
 	 write_range_or_exit(mce, &m_safb, control.column_0, temparr, control.column_n, "safb");
 
-	 if (i > 0) {
-	   // Advance SQ2 FB
-	   if (fast_sq2) {
-	     // Must write all rows here, since row_order may bring any
-	     // real row into the smaller subset we're tuning.
-	     duplicate_fill(control.fb + i*control.dfb, temparr, MAXROWS);
-	     for (snum=0; snum<control.column_n; snum++) {
-	       write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");
-	     }
-	   } else {
-	     duplicate_fill(control.fb + i*control.dfb, temparr, control.column_n);
-	     write_range_or_exit(mce, &m_sq2fb, control.column_0, temparr, control.column_n, "sq2fb");
-	   }
-	 }
+	 if (i > 0 && i_dwell == 0) {
+         // Advance SQ2 FB
+         duplicate_fill(control.fb + i*control.dfb, temparr, control.column_n);
+         write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, fast_sq2, temparr,
+                     control.column_0, control.column_n);
+     }
 
 	 // Get a frame
 	 if ((error=mcedata_acq_go(&acq, 1)) != 0) 
@@ -359,7 +354,7 @@ int main (int argc, char **argv)
            ssafb[snum] += control.gain[snum] *
 	     ((int)sq2servo.last_frame[snum] - control.target[snum]);
 
-	 if (i >= 0) {
+	 if (i >= 0 && i_dwell == n_dwell - 1) {
 	   // Write errors and computed feedbacks to .bias files.
 	   for (snum=0; snum<control.column_n; snum++)
 	     fprintf(fd, "%11d ", sq2servo.last_frame[snum]);
@@ -367,6 +362,12 @@ int main (int argc, char **argv)
 	     fprintf(fd, "%11d ", ssafb[snum]);
 	   fprintf(fd, "\n");
 	 }
+
+     if (i<0 || (++i_dwell == n_dwell)) {
+         i_dwell = 0;
+         i++;
+     }
+     
       }
    }
 
