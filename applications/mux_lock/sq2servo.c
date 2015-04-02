@@ -315,75 +315,85 @@ int main (int argc, char **argv)
      fprintf(fd, "  <ssafb%02d> ", snum + control.column_0);
    fprintf(fd, "\n");
   
-
    /* start the servo*/
    for (j=0; j<control.nbias; j++) {
 
-      if (control.bias_active) {
-	duplicate_fill(control.bias + j*control.dbias, temparr, control.column_n);
-	write_range_or_exit(mce, &m_sq2bias, control.column_0, temparr, control.column_n, "sq2bias");
-      }
+     if (control.bias_active) {
+       duplicate_fill(control.bias + j*control.dbias, temparr, control.column_n);
+       write_range_or_exit(mce, &m_sq2bias, control.column_0, temparr,
+                           control.column_n, "sq2bias");
+     }
+     
+     // Set starting sa fb and sq2 fb
+     duplicate_fill(control.fb, temparr, control.column_n);
+     write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, fast_sq2, temparr,
+                 control.column_0, control.column_n);
+	 
+     // Number of cycles to dwell on each point after setting FB.
+     const int n_dwell = 1;
 
-      // Set starting sa fb and sq2 fb
-      duplicate_fill(control.fb, temparr, control.column_n);
-      write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, fast_sq2, temparr, control.column_0, control.column_n);
-	      
-      // Preservo and run the FB ramp.
-      i = -options.preservo;  // the frame index
-      const int n_dwell = 1;
-      int i_dwell = 0;
-      while (i<control.nfb) {
+     // The frame index is i, but we might preservo (i<0) without recording data.
+     i = -options.preservo;
+     int i_dwell = 0;
 
-	 // Write SA FB
-	 rerange(temparr, ssafb, control.column_n, control.quanta, control.column_n);
-	 write_range_or_exit(mce, &m_safb, control.column_0, temparr, control.column_n, "safb");
+     // Preservo and run the FB ramp.
+     while (i<control.nfb) {
 
-	 if (i > 0 && i_dwell == 0) {
+       // Write SA FB
+       rerange(temparr, ssafb, control.column_n, control.quanta, control.column_n);
+       write_range_or_exit(mce, &m_safb, control.column_0, temparr,
+                           control.column_n, "safb");
+
+       if (i > 0 && i_dwell == 0) {
          // Advance SQ2 FB
          duplicate_fill(control.fb + i*control.dfb, temparr, control.column_n);
          write_sq2fb(mce, &m_sq2fb, m_sq2fb_col, fast_sq2, temparr,
                      control.column_0, control.column_n);
-     }
+       }
 
-	 // Get a frame
-	 if ((error=mcedata_acq_go(&acq, 1)) != 0) 
-	   error_action("data acquisition failed", error);
+       // Get a frame
+       if ((error=mcedata_acq_go(&acq, 1)) != 0) 
+         error_action("data acquisition failed", error);
 
-	 // Compute new feedback for each column, row
+       // Compute new feedback for each column, row
+       for (snum=0; snum<control.column_n; snum++)
+         ssafb[snum] += control.gain[snum] *
+           ((int)sq2servo.last_frame[snum] - control.target[snum]);
+
+       if (i >= 0 && i_dwell == n_dwell - 1) {
+         // Write errors and computed feedbacks to .bias files.
          for (snum=0; snum<control.column_n; snum++)
-           ssafb[snum] += control.gain[snum] *
-	     ((int)sq2servo.last_frame[snum] - control.target[snum]);
+           fprintf(fd, "%11d ", sq2servo.last_frame[snum]);
+         for (snum=0; snum<control.column_n; snum++)
+           fprintf(fd, "%11d ", ssafb[snum]);
+         fprintf(fd, "\n");
+       }
 
-	 if (i >= 0 && i_dwell == n_dwell - 1) {
-	   // Write errors and computed feedbacks to .bias files.
-	   for (snum=0; snum<control.column_n; snum++)
-	     fprintf(fd, "%11d ", sq2servo.last_frame[snum]);
-	   for (snum=0; snum<control.column_n; snum++)
-	     fprintf(fd, "%11d ", ssafb[snum]);
-	   fprintf(fd, "\n");
-	 }
-
-     if (i<0 || (++i_dwell == n_dwell)) {
+       if (i<0 || (++i_dwell == n_dwell)) {
          i_dwell = 0;
          i++;
-     }
+       }
      
-      }
-   }
+     } /* end of feedback ramp */
+   } /* end of bias ramp */
 
    /* reset biases back to 0*/
    duplicate_fill(0, temparr, control.column_n);
-   write_range_or_exit(mce, &m_sq2fb, control.column_0, temparr, control.column_n, "sq2fb");
+   write_range_or_exit(mce, &m_sq2fb, control.column_0, temparr,
+                       control.column_n, "sq2fb");
    
    duplicate_fill(0, ssafb, control.column_n);
-   write_range_or_exit(mce, &m_safb, control.column_0, ssafb, control.column_n, "safb");
+   write_range_or_exit(mce, &m_safb, control.column_0, ssafb,
+                       control.column_n, "safb");
    
    if (control.bias_active) {
      duplicate_fill(control.bias, temparr, control.column_n);
-     write_range_or_exit(mce, &m_sq2bias, control.column_0, temparr, control.column_n, "sq2bias");
+     write_range_or_exit(mce, &m_sq2bias, control.column_0, temparr,
+                         control.column_n, "sq2bias");
    }  
    else
-     printf("This script did not apply SQ2 bias, you may need to turn biases off manually!\n");
+     printf("This script did not apply SQ2 bias, you may need to turn biases "
+            "off manually!\n");
    
    fclose(fd);
    fclose(sq2servo.df);
