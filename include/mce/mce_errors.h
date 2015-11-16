@@ -48,6 +48,7 @@
 #define MCE_ERR_FRAME_COUNT     (MCE_ERR_BASE + 0x0038)
 #define MCE_ERR_FRAME_ROWS      (MCE_ERR_BASE + 0x0039)
 #define MCE_ERR_FRAME_COLS      (MCE_ERR_BASE + 0x003a)
+#define MCE_ERR_FRAME_KILL      (MCE_ERR_BASE + 0x003b)
 
 /* #define MCE_ERR_                MCE_ERR_BASE + 0x0001 */
 

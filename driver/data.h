@@ -36,7 +36,7 @@
 
 #include <linux/interrupt.h>
 
-#include "mce/data_ioctl.h"
+#include "mce/ioctl.h"
 #include "data_qt.h"
 
 

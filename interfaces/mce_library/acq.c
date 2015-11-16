@@ -15,7 +15,7 @@
 
 #ifdef NO_MCE_OPS
 #else
-#include <mce/data_ioctl.h>
+#include <mce/ioctl.h>
 
 #include "context.h"
 #include "data_thread.h"

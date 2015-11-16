@@ -4,7 +4,7 @@
 #include <linux/kernel.h>
 #include <asm/uaccess.h>
 
-#include "mce/data_ioctl.h"
+#include "mce/ioctl.h"
 #include "data_watcher.h"
 
 struct buffer_watcher watcher;

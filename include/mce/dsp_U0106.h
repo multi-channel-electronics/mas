@@ -7,6 +7,8 @@
 #  define u32 __u32
 #endif
 
+/* Maximum number of handles available */
+#define MAX_CONS 16
 
 #define DSP_DATAMASK 0x00ffffff
 

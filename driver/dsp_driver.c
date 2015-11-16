@@ -33,7 +33,7 @@
 #endif
 
 #include "dsp_driver.h"
-#include "mce/dsp_ioctl.h"
+#include "mce/ioctl.h"
 
 /*
  *  dsp_driver.c includes

@@ -22,7 +22,7 @@ MAS_UNSUPPORTED(int mcecmd_close(mce_context_t *context))
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <mce/mce_ioctl.h>
+#include <mce/ioctl.h>
 
 #include "context.h"
 #include "virtual.h"

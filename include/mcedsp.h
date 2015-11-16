@@ -17,9 +17,6 @@
 #include <mce/dsp.h>
 #include <stdint.h>
 
-/* Maximum number of handles available */
-
-#define MAX_CONS 16
 
 
 /*
@@ -64,15 +61,9 @@ int mcedsp_reset(mce_context_t *context);
 
 int mcedsp_hard_reset(mce_context_t *context);
 
-int mcedsp_start_application(mce_context_t *context, int data);
-
-int mcedsp_stop_application(mce_context_t *context);
-
 int mcedsp_reset_mce(mce_context_t *context);
 
 int mcedsp_qt_set(mce_context_t *context, int var, int arg1, int arg2);
-
-int mcedsp_ioctl(mce_context_t *context, unsigned int iocmd, unsigned long arg);
 
 int mcedsp_reset_flags(mce_context_t *context);
 

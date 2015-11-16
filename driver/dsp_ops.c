@@ -23,7 +23,7 @@
 #include "mce/dsp.h"
 #include "dsp_ops.h"
 #include "dsp_driver.h"
-#include "mce/dsp_ioctl.h"
+#include "mce/ioctl.h"
 
 typedef enum {
 	OPS_IDLE = 0,
@@ -189,7 +189,7 @@ ssize_t dsp_write(struct file *filp, const char __user *buf, size_t count,
 	case OPS_CMD:
 	case OPS_REP:
 		ret_val = 0;
-		dops->error = -DSP_ERR_ACTIVE;
+		dops->error = -DSP_ERR_INTERRUPTED;
 		goto out;
 
 	default:

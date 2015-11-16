@@ -22,7 +22,7 @@
 #include "context.h"
 #include <mcedsp.h>
 #include <mce/dsp_errors.h>
-#include <mce/dsp_ioctl.h>
+#include <mce/ioctl.h>
 #include <mce/defaults.h>
 
 static inline int mem_type_valid(dsp_memory_code mem) {

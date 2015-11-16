@@ -13,7 +13,7 @@
 
 #include "mce_ops.h"
 #include "mce_driver.h"
-#include "mce/mce_ioctl.h"
+#include "mce/ioctl.h"
 #include "mce/mce_errors.h"
 
 struct file_operations mce_fops = 

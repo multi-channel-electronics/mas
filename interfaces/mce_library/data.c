@@ -19,7 +19,7 @@ MAS_UNSUPPORTED(int mcedata_close(mce_context_t *context))
 #include <sys/mman.h>
 
 #include "mce/defaults.h"
-#include <mce/data_ioctl.h>
+#include <mce/ioctl.h>
 
 /* Local header files */
 
