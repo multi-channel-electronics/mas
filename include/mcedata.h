@@ -33,8 +33,6 @@
 int mcedata_open(mce_context_t *context);
 int mcedata_close(mce_context_t *context);
 
-/* low-level operations */
-ssize_t mcedata_read(mce_context_t *context, void *buf, size_t size);
 
 /* ioctl access to driver */
 

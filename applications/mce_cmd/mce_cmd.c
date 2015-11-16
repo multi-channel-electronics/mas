@@ -57,8 +57,6 @@ enum {
 	SPECIAL_LOCK_UP,
 	SPECIAL_MRESET,
 	SPECIAL_DRESET,
-	SPECIAL_REPLY_LOCK,
-	SPECIAL_REPLY_UNLOCK,
 	SPECIAL_CLEAR,
 	SPECIAL_FAKESTOP,
 	SPECIAL_EMPTY,
@@ -148,8 +146,6 @@ mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
 	{ SEL_NO, "MCE_RESET", 0,0, SPECIAL_MRESET, NULL},
 	{ SEL_NO, "DSP_RESET", 0,0, SPECIAL_DRESET, NULL},
-	/* { SEL_NO, "LOCK_REPLIES",   0,0, SPECIAL_REPLY_LOCK, NULL}, */
-	/* { SEL_NO, "UNLOCK_REPLIES", 0,0, SPECIAL_REPLY_UNLOCK, NULL}, */
 	{ SEL_NO, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
 	{ SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
     { SEL_NO, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
@@ -284,9 +280,8 @@ int  main(int argc, char **argv)
 
     if (mcedata_open(mce) != 0) {
         fprintf(ferr, "Could not open DATA device\n");
-        printf("DATA error ignored...\n");
-		/* err = ERR_MCE; */
-		/* goto exit_now; */
+		err = ERR_MCE;
+		goto exit_now;
 	}
 
     if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
@@ -993,15 +988,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
             case SPECIAL_DRESET:
                 ret_val = mcecmd_interface_reset(mce);
                 break;
-/*
-            case SPECIAL_REPLY_LOCK:
-                ret_val = mcecmd_lock_replies(mce, 1);
-                break;
 
-            case SPECIAL_REPLY_UNLOCK:
-                ret_val = mcecmd_lock_replies(mce, 0);
-                break;
-*/
             case SPECIAL_FAKESTOP:
                 ret_val = mcedata_fake_stopframe(mce);
                 break;

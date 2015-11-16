@@ -48,6 +48,9 @@ char *mcedsp_error_string(int error)
     case DSP_ERR_WOULDBLOCK:
         return "Driver would block.";
 
+    case DSP_ERR_VER_MISMATCH:
+        return "Command not applicable in this DSP code version.";
+
 	case 0:
 		return "Success.";
 	}

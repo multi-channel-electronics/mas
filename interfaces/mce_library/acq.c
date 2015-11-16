@@ -164,7 +164,6 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 			ret_val = copy_frames_mmap(acq);
 		} else {
             ret_val = -1;
-//			ret_val = copy_frames_read(acq);
 		}
 	}
 

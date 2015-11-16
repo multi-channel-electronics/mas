@@ -19,5 +19,6 @@
 #define DSP_ERR_INTERRUPTED     (DSP_ERR_BASE + 0x0018)
 #define DSP_ERR_WOULDBLOCK      (DSP_ERR_BASE + 0x0019)
 #define DSP_ERR_UNKNOWN         (DSP_ERR_BASE + 0x001a)
+#define DSP_ERR_VER_MISMATCH    (DSP_ERR_BASE + 0x001b)
 
 #endif

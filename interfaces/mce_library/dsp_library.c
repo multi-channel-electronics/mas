@@ -75,52 +75,11 @@ int mcedsp_reset_flags(mce_context_t *context)
     return mcedsp_ioctl(context, DSPIOCT_RESET_SOFT, 0);
 }
 
-/*
-int mcedsp_error(mce_context_t *context)
-{
-    return mcedsp_ioctl(context, DSPDEV_IOCT_ERROR, 0);
-}
-
-int mcedsp_speak(mce_context_t *context, unsigned long arg)
-{
-    return mcedsp_ioctl(context, DSPDEV_IOCT_SPEAK, arg);
-}
-*/
-
 /* COMMAND FUNCTIONALITY (wraps write, read) */
 
-/*
-int mcedsp_send_command_now(mce_context_t *context, dsp_command *cmd)
-{
-    if (sizeof(*cmd) != write(context->dsp.fd, cmd, sizeof(*cmd)))
-        return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR);
-
-    dsp_message msg;
-  
-    if (sizeof(msg) != read(context->dsp.fd, &msg, sizeof(msg)))
-        return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR);
-
-    if (msg.type != DSP_REP)
-        return -DSP_ERR_UNKNOWN;
-    if (msg.command != cmd->command)
-        return -DSP_ERR_REPLY;
-    if (msg.reply != DSP_ACK)
-        return -DSP_ERR_FAILURE;
-    
-    return (int)(msg.data & DSP_DATAMASK);
-}
-
-int mcedsp_send_command(mce_context_t *context, dsp_command *cmd)
-{
-    CHECK_OPEN(context);
-
-    return mcedsp_send_command_now(context, cmd);
-}
-*/
-
-int mcedsp_send_command(mce_context_t *context,
-                        struct dsp_command *cmd,
-                        struct dsp_datagram *gram)
+static int mcedsp_send_command(mce_context_t *context,
+                               struct dsp_command *cmd,
+                               struct dsp_datagram *gram)
 {
     CHECK_OPEN(context);
 
@@ -255,43 +214,23 @@ int mcedsp_reset(mce_context_t *context)
 {
     return mcedsp_ioctl(context, DSPIOCT_RESET_DSP, 0);
 }
-/*
-int mcedsp_start_application(mce_context_t *context, int data)
+
+int mcedsp_hard_reset(mce_context_t *context)
 {
-    CHECK_OPEN(context);
-    CHECK_WORD(data);
-  
-    dsp_command cmd = {DSP_GOA, {data,0,0} };
-    return mcedsp_send_command_now(context, &cmd);
+    /* Obsolete in U0107+, but it is harmless to do what we can. */
+    return mcedsp_reset(context);
 }
 
-int mcedsp_stop_application(mce_context_t *context)
-{
-    CHECK_OPEN(context);
-  
-    dsp_command cmd = {
-        .command = DSP_STP,
-    };
-    return mcedsp_send_command_now(context, &cmd);
-}
-*/
 int mcedsp_reset_mce(mce_context_t *context)
 {
     return mcedsp_ioctl(context, DSPIOCT_RESET_MCE, 0);
 }
 
-/*
 int mcedsp_qt_set(mce_context_t *context, int var, int arg1, int arg2)
 {
-    CHECK_OPEN(context);
-
-    dsp_command cmd = {
-        .command = DSP_QTS,
-        .args = {var, arg1, arg2},
-    };
-    return mcedsp_send_command_now(context, &cmd);
+    /* Obsolete in U0107+ */
+    return -DSP_ERR_VER_MISMATCH;
 }
-*/
 
 int mcedsp_atomem(char *mem_type) {
 	if (strlen(mem_type) != 1) return -DSP_ERR_MEMTYPE;
