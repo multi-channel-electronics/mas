@@ -14,13 +14,9 @@
 /* dsp.h defines the structures used by the dsp driver */
 
 #include <mce_library.h>
-#include <mce/new_dsp.h>
+#include <mce/dsp.h>
 
 
-/* Maximum number of handles available */
-/*
-#define MAX_CONS 16
-*/
 
 /*
    API: all functions return a negative error value on failure.  On

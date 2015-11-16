@@ -38,8 +38,8 @@
 #include "dsp_driver.h"
 #include "dsp_regs.h"
 
-#include "mce/new_dspioctl.h"
-#include "mce/new_dsp.h"
+#include "mce/ioctl.h"
+#include "mce/dsp.h"
 
 /*
  *  dsp_driver.c includes

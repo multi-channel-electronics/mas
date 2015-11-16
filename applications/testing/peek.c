@@ -12,7 +12,7 @@
 
 #include <sys/ioctl.h>
 #include <errno.h>
-#include <mce/data_ioctl.h>
+#include <mce/ioctl.h>
 
 
 int main() {

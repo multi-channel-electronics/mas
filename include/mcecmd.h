@@ -11,6 +11,8 @@
 #ifndef _MCECMD_H_
 #define _MCECMD_H_
 
+#include <stdint.h>
+
 /*! \file mcecmd.h
  *
  *  \brief Main header file for command module.
@@ -23,7 +25,6 @@
  *  device file.
  */
 
-#include <stdint.h>
 
 /*
   Function prototypes

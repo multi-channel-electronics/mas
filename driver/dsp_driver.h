@@ -5,7 +5,7 @@
 #define _DSP_DRIVER_H_
 
 #include <linux/interrupt.h>
-#include "mce/new_dsp.h"
+#include "mce/dsp.h"
 #include "mce/dsp_errors.h"
 
 #define DSPDEV_NAME "mce_dsp"

@@ -22,7 +22,7 @@
 #include "context.h"
 #include <mcedsp.h>
 #include <mce/dsp_errors.h>
-#include <mce/new_dspioctl.h>
+#include <mce/ioctl.h>
 #include <mce/defaults.h>
 
 #define CHECK_OPEN(cntx)   if (!cntx->dsp.opened) \
