@@ -41,7 +41,6 @@ int mcedsp_close(mce_context_t *context);
    The memory type (dsp_memory_code) is defined in dsp.h.
 */
 
-int mcedsp_send_command(mce_context_t *context, dsp_command *cmd);
 
 
 int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address);

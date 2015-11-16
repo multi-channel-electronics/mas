@@ -44,8 +44,6 @@ enum {
 	COMMAND_VER,
 	COMMAND_RDM,
 	COMMAND_WRM,
-	COMMAND_GOA,
-	COMMAND_STP,
 	COMMAND_RST,
 	COMMAND_PCIRST,
 	COMMAND_RCO,
@@ -116,10 +114,6 @@ mascmdtree_opt_t root_opts[] = {
         mem_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "WRITE"    , 3,3, COMMAND_WRM,
         mem_opts},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "START"    , 0,0, COMMAND_GOA,
-        integer_opts},
-    { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "STOP"     , 0,0, COMMAND_STP,
-        integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET"    , 0,0, COMMAND_RST,
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RESET_PCI", 0,0, COMMAND_PCIRST,
@@ -361,13 +355,13 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 			if (err >= 0) err = 0;
 			break;
 
-		case COMMAND_RST:
-            err = mcedsp_reset(mce);
+		case COMMAND_PCIRST:
+            err = mcedsp_hard_reset(mce);
 			if (err >= 0) err = 0;
 			break;
 
-		case COMMAND_PCIRST:
-            err = mcedsp_hard_reset(mce);
+		case COMMAND_RST:
+            err = mcedsp_reset(mce);
 			if (err >= 0) err = 0;
 			break;
 

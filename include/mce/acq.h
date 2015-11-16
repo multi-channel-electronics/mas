@@ -11,14 +11,6 @@
 #define MCEDATA_THREAD            (1 <<  3) /* use non-blocking data thread */
 
 
-/* MCE data acquisition statuses. */
-
-#define MCEDATA_IDLE               0
-#define MCEDATA_TIMEOUT            1
-#define MCEDATA_STOP               2
-#define MCEDATA_ERROR              3
-
-
 /* MCE card bits - fix this! */
 
 #define MCEDATA_RC1               (1 <<  0)

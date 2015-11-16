@@ -21,6 +21,13 @@
 #include "data_thread.h"
 #include "frame_manip.h"
 
+/* MCE data acquisition statuses. */
+
+#define MCEDATA_IDLE               0
+#define MCEDATA_TIMEOUT            1
+#define MCEDATA_STOP               2
+#define MCEDATA_ERROR              3
+
 /* #define LOG_LEVEL_CMD     LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_OK  LOGGER_DETAIL */
 /* #define LOG_LEVEL_REP_ER  LOGGER_INFO */
