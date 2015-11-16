@@ -34,17 +34,13 @@ int mcedata_open(mce_context_t *context);
 int mcedata_close(mce_context_t *context);
 
 
-/* low-level operations */
-ssize_t mcedata_read(mce_context_t *context, void *buf, size_t size);
-
 /* ioctl access to driver */
 
 int mcedata_ioctl(mce_context_t* context, int key, unsigned long arg);
 int mcedata_set_datasize(mce_context_t* context, int datasize);
+int mcedata_set_nframes(mce_context_t* context, int frame_count);
 int mcedata_empty_data(mce_context_t* context);
 int mcedata_fake_stopframe(mce_context_t* context);
-int mcedata_qt_enable(mce_context_t* context, int on);
-int mcedata_qt_setup(mce_context_t* context, int frame_index);
 void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
 			  int *count);
 int mcedata_poll_offset(mce_context_t* context, int *offset);

@@ -76,8 +76,6 @@ int mcedsp_ioctl(mce_context_t *context, unsigned int iocmd, unsigned long arg);
 
 int mcedsp_reset_flags(mce_context_t *context);
 
-int mcedsp_error(mce_context_t *context);
-
 int mcedsp_speak(mce_context_t *context, unsigned long arg);
 
 

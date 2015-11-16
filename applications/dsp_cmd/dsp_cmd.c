@@ -361,16 +361,6 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 			if (err >= 0) err = 0;
 			break;
 
-		case COMMAND_GOA:
-            err = mcedsp_start_application(mce, tokens[1].value);
-			if (err >= 0) err = 0;
-			break;
-
-		case COMMAND_STP:
-            err = mcedsp_stop_application(mce);
-			if (err >= 0) err = 0;
-			break;
-
 		case COMMAND_RST:
             err = mcedsp_reset(mce);
 			if (err >= 0) err = 0;

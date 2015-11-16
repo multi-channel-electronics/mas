@@ -37,8 +37,6 @@ int mcecmd_open (mce_context_t *context);
 
 int mcecmd_close(mce_context_t *context);
 
-int mcecmd_lock_replies(mce_context_t *context, int lock);
-
 
 /* MCE user commands - these are as simple as they look */
 

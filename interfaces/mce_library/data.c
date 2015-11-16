@@ -87,12 +87,6 @@ int mcedata_close(mce_context_t *context)
 	return 0;
 }
 
-/* low-level read on the data device */
-ssize_t mcedata_read(mce_context_t *context, void *buf, size_t size)
-{
-    return read(C_data.fd, buf, size);
-}
-
 /* ioctl on data device */
 
 int mcedata_ioctl(mce_context_t* context, int key, unsigned long arg)
@@ -115,12 +109,7 @@ int mcedata_fake_stopframe(mce_context_t* context)
 	return ioctl(C_data.fd, DATADEV_IOCT_FAKE_STOPFRAME);
 }
 
-int mcedata_qt_enable(mce_context_t* context, int on)
-{
-	return ioctl(C_data.fd, DATADEV_IOCT_QT_ENABLE, on);
-}
-
-int mcedata_qt_setup(mce_context_t* context, int frame_count)
+int mcedata_set_nframes(mce_context_t* context, int frame_count)
 {
 	return ioctl(C_data.fd, DATADEV_IOCT_QT_CONFIG, frame_count);
 }

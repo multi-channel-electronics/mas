@@ -57,12 +57,8 @@ enum {
 	SPECIAL_LOCK_RESET,
 	SPECIAL_LOCK_DOWN,
 	SPECIAL_LOCK_UP,
-	SPECIAL_QT_CONFIG,
-	SPECIAL_QT_ENABLE,
 	SPECIAL_MRESET,
 	SPECIAL_DRESET,
-	SPECIAL_REPLY_LOCK,
-	SPECIAL_REPLY_UNLOCK,
 	SPECIAL_CLEAR,
 	SPECIAL_FAKESTOP,
 	SPECIAL_EMPTY,
@@ -151,8 +147,6 @@ mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
 	{ SEL_NO, "MCE_RESET", 0,0, SPECIAL_MRESET, NULL},
 	{ SEL_NO, "DSP_RESET", 0,0, SPECIAL_DRESET, NULL},
-	{ SEL_NO, "LOCK_REPLIES",   0,0, SPECIAL_REPLY_LOCK, NULL},
-	{ SEL_NO, "UNLOCK_REPLIES", 0,0, SPECIAL_REPLY_UNLOCK, NULL},
 	{ SEL_NO, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
 	{ SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
     { SEL_NO, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
@@ -168,8 +162,6 @@ mascmdtree_opt_t root_opts[] = {
     { SEL_NO, "ACQ_OPTION", 3, -1, SPECIAL_ACQ_OPTION, option_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
     { SEL_NO, "ACQ_TIMEOUT_MS", 1, 1, SPECIAL_ACQ_TIMEOUT, integer_opts},
-	{ SEL_NO, "QT_ENABLE", 1, 1, SPECIAL_QT_ENABLE, integer_opts},
-	{ SEL_NO, "QT_CONFIG", 1, 1, SPECIAL_QT_CONFIG, integer_opts},
 	{ SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
 	{ SEL_NO, "LOCK_RESET", 0, 0, SPECIAL_LOCK_RESET, NULL},
 	{ SEL_NO, "LOCK_DOWN" , 0, 0, SPECIAL_LOCK_DOWN, NULL},
@@ -992,28 +984,12 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 ret_val = mcedata_lock_up(mce);
                 break;
 
-            case SPECIAL_QT_ENABLE:
-                ret_val = mcedata_qt_enable(mce, tokens[1].value);
-                break;
-
-            case SPECIAL_QT_CONFIG:
-                ret_val = mcedata_qt_setup(mce, tokens[1].value);
-                break;
-
             case SPECIAL_MRESET:
                 ret_val = mcecmd_hardware_reset(mce);
                 break;
 
             case SPECIAL_DRESET:
                 ret_val = mcecmd_interface_reset(mce);
-                break;
-
-            case SPECIAL_REPLY_LOCK:
-                ret_val = mcecmd_lock_replies(mce, 1);
-                break;
-
-            case SPECIAL_REPLY_UNLOCK:
-                ret_val = mcecmd_lock_replies(mce, 0);
                 break;
 
             case SPECIAL_FAKESTOP:

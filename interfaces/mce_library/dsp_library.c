@@ -80,11 +80,6 @@ int mcedsp_reset_flags(mce_context_t *context)
     return mcedsp_ioctl(context, DSPDEV_IOCT_RESET, 0);
 }
 
-int mcedsp_error(mce_context_t *context)
-{
-    return mcedsp_ioctl(context, DSPDEV_IOCT_ERROR, 0);
-}
-
 int mcedsp_speak(mce_context_t *context, unsigned long arg)
 {
     return mcedsp_ioctl(context, DSPDEV_IOCT_SPEAK, arg);
@@ -93,7 +88,7 @@ int mcedsp_speak(mce_context_t *context, unsigned long arg)
 
 /* COMMAND FUNCTIONALITY (wraps write, read) */
 
-int mcedsp_send_command_now(mce_context_t *context, dsp_command *cmd)
+static int mcedsp_send_command_now(mce_context_t *context, dsp_command *cmd)
 {
     if (sizeof(*cmd) != write(context->dsp.fd, cmd, sizeof(*cmd)))
         return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR);
@@ -198,25 +193,6 @@ int mcedsp_hard_reset(mce_context_t *context)
 {
     return mcedsp_ioctl(context, DSPDEV_IOCT_HARD_RESET, 0);
 }    
-
-int mcedsp_start_application(mce_context_t *context, int data)
-{
-    CHECK_OPEN(context);
-    CHECK_WORD(data);
-  
-    dsp_command cmd = {DSP_GOA, {data,0,0} };
-    return mcedsp_send_command_now(context, &cmd);
-}
-
-int mcedsp_stop_application(mce_context_t *context)
-{
-    CHECK_OPEN(context);
-  
-    dsp_command cmd = {
-        .command = DSP_STP,
-    };
-    return mcedsp_send_command_now(context, &cmd);
-}
 
 int mcedsp_reset_mce(mce_context_t *context)
 {
