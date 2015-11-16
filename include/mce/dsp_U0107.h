@@ -3,6 +3,13 @@
 
 #include <linux/types.h>
 
+typedef enum {
+    DSP_MEMP = 1,
+    DSP_MEMX = 2,
+    DSP_MEMY = 3
+} dsp_memory_code;
+
+
 #define DSP_COMMAND_SIZE 128
 #define DSP_DATAGRAM_BUFFER_SIZE 128
 

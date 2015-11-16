@@ -121,6 +121,4 @@ mce_acq_t *mcedata_acq_duplicate(mce_acq_t *acq);
 
 int mcedata_acq_go(mce_acq_t *acq, int n_frames);
 
-
-
 #endif
