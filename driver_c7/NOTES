@@ -1,0 +1,59 @@
+ The Makefile
+--------------
+
+The makefile for the driver handles the different build requirements
+for the 2.4 and 2.6 kernels.  The main Makefile first includes
+Makefile.kversion, which puts the kernel major and minor kersions into
+the variable KVER (e.g. KVER is 2.6 when uname -r returns
+2.6.17-10-386) then includes either Makefile.2.4 or Makefile.2.6.
+
+The 2.4 build system is fairly straight-forward, and Makefile.2.4
+looks like an ordinary Makefile.
+
+The kernel module build system in 2.6 is more complicated.  In order
+to get access to certain kernel configuration settings, make must be
+run within the kernel source tree.  This is enforced by a conditional
+that checks for the definition of KERNELRELEASE.  Then, the source and
+output objects for the build are specified by setting the variable
+obj-m to the name of the module object (e.g. mce.o), and the variable
+mce-objs to a list of source objects:
+
+	ifneq ($(KERNELRELEASE),)
+	# call from kernel build system
+
+	mce-objs := $(SOURCE_OBJ)
+
+	obj-m   := mce.o
+
+	else 
+	...
+	endif
+
+For building things from outside of the kernel tree, the makefile must
+catch that the build is taking place outside the kernel tree and
+re-run the make in the kernel source directory.  In this case the
+target 'modules' results in the current Makefile being re-run from
+the kernel source directory:
+
+	ifneq ($(KERNELRELEASE),)
+	...
+	else
+
+	modules:
+        	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) modules
+
+	endif
+
+In most cases, then, the Makefile is run twice, from different
+folders.  Since compilation occurs on the second pass, relative paths
+from the source directory will be broken, e.g. -I../fake_mce will
+include something like /lib/modules/2.6.17-11-386/build/../fake_mce
+instead of /home/mhasse/src/mce/../fake_mce.  The solution to this is
+to save the root source folder on the first pass through the Makefile:
+
+	PWD ?= $(shell pwd)/
+
+By using '?=' instead of ':=', PWD will be set on the first pass
+through the Makefile, but not on the second (since it will already
+have a value).  This allows include paths and link locations to be
+given as, e.g. -I$(PWD)../fake_mce.

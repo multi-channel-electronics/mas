@@ -20,19 +20,15 @@
 #include <stdio.h>
 
 #include "context.h"
-#include <mcedsp.h>
+#include "mcedsp.h"
+
+#include <mce/dsp.h>
 #include <mce/dsp_errors.h>
 #include <mce/ioctl.h>
 #include <mce/defaults.h>
 
-static inline int mem_type_valid(dsp_memory_code mem) {
-    return (mem==DSP_MEMX) || (mem==DSP_MEMY) || (mem==DSP_MEMP);
-}
-
 #define CHECK_OPEN(cntx)   if (!cntx->dsp.opened) \
                                    return -DSP_ERR_DEVICE
-#define CHECK_MEM_TYPE(mt) if (!mem_type_valid(mt)) \
-                                   return -DSP_ERR_MEMTYPE
 #define CHECK_WORD(w)      if (w & ~0xffffff) \
                                    return -DSP_ERR_BOUNDS;
 
@@ -129,9 +125,17 @@ int mcedsp_version(mce_context_t *context)
 int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address)
 {
     CHECK_OPEN(context);
-    CHECK_MEM_TYPE(mem);
-  
-    dsp_command cmd = {DSP_RDM, {mem, address, 0 }};
+
+    uint32_t mem_code = 0;
+    switch(mem) {
+    case DSP_MEMX: mem_code = DSP_C6_MEMX; break;
+    case DSP_MEMY: mem_code = DSP_C6_MEMY; break;
+    case DSP_MEMP: mem_code = DSP_C6_MEMP; break;
+    default:
+        return -DSP_ERR_MEMTYPE;
+    }
+        
+    dsp_command cmd = {DSP_RDM, {mem_code, address, 0 }};
     return mcedsp_send_command_now(context, &cmd);
 }
 
@@ -156,10 +160,18 @@ int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
         uint32_t value)
 {
     CHECK_OPEN(context);
-    CHECK_MEM_TYPE(mem);
     CHECK_WORD(value);
+
+    uint32_t mem_code = 0;
+    switch(mem) {
+    case DSP_MEMX: mem_code = DSP_C6_MEMX; break;
+    case DSP_MEMY: mem_code = DSP_C6_MEMY; break;
+    case DSP_MEMP: mem_code = DSP_C6_MEMP; break;
+    default:
+        return -DSP_ERR_MEMTYPE;
+    }
   
-    dsp_command cmd = {DSP_WRM, {mem, address, value}};
+    dsp_command cmd = {DSP_WRM, {mem_code, address, value}};
     return mcedsp_send_command_now(context, &cmd);
 }
 

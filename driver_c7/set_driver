@@ -1,0 +1,11 @@
+echo Removing...
+sudo rmmod mce_dsp && sleep 1 || exit
+
+if [ "$1" == "new" ] ; then 
+   echo New driver.
+   sudo insmod mce_dsp.ko
+else
+   echo Old driver.
+   sudo modprobe mce_dsp
+fi
+

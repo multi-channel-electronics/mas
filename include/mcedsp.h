@@ -11,12 +11,8 @@
 
 ***************************************************/
 
-/* dsp.h defines the structures used by the dsp driver */
-
 #include <mce_library.h>
-#include <mce/dsp.h>
 #include <stdint.h>
-
 
 
 /*
@@ -37,11 +33,13 @@ int mcedsp_close(mce_context_t *context);
 /*
    The user may construct commands and issue them using dsp_command.
    Shortcuts for existing command are available.
-
-   The memory type (dsp_memory_code) is defined in dsp.h.
 */
 
-
+typedef enum {
+    DSP_MEMP = 1,
+    DSP_MEMX = 2,
+    DSP_MEMY = 3
+} dsp_memory_code;
 
 int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address);
 int mcedsp_read_word_X(mce_context_t *context, int address);

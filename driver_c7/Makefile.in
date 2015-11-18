@@ -1,3 +1,103 @@
-clean:
-	echo "Yes, very clean."
+# Output module basename
+DRIVER_NAME = @DRIVER_NAME_C7@
 
+ifeq ($(KERNELRELEASE),)  # we are in the source folder now!
+src := $(shell pwd)/
+else
+# Kbuild defines src
+endif
+
+
+# Special directories - must be ?= or they get overwritten
+FAKEMCE_DIR ?= fake_mce/
+RTAI_DIR   ?= /usr/src/rtai
+
+# Get svn repository version number
+REPO_VERSION   = $(shell svnversion $(src))
+BRANCH_ID = $(shell cat ../branch_id.txt)
+
+# Module configuration options, set to 'yes' or 'no' (also see
+# defaults/config.h)
+
+FAKEMCE    ?= @DRIVER_FAKEMCE@
+REALTIME   ?= no
+
+KERNEL_SOURCE = @KERNEL_DIR@
+
+# Compilation options - don't trash CFLAGS, everything breaks.
+
+DEFS = 
+INCLUDES = -I$(src) -I$(src)/../include
+LIBS = 
+MY_CFLAGS = -Wall
+
+ifeq ($(FAKEMCE),yes)
+  DEFS += -DFAKEMCE
+  INCLUDES += -I$(src)/$(FAKEMCE_DIR)
+endif #FAKEMCE=yes
+
+ifeq ($(REALTIME),yes)
+  DEFS += -DREALTIME
+  INCLUDES += -I$(RTAI_DIR)/include -I$(RTAI_DIR)
+endif #REALTIME=yes
+
+
+
+
+# Set up source files
+
+SOURCE_OBJ := dsp_driver.o
+
+ifeq ($(FAKEMCE),yes)
+
+  SOURCE_OBJ += $(FAKEMCE_DIR)dsp_fake.o \
+	$(FAKEMCE_DIR)mce_fake.o \
+	$(FAKEMCE_DIR)dsp_state.o
+
+endif #FAKEMCE=yes
+
+
+# Do the standard 2.6 kernel build stuff.
+
+include $(src)/Makefile.2.6
+
+
+# General rules
+
+fault:
+	@echo Unknown kernel version $(TARGET_KERNEL) : $(KVER)
+
+clean: kversion_clean
+	-rm -rf *.o *~ core version.h \
+		.depend .*.cmd *.mod.c .tmp_versions Module.symvers
+ifeq ($(FAKEMCE),yes)
+	${MAKE} -C $(FAKEMCE_DIR) clean
+endif #FAKEMCE=1
+
+
+# Version header file generation
+ifneq ($(shell svnversion $(src)),$(shell cat $(src)/version_last))
+version_last: FORCE
+else
+version_last:
+endif
+	svnversion $(src) > $(src)/version_last
+
+version.h: version.h.template version_last
+	grep -v '^\/\*-' version.h.template | \
+		sed 's:\$$REPO\.:$(BRANCH_ID):g' | \
+		sed 's/\$$SVN\./$(REPO_VERSION)/g' > version.h
+
+
+# Install rule
+
+install: modules
+	install -d $(INSTALLDIR)
+	install $(DRIVER_FILE) $(INSTALLDIR)
+	depmod -v $(KERNELVER) > /dev/null
+
+.PRECIOUS: Makefile
+Makefile: ../config.status Makefile.in
+	cd .. && $(MAKE) driver/Makefile
+
+.PHONY: FORCE

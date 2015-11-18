@@ -1,5 +1,4 @@
-#ifndef _DSP_H_
-#define _DSP_H_
+#pragma once
 
 #include <linux/types.h>
 
@@ -40,12 +39,10 @@ typedef enum
 
 typedef enum
 {
-
-	DSP_MEMX = 0x00005f58, // "_X"  - dsp X memory
-	DSP_MEMY = 0x00005f59, // "_Y"  -     Y
-	DSP_MEMP = 0x00005f50, // "_P"  -     P
-
-} dsp_memory_code;
+	DSP_C6_MEMX = 0x00005f58, // "_X"  - dsp X memory
+	DSP_C6_MEMY = 0x00005f59, // "_Y"  -     Y
+	DSP_C6_MEMP = 0x00005f50, // "_P"  -     P
+} dsp_memory_code_U0106;
 
 
 typedef enum
@@ -137,4 +134,3 @@ typedef struct {
 
 } dsp_qtinform;
 
-#endif

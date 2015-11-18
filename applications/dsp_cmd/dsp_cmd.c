@@ -9,6 +9,7 @@
 #include <ctype.h>
 
 #include <mcedsp.h>
+#include <mce/dsp.h>
 
 #include <mce/cmdtree.h>
 #include <mce/defaults.h>

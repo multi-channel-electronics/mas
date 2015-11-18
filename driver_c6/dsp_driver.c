@@ -848,8 +848,8 @@ int dsp_set_latency(int card, int value)
 	   
 	struct dsp_dev_t *dev = dsp_dev + card;
         dsp_command cmd0 = { DSP_QTS, { DSP_QT_BURST, 0, 0 }};
-	dsp_command cmd1 = { DSP_WRM, { DSP_MEMX, 0, 0 }};
-	dsp_command cmd2 = { DSP_WRM, { DSP_MEMP, 0, 0 }};
+	dsp_command cmd1 = { DSP_WRM, { DSP_C6_MEMX, 0, 0 }};
+	dsp_command cmd2 = { DSP_WRM, { DSP_C6_MEMP, 0, 0 }};
 	dsp_message rep;
 	char c;
 
