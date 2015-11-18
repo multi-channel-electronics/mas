@@ -19,14 +19,14 @@
 #include <linux/pci.h>
 #include <linux/delay.h>
 
-#include "mce_options.h"
-#include "kversion.h"
 #include "version.h"
+#include "mce_options.h"
 
 #ifdef BIGPHYS
 # include <linux/bigphysarea.h>
 #endif
 
+#include <linux/interrupt.h>
 #include <linux/dma-mapping.h>
 /* Newer 2.6 kernels use IRQF_SHARED instead of SA_SHIRQ */
 #ifdef IRQF_SHARED
@@ -1154,6 +1154,9 @@ long mcedsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
         int nonblock = (filp->f_flags & O_NONBLOCK);
 
 	switch(iocmd) {
+        case DSPIOCT_GET_DRV_TYPE:
+                return 1;
+
         case DSPIOCT_R_HRXS:
                 return dsp_read_hrxs(dsp->reg);
         case DSPIOCT_R_HSTR:

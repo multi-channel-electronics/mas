@@ -5,10 +5,11 @@
 #define _DSP_DRIVER_H_
 
 #include <linux/interrupt.h>
+#include "version.h"
 #include "mce/dsp.h"
 #include "mce/dsp_errors.h"
 
-#define DSPDEV_NAME "mce_dsp"
+#define DSPDEV_NAME "mce_dsp_c7"
 #define DSP_DEFAULT_TIMEOUT (HZ*500/1000)
 
 
