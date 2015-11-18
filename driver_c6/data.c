@@ -7,6 +7,7 @@
 #include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
+#include <linux/interrupt.h>
 #include <linux/sched.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>

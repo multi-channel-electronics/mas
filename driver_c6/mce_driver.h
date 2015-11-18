@@ -6,6 +6,7 @@
 
 #include <linux/interrupt.h>
 
+#include "version.h"
 #include "mce/dsp.h"
 #include "mce/types.h"
 

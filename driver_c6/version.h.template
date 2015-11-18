@@ -16,4 +16,7 @@
 
 #define VERSION_STRING          REPO_NAME ":" REPO_VERSION
 
+/* This is the old (<= U0106) driver */
+#define MCE_U0106_DRIVER
+
 #endif

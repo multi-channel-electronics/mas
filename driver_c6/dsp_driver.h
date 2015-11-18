@@ -5,8 +5,10 @@
 #define _DSP_DRIVER_H_
 
 #include <linux/interrupt.h>
+#include "version.h"
 #include "mce/dsp.h"
 #include "mce/dsp_errors.h"
+#include "mce/ioctl.h"
 
 #ifdef FAKEMCE
 #  include "fake_mce/dsp_fake.h"
@@ -21,6 +23,7 @@
 #define DSP_U0104          0x550104
 #define DSP_U0105          0x550105
 #define DSP_U0106          0x550106
+#define DSP_U0107          0x550107
 
 
 /* PCI DMA alignment */
@@ -30,6 +33,7 @@
 
 /* PCI register definitions */
 
+#define HSTR_HC4  0x10 /* For U0107 handshake */
 #define HSTR_HC3  0x8
 #define HSTR_HRRQ 0x4
 #define HSTR_HTRQ 0x2

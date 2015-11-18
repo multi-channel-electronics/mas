@@ -16,14 +16,13 @@
 
 #include <asm/uaccess.h>
 
+#include "version.h"
 #include "mce_options.h"
 
 #include "mce/dsp_errors.h"
 
-#include "mce/dsp.h"
 #include "dsp_ops.h"
 #include "dsp_driver.h"
-#include "mce/ioctl.h"
 
 typedef enum {
 	OPS_IDLE = 0,
@@ -299,6 +298,9 @@ long dsp_ioctl(struct file *filp, unsigned int iocmd, unsigned long arg)
 		x = dops->error;
 		dops->error = 0;
 		return x;
+
+        case DSPIOCT_GET_DRV_TYPE:
+                return 0;
 
 	default:
                 PRINT_INFO(card, "ok\n");

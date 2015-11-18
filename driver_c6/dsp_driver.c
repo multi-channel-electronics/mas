@@ -12,6 +12,7 @@
 #include <linux/pci.h>
 #include <linux/interrupt.h>
 #include <linux/sched.h>
+#include <linux/delay.h>
 
 #include "mce_options.h"
 #include "version.h"
@@ -771,10 +772,44 @@ int dsp_query_version(int card)
 {
   	struct dsp_dev_t *dev = dsp_dev + card;
 	int err = 0;
+    int u0107 = 0;
+    u32 hctr;
 	dsp_command cmd = { DSP_VER, {0,0,0} };
 	dsp_message msg;
+
+    /* Before trying the following, try the U0107 handshake */
+    hctr = dsp_read_hctr(dev->dsp);
+    dsp_write_hctr(dev->dsp, hctr | HCTR_HF2);
+
+    /* Wait 1ms or so, and check for HC4. */
+    usleep_range(1000, 10000);
+    if ((dsp_read_hstr(dev->dsp) & HSTR_HC4) != 0) {
+        /* successful U0107 handshake, assume that's what it is */
+        u0107 = 1;
+    }
+
+    /* deal with U0107 */
+    if (u0107) {
+        PRINT_ERR(card, "successful U0107 handshake from DSP\n");
+        strcpy(dev->version_string, "U0107");
+        dev->version = DSP_U0107;
+
+        /* restore baseline to de-handshake U0107 */
+        dsp_write_hctr(dev->dsp, DSP_PCI_MODE_BASE);
+
+        /* Wait 1ms or so and check */
+        usleep_range(1000, 10000);
+        if (dsp_read_hstr(dev->dsp) & HSTR_HC4) {
+            PRINT_ERR(card, "card did not de-hand-shake.\n");
+            PRINT_ERR(card, "HSTR: %#10x\n", dsp_read_hstr(dev->dsp));
+            PRINT_ERR(card, "HCTR: %#10x\n", dsp_read_hctr(dev->dsp));
+            PRINT_ERR(card, "HCVR: %#10x\n", dsp_read_hcvr(dev->dsp));
+        }
+
+        return 0;
+    }
+
 	strcpy(dev->version_string,  "<=U0103");
-	
 	dev->version = 0;
 	if ( (err=dsp_send_command_wait(&cmd, &msg, card)) != 0 )
 		return err;
@@ -789,8 +824,8 @@ int dsp_query_version(int card)
 
 		dev->version = msg.data;
 	}
-		
-        PRINT_ERR(card, " discovered PCI card DSP code version %s\n",
+
+    PRINT_ERR(card, "discovered PCI card DSP code version %s\n",
 		  dev->version_string);
 	return 0;
 }
@@ -1201,8 +1236,10 @@ int dsp_configure(struct pci_dev *pci)
 	dev->hcvr_bits = HCVR_HNMI;
 
 	// Clear any outstanding interrupts
+    PRINT_ERR(card, "resetting...");
 	dsp_quick_command(dev, HCVR_INT_RST);
 	dsp_quick_command(dev, HCVR_INT_DON);
+    PRINT_ERR(card, "reset complete.");
 
 	// Set the mode of the data path for reads (24->32 conversion)
 	dev->comm_mode = DSP_PCI_MODE;
@@ -1225,7 +1262,7 @@ int dsp_configure(struct pci_dev *pci)
 	} else {
 		// Install the interrupt handler (cast necessary for backward compat.)
 		err = dsp_pci_set_handler(card, (irq_handler_t)pci_int_handler,
-					  "mce_dsp");		
+                "mce_dsp");
 		if (err) goto fail;
 	}
 
@@ -1253,7 +1290,7 @@ int dsp_unconfigure(int card)
 	} else {
 		dsp_pci_remove_handler(dev);
 	}
-		
+
 	if (dev->dsp!=NULL) {
 		// PCI un-paperwork
 		iounmap(dev->dsp);
@@ -1291,7 +1328,7 @@ void dsp_driver_remove(struct pci_dev *pci)
                                 "ignoring.\n");
 		return;
 	}
-			
+
 	// Disable higher-level features first
 	mce_remove(card);
 	del_timer_sync(&dev->tim_dsp);
@@ -1300,7 +1337,8 @@ void dsp_driver_remove(struct pci_dev *pci)
 	tasklet_kill(&dev->priority_tasklet);
 	tasklet_kill(&dev->handshake_tasklet);
 
-	// Revert card to default mode
+    /* Revert card to default mode.  For U0107, this has already been done */
+    if (dev->version < DSP_U0107)
 	dsp_write_hctr(dev->dsp, DSP_PCI_MODE);
 
 	// Do DSP cleanup, free PCI resources
@@ -1339,6 +1377,12 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	// Get DSP version, which MCE driver likes to know...
 	if (dsp_query_version(card) != 0)
 		goto fail;
+
+    /* Use the modern driver in this case */
+    if (dev->version >= DSP_U0107) {
+        PRINT_ERR(card, "DSP Version not supported by driver.");
+        goto fail;
+    }
 
 	if (dev->version >= DSP_U0105) {
 		// Enable interrupt hand-shaking
@@ -1414,7 +1458,7 @@ inline int dsp_driver_init(void)
 		struct dsp_dev_t *dev = dsp_dev + i;
 		memset(dev, 0, sizeof(*dev));
 	}
-  
+
         proc_create_data("mce_dsp", 0, NULL, &mcedsp_proc_ops, NULL);
 
 	err = dsp_ops_init();
@@ -1433,7 +1477,7 @@ inline int dsp_driver_init(void)
                                 err);
 		err = -1;
 		goto out;
-	}			  
+    }
 #endif //FAKEMCE
 
         PRINT_INFO(NOCARD, "ok\n");
