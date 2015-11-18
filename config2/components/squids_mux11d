@@ -11,7 +11,7 @@
                         }
                     );
                 },
-<?php /* Expose fast switching on SA FB */
+<? /* Expose fast switching on SA FB */
 echo map_array("fb_col", $num_columns, "bc1", 41);
 ?>
                 {
@@ -28,14 +28,14 @@ echo map_array("fb_col", $num_columns, "bc1", 41);
                     name = "bias";
                     count = <?=$num_columns?>;
                     maps = (
-<?php echo rc_map("sa_bias"); ?>
+<? echo rc_map("sa_bias"); ?>
                     );
                 },
                 {
                     name = "offset";
                     count = <?=$num_columns?>;
                     maps = (
-<?php echo rc_map("offset"); ?>
+<? echo rc_map("offset"); ?>
                     );
                 }
             );
@@ -44,7 +44,7 @@ echo map_array("fb_col", $num_columns, "bc1", 41);
         {
             name = "sq1_mapping";
             parameters = (
-<?php /* Expose fast switching on SQ1 BIAS */
+<? /* Expose fast switching on SQ1 BIAS */
 echo map_array("fb_col", $num_columns, $mux11d_sq1_bc, 41, "bias_col",
                $mux11d_sq1_offset,0);
 ?>
@@ -76,14 +76,14 @@ echo map_array("fb_col", $num_columns, $mux11d_sq1_bc, 41, "bias_col",
                     name = "fb_const";
                     count = <?=$num_columns?>;
                     maps = (
-<?php echo rc_map("fb_const"); ?>
+<? echo rc_map("fb_const"); ?>
                     );
                 },
                 {
                     name = "servo_mode";
                     count = <?=$num_columns?>;
                     maps = (
-<?php echo rc_map("servo_mode"); ?>
+<? echo rc_map("servo_mode"); ?>
                     );
                 }
             );

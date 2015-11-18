@@ -57,7 +57,7 @@
             );
         },
 
-<?php if ($hw_bac) { ?>
+<? if ($hw_bac) { ?>
         {
             name = "biasing-address card";
             parameter_sets = (
@@ -65,7 +65,7 @@
                 "biasing-address commands"
             );
         },
-<?php } ?>
+<? } ?>
 
         {
             name = "power supply card";

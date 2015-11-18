@@ -8,7 +8,7 @@ mas:
    *         overridden at runtime via the MAS_ETC environmental variable.
    *
    */
-  etcdir = "<?php echo $etc_dir?>";
+  etcdir = "<? echo $etc_dir?>";
 
   /* masroot: the location of the MCE Scripts tree.  May be overridden at
    *          runtime via the MAS_ROOT environmental variable.  If this is
@@ -24,7 +24,7 @@ mas:
    *         ${MAS_ROOT}/test_suite -> ${MAS_TEST_SUITE}
    *
    */
-  masroot = "<?php echo $mas_root?>";
+  masroot = "<? echo $mas_root?>";
 
   /* confdir: the directory containing the site-specific configuration.
    *          May be overridden at runtime via the MAS_CONFIG environmental
@@ -32,44 +32,44 @@ mas:
    *          used as a default.
    *
    */
-  confdir = "<?php echo $conf_dir?>";
+  confdir = "<? echo $conf_dir?>";
 
   /* jamdir: the location of JAM files (firmware) for programming over fibre.
    *         May be overridden at runtime via the MAS_JAM_DIR environmental
-<?php if ($n_cards > 1) { ?>
+<? if ($n_cards > 1) { ?>
    *         variable.  If this is not specified here, MAS_PREFIX/firmware is
-<?php } else { ?>
+<? } else { ?>
    *         variable.  If this is not specified here, MAS_ROOT/firmware is
    *         used as a default, if it exists; otherwise MAS_PREFIX/firmware is
-<?php } ?>
+<? } ?>
    *         used as a default.
    */
-  jamdir = "<?php echo $jam_dir?>";
+  jamdir = "<? echo $jam_dir?>";
 
   /* tmpdir: the temporary directory to be used by MAS and MCE Script.  If
    *         not specified, /tmp is used.  May be overridden at runtime via the
    *         MAS_TEMP environmental variable.
    *
    */
-  tmpdir = "<?php echo $mas_temp?>";
+  tmpdir = "<? echo $mas_temp?>";
 
   /* dataroot: the base directory for data acquired by MAS and MCE Script.  This
-<?php if ($n_cards > 1) { ?>
+<? if ($n_cards > 1) { ?>
    *           should be an array of strings, one per supported fibre card.
    *           If not specified, /data/mce# is used, with # replaced by the
    *           device number.  This may be overridden at runtime via the
-<?php } else { ?>
+<? } else { ?>
    *           is a one-element string array.  If not specified, /data/cryo
    *           is used.   This may be overridden at runtime via the
-<?php } ?>
+<? } ?>
    *           MAS_DATA_ROOT environmental variable; in this case it is often
    *           necessary to set the MAS_DATA environmental variable as well: see
    *           datadir, below.
    *
    */
-<?php if ($n_cards > 1) { ?>
+<? if ($n_cards > 1) { ?>
   dataroot = [
-<?php
+<?
     $i = 0;
     foreach ($data_roots as $dir) {
         if ($i != 0) {
@@ -84,9 +84,9 @@ mas:
 
 
   ];
-<?php } else { ?>
-  dataroot = [ "<?php echo $data_root ?>" ];
-<?php } ?>
+<? } else { ?>
+  dataroot = [ "<? echo $data_root ?>" ];
+<? } ?>
 
   /* datadir: the subdirectory under dataroot above into which data is actually
    *          written.  If not specified, current_data is used.  The full data
@@ -94,6 +94,6 @@ mas:
    *          runtime via the MAS_DATA environmental variable.
    *
    */
-  datadir = "<?php echo $data_dir?>";
+  datadir = "<? echo $data_dir?>";
 };
 

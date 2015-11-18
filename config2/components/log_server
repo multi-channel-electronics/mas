@@ -3,23 +3,23 @@
 log_server:
 {
 
-  log_address = "<?php echo $log_address?>";
+  log_address = "<? echo $log_address?>";
 
   daemon = 1;
 
-<?php
+<?
   $log_file = $data_roots[0] . "/$data_dir/log";
 ?>
-<?php if (0 * $n_cards > 1) { ?>
+<? if (0 * $n_cards > 1) { ?>
   /* In multicard configurations, the global data below are used for cards with
    * no corresponding data in the log_list below.
    */
-<?php } ?>
-  log_file = "<?php echo $log_file ?>";
+<? } ?>
+  log_file = "<? echo $log_file ?>";
 
-  level = <?php echo $log_level?>;
+  level = <? echo $log_level?>;
 
-<?php /* extra loggers for multicard MAS */
+<? /* extra loggers for multicard MAS */
   if (0 * $n_cards > 1) {
 ?>
   /* Per-card server configuration.  For a given card number, only the first
@@ -27,16 +27,16 @@ log_server:
    * serve as defaults.
    */
   log_list = (
-<?php
+<?
   for ($i = 0; $i < $n_cards; ++$i) { ?>
     {
-      card = <?php echo $i?>;
-      log_file = "<?php echo $data_root . "$i/$data_dir" ?>/log";
-//    level = <?php echo $log_level?>;
-    }<?php echo ($i < $n_cards - 1) ? ",\n" : "\n"?>
-<?php } ?>
+      card = <? echo $i?>;
+      log_file = "<? echo $data_root . "$i/$data_dir" ?>/log";
+//    level = <? echo $log_level?>;
+    }<? echo ($i < $n_cards - 1) ? ",\n" : "\n"?>
+<? } ?>
   );
-<?php
+<?
   }
 
 ?>

@@ -7,7 +7,7 @@
  *  Date  : <?=`date`?>
  */
 
-<?php
+<?
 $data_roots = explode(",", $data_root);
 if (count($data_roots) == 1 && $n_cards > 1) {
     for ($i = 0; $i < $n_cards; ++$i) {

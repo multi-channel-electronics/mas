@@ -6,7 +6,7 @@
 
         components = (
 
-<?php /* Physical cards */
+<? /* Physical cards */
    function dump_card_block($card, $text, $test=False, $comma=True) {
       global $CARD_ADDRESS, $CARD_ERRBITS, $card_list;
       if ($test && !in_array($card, $card_list))
@@ -22,7 +22,7 @@
                 card_type = "<?=$text?>";
                 id = ( <?=$id?> );
                 error_bits = <?=$ebits?>;
-            }<?php if ($comma) echo ",\n";
+            }<? if ($comma) echo ",\n";
    }
 
     dump_card_block("psc", "power supply card", True);
@@ -44,7 +44,7 @@
     dump_card_block("ac",  "address card", True);
  ?>
 
-<?php if (in_array("rcs", $virt_list)) { ?>
+<? if (in_array("rcs", $virt_list)) { ?>
             {
                 name = "rcs";
                 nature = "physical";
@@ -52,16 +52,16 @@
                 id = ( 0x0B );
                 status = 0;
             },
-<?php } ?>
-<?php if (in_array("sys", $virt_list)) { ?>
+<? } ?>
+<? if (in_array("sys", $virt_list)) { ?>
             {
                 name = "sys";
                 nature = "physical";
                 card_type = "system alias";
                 id = ( <?=join(", ", $sys_id_list)?> );
             },
-<?php } ?>
-<?php if (in_array("rca", $virt_list)) { ?>
+<? } ?>
+<? if (in_array("rca", $virt_list)) { ?>
             {
                 name = "rca";
                 nature = "physical";
@@ -69,49 +69,49 @@
                 id = ( <?=join(", ", $rca_id_list)?> );
                 status = 0;
             },
-<?php } ?>
-<?php if (in_array("sq2", $virt_list)) { ?>
+<? } ?>
+<? if (in_array("sq2", $virt_list)) { ?>
             {
                 name = "sq2";
                 nature = "virtual";
                 mapping = "sq2_mapping";
             },
-<?php } ?>
-<?php if (in_array("sq1", $virt_list)) { ?>
+<? } ?>
+<? if (in_array("sq1", $virt_list)) { ?>
             {
                 name = "sq1";
                 nature = "virtual";
                 mapping = "sq1_mapping";
             },
-<?php } ?>
-<?php if (in_array("row", $virt_list)) { ?>
+<? } ?>
+<? if (in_array("row", $virt_list)) { ?>
             {
                 name = "row";
                 nature = "virtual";
                 mapping = "row_mapping";
             },
-<?php } ?>
-<?php if (in_array("sa", $virt_list)) { ?>
+<? } ?>
+<? if (in_array("sa", $virt_list)) { ?>
             {
                 name = "sa";
                 nature = "virtual";
                 mapping = "sa_mapping";
             },
-<?php } ?>
-<?php if (in_array("tes", $virt_list)) { ?>
+<? } ?>
+<? if (in_array("tes", $virt_list)) { ?>
             {
                 name = "tes";
                 nature = "virtual";
                 mapping = "tes_mapping";
             },
-<?php } ?>
-<?php if ($heater_virt) { ?>
+<? } ?>
+<? if ($heater_virt) { ?>
             {
                 name = "heater";
                 nature = "virtual";
                 mapping = "heater_mapping";
             },
-<?php } ?>
+<? } ?>
             /* Terminator */
             {
                 name = "dummy";
