@@ -439,7 +439,7 @@ dnl duplication.  Then we'd have a m4 -> sh -> php -> make -> CPP -> C chain to
 dnl resolve paths.  Fun times for all.
 dnl
 dnl Note to self: after doing that, remember to replace this hard-coded
-dnl configure.in with a python script that pipes the output of a perl script
+dnl configure.ac with a python script that pipes the output of a perl script
 dnl through a ruby script to generate this file.
 
 if test "x$MAS_JAMDIR" != "xno"; then
