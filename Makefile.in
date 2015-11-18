@@ -2,7 +2,8 @@
 CC= @CC@
 
 # Compilation options from configure script
-MAKE_DRIVER=@DO_MAS_DRIVER@
+MAKE_DRIVER_C7=@DO_C7_DRIVER@
+MAKE_DRIVER_C6=@DO_C6_DRIVER@
 MAKE_SWIG=@DO_MAS_SWIG@
 
 # Set up the sets of folders to recurse into for each target
@@ -16,7 +17,7 @@ all_deps = Makefile defaults/config.h makefiles/Makefile.install \
 					 scripts/91-mas.rules scripts/mas_make_card_id \
 					 applications/mas_var/Makefile config2/Makefile config2/mas.cin \
 					 include/mce_library.h applications/Makefile
-clean_deps = clean_driver
+clean_deps = clean_driver_c7 clean_driver_c6
 install_deps = all
 
 ifeq ($(MAKE_SWIG),yes)
@@ -24,9 +25,14 @@ all_dirs += swig
 install_dirs += swig
 endif
 
-ifeq ($(MAKE_DRIVER),yes)
-all_deps += make_driver
-install_deps += install_driver
+ifeq ($(MAKE_DRIVER_C7),yes)
+all_deps += make_driver_c7
+install_deps += install_driver_c7
+endif
+
+ifeq ($(MAKE_DRIVER_C6),yes)
+all_deps += make_driver_c6
+install_deps += install_driver_c6
 endif
 
 # Target definitions.  This should be a loop or something...
@@ -62,7 +68,10 @@ config2/Makefile: config.status config2/Makefile.in
 config2/mas.cin: config.status config2/mas.cin.in
 	$(SHELL) ./config.status $@
 
-driver/Makefile: config.status driver/Makefile.in
+driver_c6/Makefile: config.status driver_c6/Makefile.in
+	$(SHELL) ./config.status $@
+
+driver_c7/Makefile: config.status driver_c7/Makefile.in
 	$(SHELL) ./config.status $@
 
 include/mce_library.h: config.status include/mce_library.h.in
@@ -111,13 +120,23 @@ defaults/config.h.in: configure.ac
 
 # Supporting targets; driver needs some hand-holding...
 
-make_driver:
-	cd driver && ${MAKE}
+make_driver_c7:
+	cd driver_c7 && ${MAKE}
 
-clean_driver:
-	cd driver && ${MAKE} clean
+clean_driver_c7:
+	cd driver_c7 && ${MAKE} clean
 
-install_driver:
-	cd driver && ${MAKE} install
+install_driver_c7:
+	cd driver_c7 && ${MAKE} install
 
-.PHONY: make_driver clean_driver install_driver
+make_driver_c6:
+	cd driver_c6 && ${MAKE}
+
+clean_driver_c6:
+	cd driver_c6 && ${MAKE} clean
+
+install_driver_c6:
+	cd driver_c6 && ${MAKE} install
+
+.PHONY: make_driver_c7 clean_driver_c7 install_driver_c7 \
+        make_driver_c6 clean_driver_c6 install_driver_c6

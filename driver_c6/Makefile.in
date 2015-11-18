@@ -1,5 +1,5 @@
 # Output module basename
-DRIVER_NAME = @DRIVER_NAME@
+DRIVER_NAME = @DRIVER_NAME_C6@
 
 ifeq ($(KERNELRELEASE),)  # we are in the source folder now!
 src := $(shell pwd)/

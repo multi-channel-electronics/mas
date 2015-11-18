@@ -34,23 +34,40 @@ fi
 # Allow the user to suppress driver compile / install.
 
 AC_ARG_ENABLE([driver],
-              [AS_HELP_STRING([--disable-driver],
-                              [disable driver compilation and installation])],
-            [DO_MAS_DRIVER=$enableval], [DO_MAS_DRIVER=yes])
-AC_ARG_WITH([driver],
-            [AS_HELP_STRING([--without-driver],
-                            [deprecated: use --disable-driver instead])],
-      [AC_MSG_WARN([--with-driver and --without-driver are deprecated, ]
-      [use --enable-driver or --disable-driver instead.])
-      DO_MAS_DRIVER=$withval], [])
+              [AS_HELP_STRING([--enable-driver=TYPE],
+                              [specifies which kernel module to compile.
+                              TYPE should be one of: "yes", "legacy", "both",
+                              or "no", indicating, respecively: the new (U0107)
+                              driver, the old (U0106) driver (this is the
+                              default), both drivers, neither driver (disable
+                              driver compilation).])],
+            [
+             case "${enableval}" in
+               (no)     DO_C7_DRIVER=no;  DO_C6_DRIVER=no  ;;
+               (both)   DO_C7_DRIVER=yes; DO_C6_DRIVER=yes ;;
+               (legacy) DO_C7_DRIVER=no;  DO_C6_DRIVER=yes ;;
+               (*)      DO_C7_DRIVER=yes; DO_C6_DRIVER=no  ;;
+             esac
+             ], [DO_C7_DRIVER=no; DO_C6_DRIVER=yes])
 
 # Rename the kernel module, if requested
 AC_ARG_WITH([driver-name],
             [AS_HELP_STRING([--with-driver-name=NAME],
-                            [call the compiled kernel module NAME; the ]
-                            [default is mce_dsp.])],
-            [DRIVER_NAME=$withval], [DRIVER_NAME=mce_dsp])
-AC_SUBST(DRIVER_NAME)
+                            [call the compiled kernel module NAME; the
+                             default is mce_dsp_c7 for the U0107 driver
+                             and mce_dsp for the U0105-U0106 driver.  If
+                             both drivers are being built, this is the
+                             name of the new driver, and the legacy
+                             driver will append "_old" to NAME.])],
+           [
+            if test "${DO_C7_DRIVER}${DO_C6_DRIVER}" = "yesyes"; then
+              DRIVER_NAME_C7="${withval}"; DRIVER_NAME_C6="${withval}_old"
+            else
+              DRIVER_NAME_C7="${withval}"; DRIVER_NAME_C6="${withval}";
+            fi
+            ], [DRIVER_NAME_C7=mce_dsp_c7; DRIVER_NAME_C6=mce_dsp])
+AC_SUBST([DRIVER_NAME_C7])
+AC_SUBST([DRIVER_NAME_C6])
 
 dnl Allow disabling of the installation of the init script
 AC_ARG_ENABLE([init-script],
@@ -74,7 +91,8 @@ AC_ARG_ENABLE([mce-ops],
 
 if test "x$DO_KERNEL_IO" != "xyes"; then
   INSTALL_INITD_MAS=no
-  DO_MAS_DRIVER=no
+  DO_C7_DRIVER=no
+  DO_C6_DRIVER=no
   DO_CONFIG2=no
   DEFINE_NO_MCE_OPS="#define NO_MCE_OPS"
   MAKE_IF_MCE_OPS=#
@@ -85,7 +103,8 @@ fi
 AC_SUBST([MAKE_IF_MCE_OPS])
 AC_SUBST([DEFINE_NO_MCE_OPS])
 AC_SUBST([DO_CONFIG2])
-AC_SUBST([DO_MAS_DRIVER])
+AC_SUBST([DO_C6_DRIVER])
+AC_SUBST([DO_C7_DRIVER])
 AC_SUBST([INSTALL_INITD_MAS])
 
 dnl Allow disabling of symlinks in /usr/local
@@ -181,16 +200,10 @@ if test "x$DRIVER_VERBOSE" = "xyes"; then
 fi
 
 AC_ARG_ENABLE([bigphysarea],
-            [AS_HELP_STRING([--disable-bigphysarea], [compile driver without ]
-             [bigphysarea support])],
-            [DRIVER_BIGPHYS=$enableval], [DRIVER_BIGPHYS=yes])
-AC_ARG_WITH([bigphysarea],
-            [AS_HELP_STRING([--without-bigphysarea],
-                            [deprecated: use --disable-bigphysarea instead])],
-            [AC_MSG_WARN([--with-bigphysarea and --without-bigphysarea are ]
-            [deprecated, use --enable-bigphysarea or --disable-bigphysarea ]
-            [instead.])
-            DRIVER_BIGPHYS=$withval], [])
+            [AS_HELP_STRING([--enable-bigphysarea], [compile the drivers
+            with bigphysarea support.])],
+            [DRIVER_BIGPHYS=$enableval], [DRIVER_BIGPHYS=no])
+
 if test "x$DRIVER_BIGPHYS" = "xyes"; then
   AC_DEFINE(BIGPHYS, [1],
             [ Define to 1 to use bigphysarea in the kernel driver. ])
@@ -198,17 +211,11 @@ fi
 
 AC_ARG_ENABLE([fakemce],
             [AS_HELP_STRING([--enable-fakemce], [build the fakemce device ]
-            [into the kernel driver])],
+            [into the legacy kernel driver (if built)])],
             [DRIVER_FAKEMCE=$enableval], [DRIVER_FAKEMCE=no])
-AC_ARG_WITH([fakemce],
-            [AS_HELP_STRING([--with-fakemce],
-                            [deprecated: use --enable-fakemce instead])],
-            [AC_MSG_WARN([--with-fakemce and --without-fakemce are ]
-            [deprecated, use --enable-fakemce or --disable-fakemce instead.])
-            DRIVER_FAKEMCE=$withval], [])
 if test "x$DRIVER_FAKEMCE" = "xyes"; then
   AC_DEFINE(FAKEMCE, [1],
-            [ Define to 1 to enable fakemce in the kernel driver. ])
+            [ Define to 1 to enable fakemce in the legacy driver. ])
 fi
 AC_SUBST(DRIVER_FAKEMCE)
 
@@ -216,7 +223,7 @@ AC_SUBST(DRIVER_FAKEMCE)
 dnl Always off, but here so autoheader picks it up.
 if false; then
   AC_DEFINE(REALTIME, [1],
-            [ Define to 1 to enable realtime in the kernel driver. ])
+            [ Define to 1 to enable realtime in the legacy driver. ])
 fi
 
 
@@ -248,6 +255,7 @@ AC_ARG_ENABLE([python],
                [AS_HELP_STRING([--disable-python],
                                [don't compile the python or swig components])],
                                [DO_MAS_SWIG=${enableval}], [DO_MAS_SWIG=yes])
+dnl'
 AC_SUBST([DO_MAS_SWIG])
 
 # MAS user and group are configurable
@@ -319,12 +327,19 @@ AC_SEARCH_LIBS([readline], [readline], , [
 
 # Check for bigphysarea.
 
-if test "$DO_MAS_DRIVER" != "no" && test "$DRIVER_BIGPHYS" != "no"; then
+check_bigphys=no
+if test "$DO_C7_DRIVER" != "no" && test "$DRIVER_BIGPHYS" != "no"; then
+  check_bigphys=yes;
+elif test "$DO_C6_DRIVER" != "no" && test "$DRIVER_BIGPHYS" != "no"; then
+  check_bigphys=yes;
+fi
+
+if test "$check_bigphys" = "yes"; then
+
 BIGPHYS_H=${KERNEL_DIR}/build/include/linux/bigphysarea.h
 AC_CHECK_HEADER([$BIGPHYS_H],
-                [],
-                [AC_MSG_FAILURE([could not find bigphysarea.h in the ]
-                [kernel build tree; perhaps you want --without-bigphysarea])])
+                [], [AC_MSG_FAILURE(
+                 [could not find bigphysarea.h in the kernel build tree])])
 fi
 
 
@@ -524,7 +539,8 @@ AC_CONFIG_FILES([applications/Makefile])
 AC_CONFIG_FILES([applications/mas_var/Makefile])
 AC_CONFIG_FILES([config2/Makefile])
 AC_CONFIG_FILES([config2/mas.cin])
-AC_CONFIG_FILES([driver/Makefile])
+AC_CONFIG_FILES([driver_c7/Makefile])
+AC_CONFIG_FILES([driver_c6/Makefile])
 AC_CONFIG_FILES([include/mce_library.h])
 AC_CONFIG_FILES([makefiles/Makefile.install makefiles/Makefile.paths])
 AC_CONFIG_FILES([scripts/mas scripts/mas_make_card_id scripts/mas_mknodes],
@@ -533,11 +549,20 @@ AC_CONFIG_FILES([scripts/91-mas.rules])
 AC_OUTPUT
 
 dnl Handy configure summary
+
 echo
 echo "Configure summary:"
-echo "  kernel driver:           ${DO_MAS_DRIVER}"
-if test "$DO_MAS_DRIVER" != "no"; then
-  echo "    ... name:              ${DRIVER_NAME}"
+echo "  kernel driver (U0107+)   ${DO_C7_DRIVER}"
+if test "x$DO_C7_DRIVER" != "xno"; then
+  echo "    ... name:              ${DRIVER_NAME_C7}"
+  echo "    ... bigphysarea:       ${DRIVER_BIGPHYS}"
+  echo "    ... verbose debugging: ${DRIVER_VERBOSE}"
+  echo "    ... disable error msg: ${DRIVER_QUIET}"
+  echo
+fi
+echo "  legacy driver (U0106)    ${DO_C6_DRIVER}"
+if test "x$DO_C6_DRIVER" != "xno"; then
+  echo "    ... name:              ${OLD_DRIVER_NAME_C6}"
   echo "    ... bigphysarea:       ${DRIVER_BIGPHYS}"
   echo "    ... fakemce:           ${DRIVER_FAKEMCE}"
   echo "    ... verbose debugging: ${DRIVER_VERBOSE}"
