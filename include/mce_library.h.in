@@ -59,4 +59,7 @@ mce_context_t* mcelib_create_termio(int fibre_card, const char *mas_config,
 const char* mcelib_error_string(int error);
 const char* mcelib_version(void);
 
+/* returns non-zero if using the legacy (U0106 and earlier) driver */
+int mcelib_legacy(const mce_context_t *c);
+
 #endif

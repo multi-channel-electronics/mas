@@ -3,7 +3,7 @@
  */
 #include "mce/dsp_errors.h"
 
-char *mcedsp_error_string(int error)
+const char *mcedsp_error_string(int error)
 {
 	switch (-error) {
 	case DSP_ERR_FAILURE:
@@ -41,6 +41,15 @@ char *mcedsp_error_string(int error)
 
 	case DSP_ERR_TIMEOUT:
 		return "Timed-out waiting for DSP reply.";
+
+    case DSP_ERR_INTERRUPTED:
+        return "Operation interrupted.";
+
+    case DSP_ERR_WOULDBLOCK:
+        return "Driver would block.";
+
+    case DSP_ERR_WRONG_VERSION:
+        return "Interface not supported by current driver.";
 
 	case 0:
 		return "Success.";

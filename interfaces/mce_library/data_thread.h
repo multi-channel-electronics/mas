@@ -14,7 +14,7 @@
 #define EXIT_TIMEOUT   7
 #define EXIT_KILL      8
 
-
+ 
 typedef struct data_thread_struct {
 	
 	pthread_t thread;

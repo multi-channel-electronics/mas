@@ -21,17 +21,6 @@
 #include "data_thread.h"
 #include "frame_manip.h"
 
-/* MCE data acquisition statuses. */
-
-#define MCEDATA_IDLE               0
-#define MCEDATA_TIMEOUT            1
-#define MCEDATA_STOP               2
-#define MCEDATA_ERROR              3
-
-/* #define LOG_LEVEL_CMD     LOGGER_DETAIL */
-/* #define LOG_LEVEL_REP_OK  LOGGER_DETAIL */
-/* #define LOG_LEVEL_REP_ER  LOGGER_INFO */
-
 #define FRAME_USLEEP 1000
 
 
@@ -152,11 +141,10 @@ int mcedata_acq_go(mce_acq_t *acq, int n_frames)
 	}
 
 	// Check if ret_dat_s needs changing...
-	if ( n_frames != acq->last_n_frames || acq->last_n_frames <= 0 ) {
-		ret_val = set_n_frames(acq, n_frames, 0);
-		if (ret_val != 0)
-			return -MCE_ERR_FRAME_COUNT;
-	}
+    int dsp_only = (n_frames == acq->last_n_frames);
+    ret_val = set_n_frames(acq, n_frames, dsp_only);
+    if (ret_val != 0)
+        return -MCE_ERR_FRAME_COUNT;
 
 	// Issue the MCE 'GO' command.
 	ret_val = mcecmd_start_application(acq->context, &acq->ret_dat);
@@ -455,15 +443,15 @@ int copy_frames_mmap(mce_acq_t *acq)
 	switch (done) {
 	case EXIT_COUNT:
 	case EXIT_LAST:
-		acq->status = MCEDATA_IDLE;
+		acq->status = 0;
 		break;
 
 	case EXIT_TIMEOUT:
-		acq->status = MCEDATA_TIMEOUT;
+		acq->status = -MCE_ERR_FRAME_TIMEOUT;
 		break;
 
 	case EXIT_STOP:
-		acq->status = MCEDATA_STOP;
+		acq->status = -MCE_ERR_FRAME_STOP;
 		break;
 
 	case EXIT_READ:
@@ -471,7 +459,7 @@ int copy_frames_mmap(mce_acq_t *acq)
 	case EXIT_EOF:
     case EXIT_KILL:
 	default:
-		acq->status = MCEDATA_ERROR;
+		acq->status = -MCE_ERR_FRAME_DEVICE;
 		break;
 	}
 

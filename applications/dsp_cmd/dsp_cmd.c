@@ -95,8 +95,6 @@ mascmdtree_opt_t qt_opts[] = {
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "ENABLE", 1,1, DSP_QT_ENABLE,
         integer_opts},
-    //{ MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "TON" ,0,0, 10, NULL},
-    //{ MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "TOFF",0,0, 11, NULL},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "BURST" , 1,1, DSP_QT_BURST,
         integer_opts},
     { MASCMDTREE_SELECT | MASCMDTREE_NOCASE, "RP_SIZE" , 1,1, DSP_QT_RPSIZE,
@@ -177,8 +175,9 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    if (mcedsp_open(mce)) {
-        fprintf(stderr, "Could not open DSP device\n");
+    if ((err = mcedsp_open(mce)) != 0) {
+        fprintf(stderr, "Could not open DSP device: %s\n",
+                mcedsp_error_string(err));
 		exit(1);
 	}
 
@@ -323,7 +322,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
         char *errmsg)
 {
 	int ret_val = 0;
-	int err;
+	int err = 0;
 
 	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW &&
 			  tokens[0].value < ENUM_COMMAND_HIGH);

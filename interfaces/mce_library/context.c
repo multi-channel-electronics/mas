@@ -6,12 +6,145 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <mce/defaults.h>
 
 #include "context.h"
 #include "version.h"
 #include "../defaults/config.h"
+
+#ifndef NO_MCE_OPS
+#include <sys/ioctl.h>
+#include "mce/dsp_errors.h"
+#include "mce/ioctl.h"
+
+/* open a device node; this requires figuring out which kernel driver
+ * we're dealing with */
+int mcedev_open(mce_context_t *context, mce_subsystem_t subsys)
+{
+    int fd;
+    char dev_name[21];
+
+    /* get the firmware version, if unknown.  This implies we don't have
+     * an active DSP subsystem */
+    if (context->drv_type == MCE_DSP_UNKNOWN) {
+        /* we determine driver type by trying to open a device and then using
+         * an IOCTL common to both to get the driver type.  We could also
+         * probably determine this by looking at the /proc file, but string
+         * parsing is aesthetically displeasing */
+
+        int new_dev = 1;
+        sprintf(dev_name, "/dev/mce_dev%u", (unsigned)context->fibre_card);
+
+        fd = open(dev_name, O_RDWR);
+        if (fd < 0) {
+            /* didn't work, try the legacy device */
+            new_dev = 0;
+            sprintf(dev_name, "/dev/mce_dsp%u", (unsigned)context->fibre_card);
+            fd = open(dev_name, O_RDWR);
+
+            if (fd < 0) {
+                /* still no... bail */
+                return -DSP_ERR_DEVICE;
+            }
+        }
+
+        /* determine the driver type.  DSPIOCT_GET_DRV_TYPE returns 1 for the
+         * current driver, 0 for the legacy driver, -1 on error */
+        switch (ioctl(fd, DSPIOCT_GET_DRV_TYPE)) {
+            case 0:
+                context->drv_type = MCE_DSP_OLD;
+                break;
+            case 1:
+                context->drv_type = MCE_DSP;
+                break;
+            default:
+                close(fd);
+                return -DSP_ERR_DEVICE;
+        }
+
+        /* sanity check: make sure we opened the correct device for the correct
+         * driver */
+        if (new_dev && context->drv_type == MCE_DSP_OLD) {
+            close(fd);
+            sprintf(dev_name, "/dev/mce_dsp%u", (unsigned)context->fibre_card);
+            fd = open(dev_name, O_RDWR);
+        } else if (!new_dev && context->drv_type == MCE_DSP) {
+            /* this should fail, since we've tried already, but might as
+             * will give it a go ... */
+            close(fd);
+            sprintf(dev_name, "/dev/mce_dsp%u", (unsigned)context->fibre_card);
+            fd = open(dev_name, O_RDWR);
+        }
+
+        /* problem opening the correct device... abort */
+        if (fd < 0) {
+            context->drv_type = MCE_DSP_UNKNOWN; /* so we try again next time */
+            return -DSP_ERR_DEVICE;
+        }
+
+        /* success on the DSP device open */
+        context->dsp.fd = fd;
+        context->dsp.opened = 1;
+    }
+
+    /* now try opening the requested subsystem, if necessary */
+    switch (subsys) {
+        case MCE_SUBSYSTEM_DSP:
+            /* already done */
+            break;
+        case MCE_SUBSYSTEM_CMD:
+            if (context->drv_type == MCE_DSP) {
+                /* dup the file descriptor .. is this kosher? */
+                fd = dup(context->dsp.fd);
+            } else {
+                sprintf(dev_name, "/dev/mce_cmd%u",
+                        (unsigned)context->fibre_card);
+
+                fd = open(dev_name, O_RDWR);
+            }
+
+            if (fd < 0)
+                return -MCE_ERR_DEVICE;
+
+            context->cmd.fd = fd;
+            context->cmd.connected = 1;
+            break;
+        case MCE_SUBSYSTEM_DATA:
+            if (context->drv_type == MCE_DSP) {
+                /* dup the file descriptor .. is this kosher? */
+                fd = dup(context->dsp.fd);
+            } else {
+                sprintf(dev_name, "/dev/mce_data%u",
+                        (unsigned)context->fibre_card);
+
+                fd = open(dev_name, O_RDWR);
+            }
+
+            if (fd < 0)
+                return -MCE_ERR_DEVICE;
+
+            context->data.fd = fd;
+            context->data.connected = 1;
+            sprintf(context->data.dev_name, context->drv_type == MCE_DSP ? 
+                    "/dev/mce_dev%u" : "/dev/mce_data%u",
+                    (unsigned)context->fibre_card);
+            break;
+    }
+
+    return 0;
+}
+#endif
+
+/* Return non-zero if we're using an old DSP program (U0106 or earlier).
+ * Returns zero if it's too early to determine which version we have (ie. if
+ * the caller hasn't opened one of the subsystems yet.
+ */
+int mcelib_legacy(const mce_context_t *c)
+{
+    return (c->drv_type == MCE_DSP_OLD);
+}
 
 /* Retreive a directory named "name" from mas.cfg, or use default "def" if not
  * found */
@@ -211,7 +344,6 @@ void mcelib_destroy(mce_context_t* context)
 
     free(context);
 }
-
 
 const char* mcelib_version()
 {

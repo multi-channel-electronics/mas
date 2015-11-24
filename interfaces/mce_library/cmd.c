@@ -22,7 +22,8 @@ MAS_UNSUPPORTED(int mcecmd_close(mce_context_t *context))
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <mce/ioctl.h>
+#include "mce/ioctl.h"
+#include "mce/dsp.h"
 
 #include "context.h"
 #include "virtual.h"
@@ -32,6 +33,9 @@ MAS_UNSUPPORTED(int mcecmd_close(mce_context_t *context))
 #define LOG_LEVEL_REP_OK  MASLOG_DETAIL
 #define LOG_LEVEL_REP_ER  MASLOG_INFO
 
+/* choose IOCTL based on driver version */
+#define CMDIOCTL(ctx, new_req, old_req, ...) \
+    ioctl(ctx->cmd.fd, mcelib_legacy(ctx) ? old_req : new_req, ##__VA_ARGS__)
 
 static inline int get_last_error(mce_context_t *context)
 {
@@ -73,30 +77,28 @@ static int log_data(maslog_t *logger, uint32_t *buffer, int count, int min_raw,
 }
 
 
-int mcecmd_open (mce_context_t *context)
+int mcecmd_open(mce_context_t *context)
 {
-    char dev_name[20];
+    int err;
 
     if (C_cmd.connected)
         mcecmd_close(context);
 
-    sprintf(dev_name, "/dev/mce_cmd%u", (unsigned)context->fibre_card);
-    C_cmd.fd = open(dev_name, O_RDWR);
-    if (C_cmd.fd < 0)
-        return -MCE_ERR_DEVICE;
+    err = mcedev_open(context, MCE_SUBSYSTEM_CMD);
+    if (err)
+        return err;
 
-	/* Set up connection to prevent outstanding replies after release,
-     * and to enforce that only commander can retrieve reply. */
-	ioctl(C_cmd.fd, MCEDEV_IOCT_SET,
-	      ioctl(C_cmd.fd, MCEDEV_IOCT_GET) | 
-          (MCEDEV_CLOSE_CLEANLY | MCEDEV_CLOSED_CHANNEL));
+    if (mcelib_legacy(context)) {
+        /* Set up connection to prevent outstanding replies after release,
+         * and to enforce that only commander can retrieve reply. */
+        ioctl(C_cmd.fd, MCEDEV_IOCT_SET,
+              ioctl(C_cmd.fd, MCEDEV_IOCT_GET) | 
+              (MCEDEV_CLOSE_CLEANLY | MCEDEV_CLOSED_CHANNEL));
+    }
 
     /* connect to the logger, if necessary */
     if (context->maslog == NULL)
         context->maslog = maslog_connect(context, "lib_mce");
-
-	C_cmd.connected = 1;
-	strcpy(C_cmd.dev_name, dev_name);
 
 	return 0;
 }
@@ -119,23 +121,61 @@ int mcecmd_close(mce_context_t *context)
 
 int mcecmd_send_command_now(mce_context_t* context, mce_command *cmd)
 {
-	int error = write(C_cmd.fd, cmd, sizeof(*cmd));
-	if (error < 0) {
+    int error;
+
+    if (mcelib_legacy(context)) { /* U0106- */
+        error = write(C_cmd.fd, cmd, sizeof(*cmd));
+        if (error < 0)
 		return -MCE_ERR_DEVICE;
-	} else if (error != sizeof(*cmd)) {
+        else if (error != sizeof(*cmd))
 		return get_last_error(context);
+    } else { /* U0107+ */
+        error = ioctl(C_cmd.fd, DSPIOCT_MCE_COMMAND, (unsigned long)cmd);
+        if (error < 0) {
+            switch (errno) {
+                case ENODATA:
+                    return -MCE_ERR_INT_TIMEOUT;
+                case EIO:
+                    return -MCE_ERR_INT_FAILURE;
 	}
+            return -MCE_ERR_INT_UNKNOWN;
+        }
+    }
+
 	return 0;
 }
 
 int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
 {
-	int error = read(C_cmd.fd, rep, sizeof(*rep));
-	if (error < 0) {
+    int error;
+
+    if (mcelib_legacy(context)) { /* U0106- */
+        error = read(C_cmd.fd, rep, sizeof(*rep));
+        if (error < 0)
 		return -MCE_ERR_DEVICE;
-	} else if (error != sizeof(*rep)) {
+        else if (error != sizeof(*rep))
 		return get_last_error(context);
+    } else { /* U0107+ */
+        struct dsp_datagram gram;
+        struct mce_reply *rep0; /* ouch */
+        error = ioctl(C_cmd.fd, DSPIOCT_GET_MCE_REPLY, (unsigned long)&gram);
+        if (error < 0) {
+            switch (errno) {
+                case ENODATA:
+                    return -MCE_ERR_INT_TIMEOUT;
+                case EIO:
+                    return -MCE_ERR_INT_FAILURE;
 	}
+            return -MCE_ERR_INT_UNKNOWN;
+        }
+
+        /* Datagram->buffer contains "  RP", size, then only "size" valid
+         * words. */
+        rep0 = MCE_REPLY(&gram);
+        memset(rep, 0, sizeof(*rep));
+        memcpy(rep, rep0->data, rep0->size * sizeof(uint32_t));
+    }
+
 	return 0;
 }
 
@@ -442,11 +482,12 @@ int mcecmd_write_block_check(mce_context_t* context, const mce_param_t *param,
 
 int mcecmd_interface_reset(mce_context_t* context)
 {
-	return ioctl(C_cmd.fd, MCEDEV_IOCT_INTERFACE_RESET);
+    /* This amounts to a PCI card reset. */
+    return CMDIOCTL(context, DSPIOCT_RESET_DSP, MCEDEV_IOCT_INTERFACE_RESET);
 }
 
 int mcecmd_hardware_reset(mce_context_t* context)
 {
-	return ioctl(C_cmd.fd, MCEDEV_IOCT_HARDWARE_RESET);
+	return CMDIOCTL(context, DSPIOCT_RESET_MCE, MCEDEV_IOCT_HARDWARE_RESET);
 }
 #endif

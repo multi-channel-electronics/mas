@@ -7,7 +7,8 @@
 /***************************************************
   mcedsp.h - header file for MCE SDSU card API
 
-  Matthew Hasselfield, 07.06.05
+  Matthew Hasselfield  2007-06-05
+  D. V. Wiebe          2014-09-16
 
 ***************************************************/
 

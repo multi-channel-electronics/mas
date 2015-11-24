@@ -32,7 +32,7 @@ typedef struct mceconfig {
     int mapping_count;
 } mceconfig_t;
 
-/* Module information structure */
+/* Command subsystem structure */
 
 typedef struct mcecmd {
     int connected;
@@ -42,7 +42,7 @@ typedef struct mcecmd {
     char errstr[MCE_LONG];
 } mcecmd_t;
 
-/* Module information structure */
+/* Data return subsystem structure */
 
 typedef struct mcedata {
     int connected;
@@ -56,6 +56,8 @@ typedef struct mcedata {
 } mcedata_t;
 
 #define MCEDATA_PACKET_MAX 4096 /* Maximum frame size in dwords */
+
+/* DSP (low-level) subsystem structure */
 
 typedef struct mcedsp {
     int opened;
@@ -74,6 +76,7 @@ struct mce_context {
     unsigned int      flags;          /* MCELIB public flags */
     struct config_t  *mas_cfg;        /* MAS configuration */
     int               fibre_card;     /* logical fibre card number */
+    enum { MCE_DSP_UNKNOWN, MCE_DSP_OLD, MCE_DSP } drv_type; /* driver type */
 
     /* the terminal output routine, this allows the caller to redirect terminal
      * output somewhere else by providing a function
@@ -117,5 +120,13 @@ int mcelib_error(const mce_context_t *context, const char *fmt, ...)
 int mcelib_print(const mce_context_t *context, const char *fmt, ...)
     __attribute__ ((format (printf, 2, 3)));
 int mcelib_symlink(const char *symlink, const char *target);
+
+typedef enum {
+  MCE_SUBSYSTEM_DSP, MCE_SUBSYSTEM_CMD, MCE_SUBSYSTEM_DATA
+} mce_subsystem_t;
+
+/* open a device node; this requires figuring out which kernel driver
+ * we're dealing with */
+int mcedev_open(mce_context_t *context, mce_subsystem_t subsys);
 
 #endif
