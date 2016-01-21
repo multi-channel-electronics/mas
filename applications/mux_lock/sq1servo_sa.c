@@ -385,6 +385,7 @@ int main(int argc, char **argv)
 	  for (int k=0; k<control.column_n; k++)
 	    if (!control.columns_off[k+control.column_0])
 	      temparr[k] = control.fb + i*control.dfb;
+        else temparr[k]=control.fb_const;
           write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");
 	}
 	

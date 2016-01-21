@@ -13,8 +13,11 @@ $hw_subrack = "full";
 
 
 /* Set $hw_mux11d=1 if this system uses new-school SA+SQ1 muxes. */
-
 $hw_mux11d = 1;
+
+/* Set $hw_num_rows = # of rows if >41 and using a hybrid mux11d row
+   scheme.  This will only work, for now, up to 55 rows. */
+//$hw_num_rows = 55;
 
 /* These are only used if hw_mux11d != 0; they specify the bias card
    and offset of the flux_fb register used for the SQ1 bias. */

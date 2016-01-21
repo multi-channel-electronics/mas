@@ -11,21 +11,52 @@
                 {
                     name = "row_order";
                     id = 0x01;
-                    count = 41;
-                    default_items = (
-                         0, 1, 2, 3, 4, 5,
-                         6, 7, 8, 9,10,11,
-                        12,13,14,15,16,17,
-                        18,19,20,21,22,23,
-                        24,25,26,27,28,29,
-                        30,31,32,33,34,35,
-                        36,37,38,39,40 );
+                    count = <?=$num_rows_rc?>;
+<?php
+/* Yes, count = num_rows_rc.  So that AC knows what row to idle on
+   when muxing rows > 41. */
+
+// implicitly assumes ac idle row will be 39
+echo "                    default_items = (\n";
+for($i = 0; $i<$num_rows_rc; $i++){
+       if(($i % 6==0)){
+              echo "                        ";
+       }
+       if($i != $num_rows_rc-1){
+       	     if($i<$num_rows_ac){
+                 printf("%2d,",$i);	
+             } else {
+	         printf("%2d,",39);
+             }
+       } else {
+       	     if($i<$num_rows_ac){
+                 printf("%2d );\n",$i);	
+             } else {
+                 printf("%2d );\n",39);
+             }
+       }
+       if($i % 6==5){
+              echo "\n";
+       }
+}
+
+/* here's what was default, before hybrid RS
+echo "                    default_items = (\n";
+echo "                         0, 1, 2, 3, 4, 5,\n";
+echo "                         6, 7, 8, 9,10,11,\n";
+echo "                        12,13,14,15,16,17,\n";
+echo "                        18,19,20,21,22,23,\n";
+echo "                        24,25,26,27,28,29,\n";
+echo "                        30,31,32,33,34,35,\n";
+echo "                        36,37,38,39,40 );\n";    
+*/
+?>
                 },
 
                 {
                     name = "on_bias";
                     id = 0x02;
-                    count = 41;
+                    count = <?=$num_rows_ac?>;
                     min = 0;
                     max = 16383;
                 },
@@ -33,7 +64,7 @@
                 {
                     name = "off_bias";
                     id = 0x03;
-                    count = 41;
+                    count = <?=$num_rows_ac?>;
                     min = 0;
                     max = 16383;
                 },
