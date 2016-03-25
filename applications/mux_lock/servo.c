@@ -435,3 +435,88 @@ int load_int_if_present(config_setting_t *cfg, char *name, int *dest)
     *dest = config_setting_get_int(n);
     return 0;
 }
+
+//
+// Code created for hybrid RS muxing
+//
+
+/* 
+   Because strings are annoying in C, dedicated function for loading
+   contents of hybrid experiment.cfg variable mux11d_row_select_cards,
+   which is a list of strings, each of which specifies a card in the
+   MCE to pull RSes from.
+*/
+int load_hybrid_rs_cards(config_setting_t *cfg, char *data[MAXCARDS])
+{
+    config_setting_t *el = config_setting_get_member(cfg, "mux11d_row_select_cards");
+    if (el == NULL) {
+        ERRPRINT("Failed to load experiment.cfg parameter:");
+        ERRPRINT("mux11d_row_select_cards");
+        exit(ERR_MCE_ECFG);
+    }
+    int size=el->value.list->length;
+    
+    // need to think about the memory allocation here a little more...
+    for (int i=0; i<size; i++)
+        data[i]=((char *)config_setting_get_string_elem(el, i));
+
+    return size;
+}
+
+/* 
+   If row selects are hybridized, sanity check to make sure it's
+   sensible.  "It" so far is;
+
+    1) No card appears twice in experiment.cfg:mux11d_row_select_cards
+    2) Card must be in [ac,bc1,bc2,bc3]
+    3) Enforces non-overlap between RS blocks.  Assumes RSes are in
+       contiguous blocks per card.
+
+   If we fail any of these three conditions, asserts.
+*/
+int validate_hybrid_mux11d_mux_order(int nhybrid_rs_cards,
+                                     char *mux11d_row_select_cards[MAXCARDS],
+                                     int *mux11d_row_select_cards_row0)
+{
+    char myerrmsg[100];
+    
+    //                printf("card=%s r0=%d\n",mux11d_row_select_cards[i],mux11d_row_select_cards_row0[i]);
+    // check to make sure there are no overlaps between blocks of AC or BC-driven RSes, and no duplicates
+    for(int i=0; i<nhybrid_rs_cards; i++){
+        for(int j=0; j<nhybrid_rs_cards; j++){
+            if(i!=j){
+                // make sure no duplicate entries in mux11d_row_select_cards
+                if(!strcmp(mux11d_row_select_cards[i], mux11d_row_select_cards[j])){
+                    ERRPRINT("Duplicate card entries in mux11d_row_select_cards:");
+                    sprintf(myerrmsg, "(%s == %s)",
+                            mux11d_row_select_cards[i],mux11d_row_select_cards[j]);
+                    ERRPRINT(myerrmsg);
+                    exit(ERR_MCE_ECFG);
+                }
+                // make sure this mux11d_row_select_cards entry is supported
+                // should we make only bc2 supported, since that's the only 
+                // card that will be used for AdvACT?
+                if( ( strcmp(mux11d_row_select_cards[i], "ac") ) &&
+                    ( strcmp(mux11d_row_select_cards[i], "bc1") ) && 
+                    ( strcmp(mux11d_row_select_cards[i], "bc2") ) && 
+                    ( strcmp(mux11d_row_select_cards[i], "bc3") ) ){
+                    ERRPRINT("Requested an unsupported card in mux11d_row_select_cards:");
+                    ERRPRINT(mux11d_row_select_cards[i]);
+                    exit(ERR_MCE_ECFG);
+                }
+                // make sure rowsels for no cards overlap, assuming indices are assigned in contiguous sequential blocks
+                int this_card_max_rs=(mux11d_row_select_cards_row0[i]-1)+( ( !strcmp(mux11d_row_select_cards[i], "ac" ) ) ? MAXACROWS : MAXBCROWS );
+                //printf("card=%s r0=%d rs_range=[%d,%d]\n",mux11d_row_select_cards[i],mux11d_row_select_cards_row0[i],mux11d_row_select_cards_row0[i],this_card_max_rs);
+                if( ( mux11d_row_select_cards_row0[j]>=mux11d_row_select_cards_row0[i] ) &&
+                    ( mux11d_row_select_cards_row0[j]<=this_card_max_rs ) ){
+                    ERRPRINT("Detected overlap in RS range of two cards in hybrid mode:");
+                    sprintf(myerrmsg, "card=%s overlaps card=%s",
+                            mux11d_row_select_cards[i],mux11d_row_select_cards[j]);
+                    ERRPRINT(myerrmsg);
+                    exit(ERR_MCE_ECFG);
+                }
+            }
+        }        
+    }
+    return 0;
+}

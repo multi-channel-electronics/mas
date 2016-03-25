@@ -59,7 +59,86 @@ struct {
   int super_servo;
   int row_choice[MAXCOLS];
 
+  /* For mux11d hybrid muxing */
+  int hybrid_rs_active;
+  int hybrid_ac_idle_row;
+
+  int nhybrid_rs_cards;
+  char* hybrid_rs_cards[MAXCARDS];
+  double hybrid_rs_multipliers[MAXCARDS];
+  int hybrid_rs_cards_row0[MAXCARDS];
+  int hybrid_mux_order[MAXROWS];
+
 } control;
+
+/* Info for turning hybrid mux11d addresses into BC DAC targets. */
+typedef struct {
+    int is_bc;                   /* If True, row is managed by some BC, not AC. */
+    mce_param_t mce_param;       /* The mce_param of the relevant "bc? fb_col?" */
+    char param_name[16];         /* The name to pass to write_range_or_exit. */
+    int param_offset;            /* The index within bc? fb_col? to which the on
+                                    value should go... i.e. the row number. */
+    double multiplier;           /* The rescaling to apply to feedback values 
+                                    before writing them. */
+} row_info_t;
+
+row_info_t row_infos[MAXROWS];
+    
+void init_row_info(mce_context_t *mce)
+{
+    for (int row=0; row<control.rows; row++) {
+        /* Init row info to 0... which includes is_bc = False. */
+        row_info_t *info = &row_infos[row];
+        memset(info, 0, sizeof(*info));
+
+        /* If not hybrid, short-circuit. */
+        if (!control.hybrid_rs_active)
+            continue;
+
+        /* Take this row's mux_order element and figure out what
+           rs_card it belongs to.  Assumes row0 vector is strictly
+           increasing. */
+        int rs_card = 0;
+        while ((rs_card < control.nhybrid_rs_cards) && 
+               (control.hybrid_mux_order[row] >= control.hybrid_rs_cards_row0[rs_card]))
+            rs_card++;
+        rs_card--; // It's the one before that.
+        int param_offset = (control.hybrid_mux_order[row] - 
+                            control.hybrid_rs_cards_row0[rs_card]);
+        char *card_name = control.hybrid_rs_cards[rs_card];
+
+        /* Copy information into the row_info. */
+        info->is_bc = (strcmp(card_name, "ac") != 0);
+        info->multiplier = control.hybrid_rs_multipliers[rs_card];
+
+        if (info->is_bc) {
+            /* For bias cards, offset into the BC DAC register is
+               simply the row index.  Use the mux_order to get the right DAC register. */
+            char param_name[16];
+            sprintf(param_name, "fb_col%d", param_offset);
+            sprintf(info->param_name, "%s_%s", card_name, param_name);
+            load_param_or_exit(mce, &info->mce_param, card_name, param_name, 0);
+            info->param_offset = row;
+            printf("init_row: %2i  maps to %s %s\n", row, card_name, param_name);
+        }
+    }
+}
+
+/* update_bc_row_select -- writes the appropriate "bc? fb_col?" vector
+   with the off_value, except for at index row, where is written on_value. */
+void update_bc_row_select(mce_context_t *mce, int row, int on_value, int off_value)
+{
+    int32_t temparr[MAXTEMP];
+    row_info_t *info = &row_infos[row];
+    if (!info->is_bc)
+        return;
+
+    off_value = (info->multiplier * off_value);
+    on_value = (info->multiplier * on_value);
+    duplicate_fill(off_value, temparr, MAXROWS);
+    temparr[info->param_offset] = on_value;
+    write_range_or_exit(mce, &info->mce_param, 0, temparr, MAXROWS, info->param_name);
+}
 
 
 /***********************************************************
@@ -123,6 +202,31 @@ int load_exp_config(const char *filename)
   load_int(cfg, "config_mux11d_all_rows", &control.super_servo);
   load_int_array(cfg, "mux11d_row_choice",
 		 control.column_0, control.column_n, control.row_choice);
+
+  // hybrid mux11d rs
+  load_int_if_present(cfg, "mux11d_hybrid_row_select", &control.hybrid_rs_active);
+
+  if (control.hybrid_rs_active) {
+      // only load these parameters if hybrid RS has been requested
+      control.nhybrid_rs_cards=load_hybrid_rs_cards(cfg, control.hybrid_rs_cards);
+      
+      load_int_array(cfg,"mux11d_mux_order",
+                     0,MAXROWS,control.hybrid_mux_order);
+      load_int_array(cfg,"mux11d_row_select_cards_row0",
+                     0,control.nhybrid_rs_cards,control.hybrid_rs_cards_row0);
+          
+      // some basic validation of the hybrid inputs ; more extensive
+      // checks in auto_setup/mux11d.py:do_init_mux11d() ; could
+      // probably eliminate this and do it all there
+      validate_hybrid_mux11d_mux_order(control.nhybrid_rs_cards,control.hybrid_rs_cards,
+                                       control.hybrid_rs_cards_row0);
+      
+      load_double_array(cfg,"mux11d_row_select_multipliers",
+                        0,control.nhybrid_rs_cards,control.hybrid_rs_multipliers);
+      
+      // probably don't need this...delete later if not used
+      load_int(cfg, "mux11d_ac_idle_row", &control.hybrid_ac_idle_row);
+  }
   
   return 0;
 }
@@ -280,6 +384,10 @@ int main(int argc, char **argv)
    // Lookup MCE parameters, or exit with error message.
    mce_param_t m_safb, m_rowsel, m_sq1bias, m_safb_col[MAXCOLS];
 
+   // Hybrid MUX setup
+   if (control.hybrid_rs_active)
+       init_row_info(mce);
+
    load_param_or_exit(mce, &m_rowsel,  ROWSEL_CARD, ROWSEL_FB, 0);
    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
 
@@ -294,7 +402,7 @@ int main(int argc, char **argv)
    }
      
    if ((datadir = mcelib_lookup_dir(mce, MAS_DIR_DATA)) == NULL) {
-       ERRPRINT("Error deteriming $MAS_DATA, quit");
+       ERRPRINT("Error determining $MAS_DATA, quit");
        return ERR_DATA_DIR;
    }
    sprintf(full_datafilename, "%s/%s", datadir, control.filename);
@@ -352,99 +460,115 @@ int main(int argc, char **argv)
    for (j=0; j<control.nbias; j++ ){
 
       if (control.bias_active) {
-	// Update the SQ1 bias
-	duplicate_fill(control.bias + j*control.dbias, temparr, control.column_n);
-	write_range_or_exit(mce, &m_sq1bias, control.column_0, temparr, control.column_n, "sq1bias");
+       // Update the SQ1 bias
+       duplicate_fill(control.bias + j*control.dbias, temparr, control.column_n);
+       write_range_or_exit(mce, &m_sq1bias, control.column_0, temparr, control.column_n, "sq1bias");
       }
-
+       
       // Initialize ROW SELECT -- write all rows so row_order doesn't get you
       duplicate_fill(control.fb, temparr, MAXROWS);
       write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXROWS, "rowsel");
-
+      
+      // Zero this bc DAC for all row visits if it's being used as a hybrid rs
+      if (control.hybrid_rs_active) {
+          /* This will only update the BC DACs. */
+          for (int row=0; row<control.rows; row++)
+              update_bc_row_select(mce, row, 0, 0);
+      }
+      
       // Preservo and run the FB ramp.
       for (i=-options.preservo; i<control.nfb; i++ ){
-
-	// Write all rows fb to each series array
-	for (snum=0; snum<control.column_n; snum++) {
-	  rerange(temparr, safb[snum], MAXROWS, control.quanta+snum, 1);
-      if (!control.super_servo) {
-        //Actually write them as all the same.
-        for (int r=0; r<MAXROWS; r++)
-          temparr[r] = temparr[control.row_choice[snum]];
+          
+          // Write all rows fb to each series array
+          for (snum=0; snum<control.column_n; snum++) {
+              rerange(temparr, safb[snum], MAXROWS, control.quanta+snum, 1);
+              if (!control.super_servo) {
+                  //Actually write them as all the same.
+                  for (r=0; r<MAXROWS; r++)
+                      temparr[r] = temparr[control.row_choice[snum]];
+              }
+              write_range_or_exit(mce, m_safb_col+snum, 0, temparr, MAXROWS, "safb_col");
+          }
+          
+          if (i > 0) {
+              // Next rowsel value.
+              duplicate_fill(control.fb + i*control.dfb, temparr, MAXROWS);
+              write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXROWS, "rowsel");
+              
+              if (control.hybrid_rs_active)
+                  for (int row=0; row<control.rows; row++)
+                      update_bc_row_select(mce, row, control.fb + i*control.dfb, 0);
+          }
+          
+          // Get a frame
+          if ((error=mcedata_acq_go(&acq, 1)) != 0)
+              error_action("data acquisition failed", error);
+          
+          // Compute new feedback for each column, row
+          for (snum=0; snum<control.column_n; snum++) {
+              for (r=0; r<control.rows; r++) {
+                  safb[snum][r] += control.gain[snum] *
+                      ((int)sq1servo.last_frame[r*control.column_n + snum] - control.target[snum] );
+              }
+          }
+          
+          // If ramping, write to file
+          if (i >= 0) {
+              if (control.super_servo) {
+                  // Write errors and computed feedbacks to .bias file.
+                  for (r=0; r<control.rows; r++) {
+                      fprintf(bias_out, "%2i %4i %2i ", j, i, r);
+                      for (snum=0; snum<control.column_n; snum++)	 
+                          fprintf(bias_out, "%13d ", sq1servo.last_frame[r*control.column_n + snum]);
+                      for (snum=0; snum<control.column_n; snum++)	 
+                          fprintf(bias_out, "%13d ", safb[snum][r]);
+                      fprintf (bias_out, "\n" );
+                  }
+              } else {
+                  // Chosen rows only.
+                  fprintf(bias_out, "%2i %4i %2i ", j, i, 0);
+                  for (snum=0; snum<control.column_n; snum++) {
+                      r = control.row_choice[snum];
+                      fprintf(bias_out, "%13d ", sq1servo.last_frame[
+                                                                     r*control.column_n + snum]);
+                  }
+                  for (snum=0; snum<control.column_n; snum++) {
+                      r = control.row_choice[snum];
+                      fprintf(bias_out, "%13d ", safb[snum][r]);
+                  }
+                  fprintf (bias_out, "\n" );
+              }
+          }
       }
-	  write_range_or_exit(mce, m_safb_col+snum, 0, temparr, MAXROWS, "safb_col");
-	}
-
-	if (i > 0) {
-	  // Next rowsel value.
-	  duplicate_fill(control.fb + i*control.dfb, temparr, MAXROWS);
-          write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXROWS, "rowsel");
-	}
-	
-	// Get a frame
-	if ((error=mcedata_acq_go(&acq, 1)) != 0)
-	  error_action("data acquisition failed", error);
-
-	// Compute new feedback for each column, row
-	for (snum=0; snum<control.column_n; snum++) {
-	  for (r=0; r<control.rows; r++) {
-	    safb[snum][r] += control.gain[snum] *
-		((int)sq1servo.last_frame[r*control.column_n + snum] - control.target[snum] );
-	  }
-	}
-
-    // If ramping, write to file
-	if (i >= 0) {
-     if (control.super_servo) {
-	  // Write errors and computed feedbacks to .bias file.
-	  for (r=0; r<control.rows; r++) {
-	    fprintf(bias_out, "%2i %4i %2i ", j, i, r);
-	    for (snum=0; snum<control.column_n; snum++)	 
-        fprintf(bias_out, "%13d ", sq1servo.last_frame[r*control.column_n + snum]);
-	    for (snum=0; snum<control.column_n; snum++)	 
-		fprintf(bias_out, "%13d ", safb[snum][r]);
-	    fprintf (bias_out, "\n" );
-	  }
-     } else {
-      // Chosen rows only.
-      fprintf(bias_out, "%2i %4i %2i ", j, i, 0);
-      for (snum=0; snum<control.column_n; snum++) {
-              r = control.row_choice[snum];
-              fprintf(bias_out, "%13d ", sq1servo.last_frame[
-                              r*control.column_n + snum]);
-      }
-      for (snum=0; snum<control.column_n; snum++) {
-              r = control.row_choice[snum];
-              fprintf(bias_out, "%13d ", safb[snum][r]);
-      }
-      fprintf (bias_out, "\n" );
-     }
-	}
-
-      }
-      }
+   }
 
    /* reset values back to 0 */
    duplicate_fill(0, temparr, MAXROWS);
    for (snum=0; snum<control.column_n; snum++) {
-	  write_range_or_exit(mce, m_safb_col+snum, 0, temparr,
-                          MAXROWS, "safb_col");
+       write_range_or_exit(mce, m_safb_col+snum, 0, temparr,
+                           MAXROWS, "safb_col");
    }
 
+   /* if in hybrid rs-scheme, reset those values back to zero too */
+   if (control.hybrid_rs_active) {
+       for (int row=0; row<control.rows; row++)
+           update_bc_row_select(mce, row, 0, 0);
+   }
+   
    write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXROWS, "rowsel");	
    
    if (control.bias_active) {
-     duplicate_fill(0, temparr, control.column_n);
-     write_range_or_exit(mce, &m_sq1bias, control.column_0, temparr, control.column_n, "sq1bias");
+       duplicate_fill(0, temparr, control.column_n);
+       write_range_or_exit(mce, &m_sq1bias, control.column_0, temparr, control.column_n, "sq1bias");
    }
    else
-      printf("SQ1 bias unchanged.\n"); 
-
+       printf("SQ1 bias unchanged.\n"); 
+   
    if (sq1servo.df != NULL)
-     fclose(sq1servo.df);
-
+       fclose(sq1servo.df);
+   
    fclose(bias_out);
-
+   
    mcelib_destroy(mce);
    
    time(&finish);

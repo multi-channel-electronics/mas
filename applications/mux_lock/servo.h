@@ -13,8 +13,13 @@
 #define MAXLINE 1024
 #define MAXCHANNELS 8
 #define MAXCOLS 32
-#define MAXROWS 41
+#define MAXROWS 55
 #define MAXTEMP 1024
+//added for mux11d hybrid RS schemes
+#define MAXCARDS 8
+#define MAXBCROWS 32
+#define MAXACROWS 41
+#define NUMBCS 3
 
 // Servo type
 enum servo_type_t {
@@ -117,3 +122,8 @@ int load_double(config_setting_t *cfg, char *name, double *dest);
 int load_int(config_setting_t *cfg, char *name, int *dest);
 int load_int_if_present(config_setting_t *cfg, char *name, int *dest);
 
+// hybrid mux11d
+int load_hybrid_rs_cards(config_setting_t *cfg, char *data[MAXCARDS]);//, int start, int count, int *data);
+int validate_hybrid_mux11d_mux_order(int nhybrid_rs_cards,
+                                     char *mux11d_row_select_cards[MAXCARDS],
+                                     int *mux11d_row_select_cards_row0);
