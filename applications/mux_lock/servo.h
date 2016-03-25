@@ -21,6 +21,32 @@
 #define MAXACROWS 41
 #define NUMBCS 3
 
+// Servo type
+enum servo_type_t {
+    CLASSIC_SQ2_SERVO = 1,
+    CLASSIC_SQ1_SERVO_SINGLE_ROW,
+    CLASSIC_SQ1_SERVO_ALL_ROWS,
+    CLASSIC_SQ1_SERVO_SA_FB,
+    MUX11D_SQ1_SERVO_SA,
+    MUX11D_RS_SERVO
+};
+
+/* For looking up names of bias, ramp_fb, servo_fb. */
+#define STR_TABLE_NCOL 4
+#define SV_DESCRIPTION 0
+#define SV_BIAS  1
+#define SV_FLUX  2
+#define SV_SERVO 3
+struct string_table {
+    int id;
+    const char *values[STR_TABLE_NCOL];
+};
+
+extern struct string_table servo_var_codes[];
+const char *get_string(struct string_table *table, int id, int column,
+                       char *def);
+
+
 #define SA_DAC      65536
 #define SQ2_DAC     65536
 #define SQ2_BAC_DAC 16386
@@ -76,7 +102,7 @@ void rerange(int32_t *dest, int32_t *src, int n_data,
 int genrunfile (
 char *full_datafilename, /* datafilename including the path*/
 char *datafile,          /* datafilename */
-int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
+enum servo_type_t servo_type,
 int  which_rc,
 int  bias, int bstep, int nbias, int bias_active,
 int feed, int fstep, int nfeed,
@@ -94,6 +120,7 @@ int load_int_array(config_setting_t *cfg, char *name, int start, int count, int 
 int load_double_array(config_setting_t *cfg, char *name, int start, int count, double *data);
 int load_double(config_setting_t *cfg, char *name, double *dest);
 int load_int(config_setting_t *cfg, char *name, int *dest);
+int load_int_if_present(config_setting_t *cfg, char *name, int *dest);
 
 // hybrid mux11d
 int load_hybrid_rs_cards(config_setting_t *cfg, char *data[MAXCARDS]);//, int start, int count, int *data);

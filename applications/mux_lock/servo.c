@@ -27,20 +27,35 @@ int error_action(char *msg, int code){
     exit (code);  
 }  
 
-char *bias_codes[] = {
-    "",         /* 0 */
-    "sq1bias",  /* 1 - sq1servo */
-    "sq2bias",  /* 2 - sq2servo */
-    "sq1bias",  /* 3 - sq1servo_sa */
-    "sq1bias",  /* 4 - rs_servo */
+const char *get_string(struct string_table *table, int id, int column,
+                       char *def) {
+    if (column >= STR_TABLE_NCOL)
+        return def;
+    while (table->id >= 0) {
+        if (table->id == id) {
+            return table->values[column];
+        }
+        table++;
+    }
+    return def;
+}
+
+struct string_table servo_var_codes[] = {
+    {CLASSIC_SQ2_SERVO,            
+     {"classic_sq2_servo"           , "sq2bias", "sq2fb", "safb"}},
+    {CLASSIC_SQ1_SERVO_SINGLE_ROW,
+     {"classic_sq1_servo_single_row", "sq1bias", "sq1fb", "sq2fb"}},
+    {CLASSIC_SQ1_SERVO_ALL_ROWS,
+     {"classic_sq1_servo_all_rows"  , "sq1bias", "sq1fb", "sq2fb"}},
+    {CLASSIC_SQ1_SERVO_SA_FB,
+     {"classic_sq1_servo_sa_fb"     , "sq1bias", "sq1fb", "safb"}},
+    {MUX11D_SQ1_SERVO_SA,
+     {"mux11d_sq1_servo_sa"         , "sq1bias", "sq1fb", "safb"}},
+    {MUX11D_RS_SERVO,
+     {"mux11d_rs_servo"             , "sq1bias", "rowsel","safb"}},
+    {-1, {"","",""}}
 };
-char *flux_codes[] = {
-    "",        /* 0 */
-    "sq1fb",   /* 1 - sq1servo */
-    "sq2fb",   /* 2 - sq2servo */
-    "sq1fb",   /* 3 - sq1servo_sa */
-    "rowsel",  /* 4 - rs_servo */
-};
+
 
 /***********************************************************
  * genrunfile - creates a runfile
@@ -48,7 +63,7 @@ char *flux_codes[] = {
 int genrunfile (
         char *full_datafilename, /* datafilename including the path*/
         char *datafile,          /* datafilename */
-        int  which_servo,        /* 1 for sq1servo, 2 for sq2servo*/
+        enum servo_type_t servo_type,  /* Type of servo */
         int  which_rc,
         int bias, int bstep, int nbias, int bias_active,
         int feed, int fstep, int nfeed,
@@ -84,12 +99,14 @@ int genrunfile (
         return 1;
     }
     /*<servo_init section*/
-    if (servo_init1 != NULL){
+    fprintf(runfile, "<servo_init>\n");
+    fprintf(runfile, "  <servo_description> %s\n", get_string(
+                servo_var_codes, servo_type, SV_DESCRIPTION, "unknown"));
+    if (servo_init1 != NULL)
         fprintf (runfile,"<servo_init>\n  %s\n", servo_init1);
-        if (servo_init2 != NULL)
-            fprintf (runfile,"  %s\n", servo_init2);
-        fprintf (runfile, "</servo_init>\n\n");    
-    }
+    if (servo_init2 != NULL)
+        fprintf (runfile,"  %s\n", servo_init2);
+    fprintf (runfile, "</servo_init>\n\n");    
 
     /*<par_ramp> section*/  
     fprintf (runfile,"<par_ramp>\n  <loop_list> loop1 loop2\n");
@@ -98,12 +115,16 @@ int genrunfile (
             "      <par_title loop1 par1> %s\n"
             "      <par_step loop1 par1> %d %d %d\n"
             "      <par_active loop1 par1> %d\n",
-            bias_codes[which_servo], bias, bstep, nbias, bias_active);
+             get_string(servo_var_codes, servo_type, SV_BIAS, "unknown"),
+             bias, bstep, nbias, bias_active);
     fprintf (runfile,
             "    <par_list loop2> par1\n"
             "      <par_title loop2 par1> %s\n"
             "      <par_step loop2 par1> %d %d %d\n",
-            flux_codes[which_servo], feed, fstep, nfeed);
+             get_string(servo_var_codes, servo_type, SV_FLUX, "unknown"),
+             feed, fstep, nfeed);
+    fprintf (runfile, "  <par_servo_target> %s\n",
+             get_string(servo_var_codes, servo_type, SV_SERVO, "unknown"));
     fprintf (runfile, "</par_ramp>\n\n");
 
     /*<servo_params> section*/
@@ -402,6 +423,15 @@ int load_int(config_setting_t *cfg, char *name, int *dest)
         ERRPRINT(name);
         exit(ERR_MCE_ECFG);
     }
+    *dest = config_setting_get_int(n);
+    return 0;
+}
+
+int load_int_if_present(config_setting_t *cfg, char *name, int *dest)
+{
+    config_setting_t *n = config_setting_get_member(cfg, name);
+    if (n==NULL)
+        return -1;
     *dest = config_setting_get_int(n);
     return 0;
 }
