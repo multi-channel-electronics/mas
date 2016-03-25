@@ -115,11 +115,27 @@ void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
     *count = DATAIOCTL(context, DATADEV_IOCT_QUERY, DSPIOCT_QUERY, QUERY_MAX);
 }
 
+/* mcedata_poll_offset
+   
+   Get byte offset into memmap of next unconsumed data frame.
+   
+   Returns 1 if there is such a frame, and puts the offset into
+   *offset.
+
+   Returns 0 if there is not such a frame, in which case *offset will
+   contain either EAGAIN (try again later) or ENODATA (the driver
+   wants you to exit with error)..
+*/
 int mcedata_poll_offset(mce_context_t* context, int *offset)
 {
-    *offset = DATAIOCTL(context, DSPIOCT_FRAME_POLL, DSPIOCT_FRAME_POLL);
+    *offset = DATAIOCTL(context, DATADEV_IOCT_FRAME_POLL, DSPIOCT_FRAME_POLL);
     if (*offset < 0) {
-        *offset = errno;
+        if (mcelib_legacy(context)) {
+            /* Legacy driver does not return meaningful error. */
+            *offset = EAGAIN;
+        } else {
+            *offset = errno;
+        }
         return 0;
     }
     return 1;

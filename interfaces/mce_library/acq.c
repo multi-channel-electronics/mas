@@ -400,8 +400,13 @@ int copy_frames_mmap(mce_acq_t *acq)
 
         int waits = 0;
 		while (!done) {
+            // The poll returns 1 if there are frames ready.
             if (mcedata_poll_offset(acq->context, &ret_val) != 0)
                break;
+            if (ret_val != EAGAIN) {
+                done = EXIT_KILL;
+                break;
+            }
             usleep(COPY_FRAMES_SLEEP_US);
             if (max_waits > 0 && ++waits >= max_waits)
                 done = EXIT_TIMEOUT;
@@ -428,13 +433,17 @@ int copy_frames_mmap(mce_acq_t *acq)
 		if (++count >= acq->n_frames)
 			done = EXIT_COUNT;
 
-		if (frame_property(data, &frame_header_v6, status_v6)
-		    & FRAME_STATUS_V6_STOP)
-			done = EXIT_STOP;
+        // Validate the checksum before interpreting status bits.
+        uint32_t cs = mcecmd_checksum(data, acq->frame_size);
+        if (cs == 0) {
+            if (frame_property(data, &frame_header_v6, status_v6)
+                & FRAME_STATUS_V6_STOP)
+                done = EXIT_STOP;
 
-		if (frame_property(data, &frame_header_v6, status_v6)
-		    & FRAME_STATUS_V6_LAST)
-			done = EXIT_LAST;
+            if (frame_property(data, &frame_header_v6, status_v6)
+                & FRAME_STATUS_V6_LAST)
+                done = EXIT_LAST;
+        }
 
 		// Inform driver of consumption
 		mcedata_consume_frame(acq->context);
