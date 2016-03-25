@@ -204,30 +204,29 @@ int load_exp_config(const char *filename)
 		 control.column_0, control.column_n, control.row_choice);
 
   // hybrid mux11d rs
-  if(config_setting_get_member(cfg, "mux11d_hybrid_row_select")!=NULL){
-      load_int(cfg, "mux11d_hybrid_row_select", &control.hybrid_rs_active);
+  load_int_if_present(cfg, "mux11d_hybrid_row_select", &control.hybrid_rs_active);
+
+  if (control.hybrid_rs_active) {
       // only load these parameters if hybrid RS has been requested
-      if(control.hybrid_rs_active){
-          control.nhybrid_rs_cards=load_hybrid_rs_cards(cfg, control.hybrid_rs_cards);
+      control.nhybrid_rs_cards=load_hybrid_rs_cards(cfg, control.hybrid_rs_cards);
+      
+      load_int_array(cfg,"mux11d_mux_order",
+                     0,MAXROWS,control.hybrid_mux_order);
+      load_int_array(cfg,"mux11d_row_select_cards_row0",
+                     0,control.nhybrid_rs_cards,control.hybrid_rs_cards_row0);
           
-          load_int_array(cfg,"mux11d_mux_order",
-                         0,MAXROWS,control.hybrid_mux_order);
-          load_int_array(cfg,"mux11d_row_select_cards_row0",
-                         0,control.nhybrid_rs_cards,control.hybrid_rs_cards_row0);
-          
-          // some basic validation of the hybrid inputs ; more extensive
-          // checks in auto_setup/mux11d.py:do_init_mux11d() ; could
-          // probably eliminate this and do it all there
-          validate_hybrid_mux11d_mux_order(control.nhybrid_rs_cards,control.hybrid_rs_cards,
-                                           control.hybrid_rs_cards_row0);
-          
-          load_double_array(cfg,"mux11d_row_select_multipliers",
-                            0,control.nhybrid_rs_cards,control.hybrid_rs_multipliers);
-          
-          // probably don't need this...delete later if not used
-          load_int(cfg, "mux11d_ac_idle_row", &control.hybrid_ac_idle_row);
-      }
-  } else control.hybrid_rs_active=0;
+      // some basic validation of the hybrid inputs ; more extensive
+      // checks in auto_setup/mux11d.py:do_init_mux11d() ; could
+      // probably eliminate this and do it all there
+      validate_hybrid_mux11d_mux_order(control.nhybrid_rs_cards,control.hybrid_rs_cards,
+                                       control.hybrid_rs_cards_row0);
+      
+      load_double_array(cfg,"mux11d_row_select_multipliers",
+                        0,control.nhybrid_rs_cards,control.hybrid_rs_multipliers);
+      
+      // probably don't need this...delete later if not used
+      load_int(cfg, "mux11d_ac_idle_row", &control.hybrid_ac_idle_row);
+  }
   
   return 0;
 }
