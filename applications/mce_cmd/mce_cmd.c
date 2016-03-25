@@ -64,6 +64,7 @@ enum {
 	SPECIAL_SLEEP,
 	SPECIAL_COMMENT,
 	SPECIAL_FRAME,
+    SPECIAL_NFRAMES,
 	SPECIAL_DISPLAY,
 	SPECIAL_DEF,
 	SPECIAL_DEC,
@@ -169,6 +170,7 @@ mascmdtree_opt_t root_opts[] = {
 	{ SEL_NO, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
 	{ SEL_NO, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
 	{ SEL_NO, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
+    { SEL_NO, "NFRAMES" , 1, 1, SPECIAL_NFRAMES , integer_opts},
 	{ SEL_NO, "DISPLAY" , 1, 1, SPECIAL_DISPLAY , display_opts},
 	{ SEL_NO, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
 	{ SEL_NO, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
@@ -1013,6 +1015,10 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 }
                 break;
 
+            case SPECIAL_NFRAMES:
+                ret_val = mcedata_set_nframes(mce, tokens[1].value);
+                break;
+            
             case SPECIAL_DISPLAY:
                 options.display = tokens[1].value;
                 break;
