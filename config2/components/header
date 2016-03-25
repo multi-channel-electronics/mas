@@ -45,6 +45,14 @@ if (!key_exists("bc", $hw_rev))
 if (!isset($hw_mux11d))
     $hw_mux11d = 0;
 
+/* hybrid RS backwards compatibility */
+$num_rows_ac = 41;
+$num_rows_rc = $num_rows_ac;
+
+/* optional extension of the number of rows readout for hybrid MUX */
+if (isset($hw_num_rows))
+   $num_rows_rc=$hw_num_rows;
+
 /* "sys" cards -- order and eligibility */
 
 $SYS_CARDS = array(

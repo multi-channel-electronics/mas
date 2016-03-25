@@ -12,7 +12,7 @@
                     );
                 },
 <? /* Expose fast switching on SA FB */
-echo map_array("fb_col", $num_columns, "bc1", 41);
+echo map_array("fb_col", $num_columns, "bc1", $num_rows_rc);
 ?>
                 {
                     name = "enbl_mux";
@@ -45,7 +45,7 @@ echo map_array("fb_col", $num_columns, "bc1", 41);
             name = "sq1_mapping";
             parameters = (
 <? /* Expose fast switching on SQ1 BIAS */
-echo map_array("fb_col", $num_columns, $mux11d_sq1_bc, 41, "bias_col",
+echo map_array("fb_col", $num_columns, $mux11d_sq1_bc, $num_rows_rc, "bias_col",
                $mux11d_sq1_offset,0);
 ?>
                 {
@@ -94,20 +94,20 @@ echo map_array("fb_col", $num_columns, $mux11d_sq1_bc, 41, "bias_col",
             parameters = (
                 {
                     name = "select";
-                    count = 41;
+                    count = <?=$num_rows_ac?>;
                     maps = (
                         {
-                            start = 0; count = 41; card = "ac";
+                            start = 0; count = <?=$num_rows_ac?>; card = "ac";
                             param = "on_bias"; offset = 0;
                         }
                     );
                 },
                 {
                     name = "deselect";
-                    count = 41;
+                    count = <?=$num_rows_ac?>;
                     maps = (
                         {
-                            start = 0; count = 41; card = "ac";
+                            start = 0; count = <?=$num_rows_ac?>; card = "ac";
                             param = "off_bias"; offset = 0;
                         }
                     );
