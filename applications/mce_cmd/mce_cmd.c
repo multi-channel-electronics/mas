@@ -852,6 +852,11 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 if ((err=mcedata_acq_go(acq, options.acq_frames)) != 0) {
                     sprintf(errmsg, "%s\n", mcelib_error_string(err));
                     ret_val = -1;
+                    break;
+                }
+                if (acq->status < 0) {
+                    ret_val = -1;
+                    sprintf(errmsg, "%s\n", mcelib_error_string(acq->status));
                 }
                 break;
 
