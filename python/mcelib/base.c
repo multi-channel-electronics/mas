@@ -387,6 +387,47 @@ fail:
 
 
 
+/*
+ * Get / set / reset the driver data lock.
+ *
+ * Arguments are an mce_context_t and an integer.
+ *
+ *   0: query lock state (returns True if lock available)
+ *   1: get lock (returns True if lock got)
+ *   2: release lock (returns True always)
+ *   3: reset lock (returns True always)
+ */
+
+static PyObject *lock_op(PyObject *self, PyObject *args)
+{
+    int err = 0;
+    mce_context_t *mce;
+    int operation;
+    if (!PyArg_ParseTuple(args, "O&i",
+                          ptrobj_decode, &mce,
+                          &operation))
+        Py_RETURN_FALSE;
+
+    switch(operation) {
+    case 0:
+        err = mcedata_lock_query(mce);
+        break;
+    case 1:
+        err = mcedata_lock_down(mce);
+        break;
+    case 2:
+        mcedata_lock_up(mce);
+        break;
+    case 3:
+        mcedata_lock_reset(mce);
+    default:
+        err = 1;
+    }
+
+    if (err==0)
+        Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
 
 
 static PyMethodDef mceMethods[] = {
@@ -402,6 +443,8 @@ static PyMethodDef mceMethods[] = {
      "Read."},
     {"read_data",  mce_read_data, METH_VARARGS,
      "Read data."},
+    {"lock_op", lock_op, METH_VARARGS,
+     "Driver data lock operations."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

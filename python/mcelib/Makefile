@@ -5,8 +5,8 @@ include $(BASE)Makefile.children
 
 # Module name
 MOD = pymce
-CPPFLAGS="${CPPFLAGS} ${PYTHON_CPPFLAGS}"
-LDFLAGS="${LDFLAGS} ${PYTHON_LIBS}"
+CPPFLAGS += $(PYTHON_CPPFLAGS)
+LDFLAGS += $(PYTHON_LIBS)
 
 # Source files
 SOURCE = $(MOD)/__init__.py $(MOD)/basic.py $(MOD)/compat.py base.c

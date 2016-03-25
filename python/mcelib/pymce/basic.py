@@ -29,7 +29,8 @@ class BasicMCE:
         return d
 
     def write(self, card, param, data, offset=0):
-        if not hasattr(data, '__getitem__'):
+        if numpy.isscalar(data) or \
+                (isinstance(data, numpy.ndarray) and data.ndim==0):
             data = [data]
         if len(data) == 0:
             # This messes up the MCE, so forbid it here.
@@ -135,10 +136,17 @@ class BasicMCE:
                     d.data.shape = (d.n_rows, d.n_cols*d.n_rc, -1)
             d.fast_axis = 'time'
         if fields != None:
-            return d.extract(fields, unfilter=unfilter)
+            d.data = dict(zip(fields, d.extract(fields, unfilter=unfilter)))
         return d
 
-        
+    def lock_query(self):
+        return mcelib.lock_op(self.context, 0)
+    def lock_down(self):
+        return mcelib.lock_op(self.context, 1)
+    def lock_up(self):
+        return mcelib.lock_op(self.context, 2)
+    def lock_reset(self):
+        return mcelib.lock_op(self.context, 3)
     
 """
 The MCEBinaryData object is based on SmallMCEFile, because that class
@@ -170,7 +178,7 @@ class MCEBinaryData(mce_data.SmallMCEFile):
         elif field == 'all':
             field = dm_data.fields
         if not isinstance(field, str):
-            return [self.get_field(f) for f in field]
+            return [self.extract(f, unfilter) for f in field]
         data = dm_data[field].extract(self.data)
         if field == 'fb_filt' and unfilter == 'DC':
             ftype = self.mce.read('rc1', 'fltr_type')[0]
