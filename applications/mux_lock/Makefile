@@ -23,7 +23,7 @@ HEADERS = servo.h servo_err.h options.h ../../defaults/config.h
 .c.o : $(HEADERS)
 	$(CC) -c $(CFLAGS) $< -o $@
 
-$(OBJECTS): $(HEADERS)
+$(OBJECTS): $(HEADERS) $(LIBDEP)
 
 all: $(TARGETS)
 
