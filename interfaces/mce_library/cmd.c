@@ -162,7 +162,7 @@ int mcecmd_read_reply_now(mce_context_t* context, mce_reply *rep)
         if (error < 0) {
             switch (errno) {
                 case ENODATA:
-                    return -MCE_ERR_INT_TIMEOUT;
+                    return -MCE_ERR_TIMEOUT;
                 case EIO:
                     return -MCE_ERR_INT_FAILURE;
 	}

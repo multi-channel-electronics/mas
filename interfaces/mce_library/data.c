@@ -40,12 +40,12 @@ int mcedata_open(mce_context_t *context)
     if (C_data.connected)
         mcedata_close(context);
 
-    err = mcedev_open(context, MCE_SUBSYSTEM_CMD);
+    err = mcedev_open(context, MCE_SUBSYSTEM_DATA);
     if (err)
         return err;
 
 	// Obtain buffer size for subsequent mmap
-	map_size = DATAIOCTL(context, DATADEV_IOCT_QUERY, DSPIOCT_QUERY,
+	map_size = DATAIOCTL(context, DSPIOCT_QUERY, DATADEV_IOCT_QUERY,
                          QUERY_BUFSIZE);
 	if (map_size > 0) {
 		map = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
@@ -86,33 +86,33 @@ int mcedata_ioctl(mce_context_t* context, int key, unsigned long arg)
 
 int mcedata_set_datasize(mce_context_t* context, int datasize)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_SET_DATASIZE, DSPIOCT_SET_DATASIZE,
-            datasize);
+    return DATAIOCTL(context, DSPIOCT_SET_DATASIZE, DATADEV_IOCT_SET_DATASIZE,
+                     datasize);
 }
 
 int mcedata_empty_data(mce_context_t* context)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_EMPTY, DSPIOCT_EMPTY);
+    return DATAIOCTL(context, DSPIOCT_EMPTY, DATADEV_IOCT_EMPTY);
 }
 
 int mcedata_fake_stopframe(mce_context_t* context)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_FAKE_STOPFRAME,
-            DSPIOCT_FAKE_STOPFRAME);
+    return DATAIOCTL(context,
+                     DSPIOCT_FAKE_STOPFRAME, DATADEV_IOCT_FAKE_STOPFRAME);
 }
 
 int mcedata_set_nframes(mce_context_t* context, int frame_count)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_QT_CONFIG, DSPIOCT_SET_NFRAMES,
-            frame_count);
+    return DATAIOCTL(context, DSPIOCT_SET_NFRAMES, DATADEV_IOCT_QT_CONFIG,
+                     frame_count);
 }
 
 void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
         int *count)
 {
-    *head = DATAIOCTL(context, DATADEV_IOCT_QUERY, DSPIOCT_QUERY, QUERY_HEAD);
-    *tail = DATAIOCTL(context, DATADEV_IOCT_QUERY, DSPIOCT_QUERY, QUERY_TAIL);
-    *count = DATAIOCTL(context, DATADEV_IOCT_QUERY, DSPIOCT_QUERY, QUERY_MAX);
+    *head = DATAIOCTL(context, DSPIOCT_QUERY, DATADEV_IOCT_QUERY, QUERY_HEAD);
+    *tail = DATAIOCTL(context, DSPIOCT_QUERY, DATADEV_IOCT_QUERY, QUERY_TAIL);
+    *count = DATAIOCTL(context, DSPIOCT_QUERY, DATADEV_IOCT_QUERY, QUERY_MAX);
 }
 
 /* mcedata_poll_offset
@@ -128,7 +128,7 @@ void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
 */
 int mcedata_poll_offset(mce_context_t* context, int *offset)
 {
-    *offset = DATAIOCTL(context, DATADEV_IOCT_FRAME_POLL, DSPIOCT_FRAME_POLL);
+    *offset = DATAIOCTL(context, DSPIOCT_FRAME_POLL, DATADEV_IOCT_FRAME_POLL);
     if (*offset < 0) {
         if (mcelib_legacy(context)) {
             /* Legacy driver does not return meaningful error. */
@@ -143,27 +143,27 @@ int mcedata_poll_offset(mce_context_t* context, int *offset)
 
 int mcedata_consume_frame(mce_context_t* context)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_FRAME_CONSUME,
-            DSPIOCT_FRAME_CONSUME);
+    return DATAIOCTL(context,
+                     DSPIOCT_FRAME_CONSUME, DATADEV_IOCT_FRAME_CONSUME);
 }
 
 int mcedata_lock_query(mce_context_t* context)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_LOCK, DSPIOCT_DATA_LOCK, LOCK_QUERY);
+    return DATAIOCTL(context, DSPIOCT_DATA_LOCK, DATADEV_IOCT_LOCK, LOCK_QUERY);
 }
 
 int mcedata_lock_reset(mce_context_t* context)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_LOCK, DSPIOCT_DATA_LOCK, LOCK_RESET);
+    return DATAIOCTL(context, DSPIOCT_DATA_LOCK, DATADEV_IOCT_LOCK, LOCK_RESET);
 }
 
 int mcedata_lock_down(mce_context_t* context)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_LOCK, DSPIOCT_DATA_LOCK, LOCK_DOWN);
+    return DATAIOCTL(context, DSPIOCT_DATA_LOCK, DATADEV_IOCT_LOCK, LOCK_DOWN);
 }
 
 int mcedata_lock_up(mce_context_t* context)
 {
-    return DATAIOCTL(context, DATADEV_IOCT_LOCK, DSPIOCT_DATA_LOCK, LOCK_UP);
+    return DATAIOCTL(context, DSPIOCT_DATA_LOCK, DATADEV_IOCT_LOCK, LOCK_UP);
 }
 #endif
