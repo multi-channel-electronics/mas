@@ -43,7 +43,10 @@ if ($hw_bac) echo " *  - Biasing address card (BAC) present\n";
 if ($hw_mux11d) {
   echo " *  - MUX 11D: enabled (SQ1 bias on $mux11d_sq1_bc " .
        "flux_fb+$mux11d_sq1_offset)\n";
+  echo " *  - banked access for rows >= 32:   " .
+       ($use_bank_scheme1 ? "yes" : "no") . "\n";
 }
+  
 echo " *\n";
 
 
@@ -52,6 +55,7 @@ if ($heater_virt) {
     echo " *  - Heater virtual card: present\n";
 }
 echo " *  - Number of columns: $num_columns\n";
+echo " *  - Number of muxable rows: $num_rows_rc\n";
 echo " *\n";
 
 echo " *  - BC hardware revision:       " . $hw_rev["bc"] . "\n";
@@ -60,6 +64,13 @@ echo " *  - Latest supported AC fw_rev: " . fw_rev_triplet("ac") . "\n";
 echo " *  - Latest supported BC fw_rev: " . fw_rev_triplet("bc") . "\n";
 echo " *  - Latest supported RC fw_rev: " . fw_rev_triplet("rc") . "\n";
 echo " *  - Latest supported CC fw_rev: " . fw_rev_triplet("cc") . "\n";
+echo " *\n";
+
+/* System features */
+
+echo " *  - 64-row readout support:         " . ($has_bank_scheme1 ? "yes" : "no")
+. "\n"; /* 0x6000000 */
+
 echo " *\n";
 
 /* AC features */

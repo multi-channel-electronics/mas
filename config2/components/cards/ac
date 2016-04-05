@@ -15,6 +15,11 @@
 <?
 /* Yes, count = num_rows_rc.  So that AC knows what row to idle on
    when muxing rows > 41. */
+   if ($use_bank_scheme1) {
+?>
+	            bank_scheme = 1;
+<?
+   }
 
 // implicitly assumes ac idle row will be 39
 echo "                    default_items = (\n";

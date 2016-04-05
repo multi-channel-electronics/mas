@@ -136,6 +136,8 @@ typedef struct {
 	int map_count;
 	config_setting_t *maps;
 
+	int bank_scheme;
+
 	int op_xor;
 } param_t;
 

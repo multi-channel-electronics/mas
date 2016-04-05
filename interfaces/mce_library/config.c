@@ -594,6 +594,9 @@ int mceconfig_cfg_param(const mce_context_t *context,
                 p->name, type_str);
 	}
 
+    // The banking scheme.
+    get_int(&p->bank_scheme, cfg, "bank_scheme");
+
 	// Data manipulation instructions?
 	if (get_int(&p->op_xor, cfg, "op_xor")==0)
 		p->flags |= MCE_PARAM_MANIP;

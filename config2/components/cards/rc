@@ -159,15 +159,20 @@
                     count = 6;
                 },
 <? } ?>
+<? if ($use_bank_scheme1) {
+     $rc_row_param_config = "count = {$num_rows_rc}; bank_scheme = 1;";
+   } else {
+     $rc_row_param_config = "count = {$num_rows_rc};";
+   } ?>
 <? if (fw_range("rc", $min=0x5020000)) { ?>
-                { name = "servo_rst_col0"; id = 0xF0; count = <?=$num_rows_rc?>; },
-                { name = "servo_rst_col1"; id = 0xF1; count = <?=$num_rows_rc?>; },
-                { name = "servo_rst_col2"; id = 0xF2; count = <?=$num_rows_rc?>; },
-                { name = "servo_rst_col3"; id = 0xF3; count = <?=$num_rows_rc?>; },
-                { name = "servo_rst_col4"; id = 0xF4; count = <?=$num_rows_rc?>; },
-                { name = "servo_rst_col5"; id = 0xF5; count = <?=$num_rows_rc?>; },
-                { name = "servo_rst_col6"; id = 0xF6; count = <?=$num_rows_rc?>; },
-                { name = "servo_rst_col7"; id = 0xF7; count = <?=$num_rows_rc?>; },
+                { name = "servo_rst_col0"; id = 0xF0; <?=$rc_row_param_config?> },
+                { name = "servo_rst_col1"; id = 0xF1; <?=$rc_row_param_config?> },
+                { name = "servo_rst_col2"; id = 0xF2; <?=$rc_row_param_config?> },
+                { name = "servo_rst_col3"; id = 0xF3; <?=$rc_row_param_config?> },
+                { name = "servo_rst_col4"; id = 0xF4; <?=$rc_row_param_config?> },
+                { name = "servo_rst_col5"; id = 0xF5; <?=$rc_row_param_config?> },
+                { name = "servo_rst_col6"; id = 0xF6; <?=$rc_row_param_config?> },
+                { name = "servo_rst_col7"; id = 0xF7; <?=$rc_row_param_config?> },
                 { name = "servo_rst_arm"; id = 0xF8; count = 1; },
 
 <? } ?>
@@ -183,50 +188,50 @@
             name = "readout commands";
 
             parameters = (
-                { name = "gainp0"; id = 0x70; count = <?=$num_rows_rc?>; },
-                { name = "gainp1"; id = 0x71; count = <?=$num_rows_rc?>; },
-                { name = "gainp2"; id = 0x72; count = <?=$num_rows_rc?>; },
-                { name = "gainp3"; id = 0x73; count = <?=$num_rows_rc?>; },
-                { name = "gainp4"; id = 0x74; count = <?=$num_rows_rc?>; },
-                { name = "gainp5"; id = 0x75; count = <?=$num_rows_rc?>; },
-                { name = "gainp6"; id = 0x76; count = <?=$num_rows_rc?>; },
-                { name = "gainp7"; id = 0x77; count = <?=$num_rows_rc?>; },
+                { name = "gainp0"; id = 0x70; <?=$rc_row_param_config?> },
+                { name = "gainp1"; id = 0x71; <?=$rc_row_param_config?> },
+                { name = "gainp2"; id = 0x72; <?=$rc_row_param_config?> },
+                { name = "gainp3"; id = 0x73; <?=$rc_row_param_config?> },
+                { name = "gainp4"; id = 0x74; <?=$rc_row_param_config?> },
+                { name = "gainp5"; id = 0x75; <?=$rc_row_param_config?> },
+                { name = "gainp6"; id = 0x76; <?=$rc_row_param_config?> },
+                { name = "gainp7"; id = 0x77; <?=$rc_row_param_config?> },
 
-                { name = "gaini0"; id = 0x78; count = <?=$num_rows_rc?>; },
-                { name = "gaini1"; id = 0x79; count = <?=$num_rows_rc?>; },
-                { name = "gaini2"; id = 0x7A; count = <?=$num_rows_rc?>; },
-                { name = "gaini3"; id = 0x7B; count = <?=$num_rows_rc?>; },
-                { name = "gaini4"; id = 0x7C; count = <?=$num_rows_rc?>; },
-                { name = "gaini5"; id = 0x7D; count = <?=$num_rows_rc?>; },
-                { name = "gaini6"; id = 0x7E; count = <?=$num_rows_rc?>; },
-                { name = "gaini7"; id = 0x7F; count = <?=$num_rows_rc?>; },
+                { name = "gaini0"; id = 0x78; <?=$rc_row_param_config?> },
+                { name = "gaini1"; id = 0x79; <?=$rc_row_param_config?> },
+                { name = "gaini2"; id = 0x7A; <?=$rc_row_param_config?> },
+                { name = "gaini3"; id = 0x7B; <?=$rc_row_param_config?> },
+                { name = "gaini4"; id = 0x7C; <?=$rc_row_param_config?> },
+                { name = "gaini5"; id = 0x7D; <?=$rc_row_param_config?> },
+                { name = "gaini6"; id = 0x7E; <?=$rc_row_param_config?> },
+                { name = "gaini7"; id = 0x7F; <?=$rc_row_param_config?> },
 
-                { name = "flx_quanta0"; id = 0x80; count = <?=$num_rows_rc?>; },
-                { name = "flx_quanta1"; id = 0x81; count = <?=$num_rows_rc?>; },
-                { name = "flx_quanta2"; id = 0x82; count = <?=$num_rows_rc?>; },
-                { name = "flx_quanta3"; id = 0x83; count = <?=$num_rows_rc?>; },
-                { name = "flx_quanta4"; id = 0x84; count = <?=$num_rows_rc?>; },
-                { name = "flx_quanta5"; id = 0x85; count = <?=$num_rows_rc?>; },
-                { name = "flx_quanta6"; id = 0x86; count = <?=$num_rows_rc?>; },
-                { name = "flx_quanta7"; id = 0x87; count = <?=$num_rows_rc?>; },
+                { name = "flx_quanta0"; id = 0x80; <?=$rc_row_param_config?> },
+                { name = "flx_quanta1"; id = 0x81; <?=$rc_row_param_config?> },
+                { name = "flx_quanta2"; id = 0x82; <?=$rc_row_param_config?> },
+                { name = "flx_quanta3"; id = 0x83; <?=$rc_row_param_config?> },
+                { name = "flx_quanta4"; id = 0x84; <?=$rc_row_param_config?> },
+                { name = "flx_quanta5"; id = 0x85; <?=$rc_row_param_config?> },
+                { name = "flx_quanta6"; id = 0x86; <?=$rc_row_param_config?> },
+                { name = "flx_quanta7"; id = 0x87; <?=$rc_row_param_config?> },
 
-                { name = "gaind0"; id = 0x88; count = <?=$num_rows_rc?>; },
-                { name = "gaind1"; id = 0x89; count = <?=$num_rows_rc?>; },
-                { name = "gaind2"; id = 0x8A; count = <?=$num_rows_rc?>; },
-                { name = "gaind3"; id = 0x8B; count = <?=$num_rows_rc?>; },
-                { name = "gaind4"; id = 0x8C; count = <?=$num_rows_rc?>; },
-                { name = "gaind5"; id = 0x8D; count = <?=$num_rows_rc?>; },
-                { name = "gaind6"; id = 0x8E; count = <?=$num_rows_rc?>; },
-                { name = "gaind7"; id = 0x8F; count = <?=$num_rows_rc?>; },
+                { name = "gaind0"; id = 0x88; <?=$rc_row_param_config?> },
+                { name = "gaind1"; id = 0x89; <?=$rc_row_param_config?> },
+                { name = "gaind2"; id = 0x8A; <?=$rc_row_param_config?> },
+                { name = "gaind3"; id = 0x8B; <?=$rc_row_param_config?> },
+                { name = "gaind4"; id = 0x8C; <?=$rc_row_param_config?> },
+                { name = "gaind5"; id = 0x8D; <?=$rc_row_param_config?> },
+                { name = "gaind6"; id = 0x8E; <?=$rc_row_param_config?> },
+                { name = "gaind7"; id = 0x8F; <?=$rc_row_param_config?> },
 
-                { name = "adc_offset0"; id = 0x68; count = <?=$num_rows_rc?>; },
-                { name = "adc_offset1"; id = 0x69; count = <?=$num_rows_rc?>; },
-                { name = "adc_offset2"; id = 0x6A; count = <?=$num_rows_rc?>; },
-                { name = "adc_offset3"; id = 0x6B; count = <?=$num_rows_rc?>; },
-                { name = "adc_offset4"; id = 0x6C; count = <?=$num_rows_rc?>; },
-                { name = "adc_offset5"; id = 0x6D; count = <?=$num_rows_rc?>; },
-                { name = "adc_offset6"; id = 0x6E; count = <?=$num_rows_rc?>; },
-                { name = "adc_offset7"; id = 0x6F; count = <?=$num_rows_rc?>; }
+                { name = "adc_offset0"; id = 0x68; <?=$rc_row_param_config?> },
+                { name = "adc_offset1"; id = 0x69; <?=$rc_row_param_config?> },
+                { name = "adc_offset2"; id = 0x6A; <?=$rc_row_param_config?> },
+                { name = "adc_offset3"; id = 0x6B; <?=$rc_row_param_config?> },
+                { name = "adc_offset4"; id = 0x6C; <?=$rc_row_param_config?> },
+                { name = "adc_offset5"; id = 0x6D; <?=$rc_row_param_config?> },
+                { name = "adc_offset6"; id = 0x6E; <?=$rc_row_param_config?> },
+                { name = "adc_offset7"; id = 0x6F; <?=$rc_row_param_config?> }
 
             );
 

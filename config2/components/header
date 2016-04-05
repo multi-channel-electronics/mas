@@ -53,6 +53,12 @@ $num_rows_rc = $num_rows_ac;
 if (isset($hw_num_rows))
    $num_rows_rc=$hw_num_rows;
 
+/* Use banked addressing? */
+if (($num_rows_rc > 55) ||
+    (isset($force_bank_scheme1) && $force_bank_scheme1)) {
+   $use_bank_scheme1 = 1;
+}
+
 /* "sys" cards -- order and eligibility */
 
 $SYS_CARDS = array(
@@ -193,5 +199,17 @@ $has_filt_cfg = fw_range("rc", $min=0x5010000);
 
 /* Does RC support integral clamp? */
 $has_iterm_clamp = fw_range("rc", $min=0x500000f);
+
+/* Does system support banked addressing for 64-row muxing? */
+$has_bank_scheme1 = (fw_range("cc", $min=0x6000000) &&
+		     fw_range("rc", $min=0x6000000) &&
+		     fw_range("bc", $min=0x6000000) &&
+		     fw_range("ac", $min=0x6000000));
+
+if ($use_bank_scheme1 && !$has_bank_scheme1) {
+   fwrite(STDERR, "Error: bank_scheme1 requested or required, but " .
+      "firmware does not support it.\n");
+   exit(10);
+}
 
 ?>

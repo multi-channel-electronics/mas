@@ -367,6 +367,10 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 	if (param->card.nature == MCE_NATURE_VIRTUAL)
 		return mcecmd_write_virtual(context, param, data_index, data, count);
 
+    // Redirect banked access, though they, too, will recurse here.
+    if (param->param.bank_scheme == 1)
+        return mcecmd_readwrite_banked(context, param, data_index, data, count, 'w');
+
 	// Separate writes for each target card.
 	for (i=0; i<param->card.card_count; i++) {
 		mce_reply rep;
@@ -414,6 +418,10 @@ int mcecmd_read_range(mce_context_t* context, const mce_param_t *param,
 	// Redirect Virtual cards, though virtual system will recurse here
 	if (param->card.nature == MCE_NATURE_VIRTUAL)
 		return mcecmd_read_virtual(context, param, data_index, data, count);
+
+    // Redirect banked access, though they, too, will recurse here.
+    if (param->param.bank_scheme == 1)
+        return mcecmd_readwrite_banked(context, param, data_index, data, count, 'r');
 
 	for (i=0; i<param->card.card_count; i++) {
 		mce_command cmd;
