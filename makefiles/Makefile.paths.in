@@ -40,12 +40,14 @@ LIBHEADERS= $(MAS_INCLUDE_F)/libmaslog.h \
 			$(MAS_INCLUDE_F)/mce/defaults.h \
 			$(MAS_INCLUDE_F)/mce/dsp.h \
 			$(MAS_INCLUDE_F)/mce/dsp_U0106.h \
+			$(MAS_INCLUDE_F)/mce/dsp_U0107.h \
 			$(MAS_INCLUDE_F)/mce/dsp_errors.h \
 			$(MAS_INCLUDE_F)/mce/frame.h \
 			$(MAS_INCLUDE_F)/mce/ioctl.h \
 			$(MAS_INCLUDE_F)/mce/ioctl_U0106_data.h \
 			$(MAS_INCLUDE_F)/mce/ioctl_U0106_dsp.h \
 			$(MAS_INCLUDE_F)/mce/ioctl_U0106_mce.h \
+			$(MAS_INCLUDE_F)/mce/ioctl_U0107.h \
 			$(MAS_INCLUDE_F)/mce/mce_errors.h \
 			$(MAS_INCLUDE_F)/mce/socks.h \
 			$(MAS_INCLUDE_F)/mce/types.h

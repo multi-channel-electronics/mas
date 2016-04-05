@@ -33,41 +33,39 @@ fi
 
 # Allow the user to suppress driver compile / install.
 
-AC_ARG_ENABLE([driver],
-              [AS_HELP_STRING([--enable-driver=TYPE],
+AC_ARG_WITH([driver-version],
+              [AS_HELP_STRING([--with-driver-version=VERSION],
                               [specifies which kernel module to compile.
-                              TYPE should be one of: "yes", "legacy", "both",
-                              or "no", indicating, respecively: the new (U0107)
-                              driver, the old (U0106) driver (this is the
-                              default), both drivers, neither driver (disable
+                              TYPE should be one of: "c7", "c6", "none",
+                              indicating, respectively: the new (U0107+)
+                              driver, the old (U0106-) driver (this is the
+                              default), or neither driver (disable
                               driver compilation).])],
             [
-             case "${enableval}" in
-               (no)     DO_C7_DRIVER=no;  DO_C6_DRIVER=no  ;;
-               (both)   DO_C7_DRIVER=yes; DO_C6_DRIVER=yes ;;
-               (legacy) DO_C7_DRIVER=no;  DO_C6_DRIVER=yes ;;
-               (*)      DO_C7_DRIVER=yes; DO_C6_DRIVER=no  ;;
+             case "${withval}" in
+               (c7)     DRIVER_VERSION=c7 ;;
+               (c6)     DRIVER_VERSION=c6 ;;
+               (*)      DRIVER_VERSION=none ;;
              esac
-             ], [DO_C7_DRIVER=no; DO_C6_DRIVER=yes])
+             ], [DRIVER_VERSION=c6])
+
+DO_C6_DRIVER=no
+DO_C7_DRIVER=no
+case "$DRIVER_VERSION" in
+     (c6)    DO_C6_DRIVER=yes ;;
+     (c7)    DO_C7_DRIVER=yes ;;
+esac
 
 # Rename the kernel module, if requested
 AC_ARG_WITH([driver-name],
             [AS_HELP_STRING([--with-driver-name=NAME],
                             [call the compiled kernel module NAME; the
-                             default is mce_dsp_c7 for the U0107 driver
-                             and mce_dsp for the U0105-U0106 driver.  If
-                             both drivers are being built, this is the
-                             name of the new driver, and the legacy
-                             driver will append "_old" to NAME.])],
+                             default is mce_dsp_XX, where XX is c6 or c7
+                             depending on which driver is being built.])],
            [
-            if test "${DO_C7_DRIVER}${DO_C6_DRIVER}" = "yesyes"; then
-              DRIVER_NAME_C7="${withval}"; DRIVER_NAME_C6="${withval}_old"
-            else
-              DRIVER_NAME_C7="${withval}"; DRIVER_NAME_C6="${withval}";
-            fi
-            ], [DRIVER_NAME_C7=mce_dsp_c7; DRIVER_NAME_C6=mce_dsp])
-AC_SUBST([DRIVER_NAME_C7])
-AC_SUBST([DRIVER_NAME_C6])
+            DRIVER_NAME=${withval}
+            ], [DRIVER_NAME=mce_dsp_${DRIVER_VERSION}])
+AC_SUBST([DRIVER_NAME])
 
 dnl Allow disabling of the installation of the init script
 AC_ARG_ENABLE([init-script],
@@ -554,7 +552,7 @@ echo
 echo "Configure summary:"
 echo "  kernel driver (U0107+)   ${DO_C7_DRIVER}"
 if test "x$DO_C7_DRIVER" != "xno"; then
-  echo "    ... name:              ${DRIVER_NAME_C7}"
+  echo "    ... name:              ${DRIVER_NAME}"
   echo "    ... bigphysarea:       ${DRIVER_BIGPHYS}"
   echo "    ... verbose debugging: ${DRIVER_VERBOSE}"
   echo "    ... disable error msg: ${DRIVER_QUIET}"
@@ -562,7 +560,7 @@ if test "x$DO_C7_DRIVER" != "xno"; then
 fi
 echo "  legacy driver (U0106)    ${DO_C6_DRIVER}"
 if test "x$DO_C6_DRIVER" != "xno"; then
-  echo "    ... name:              ${OLD_DRIVER_NAME_C6}"
+  echo "    ... name:              ${DRIVER_NAME}"
   echo "    ... bigphysarea:       ${DRIVER_BIGPHYS}"
   echo "    ... fakemce:           ${DRIVER_FAKEMCE}"
   echo "    ... verbose debugging: ${DRIVER_VERBOSE}"

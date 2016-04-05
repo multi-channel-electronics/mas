@@ -15,7 +15,7 @@ GOTO="mas_done"
 LABEL="mas_device"
 
 # Load driver
-PROGRAM="/sbin/modprobe @DRIVER_NAME_C7@"
+PROGRAM="/sbin/modprobe @DRIVER_NAME@"
 
 # Make nodes for this device
 PROGRAM="@prefix@/bin/mas_mknodes pci $env{PCI_SLOT_NAME}"
