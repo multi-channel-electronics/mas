@@ -14,6 +14,7 @@ SOURCE = $(MOD)/__init__.py $(MOD)/basic.py $(MOD)/compat.py base.c
 all: .build
 
 .build: $(SOURCE) _default_setup.py $(LIBDEP)
+	-rm -rf build .build   # This is necessary because of external library dependency.
 	python setup.py build
 	touch .build
 
