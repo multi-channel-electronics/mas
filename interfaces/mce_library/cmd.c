@@ -360,16 +360,17 @@ int mcecmd_write_range(mce_context_t* context, const mce_param_t *param,
 	if (count < 0)
 		count = param->param.count - data_index;
 
+    // Redirect banked access through decoder.  We should do this
+    // before prewrite_manip, or it will get applied twice.
+    if (param->param.bank_scheme == 1)
+        return mcecmd_readwrite_banked(context, param, data_index, data, count, 'w');
+
 	// Pre-process command data before writing to MCE?
 	mcecmd_prewrite_manip(param, data, count);
 
 	// Redirect Virtual cards, though virtual system will recurse here
 	if (param->card.nature == MCE_NATURE_VIRTUAL)
 		return mcecmd_write_virtual(context, param, data_index, data, count);
-
-    // Redirect banked access, though they, too, will recurse here.
-    if (param->param.bank_scheme == 1)
-        return mcecmd_readwrite_banked(context, param, data_index, data, count, 'w');
 
 	// Separate writes for each target card.
 	for (i=0; i<param->card.card_count; i++) {
