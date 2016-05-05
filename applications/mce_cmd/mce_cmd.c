@@ -366,7 +366,7 @@ int  main(int argc, char **argv)
         }
 
         errmsg[0] = 0;
-        args[0].n = 0;
+        memset(args, 0, sizeof(*args)*NARGS);
         mascmdtree_debug = 0;
 
         err = mascmdtree_tokenize(args, line, NARGS);
@@ -747,9 +747,6 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 mcep.param.count = 1;   // default
             }
 
-            mcep.card.card_count =
-                ( tokens[4].type == MASCMDTREE_INTEGER  ?
-                  tokens[4].value : 1 );
         }
 
         if (to_read == 0 && tokens[3].type == MASCMDTREE_INTEGER) {
