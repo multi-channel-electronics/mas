@@ -169,10 +169,20 @@ static PyObject *trace(PyObject *self, PyObject *args)
   Make a connection, return an mce_context_t.
 */
 
-static PyObject *mce_connect(PyObject *self, PyObject *args) {
+static PyObject *mce_connect(PyObject *self, PyObject *args, PyObject *kwargs)
+{
     int err;
+    static char *kw[] = {"device_index", "mas_cfg", "mce_cfg", NULL};
+    char *mas_cfg = NULL;
+    char *mce_cfg = NULL;
+    int dev_idx = 0;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|izz", kw,
+                                     &dev_idx, &mas_cfg, &mce_cfg))
+        return NULL;
+
     int device_index = MCE_DEFAULT_MCE;
-    mce_context_t* mce = mcelib_create(device_index, "/etc/mce/mas.cfg", 0);
+    mce_context_t* mce = mcelib_create(device_index, mas_cfg, dev_idx);
     if (mce==NULL) {
         fprintf(stderr, "pymce: failed to create.\n");
         Py_RETURN_NONE;
@@ -187,7 +197,7 @@ static PyObject *mce_connect(PyObject *self, PyObject *args) {
         fprintf(stderr, "pymce: failed to open data device [err=%i].\n",
                 err);
     }
-    if ((err=mceconfig_open(mce, NULL, NULL)) != 0) {
+    if ((err=mceconfig_open(mce, mce_cfg, NULL)) != 0) {
         fprintf(stderr, "pymce: failed to open config module [err=%i].\n",
                 err);
     }
@@ -433,7 +443,7 @@ static PyObject *lock_op(PyObject *self, PyObject *args)
 static PyMethodDef mceMethods[] = {
     {"trace",  trace, METH_VARARGS,
      "Return the trace of a matrix."},
-    {"connect",  mce_connect, METH_VARARGS,
+    {"connect",  (PyCFunction)mce_connect, METH_VARARGS | METH_KEYWORDS,
      "Connect."},
     {"lookup", mce_lookup, METH_VARARGS,
      "Lookup."},

@@ -16,8 +16,10 @@ class BasicMCE:
     """
     _numpify = False  # Set to true to return arrays rather than lists.
 
-    def __init__(self, device_index=-1, numpify=False):
-        self.context = mcelib.connect(device_index)
+    def __init__(self, device_index=-1, numpify=False,
+                 mce_cfg=None, mas_cfg=None):
+        self.context = mcelib.connect(device_index=device_index,
+                                      mce_cfg=mce_cfg, mas_cfg=mas_cfg)
         self._numpify = numpify
 
     def read(self, card, param, count=-1, offset=0, array=True):
