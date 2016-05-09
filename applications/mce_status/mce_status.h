@@ -9,6 +9,9 @@
 
 #define PROGRAM_NAME           "mce_status"
 
+/* There is, in principle, no upper limit to the number of words a
+   read could return. */
+#define MAX_MCE_READ 1024
 
 enum { CRAWLER_DAS = 0,
        CRAWLER_MAS,

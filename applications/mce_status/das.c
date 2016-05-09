@@ -65,7 +65,7 @@ int das_cleanup(unsigned long user_data)
 int  das_item(unsigned long user_data, const mce_param_t *p)
 {
 	das_t *das = (das_t*) user_data;
-    uint32_t buf[MCE_REP_DATA_MAX];
+    uint32_t buf[MAX_MCE_READ];
 
 	if (!(p->card.flags & MCE_PARAM_STAT) ||
 	    !(p->param.flags & MCE_PARAM_STAT) ||
