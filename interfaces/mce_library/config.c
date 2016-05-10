@@ -452,11 +452,8 @@ int mceconfig_cfg_card(const mce_context_t *context,
         const config_setting_t *cfg, card_t *c)
 {
 	// Fill with defaults
+    memset(c, 0, sizeof(*c));
 	c->cfg = cfg;
-	c->name[0] = 0;
-	c->error_bits = 0;
-	c->card_count = 0;
-	c->flags = 0;
 	int status = 1;
 
 	// Update from key, maybe
@@ -551,12 +548,11 @@ int mceconfig_cfg_param(const mce_context_t *context,
 	char type_str[MCE_SHORT];
 
 	// Fill with defaults
+    memset(p, 0, sizeof(*p));
 	p->cfg = cfg;
 	p->id = -1;
 	p->type = MCE_CMD_MEM;
 	p->count = 1;
-	p->flags = 0;
-	p->name[0] = 0;
 
 	int status = 1;
 	int sign   = 0;
