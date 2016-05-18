@@ -600,6 +600,7 @@ static int dirfileseq_cycle(mce_acq_t *acq, dirfileseq_t *f, int this_frame)
     strcpy(f->active_dirfile.symlink, f->symlink);
     strcpy(f->active_dirfile.include, f->include);
     f->active_dirfile.spf = f->spf;
+    f->active_dirfile.version = f->version;
 	return dirfile_init(acq);
 }
 
