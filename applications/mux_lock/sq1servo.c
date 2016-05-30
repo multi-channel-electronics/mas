@@ -360,7 +360,7 @@ int main ( int argc, char **argv )
       if (control.bias_active) {
         // Write *all* sq1bias here, or row-order destroys you.
         duplicate_fill(control.bias + j*control.dbias, temparr, MAXROWS);
-        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
+        if ((error = mcecmd_write_block(mce, &m_sq1bias, m_sq1bias.param.count,
                         (uint32_t*)temparr)) != 0)
         {
           error_action("mcecmd_write_block sq1bias", error);
@@ -418,7 +418,7 @@ int main ( int argc, char **argv )
    
    if (control.bias_active) {
      duplicate_fill(0, temparr, MAXROWS);
-     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
+     if ((error = mcecmd_write_block(mce, &m_sq1bias, m_sq1bias.param.count,
                      (uint32_t*)temparr)) != 0)
      {
          error_action("mcecmd_write_block sq1bias", error);
@@ -454,7 +454,7 @@ int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
         int32_t temparr[MAXROWS];
 		for (i=0; i<count; i++) {
 		        duplicate_fill(data[i], temparr, MAXROWS);
-			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");
+                write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, (m_sq2fb_col+i)->param.count, "sq2fb_col");
 		}
 	} else {
 		write_range_or_exit(mce, m_sq2fb, offset, data, control.column_n, servo_fb_name);

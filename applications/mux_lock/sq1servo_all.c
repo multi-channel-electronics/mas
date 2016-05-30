@@ -360,8 +360,8 @@ int main(int argc, char **argv)
 
       if (control.bias_active) {
 	// Write *all* sq1bias here, or row-order destroys you.
-	duplicate_fill(control.bias + j*control.dbias, temparr, MAXROWS);
-        if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
+	duplicate_fill(control.bias + j*control.dbias, temparr, control.rows);
+        if ((error = mcecmd_write_block(mce, &m_sq1bias, control.rows,
                         (uint32_t*)temparr)) != 0)
         {
             error_action("mcecmd_write_block sq1bias", error);
@@ -380,8 +380,8 @@ int main(int argc, char **argv)
 
 	// Write all rows fb to each squid 2
 	for (snum=0; snum<control.column_n; snum++) {
-	  rerange(temparr, sq2fb[snum], MAXROWS, control.quanta+snum, 1);
-	  write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, MAXROWS, "sq2fb_col");
+	  rerange(temparr, sq2fb[snum], control.rows, control.quanta+snum, 1);
+      write_range_or_exit(mce, m_sq2fb_col+snum, 0, temparr, (m_sq2fb_col+snum)->param.count, "sq2fb_col");
 	}
 
 	if (i > 0) {
@@ -426,8 +426,8 @@ int main(int argc, char **argv)
    write_range_or_exit(mce, &m_sq1fb, control.column_0, temparr, control.column_n, "sq1fb");	
    
    if (control.bias_active) {
-     duplicate_fill(0, temparr, MAXROWS);
-     if ((error = mcecmd_write_block(mce, &m_sq1bias, MAXROWS,
+     duplicate_fill(0, temparr, control.rows);
+     if ((error = mcecmd_write_block(mce, &m_sq1bias, control.rows,
                      (uint32_t*)temparr)) != 0)
      {
          error_action("mcecmd_write_block sq1bias", error);

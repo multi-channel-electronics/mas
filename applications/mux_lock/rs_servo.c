@@ -46,8 +46,6 @@ struct {
   int dfb;
   int nfb;
   
-  int row_desel[MAXROWS];
-
   int sfb_init[MAXCOLS];
 
   double target[MAXCOLS];
@@ -135,9 +133,9 @@ void update_bc_row_select(mce_context_t *mce, int row, int on_value, int off_val
 
     off_value = (info->multiplier * off_value);
     on_value = (info->multiplier * on_value);
-    duplicate_fill(off_value, temparr, MAXROWS);
+    duplicate_fill(off_value, temparr, info->mce_param.param.count);
     temparr[info->param_offset] = on_value;
-    write_range_or_exit(mce, &info->mce_param, 0, temparr, MAXROWS, info->param_name);
+    write_range_or_exit(mce, &info->mce_param, 0, temparr, info->mce_param.param.count, info->param_name);
 }
 
 
@@ -187,9 +185,6 @@ int load_exp_config(const char *filename)
   load_int(cfg, "rowsel_servo_bias_count", &control.nbias);
   load_int(cfg, "rowsel_servo_bias_step", &control.dbias);
 
-  load_int_array(cfg, "row_deselect",
-		 0, MAXROWS, control.row_desel);
-
   load_double_array(cfg, "rowsel_servo_gain",
 		    control.column_0, control.column_n, control.gain);
   load_int_array(cfg, "sa_fb",
@@ -211,7 +206,7 @@ int load_exp_config(const char *filename)
       control.nhybrid_rs_cards=load_hybrid_rs_cards(cfg, control.hybrid_rs_cards);
       
       load_int_array(cfg,"mux11d_mux_order",
-                     0,MAXROWS,control.hybrid_mux_order);
+                     0,control.rows,control.hybrid_mux_order);
       load_int_array(cfg,"mux11d_row_select_cards_row0",
                      0,control.nhybrid_rs_cards,control.hybrid_rs_cards_row0);
           
@@ -466,14 +461,14 @@ int main(int argc, char **argv)
       }
        
       // Initialize ROW SELECT -- write all rows so row_order doesn't get you
-      duplicate_fill(control.fb, temparr, MAXROWS);
-      write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXROWS, "rowsel");
+      duplicate_fill(control.fb, temparr, MAXACROWS);
+      write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXACROWS, "rowsel");
       
-      // Zero this bc DAC for all row visits if it's being used as a hybrid rs
+      // Initialize Hybrid BC ROW SELECT
       if (control.hybrid_rs_active) {
           /* This will only update the BC DACs. */
           for (int row=0; row<control.rows; row++)
-              update_bc_row_select(mce, row, 0, 0);
+              update_bc_row_select(mce, row, control.fb, 0);
       }
       
       // Preservo and run the FB ramp.
@@ -481,19 +476,19 @@ int main(int argc, char **argv)
           
           // Write all rows fb to each series array
           for (snum=0; snum<control.column_n; snum++) {
-              rerange(temparr, safb[snum], MAXROWS, control.quanta+snum, 1);
+              rerange(temparr, safb[snum], control.rows, control.quanta+snum, 1);
               if (!control.super_servo) {
                   //Actually write them as all the same.
-                  for (r=0; r<MAXROWS; r++)
+                  for (r=0; r<control.rows; r++)
                       temparr[r] = temparr[control.row_choice[snum]];
               }
-              write_range_or_exit(mce, m_safb_col+snum, 0, temparr, MAXROWS, "safb_col");
+              write_range_or_exit(mce, m_safb_col+snum, 0, temparr, (m_safb_col+snum)->param.count, "safb_col");
           }
           
           if (i > 0) {
               // Next rowsel value.
-              duplicate_fill(control.fb + i*control.dfb, temparr, MAXROWS);
-              write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXROWS, "rowsel");
+              duplicate_fill(control.fb + i*control.dfb, temparr, MAXACROWS);
+              write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXACROWS, "rowsel");
               
               if (control.hybrid_rs_active)
                   for (int row=0; row<control.rows; row++)
@@ -546,7 +541,7 @@ int main(int argc, char **argv)
    duplicate_fill(0, temparr, MAXROWS);
    for (snum=0; snum<control.column_n; snum++) {
        write_range_or_exit(mce, m_safb_col+snum, 0, temparr,
-                           MAXROWS, "safb_col");
+                           (m_safb_col+snum)->param.count, "safb_col");
    }
 
    /* if in hybrid rs-scheme, reset those values back to zero too */
@@ -555,7 +550,7 @@ int main(int argc, char **argv)
            update_bc_row_select(mce, row, 0, 0);
    }
    
-   write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXROWS, "rowsel");	
+   write_range_or_exit(mce, &m_rowsel, 0, temparr, MAXACROWS, "rowsel");	
    
    if (control.bias_active) {
        duplicate_fill(0, temparr, control.column_n);

@@ -373,13 +373,13 @@ int main(int argc, char **argv)
 
 	// Write all rows fb to each series array
 	for (snum=0; snum<control.column_n; snum++) {
-	  rerange(temparr, safb[snum], MAXROWS, control.quanta+snum, 1);
+	  rerange(temparr, safb[snum], control.rows, control.quanta+snum, 1);
       if (!control.super_servo) {
         //Actually write them as all the same.
-        for (int r=0; r<MAXROWS; r++)
+        for (int r=0; r<control.rows; r++)
           temparr[r] = temparr[control.row_choice[snum]];
       }
-	  write_range_or_exit(mce, m_safb_col+snum, 0, temparr, MAXROWS, "safb_col");
+	  write_range_or_exit(mce, m_safb_col+snum, 0, temparr, (m_safb_col+snum)->param.count, "safb_col");
 	}
 
 	if (i > 0) {
@@ -434,10 +434,10 @@ int main(int argc, char **argv)
    }
 
    /* reset values back to 0 */
-   duplicate_fill(0, temparr, MAXROWS);
+   duplicate_fill(0, temparr, control.rows);
    for (snum=0; snum<control.column_n; snum++) {
 	  write_range_or_exit(mce, m_safb_col+snum, 0, temparr,
-                          MAXROWS, "safb_col");
+                          (m_safb_col+snum)->param.count, "safb_col");
    }
 
    duplicate_fill(-8192, temparr, control.column_n);

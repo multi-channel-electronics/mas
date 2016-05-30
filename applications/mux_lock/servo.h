@@ -13,7 +13,7 @@
 #define MAXLINE 1024
 #define MAXCHANNELS 8
 #define MAXCOLS 32
-#define MAXROWS 55
+#define MAXROWS 64
 #define MAXTEMP 1024
 //added for mux11d hybrid RS schemes
 #define MAXCARDS 8

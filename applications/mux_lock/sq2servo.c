@@ -422,7 +422,7 @@ int write_sq2fb(mce_context_t *mce, mce_param_t *m_sq2fb,
         int32_t temparr[MAXROWS];
 		for (i=0; i<count; i++) {
 			duplicate_fill(data[i], temparr, MAXROWS);
-			write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, MAXROWS, "sq2fb_col");
+            write_range_or_exit(mce, m_sq2fb_col+i, 0, temparr, (m_sq2fb_col+i)->param.count, "sq2fb_col");
 		}
 	} else {
 		write_range_or_exit(mce, m_sq2fb, offset, data, MAXCHANNELS, "sq2fb");
