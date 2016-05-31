@@ -8,6 +8,14 @@
                     count = 32;
                 },
 
+<? if (fw_range("bc", $min=0x6000001)) { ?>
+      		{
+                    name = "flux_fb_dly";
+                    id = 0x29;
+                    count = 1;
+                },
+<? } ?>
+
                 {
                     name = "bias";
                     id = 0x21;
