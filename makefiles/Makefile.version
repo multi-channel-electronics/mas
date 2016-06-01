@@ -7,4 +7,4 @@ REPO_VER := \"$(REPO_NAME)/$(SUB_VER)\"
 # this is similar to SUB_VER, but strips off all non-numeric stuff from the end
 # (see "svnversion --help" to get an idea of the kind of things it will discard)
 # Returns 0 if tree is exported / unversioned.
-INT_VER := $(shell svnversion $(VER_TARGET) | sed -e 's/Unversioned/0/g; s/^\([0-9]*\).*/\1/g')
+INT_VER := $(shell svnversion $(VER_TARGET) | sed -e 's/\(exported\|Unversioned\)/0/g; s/^\([0-9]*\).*/\1/g')
