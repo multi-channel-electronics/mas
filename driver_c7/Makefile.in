@@ -8,19 +8,12 @@ else
 endif
 
 
-# Special directories - must be ?= or they get overwritten
-FAKEMCE_DIR ?= fake_mce/
-RTAI_DIR   ?= /usr/src/rtai
-
 # Get svn repository version number
-REPO_VERSION   = $(shell svnversion $(src))
-BRANCH_ID = $(shell cat ../branch_id.txt)
+REPO_VERSION   = @REPO_VERSION@
+BRANCH_ID = @BRANCH_ID@
 
 # Module configuration options, set to 'yes' or 'no' (also see
 # defaults/config.h)
-
-FAKEMCE    ?= @DRIVER_FAKEMCE@
-REALTIME   ?= no
 
 KERNEL_SOURCE = @KERNEL_DIR@
 
@@ -31,48 +24,59 @@ INCLUDES = -I$(src) -I$(src)/../include
 LIBS = 
 MY_CFLAGS = -Wall
 
-ifeq ($(FAKEMCE),yes)
-  DEFS += -DFAKEMCE
-  INCLUDES += -I$(src)/$(FAKEMCE_DIR)
-endif #FAKEMCE=yes
-
-ifeq ($(REALTIME),yes)
-  DEFS += -DREALTIME
-  INCLUDES += -I$(RTAI_DIR)/include -I$(RTAI_DIR)
-endif #REALTIME=yes
-
-
 
 
 # Set up source files
 
 SOURCE_OBJ := dsp_driver.o
 
-ifeq ($(FAKEMCE),yes)
-
-  SOURCE_OBJ += $(FAKEMCE_DIR)dsp_fake.o \
-	$(FAKEMCE_DIR)mce_fake.o \
-	$(FAKEMCE_DIR)dsp_state.o
-
-endif #FAKEMCE=yes
-
-
 # Do the standard 2.6 kernel build stuff.
 
-include $(src)/Makefile.2.6
+ifeq ($(DEBUG),y)
+  MY_CFLAGS += -O -g -D_DEBUG
+else
+  MY_CFLAGS += -O2
+endif
+
+KERNELDIR ?= $(KERNEL_SOURCE)/build
+INSTALLDIR ?= $(KERNEL_SOURCE)/kernel/drivers/misc
+
+DRIVER_FILE = $(DRIVER_NAME).ko
+
+ifeq ($(KERNELRELEASE),) # we are in the source folder
+
+modules: version.h ../defaults/config.h
+	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(src) modules
+
+else # we are in the kernel source tree
+
+#Add our CFLAGS to existing ones.  Don't replace CFLAGS.
+
+EXTRA_CFLAGS += $(MY_CFLAGS) $(INCLUDES) $(DEFS) $(LIBS)
+
+$(DRIVER_NAME)-objs := $(SOURCE_OBJ)
+
+obj-m	:= $(DRIVER_NAME).o
+
+endif #KERNELRELEASE
+
+
+depend .depend dep:
+	$(CC) $(EXTRA_CFLAGS) -M *.c > .depend
+
+ifeq (.depend,$(wildcard .depend))
+include .depend
+endif
+
+kversion_clean:
+	rm -f $(DRIVER_FILE)
 
 
 # General rules
 
-fault:
-	@echo Unknown kernel version $(TARGET_KERNEL) : $(KVER)
-
 clean: kversion_clean
 	-rm -rf *.o *~ core version.h \
 		.depend .*.cmd *.mod.c .tmp_versions Module.symvers
-ifeq ($(FAKEMCE),yes)
-	${MAKE} -C $(FAKEMCE_DIR) clean
-endif #FAKEMCE=1
 
 
 # Version header file generation
