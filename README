@@ -1,0 +1,25 @@
+This is MAS, the MCE Acquisition Software, the low-level software used to
+control the UBC Multi-Channel Electronics (MCE).  For information on MAS
+and the UBC MCE, see the MCE wiki:
+
+  http://e-mode.phas.ubc.ca/mcewiki/
+
+**** LICENSE 
+
+This software is distributed under the terms of the GNU General Public
+License (GPL), version 2.  See the file COPYING for details.  If you did
+not receive a copy of the GPL with this software, see:
+
+  http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
+
+The mce_jam application is derived from software published by Altera
+Corporation.  Use and redistribution of that program is further governed
+by the terms of the Jam STAPL Software License, in addition to the GPL.
+See the file LICENSE.ALTERA for details.
+
+**** WARRANTY
+
+MAS is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+details.
