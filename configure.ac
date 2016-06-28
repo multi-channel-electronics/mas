@@ -11,6 +11,20 @@ AC_CONFIG_SRCDIR([branch_id.txt])
 AC_PREFIX_DEFAULT([/usr/mce])
 
 
+dnl version stuff
+REPO_VERSION=repo_version
+AC_SUBST([REPO_VERSION])
+AC_DEFINE_UNQUOTED([REPO_VERSION], ["${REPO_VERSION}"],
+		[ The SVN repository version information ])
+INT_REPO_VERSION=`echo ${REPO_VERSION} | sed -e 's/\(exported\|Unversioned\)/0/g; s/^\(@<:@0-9@:>@*\).*/\1/g'`
+AC_DEFINE_UNQUOTED([INT_REPO_VERSION], [${INT_REPO_VERSION}],
+		[The integer part of the SVN repository version])
+
+BRANCH_ID=`cat branch_id.txt`
+AC_DEFINE_UNQUOTED([BRANCH_ID], "${BRANCH_ID}",
+		[ The MAS branch id ])
+AC_SUBST([BRANCH_ID])
+
 # We need C, and some stuff for installing.
 
 AC_PROG_CC

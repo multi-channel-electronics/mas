@@ -18,20 +18,20 @@ check: $(HEADERS) $(HEADERS_MCE)
 install: $(HEADERS) $(HEADERS_MCE) mas_base_install
 	for h in $(HEADERS); do \
 		install -m ug+rw,o+r --owner=$(MAS_USER) --group=$(MAS_GROUP) \
-			$$h $(MAS_INSTALL_INC); \
+			$$h $(DESTDIR)/$(MAS_INSTALL_INC); \
 	done
-	install -d $(MAS_INSTALL_INC)/mce
+	install -d $(DESTDIR)/$(MAS_INSTALL_INC)/mce
 	for h in $(HEADERS_MCE); do \
 		install -m ug+rw,o+r --owner=$(MAS_USER) --group=$(MAS_GROUP) \
-			$$h $(MAS_INSTALL_INC)mce; \
+			$$h $(DESTDIR)/$(MAS_INSTALL_INC)mce; \
 	done
 	if [ ! -z "${MAS_SYS_INC}" ]; then \
 		for h in $(HEADERS); do \
-			[ -h $(MAS_SYS_INC)$$h ] && rm -f $(MAS_SYS_INC)$$h ; \
-			ln -s $(MAS_INSTALL_INC)$$h $(MAS_SYS_INC)$$h ; \
+			[ -h $(DESTDIR)/$(MAS_SYS_INC)$$h ] && rm -f $(DESTDIR)/$(MAS_SYS_INC)$$h ; \
+			ln -s $(MAS_INSTALL_INC)$$h $(DESTDIR)/$(MAS_SYS_INC)$$h ; \
 		done; \
-		[ -h $(MAS_SYS_INC)mce ] && rm -rf $(MAS_SYS_INC)mce; \
-		ln -s $(MAS_INSTALL_INC)mce $(MAS_SYS_INC)mce; \
+		[ -h $(DESTDIR)/$(MAS_SYS_INC)mce ] && rm -rf $(DESTDIR)/$(MAS_SYS_INC)mce; \
+		ln -s $(MAS_INSTALL_INC)mce $(DESTDIR)/$(MAS_SYS_INC)mce; \
 	fi
 
 clean:

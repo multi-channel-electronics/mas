@@ -13,8 +13,8 @@ FAKEMCE_DIR ?= fake_mce/
 RTAI_DIR   ?= /usr/src/rtai
 
 # Get svn repository version number
-REPO_VERSION   = $(shell svnversion $(src))
-BRANCH_ID = $(shell cat ../branch_id.txt)
+REPO_VERSION   = @REPO_VERSION@
+BRANCH_ID = @BRANCH_ID@
 
 # Module configuration options, set to 'yes' or 'no' (also see
 # defaults/config.h)

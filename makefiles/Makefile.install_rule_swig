@@ -2,4 +2,4 @@
 
 install__$(INSTALL_TARGET): mas_base_install
 	install -m u+rw,g+rw,o+r --owner=$(MAS_USER) --group=$(MAS_GROUP) \
-		 $(@:install__%=%) $(MAS_INSTALL_SWIG)
+		 $(@:install__%=%) $(DESTDIR)/$(MAS_INSTALL_SWIG)
