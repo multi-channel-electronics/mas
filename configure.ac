@@ -309,7 +309,7 @@ AC_SUBST(LIBCONFIG_ARGS)
 
 AC_CHECK_LIB([config], [config_init], ,
              [AC_MSG_FAILURE([could not find libconfig, ]
-             [please install it from www.hyperrealm.com/libconfig/!])],
+             [please install libconfig-dev])],
              "$LIBCONFIG_ARGS" )
 
 
