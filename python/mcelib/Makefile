@@ -1,7 +1,7 @@
 default: all
 
-BASE := ../../
-include $(BASE)Makefile.children
+BASE := ../..
+include $(BASE)/Makefile.children
 
 # Module name
 MOD = pymce

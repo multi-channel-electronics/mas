@@ -7,9 +7,19 @@ MAKE_DRIVER_C6=@DO_C6_DRIVER@
 MAKE_SWIG=@DO_MAS_SWIG@
 
 # Set up the sets of folders to recurse into for each target
-all_dirs = interfaces applications scripts python config2
-clean_dirs = interfaces applications scripts swig python config2
-install_dirs = include interfaces applications scripts python config2
+ifeq ($(MAKE_DRIVER_C7),yes)
+	driverdir=driver_c7
+else
+ifeq ($(MAKE_DRIVER_C6),yes)
+	driverdir=driver_c6
+endif
+endif
+
+all_dirs = $(driverdir) interfaces applications scripts python config2
+clean_dirs = driver_c6 driver_c7 interfaces applications scripts swig python \
+						 config2
+install_dirs = $(driverdir) include interfaces applications scripts python \
+							 config2
 
 # Set up dependencies for each target
 all_deps = Makefile defaults/config.h makefiles/Makefile.install \
@@ -17,22 +27,11 @@ all_deps = Makefile defaults/config.h makefiles/Makefile.install \
 					 scripts/91-mas.rules scripts/mas_make_card_id \
 					 applications/mas_var/Makefile config2/Makefile config2/mas.cin \
 					 include/mce_library.h applications/Makefile
-clean_deps = clean_driver_c7 clean_driver_c6
 install_deps = all
 
 ifeq ($(MAKE_SWIG),yes)
 all_dirs += swig
 install_dirs += swig
-endif
-
-ifeq ($(MAKE_DRIVER_C7),yes)
-all_deps += make_driver_c7
-install_deps += install_driver_c7
-endif
-
-ifeq ($(MAKE_DRIVER_C6),yes)
-all_deps += make_driver_c6
-install_deps += install_driver_c6
 endif
 
 # Target definitions.  This should be a loop or something...
@@ -48,7 +47,35 @@ clean: $(clean_deps)
 install: $(install_deps)
 	for d in $(install_dirs); do ( cd $$d && ${MAKE} install ) || exit 1; done
 
-.PHONY: default all clean install
+.PHONY: default all clean install check-repo-version
+
+# Force version recalcuation if svnversion changes
+
+repo_version.txt: repo_version.stamp
+
+# Update REPO_VERSION if:
+# * repo_version.txt doesn't exist
+# OR
+# * (
+#   - `svnversion` is different than repo_version
+#   AND
+#   - we're in a SVN checkout
+#   )
+#
+# The second one is to ensure a SVN export keeps the repo version of the
+# export.
+check-repo-version:
+	if [ ! -f repo_version.txt -o \( \
+		"x`cat repo_version.txt`" != "x`svnversion .`" -a \
+		"x`svnversion .`" != "xUnversioned directory" \) ]; then \
+		svnversion . > repo_version.txt; \
+	fi
+
+# Only update repo_version.txt if it changed
+repo_version.stamp: check-repo-version
+	touch $@
+
+config.status: branch_id.txt repo_version.txt
 
 # configuration rules
 
@@ -117,26 +144,3 @@ defaults/config.h.in: configure.ac
 	autoheader $<
 	rm -f defaults/config-stamp
 	touch $@
-
-# Supporting targets; driver needs some hand-holding...
-
-make_driver_c7:
-	cd driver_c7 && ${MAKE}
-
-clean_driver_c7:
-	cd driver_c7 && ${MAKE} clean
-
-install_driver_c7:
-	cd driver_c7 && ${MAKE} install
-
-make_driver_c6:
-	cd driver_c6 && ${MAKE}
-
-clean_driver_c6:
-	cd driver_c6 && ${MAKE} clean
-
-install_driver_c6:
-	cd driver_c6 && ${MAKE} install
-
-.PHONY: make_driver_c7 clean_driver_c7 install_driver_c7 \
-        make_driver_c6 clean_driver_c6 install_driver_c6

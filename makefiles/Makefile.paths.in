@@ -1,10 +1,9 @@
 # Important locations in the source tree
-MAS_INTERFACES=$(BASE)interfaces/
-MAS_APPLICATIONS=$(BASE)applications/
-MAS_INCLUDE_F=$(BASE)include/
+MAS_INTERFACES=$(BASE)/interfaces
+MAS_INCLUDE_F=$(BASE)/include
 
 # Library locations
-MCELIB_F=$(MAS_INTERFACES)mce_library/
+MCELIB_F=$(MAS_INTERFACES)/mce_library
 
 MCELIB=mce
 

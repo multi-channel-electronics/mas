@@ -1,7 +1,7 @@
 default: all
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 INCLUDE=-I$(MAS_INCLUDE_F) ${PYTHON_CPPFLAGS}
 

@@ -1,7 +1,7 @@
 default: all
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 SCRIPTS=check_lock.py noise_setup.py servo.py
 

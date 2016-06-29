@@ -32,12 +32,12 @@ clean:	tidy
 
 #Make install rules for app, client, wrapper
 INSTALL_TARGET := $(LOGAPP)
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 INSTALL_TARGET := $(CLIENT)
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 INSTALL_TARGET := $(SCRIPT)
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 install: install__$(LOGAPP) install__$(CLIENT) install__$(SCRIPT)

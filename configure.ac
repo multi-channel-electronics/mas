@@ -1,6 +1,6 @@
 dnl get svn version for AC_INIT
 m4_define(branch_id_val, sinclude(branch_id.txt))
-m4_define(repo_version, [esyscmd(svnversion .)])
+m4_define(repo_version, [esyscmd(./get_repo_version.sh)])
 m4_define(mas_version, [translit(branch_id_val/repo_version, [
 ])])
 
@@ -9,7 +9,6 @@ AC_INIT([MAS], [mas_version], [mhasse@phas.ubc.ca or dvw@phas.ubc.ca])
 # Use branch_id.txt to verify the tree identity?
 AC_CONFIG_SRCDIR([branch_id.txt])
 AC_PREFIX_DEFAULT([/usr/mce])
-
 
 dnl version stuff
 REPO_VERSION=repo_version

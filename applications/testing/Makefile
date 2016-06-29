@@ -1,10 +1,10 @@
 default: all
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 VER_TARGET := .
-include $(MAKERULES)Makefile.version
+include $(MAKERULES)/Makefile.version
 
 # targets
 TARGETS = mce_state peek

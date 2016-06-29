@@ -1,10 +1,10 @@
 default: all
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 VER_TARGET := .
-include $(MAKERULES)Makefile.version
+include $(MAKERULES)/Makefile.version
 DEFS += -DVERSION_STRING="$(REPO_VER)"
 
 LIBRARY=$(MCE_LIBS)
@@ -35,7 +35,7 @@ clean:	tidy
 
 # Make the install__psc_status rules
 INSTALL_TARGET=psc_status
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 install: install__psc_status 
 

@@ -1,10 +1,10 @@
 default: all
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 VER_TARGET := .
-include $(MAKERULES)Makefile.version
+include $(MAKERULES)/Makefile.version
 
 LIBRARY=$(MCE_LIBS)
 
@@ -27,6 +27,6 @@ clean: tidy
 
 # Make the install__dsp_cmd rule
 INSTALL_TARGET=dsp_cmd
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 install: install__dsp_cmd

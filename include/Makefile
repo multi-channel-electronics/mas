@@ -1,7 +1,7 @@
 default: all
 
-BASE = ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 HEADERS = mcecmd.h mceconfig.h mcedata.h \
 	libmaslog.h mcedsp.h mce_library.h

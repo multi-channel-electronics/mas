@@ -1,10 +1,10 @@
 default: all
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 VER_TARGET := .
-include $(MAKERULES)Makefile.version
+include $(MAKERULES)/Makefile.version
 DEFS += -DVERSION_STRING="$(REPO_VER)"
 
 LIBRARY=$(MCE_LIBS)
@@ -50,15 +50,15 @@ clean:	tidy
 
 # Make the install__*servo rules
 INSTALL_TARGET=sq1servo
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 INSTALL_TARGET=sq1servo_all
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 INSTALL_TARGET=sq1servo_sa
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 INSTALL_TARGET=rs_servo
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 INSTALL_TARGET=sq2servo
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 install: install__sq1servo install__sq1servo_all install__sq2servo \
 	 install__sq1servo_sa install__rs_servo

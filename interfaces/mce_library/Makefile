@@ -1,7 +1,7 @@
 default: all
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 LIBNAME = lib$(MCELIB)
 
@@ -42,12 +42,10 @@ OBJECTS = \
 HEADERS = context.h data_thread.h virtual.h manip.h ../../defaults/config.h \
 					$(LIBHEADERS)
 
-REPO_VERSION=$(shell svnversion)
-
 all: $(LIBNAME)$(LIB_SUFFIX)
 
 INSTALL_TARGET=$(LIBNAME)
-include $(MAKERULES)Makefile.install_rule_lib
+include $(MAKERULES)/Makefile.install_rule_lib
 
 install: install__$(LIBNAME)
 
@@ -63,29 +61,11 @@ data_mode.o: data_mode.c data_mode.def
 
 context.o: version.h
 
-version.h: .version-stamp
-	if test ! -f $@; then \
-		rm -f $<; \
-		$(MAKE) $<; \
-		fi
-
-.version-stamp: version.h.template FORCE
-	grep -v '^\/\*-' version.h.template | \
-		sed 's/\$$SVN\./$(REPO_VERSION)/g' | \
-		sed 's:\$$REPO\.:$(BRANCH_ID):g' > version.h.new
-	if test -e version.h && diff -q version.h version.h.new; then \
-		echo "version.h is unchanged."; \
-		rm -f version.h.new; \
-		else \
-		mv -f version.h.new version.h; \
-		fi
-	touch $@
-
 docs:
 	doxygen
 
 clean: tidy
-	rm -f $(LIBNAME).a $(LIBNAME).so .version-stamp version.h
+	rm -f $(LIBNAME).a $(LIBNAME).so
 
 tidy:
 	rm -f core.* *~ *.c~ *.h~ core.* *.o #*#

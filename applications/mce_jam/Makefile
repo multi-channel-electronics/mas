@@ -2,8 +2,8 @@ default: all
 
 TARGET=mce_jam
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 LIB=$(MCE_LIBS)
 CFLAGS += -Wall -Wno-unused-result -std=c99
@@ -57,9 +57,9 @@ clean:	tidy
 
 # Make the install__mae_jam rule
 INSTALL_TARGET=$(TARGET)
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 INSTALL_TARGET=sof2jam
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 install: install__mce_jam install__sof2jam

@@ -1,10 +1,10 @@
 default: all
 
-BASE := ../
-include $(BASE)Makefile.children
+BASE := ..
+include $(BASE)/Makefile.children
 
 VER_TARGET := .
-include $(MAKERULES)Makefile.version
+include $(MAKERULES)/Makefile.version
 DEFS = -DVERSION_STRING="$(REPO_VER)"
 
 LIBRARY=
@@ -33,7 +33,7 @@ clean:	tidy
 
 # Make the install__mce_ramp rule
 INSTALL_TARGET=mce_ramp
-include $(MAKERULES)Makefile.install_rule
+include $(MAKERULES)/Makefile.install_rule
 
 install: install__mce_ramp
 
