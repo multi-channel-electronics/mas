@@ -12,10 +12,6 @@ endif
 FAKEMCE_DIR ?= fake_mce/
 RTAI_DIR   ?= /usr/src/rtai
 
-# Get svn repository version number
-REPO_VERSION   = @REPO_VERSION@
-BRANCH_ID = @BRANCH_ID@
-
 # Module configuration options, set to 'yes' or 'no' (also see
 # defaults/config.h)
 
@@ -71,25 +67,11 @@ fault:
 	@echo Unknown kernel version $(TARGET_KERNEL) : $(KVER)
 
 clean: kversion_clean
-	-rm -rf *.o *~ core version.h \
+	-rm -rf *.o *~ core \
 		.depend .*.cmd *.mod.c .tmp_versions Module.symvers
 ifeq ($(FAKEMCE),yes)
 	${MAKE} -C $(FAKEMCE_DIR) clean
 endif #FAKEMCE=1
-
-
-# Version header file generation
-ifneq ($(shell svnversion $(src)),$(shell cat $(src)/version_last))
-version_last: FORCE
-else
-version_last:
-endif
-	svnversion $(src) > $(src)/version_last
-
-version.h: version.h.template version_last
-	grep -v '^\/\*-' version.h.template | \
-		sed 's:\$$REPO\.:$(BRANCH_ID):g' | \
-		sed 's/\$$SVN\./$(REPO_VERSION)/g' > version.h
 
 
 # Install rule
