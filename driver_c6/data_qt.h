@@ -4,7 +4,7 @@
 #ifndef _DATA_QT_H_
 #define _DATA_QT_H_
 
-#include "version.h"
+#include "autoversion.h"
 #include "mce/dsp.h"
 
 #define DSP_INTERNAL_FREQ  50e6

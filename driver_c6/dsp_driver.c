@@ -15,7 +15,7 @@
 #include <linux/delay.h>
 
 #include "mce_options.h"
-#include "version.h"
+#include "autoversion.h"
 
 #ifdef REALTIME
 #include <rtai.h>

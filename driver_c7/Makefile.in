@@ -40,7 +40,7 @@ DRIVER_FILE = $(DRIVER_NAME).ko
 
 ifeq ($(KERNELRELEASE),) # we are in the source folder
 
-modules: version.h ../defaults/config.h
+modules: autoversion.h ../defaults/config.h
 	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(src) modules
 
 else # we are in the kernel source tree

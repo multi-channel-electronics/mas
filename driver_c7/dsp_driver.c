@@ -19,7 +19,7 @@
 #include <linux/pci.h>
 #include <linux/delay.h>
 
-#include "version.h"
+#include "autoversion.h"
 #include "mce_options.h"
 
 #ifdef BIGPHYS

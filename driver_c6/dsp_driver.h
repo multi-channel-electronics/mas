@@ -5,7 +5,7 @@
 #define _DSP_DRIVER_H_
 
 #include <linux/interrupt.h>
-#include "version.h"
+#include "autoversion.h"
 #include "mce/dsp.h"
 #include "mce/dsp_errors.h"
 #include "mce/ioctl.h"

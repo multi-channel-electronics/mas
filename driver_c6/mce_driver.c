@@ -8,7 +8,7 @@
 #include <linux/interrupt.h>
 #include <linux/sched.h>
 
-#include "version.h"
+#include "autoversion.h"
 #include "mce_options.h"
 #include "memory.h"
 

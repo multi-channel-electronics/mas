@@ -16,7 +16,7 @@
 
 #include <asm/uaccess.h>
 
-#include "version.h"
+#include "autoversion.h"
 #include "mce_options.h"
 
 #include "mce/dsp_errors.h"

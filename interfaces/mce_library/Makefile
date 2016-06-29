@@ -49,17 +49,17 @@ include $(MAKERULES)/Makefile.install_rule_lib
 
 install: install__$(LIBNAME)
 
-$(LIBNAME).so : $(OBJECTS) version.h
+$(LIBNAME).so : $(OBJECTS)
 	$(LD) -shared -o $@ $(OBJECTS) -lc -lpthread $(CONFIG_LIBS)
 
-$(LIBNAME).a : $(OBJECTS) version.h
+$(LIBNAME).a : $(OBJECTS)
 	$(AR) rs $@ $(OBJECTS)
 
 $(OBJECTS): $(HEADERS)
 
 data_mode.o: data_mode.c data_mode.def
 
-context.o: version.h
+context.o: autoversion.h
 
 docs:
 	doxygen

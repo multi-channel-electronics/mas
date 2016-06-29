@@ -8,7 +8,7 @@
 #include "data.h"
 #include "mce_driver.h"
 #include "dsp_driver.h"
-#include "version.h"
+#include "autoversion.h"
 
 #ifdef FAKEMCE
 #  include <dsp_fake.h>

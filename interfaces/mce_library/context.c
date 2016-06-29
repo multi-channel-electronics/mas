@@ -11,7 +11,7 @@
 #include <mce/defaults.h>
 
 #include "context.h"
-#include "version.h"
+#include "autoversion.h"
 #include "../defaults/config.h"
 
 #ifndef NO_MCE_OPS
