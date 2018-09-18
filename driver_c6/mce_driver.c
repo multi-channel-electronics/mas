@@ -1,9 +1,14 @@
 /* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  *      vim: sw=4 ts=4 et tw=80
  */
+#include <linux/version.h>
 #include <linux/init.h>
 #include <linux/fs.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
 #include <asm/uaccess.h>
+#endif
 #include <asm/io.h>
 #include <linux/interrupt.h>
 #include <linux/sched.h>
@@ -24,6 +29,9 @@
 
 #define MAX_FERR 100
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+#    define NEW_TIMER
+#endif
 
 typedef struct {
 
@@ -439,10 +447,16 @@ int mce_send_command_now (int card)
 	return 0;
 }
 
+#ifdef NEW_TIMER
+void mce_send_command_timer(struct timer_list *t)
+{
+    struct mce_control *mdat = from_timer(mdat, t, timer);
+#else
 void mce_send_command_timer(unsigned long data)
 {
-	unsigned long irqflags;
 	struct mce_control *mdat = (struct mce_control *)data;
+#endif
+	unsigned long irqflags;
 	int card = mdat - mce_dat;
 
 	MDAT_LOCK;
@@ -728,9 +742,15 @@ int mce_proc(struct seq_file *sfile, void *data)
 
 /* Block */
 
+#ifdef NEW_TIMER
+static void delay_func(struct timer_list *t)
+{
+	struct mce_control *mdat = from_timer(mdat, t, dtimer);
+#else
 static void delay_func(unsigned long data)
 {
 	struct mce_control *mdat = (void*)data;
+#endif
 	mdat->dexpired = 1;
 	wake_up_interruptible(&mdat->dqueue);
 }
@@ -810,14 +830,22 @@ int mce_probe(int card, int dsp_version)
    	tasklet_init(&mdat->hst_tasklet,
 		     mce_do_HST_or_schedule, (unsigned long)mdat);
 
+#ifdef NEW_TIMER
+    timer_setup(&mdat->timer, mce_send_command_timer, 0);
+#else
 	init_timer(&mdat->timer);
 	mdat->timer.function = mce_send_command_timer;
 	mdat->timer.data = (unsigned long)mdat;
+#endif
 
 	init_waitqueue_head(&mdat->dqueue);
+#ifdef NEW_TIMER
+    timer_setup(&mdat->dtimer, delay_func, 0);
+#else
 	init_timer(&mdat->dtimer);
 	mdat->dtimer.function = delay_func;
 	mdat->dtimer.data = (unsigned long)mdat;
+#endif
 
 	mdat->state = MDAT_IDLE;
 	mdat->data_flags = 0;

@@ -8,6 +8,7 @@
   lowest level i/o routines.
 */
 
+#include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
@@ -31,6 +32,10 @@
 #  endif
 #else
 #  define IRQ_FLAGS 0
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+#    define NEW_TIMER
 #endif
 
 #include "dsp_driver.h"
@@ -399,11 +404,16 @@ int dsp_hey_handler(dsp_message *msg, unsigned long data)
 	return 0;
 }
 
-
+#ifdef NEW_TIMER
+void dsp_timeout(struct timer_list *t)
+{
+	struct dsp_dev_t *dev = from_timer(dev, t, tim_dsp);
+#else
 void dsp_timeout(unsigned long data)
 {
-	unsigned long irqflags;
 	struct dsp_dev_t *dev = (struct dsp_dev_t*)data;
+#endif
+	unsigned long irqflags;
 
 	DDAT_LOCK;
 	if (dev->state & DDAT_CMD) {
@@ -830,9 +840,15 @@ int dsp_query_version(int card)
 	return 0;
 }
 
+#ifdef NEW_TIMER
+void dsp_timer_function(struct timer_list *t)
+{
+	struct dsp_dev_t *dev = from_timer(dev, t, tim_poll);
+#else
 void dsp_timer_function(unsigned long data)
 {
 	struct dsp_dev_t *dev = (struct dsp_dev_t *)data;
+#endif
         PRINT_INFO(dev->card, "entry\n");
 	pci_int_handler(0, dev, NULL);
 	mod_timer(&dev->tim_poll, jiffies + DSP_POLL_JIFFIES);
@@ -1200,9 +1216,13 @@ int dsp_configure(struct pci_dev *pci)
 
 	init_waitqueue_head(&dev->local.queue);
 
+#ifdef NEW_TIMER
+    timer_setup(&dev->tim_dsp, dsp_timeout, 0);
+#else
 	init_timer(&dev->tim_dsp);
 	dev->tim_dsp.function = dsp_timeout;
 	dev->tim_dsp.data = (unsigned long)dev;
+#endif
 	dev->state = DDAT_IDLE;
 
 	// Data granting task
@@ -1255,9 +1275,13 @@ int dsp_configure(struct pci_dev *pci)
 	dev->int_handler = NULL;
 	if (dev->comm_mode & DSP_PCI_MODE_NOIRQ) {
 		// Create timer for soft poll interrupt generation
+#ifdef NEW_TIMER
+        timer_setup(&dev->tim_poll, dsp_timer_function, 0);
+#else
 		init_timer(&dev->tim_poll);
 		dev->tim_poll.function = dsp_timer_function;
 		dev->tim_poll.data = (unsigned long)dev;
+#endif
 		mod_timer(&dev->tim_poll, jiffies + DSP_POLL_JIFFIES);
 	} else {
 		// Install the interrupt handler (cast necessary for backward compat.)

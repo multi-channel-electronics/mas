@@ -2,10 +2,14 @@
  *      vim: sw=8 ts=8 et tw=80
  */
 
-
+#include <linux/version.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
 #include <asm/uaccess.h>
+#endif
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -28,11 +32,18 @@
 
 #include <linux/interrupt.h>
 #include <linux/dma-mapping.h>
+
+#include "autoversion.h"
+#include "mce_options.h"
 /* Newer 2.6 kernels use IRQF_SHARED instead of SA_SHIRQ */
 #ifdef IRQF_SHARED
 #    define IRQ_FLAGS IRQF_SHARED
 #else
 #    define IRQ_FLAGS SA_SHIRQ
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+#    define NEW_TIMER
 #endif
 
 #include "dsp_driver.h"
@@ -633,9 +644,15 @@ irqreturn_t mcedsp_int_handler(int irq, void *dev_id, struct pt_regs *regs)
 	return IRQ_HANDLED;
 }
 
+#ifdef NEW_TIMER
+void mcedsp_dsp_timeout(struct timer_list *t)
+{
+        mcedsp_t *dsp = from_timer(dsp, t, dsp_timer);
+#else
 void mcedsp_dsp_timeout(unsigned long data)
 {
 	mcedsp_t *dsp = (mcedsp_t*)data;
+#endif
         DSP_LOCK_DECLARE_FLAGS;
 
         DSP_LOCK;
@@ -652,9 +669,15 @@ void mcedsp_dsp_timeout(unsigned long data)
         DSP_UNLOCK;
 }
 
+#ifdef NEW_TIMER
+void mcedsp_mce_timeout(struct timer_list *t)
+{
+        mcedsp_t *dsp = from_timer(dsp, t, mce_timer);
+#else
 void mcedsp_mce_timeout(unsigned long data)
 {
 	mcedsp_t *dsp = (mcedsp_t*)data;
+#endif
         DSP_LOCK_DECLARE_FLAGS;
 
         DSP_LOCK;
@@ -732,6 +755,10 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
         init_waitqueue_head(&dsp->queue);
         tasklet_init(&dsp->grantlet, grant_task, (unsigned long)dsp);
 
+#ifdef NEW_TIMER
+        timer_setup(&dsp->dsp_timer, mcedsp_dsp_timeout, 0);
+        timer_setup(&dsp->mce_timer, mcedsp_mce_timeout, 0);
+#else
 	init_timer(&dsp->dsp_timer);
 	dsp->dsp_timer.function = mcedsp_dsp_timeout;
 	dsp->dsp_timer.data = (unsigned long)dsp;
@@ -739,6 +766,8 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
 	init_timer(&dsp->mce_timer);
 	dsp->mce_timer.function = mcedsp_mce_timeout;
 	dsp->mce_timer.data = (unsigned long)dsp;
+#endif
+
 
         // Allocate the frame data buffer
         if (data_alloc(dsp, 10000000)!=0) {

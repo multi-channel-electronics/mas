@@ -18,6 +18,7 @@
 
 */
 
+#include <linux/version.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -25,7 +26,11 @@
 #include <linux/interrupt.h>
 #include <linux/fs.h>
 #include <asm/io.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
 #include <asm/uaccess.h>
+#endif
 
 #include "mce_options.h"
 

@@ -1,6 +1,7 @@
 /* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
  *      vim: sw=8 ts=8 et tw=80
  */
+#include <linux/version.h>
 #include <linux/init.h>
 #include <linux/module.h>
 
@@ -14,7 +15,11 @@
 #include <linux/fcntl.h>
 #include <linux/sched.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
 #include <asm/uaccess.h>
+#endif
 
 #include "autoversion.h"
 #include "mce_options.h"
