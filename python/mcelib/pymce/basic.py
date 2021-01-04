@@ -117,8 +117,10 @@ class BasicMCE:
             raise RuntimeError, "mce_data module is required to process data "\
                 "(pass raw_frames=True to suppress)."
         d.fast_axis = 'dets'
-        # head_binary needed for _ReadHeader, called by GetPayloadInfo
-        d._ReadHeader(head_binary=d.data[0,:43])
+
+        # Before _GetPayloadInfo(), populate self.header using info
+        # extracted from frame header.
+        d.header = d._ReadHeader(head_binary=d.data[0,:43])
         d._GetPayloadInfo()
         d.headers = d.data[:,:43]
         d.data = d.data[:,43:-1]
