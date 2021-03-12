@@ -1,4 +1,4 @@
-dnl get svn version for AC_INIT
+dnl get git revision for AC_INIT
 m4_define(branch_id_val, sinclude(branch_id.txt))
 m4_define(repo_version, [esyscmd(./get_repo_version.sh)])
 m4_define(mas_version, [translit(branch_id_val/repo_version, [
@@ -14,10 +14,10 @@ dnl version stuff
 REPO_VERSION=repo_version
 AC_SUBST([REPO_VERSION])
 AC_DEFINE_UNQUOTED([REPO_VERSION], ["${REPO_VERSION}"],
-		[ The SVN repository version information ])
+		[ The GIT repository version information ])
 INT_REPO_VERSION=`echo ${REPO_VERSION} | sed -e 's/\(exported\|Unversioned\)/0/g; s/^\(@<:@0-9@:>@*\).*/\1/g'`
 AC_DEFINE_UNQUOTED([INT_REPO_VERSION], [${INT_REPO_VERSION}],
-		[The integer part of the SVN repository version])
+		[The number of commits to this branch of the GIT repository])
 
 BRANCH_ID=`cat branch_id.txt`
 AC_DEFINE_UNQUOTED([BRANCH_ID], "${BRANCH_ID}",

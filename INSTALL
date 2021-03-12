@@ -6,15 +6,15 @@ available on the MCE wiki:
 
     http://e-mode.phas.ubc.ca/mcewiki/index.php/MAS_OS_setup
 
-0.  Makefile.svn
+0.  Makefile.git
 ----------------
 
 MAS uses autoconf for some basic configuration stuff. After checking out MAS
-from the SVN repository the /first/ time, you need to bootstrap the autoconf
-process. To simplify this, the Makefile.svn file will automate the process.
+from the GIT repository the /first/ time, you need to bootstrap the autoconf
+process. To simplify this, the Makefile.git file will automate the process.
 From the MAS source folder run
 
-     make -f Makefile.svn
+     make -f Makefile.git
 
 If successful, this will create the "./configure" script. This step is only
 required on fresh check-outs of the repository. If you already have a

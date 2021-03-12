@@ -1,10 +1,10 @@
-# Put svn repo version of $(VER_TARGET) into $(REPO_VER)
+# Put git revision of $(VER_TARGET) into $(REPO_VER)
 
-SUB_VER := $(shell svnversion $(VER_TARGET))
+SUB_VER := $(shell git rev-parse HEAD)
 BRANCH_ID := $(shell cat $(BASE)/branch_id.txt)
 REPO_VER := \"$(BRANCH_ID)/$(SUB_VER)\"
 
-# this is similar to SUB_VER, but strips off all non-numeric stuff from the end
-# (see "svnversion --help" to get an idea of the kind of things it will discard)
+# this returns the total number of commits to this branch.  It's
+# similar in spirit to what we used to do using svnversion
 # Returns 0 if tree is exported / unversioned.
-INT_VER := $(shell svnversion $(VER_TARGET) | sed -e 's/\(exported\|Unversioned\)/0/g; s/^\([0-9]*\).*/\1/g')
+INT_VER := $(shell git log --oneline | wc -l)

@@ -6,10 +6,14 @@
 export LANG=C
 export LC_ALL=C
 
-svnvers=`svnversion .`
+gitrev=$(git rev-parse HEAD 2>/dev/null)
 
-if [ "x$svnvers" = "xUnversioned directory" -a -f repo_version.txt ]; then
-  cat repo_version.txt
+if [ "x$gitrev" = "x" ]; then
+  if [-f repo_version.txt ]; then
+    cat repo_version.txt
+  else
+    echo "Unversioned directory"
+  fi
 else
-  echo $svnvers
+  echo $gitrev
 fi
