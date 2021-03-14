@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DRIVER=mce_dsp
+DRIVER=mce_dsp_c7
 
 grep '^mce_dsp\ ' /proc/modules && \
     sudo rmmod ${DRIVER}
