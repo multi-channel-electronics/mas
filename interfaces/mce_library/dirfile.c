@@ -179,6 +179,7 @@ static int dirfile_write(mce_acq_t *acq, dirfile_t *f)
         fwrite(c->data, c->count, sizeof(uint32_t), c->fout);
 		c->count = 0;
 		writes++;
+		fflush(c->fout); // Avoid issue with dropped samples when writing to NFS mount
 	}
 
 	return 0;
