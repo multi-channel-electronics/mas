@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _DATA_IOCTL_H_
 #define _DATA_IOCTL_H_
 
@@ -22,7 +25,7 @@
 #define      QUERY_LPARTIAL  8
 #define      QUERY_LVALID    9
 
-  
+
 /* for use by data_watcher routine */
 #define DATADEV_IOCT_WATCH      _IO(DATADEV_IOC_MAGIC,  2)
 #define      WATCH_START     0

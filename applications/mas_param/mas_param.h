@@ -19,35 +19,37 @@
 enum { MODE_IDLE, MODE_CRAWL, MODE_GET, MODE_SET, MODE_INFO };
 
 /* Output formats */
-enum { FORMAT_BASH = 0,
-       FORMAT_CSH,
-       FORMAT_IDLTEMPLATE,
-       FORMAT_INFO,
-       FORMAT_FULL };
+enum {
+    FORMAT_BASH = 0,
+    FORMAT_CSH,
+    FORMAT_IDLTEMPLATE,
+    FORMAT_INFO,
+    FORMAT_FULL
+};
 
 
 /* options structure and processor */
 
 typedef struct {
-	char *config_file; // MAS config file
+    char *config_file; // MAS config file
 
-	char *source_file; // target file for processing
-	char output_path[MCE_LONG];
-	char output_file[MCE_LONG];
+    char *source_file; // target file for processing
+    char output_path[MCE_LONG];
+    char output_file[MCE_LONG];
 
-	int  output_on;
+    int  output_on;
 
-	char output_word[MCE_LONG]; // mode-dependent
+    char output_word[MCE_LONG]; // mode-dependent
 
-	int mode;
-	int format;
-	int fibre_card;
-	
-	char *param_name;           // For get and set operations
-	char **data_source;         // For set operations
-	int data_count;             //  "
-	
-	config_setting_t *root;
+    int mode;
+    int format;
+    int fibre_card;
+
+    char *param_name;           // For get and set operations
+    char **data_source;         // For set operations
+    int data_count;             //  "
+
+    config_setting_t *root;
 
 } options_t;
 
@@ -60,17 +62,17 @@ enum { CFG_INT, CFG_STR, CFG_DBL };
 /* Translation of config parameter data */
 
 typedef struct {
-	int array;
-	int count;
-	int type;
+    int array;
+    int count;
+    int type;
 
     int         *data_i;
     double      *data_d;
     const char **data_s;
     const char  *data_name;
-	char *name;
-	
-	config_setting_t* cfg;
+    char *name;
+
+    config_setting_t* cfg;
 } mas_param_t;
 
 #include "get.h"
@@ -81,4 +83,3 @@ typedef struct {
 #include "info.h"
 
 #endif
-

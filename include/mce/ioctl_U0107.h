@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #pragma once
 
 #include <linux/ioctl.h>
@@ -32,9 +35,9 @@
 /* #define      QUERY_LVALID    9 */
 #define DSPIOCT_SET_DATASIZE    _IO(DSPIOCT_MAGIC, 41)
 #define DSPIOCT_FAKE_STOPFRAME  _IO(DSPIOCT_MAGIC, 42)
-#define DSPIOCT_EMPTY      	_IO(DSPIOCT_MAGIC, 43)
+#define DSPIOCT_EMPTY           _IO(DSPIOCT_MAGIC, 43)
 #define DSPIOCT_SET_NFRAMES     _IO(DSPIOCT_MAGIC, 44)
-#define DSPIOCT_FRAME_POLL 	_IO(DSPIOCT_MAGIC, 46)
+#define DSPIOCT_FRAME_POLL      _IO(DSPIOCT_MAGIC, 46)
 #define DSPIOCT_FRAME_CONSUME   _IO(DSPIOCT_MAGIC, 47)
 #define DSPIOCT_DATA_LOCK       _IO(DSPIOCT_MAGIC, 48)
 #define      LOCK_QUERY      0

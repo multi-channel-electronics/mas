@@ -11,32 +11,32 @@
 #include "../../defaults/config.h"
 
 /*
-  This is for MAS configuration file specification, mostly.  Since
-  other arguments are processed by the main routines, the function
-  must return the offset of the first unprocessed argument.
-*/
+ * This is for MAS configuration file specification, mostly.  Since
+ * other arguments are processed by the main routines, the function
+ * must return the offset of the first unprocessed argument.
+ */
 
 #if !MULTICARD
 #  define USAGE_OPTION_N "        -n <card number>       ignored\n"
 #else
 #  define USAGE_OPTION_N \
-  "        -n <card number>       use the specified fibre card\n"
+    "        -n <card number>       use the specified fibre card\n"
 #endif
 
 #define USAGE_MESSAGE "" \
-"  Initial options (MAS config):\n" \
-USAGE_OPTION_N \
-"        -c <hardware file>      override default hardware configuration file\n"\
-"        -m <MAS config file>    override default MAS configuration file\n"\
-"        -s <experiment file>    override default experiment configuration file\n"\
-"        -p <steps>              enable preservoing for some number of steps\n"\
-"        -w <file>               deprecated; use -c instead\n"\
-"        -E [0|1]                force old/new semantics\n"\
-""
+    "  Initial options (MAS config):\n" \
+    USAGE_OPTION_N \
+    "        -c <hardware file>      override default hardware configuration file\n"\
+    "        -m <MAS config file>    override default MAS configuration file\n"\
+    "        -s <experiment file>    override default experiment configuration file\n"\
+    "        -p <steps>              enable preservoing for some number of steps\n"\
+    "        -w <file>               deprecated; use -c instead\n"\
+    "        -E [0|1]                force old/new semantics\n"\
+    ""
 
 void usage()
 {
-      printf(USAGE_MESSAGE);
+    printf(USAGE_MESSAGE);
 }
 
 int process_options(option_t *options, int argc, char **argv)

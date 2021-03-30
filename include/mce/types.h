@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MCE_TYPES_H_
 #define _MCE_TYPES_H_
 
@@ -33,11 +36,11 @@ typedef __u16 u16;
 
 typedef enum {
 
-	MCE_WB =          0x20205742,
-        MCE_GO =          0x2020474f,
-        MCE_ST =          0x20205354,
-        MCE_RS =          0x20205253,
-        MCE_RB =          0x20205242,
+    MCE_WB =          0x20205742,
+    MCE_GO =          0x2020474f,
+    MCE_ST =          0x20205354,
+    MCE_RS =          0x20205253,
+    MCE_RB =          0x20205242,
 
 } mce_command_code;
 
@@ -56,13 +59,13 @@ typedef enum {
 
 typedef struct {
 
-	u32 preamble[2];
-	u32 command;
-        u16 para_id;
-	u16 card_id;
-	u32 count;
-	u32 data[MCE_CMD_DATA_MAX];
-	u32 checksum;
+    u32 preamble[2];
+    u32 command;
+    u16 para_id;
+    u16 card_id;
+    u32 count;
+    u32 data[MCE_CMD_DATA_MAX];
+    u32 checksum;
 
 } mce_command;
 
@@ -78,23 +81,23 @@ typedef struct {
 
 typedef struct {
 
-	u16 ok_er;
-	u16 command;
-	u16 para_id;
-	u16 card_id;
-	u32 data[MCE_REP_DATA_MAX];
+    u16 ok_er;
+    u16 command;
+    u16 para_id;
+    u16 card_id;
+    u32 data[MCE_REP_DATA_MAX];
 
 } mce_reply;
 
 typedef struct {
 
-	u16 ok_er;
-	u16 command;
-	u16 para_id;
-	u16 card_id;
-	u32 error_code;
-	u32 checksum;
-	u32 zero[MCE_REP_DATA_MAX-2];
+    u16 ok_er;
+    u16 command;
+    u16 para_id;
+    u16 card_id;
+    u32 error_code;
+    u32 checksum;
+    u32 zero[MCE_REP_DATA_MAX-2];
 
 } mce_reply_simple;
 

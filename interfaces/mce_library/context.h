@@ -83,7 +83,7 @@ struct mce_context {
      */
     int (*termio)(int, const char *);
 
-    char             *config_dir;     /* $(MAS_CONFIG} */
+    char             *config_dir;     /* ${MAS_CONFIG} */
     char             *data_root;      /* the base data directory */
     char             *data_subdir;    /* "current_data", or whatever */
     char             *etc_dir;        /* location of the mce.cfg files */
@@ -113,16 +113,16 @@ struct mce_context {
 #define  C_config_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
 #define  C_maslog_check if (!C_config.connected) return -MCE_ERR_NEED_CONFIG
 
-int mcelib_warning(const mce_context_t *context, const char *fmt, ...)
-    __attribute__ ((format (printf, 2, 3)));
-int mcelib_error(const mce_context_t *context, const char *fmt, ...)
-    __attribute__ ((format (printf, 2, 3)));
-int mcelib_print(const mce_context_t *context, const char *fmt, ...)
-    __attribute__ ((format (printf, 2, 3)));
+int mcelib_warning(const mce_context_t *context, const char *fmt,
+        ...) __attribute__ ((format (printf, 2, 3)));
+int mcelib_error(const mce_context_t *context, const char *fmt,
+        ...) __attribute__ ((format (printf, 2, 3)));
+int mcelib_print(const mce_context_t *context, const char *fmt,
+        ...) __attribute__ ((format (printf, 2, 3)));
 int mcelib_symlink(const char *symlink, const char *target);
 
 typedef enum {
-  MCE_SUBSYSTEM_DSP, MCE_SUBSYSTEM_CMD, MCE_SUBSYSTEM_DATA
+    MCE_SUBSYSTEM_DSP, MCE_SUBSYSTEM_CMD, MCE_SUBSYSTEM_DATA
 } mce_subsystem_t;
 
 /* open a device node; this requires figuring out which kernel driver

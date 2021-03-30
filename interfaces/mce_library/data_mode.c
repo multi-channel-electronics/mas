@@ -20,49 +20,49 @@
 
 /* The mce_data_field names.  e.g. mode0_ERROR */
 #define DATA_FIELD(MODE, NAME) \
-	mode ## MODE ## _ ## NAME
+    mode ## MODE ## _ ## NAME
 
 /* Variable declaration */
-#define DATA_FIELD_DECLARE(MODE, NAME)				\
-	static struct mce_data_field DATA_FIELD(MODE, NAME)
+#define DATA_FIELD_DECLARE(MODE, NAME) \
+    static struct mce_data_field DATA_FIELD(MODE, NAME)
 
 /* Macro set 1 */
 
-#define DECLARE_RAW(MODE, NAME)				\
-	DATA_FIELD_DECLARE(MODE, NAME) = {		\
-			.data_mode = MODE,		\
-			.type = DATA_MODE_RAW,		\
-			.name = MCE_DATA_ ## NAME,	\
-	};
+#define DECLARE_RAW(MODE, NAME) \
+    DATA_FIELD_DECLARE(MODE, NAME) = { \
+        .data_mode = MODE, \
+        .type = DATA_MODE_RAW, \
+        .name = MCE_DATA_ ## NAME, \
+    };
 
-#define DECLARE_SCALE(MODE, NAME, SCALE)		\
-	DATA_FIELD_DECLARE(MODE, NAME) = {		\
-			.data_mode = MODE,		\
-			.type = DATA_MODE_SCALE,	\
-			.name = MCE_DATA_ ## NAME,	\
-			.scalar = SCALE,		\
-	};
+#define DECLARE_SCALE(MODE, NAME, SCALE) \
+    DATA_FIELD_DECLARE(MODE, NAME) = { \
+        .data_mode = MODE, \
+        .type = DATA_MODE_SCALE, \
+        .name = MCE_DATA_ ## NAME, \
+        .scalar = SCALE, \
+    };
 
 #define DECLARE_EXTRACT(MODE, NAME, START, COUNT, SIGNED) \
-	DATA_FIELD_DECLARE(MODE, NAME) = {		\
-			.data_mode = MODE,		\
-			.type = DATA_MODE_EXTRACT,	\
-			.name = MCE_DATA_ ## NAME,	\
-			.bit_start = START,		\
-			.bit_count = COUNT,		\
-            .has_sign = SIGNED, \
-	};
+    DATA_FIELD_DECLARE(MODE, NAME) = { \
+        .data_mode = MODE, \
+        .type = DATA_MODE_EXTRACT, \
+        .name = MCE_DATA_ ## NAME, \
+        .bit_start = START, \
+        .bit_count = COUNT, \
+        .has_sign = SIGNED, \
+    };
 
 #define DECLARE_EXTRACT_SCALE(MODE, NAME, START, COUNT, SCALE, SIGNED) \
-	DATA_FIELD_DECLARE(MODE, NAME) = {			\
-			.data_mode = MODE,		\
-			.type = DATA_MODE_EXTRACT_SCALE, \
-			.name = MCE_DATA_ ## NAME,	\
-			.bit_start = START,		\
-			.bit_count = COUNT,		\
-			.scalar = SCALE,		\
-            .has_sign = SIGNED, \
-	};
+    DATA_FIELD_DECLARE(MODE, NAME) = { \
+        .data_mode = MODE, \
+        .type = DATA_MODE_EXTRACT_SCALE, \
+        .name = MCE_DATA_ ## NAME, \
+        .bit_start = START, \
+        .bit_count = COUNT, \
+        .scalar = SCALE, \
+        .has_sign = SIGNED, \
+    };
 
 
 /* Define mode0_error, etc... */

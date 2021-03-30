@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #pragma once
 
 #include <linux/types.h>
@@ -14,40 +17,40 @@
 
 #pragma pack(push,1)
 struct dsp_command {
-	// Internal; decoded by driver.
-	__s32 size;
-	__s32 flags;
-	__s32 owner;
-	__s32 timeout_us;
-	// Payload; sent to DSP
-	__s16 cmd;
-	__s16 data_size;
-	__s32 data[DSP_COMMAND_SIZE];
+  // Internal; decoded by driver.
+  __s32 size;
+  __s32 flags;
+  __s32 owner;
+  __s32 timeout_us;
+  // Payload; sent to DSP
+  __s16 cmd;
+  __s16 data_size;
+  __s32 data[DSP_COMMAND_SIZE];
 };
 
 struct dsp_datagram {
-	__s16 version;
-	__s16 total_size;
-	__s16 type;
-	__s16 unused1;
-	__s32 fw_version;
-	__s16 unused2[10];
-	__s32 buffer[DSP_DATAGRAM_BUFFER_SIZE];
+  __s16 version;
+  __s16 total_size;
+  __s16 type;
+  __s16 unused1;
+  __s32 fw_version;
+  __s16 unused2[10];
+  __s32 buffer[DSP_DATAGRAM_BUFFER_SIZE];
 };
 
 struct dsp_reply {
-	__s16 err;
-	__s16 size;
-	__s16 cmd;
-	__s16 unused1;
-	__s32 data[DSP_COMMAND_SIZE];
+  __s16 err;
+  __s16 size;
+  __s16 cmd;
+  __s16 unused1;
+  __s32 data[DSP_COMMAND_SIZE];
 };
 
 struct mce_reply {
-	__s16 type;
-	__s16 _spaces;
-	__s32 size;
-	__s32 data[DSP_COMMAND_SIZE];
+  __s16 type;
+  __s16 _spaces;
+  __s32 size;
+  __s32 data[DSP_COMMAND_SIZE];
 };
 
 #pragma pack(pop)

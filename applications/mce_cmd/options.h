@@ -10,40 +10,40 @@
 
 typedef struct {
 
-	int interactive;
-	int nonzero_only;
-	int no_prefix;
-	int display;
-	int echo;
-	int use_readline;
-	int acq_now;
-	int fibre_card;
+    int interactive;
+    int nonzero_only;
+    int no_prefix;
+    int display;
+    int echo;
+    int use_readline;
+    int acq_now;
+    int fibre_card;
 
-	char batch_file[LINE_LEN];
-	int  batch_now;
+    char batch_file[LINE_LEN];
+    int  batch_now;
 
-	int version_only;
+    int version_only;
 
-	char *cmd_set[MAX_CMDLINE_CMD];
-	int  cmds_now;
-	int  cmds_idx;
+    char *cmd_set[MAX_CMDLINE_CMD];
+    int  cmds_now;
+    int  cmds_idx;
 
-	char *hardware_file;
-	char *masconfig_file;
+    char *hardware_file;
+    char *masconfig_file;
 
-	char acq_path[LINE_LEN];
-	char acq_filename[LINE_LEN];
+    char acq_path[LINE_LEN];
+    char acq_filename[LINE_LEN];
 
-	int acq_cards;
-	int acq_frames;
-	int acq_interval;
+    int acq_cards;
+    int acq_frames;
+    int acq_interval;
 
     char symlink[LINE_LEN];
     char dirfile_include[LINE_LEN];
     int dirfile_spf;
     int dirfile_version;
 
-	maslog_t *logger;
+    maslog_t *logger;
 
 } options_t;
 

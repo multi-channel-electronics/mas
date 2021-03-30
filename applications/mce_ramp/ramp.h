@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _RAMP_H_
 #define _RAMP_H_
 
@@ -22,27 +25,27 @@
 typedef char amble_t[AMBLE_LEN];
 
 typedef struct {
-	char* command;
-	int repeat;
+    char* command;
+    int repeat;
 } operation_t;
 
 typedef struct {
-	int start;
-	int step;
+    int start;
+    int step;
 
-	int operation_count;
-	operation_t* operations;
+    int operation_count;
+    operation_t* operations;
 } value_t;
 
 typedef struct loop_struct loop_t;
 
 struct loop_struct {
-	int count;
+    int count;
 
-	int value_count;
-	value_t* values;
+    int value_count;
+    value_t* values;
 
-	loop_t *sub_loop;
+    loop_t *sub_loop;
 };
 
 

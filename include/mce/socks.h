@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MCESOCKS_H_
 #define _MCESOCKS_H_
 
@@ -20,47 +23,47 @@ typedef unsigned int massock_listen_flags;
 #define MASSOCK_ACCEPT   -17 /* unable to accept inbound connection */
 #define MASSOCK_SELECT   -18 /* select() error */
 
-#define	LISTENER_ERR       0x8000
-#define	LISTENER_OK        0x0001
-#define	LISTENER_CONNECT   0x0002
-#define	LISTENER_DATA      0x0004
-#define	LISTENER_CLOSE     0x0008
+#define LISTENER_ERR       0x8000
+#define LISTENER_OK        0x0001
+#define LISTENER_CONNECT   0x0002
+#define LISTENER_DATA      0x0004
+#define LISTENER_CLOSE     0x0008
 
 struct massock_listener_t;
 
 typedef struct {
 
-	int  fd;
+    int  fd;
 
-	char *recv_buf;
-	int  recv_idx;
-	int  recv_max;
+    char *recv_buf;
+    int  recv_idx;
+    int  recv_max;
 
-	char *send_buf;
-	int  send_idx;
-	int  send_max;
+    char *send_buf;
+    int  send_idx;
+    int  send_max;
 
-	massock_listen_flags flags;
+    massock_listen_flags flags;
 
-	int  new_connection;
+    int  new_connection;
 
-	struct massock_listener_t *owner;
+    struct massock_listener_t *owner;
 
 } massock_client_t;
 
 
 typedef struct massock_listener_t {
 
-	char address[SOCKS_STR];
-	int  sock;
+    char address[SOCKS_STR];
+    int  sock;
 
-	int  quit;
+    int  quit;
 
-	massock_client_t *clients;
-	int clients_count;
-	int clients_max;
+    massock_client_t *clients;
+    int clients_count;
+    int clients_max;
 
-	fd_set rfd_master;
+    fd_set rfd_master;
 
 } listener_t;
 
@@ -71,7 +74,7 @@ int massock_listen(const char *addr);
 /* Client management functionality */
 
 int massock_listener_init( listener_t *list, int clients_max,
-		   int recv_max, int send_max);
+        int recv_max, int send_max);
 int massock_listener_cleanup( listener_t *list);
 
 int massock_listener_close( listener_t *list );
@@ -84,6 +87,6 @@ int massock_client_delete( massock_client_t *client );
 
 massock_listen_flags massock_client_recv( massock_client_t *client );
 massock_listen_flags massock_client_send( massock_client_t *client, char *buf,
-    int count );
+        int count );
 
 #endif

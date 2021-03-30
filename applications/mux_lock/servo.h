@@ -44,7 +44,7 @@ struct string_table {
 
 extern struct string_table servo_var_codes[];
 const char *get_string(struct string_table *table, int id, int column,
-                       char *def);
+        char *def);
 
 
 #define SA_DAC      65536
@@ -69,10 +69,10 @@ const char *get_string(struct string_table *table, int id, int column,
 #define ROWSEL_FB "select"
 
 typedef struct {
-  int fcount;
-  uint32_t last_header[HEADER_OFFSET];
-  uint32_t last_frame[MAXCOLS*MAXROWS];
-  FILE *df;
+    int fcount;
+    uint32_t last_header[HEADER_OFFSET];
+    uint32_t last_frame[MAXCOLS*MAXROWS];
+    FILE *df;
 }servo_t;
 
 int flux_fb_set(int which_bc, int value);
@@ -87,31 +87,31 @@ int load_initfile(const char *datadir, const char *filename, int start, int coun
 
 mce_context_t* connect_mce_or_exit(option_t* options);
 int  load_param_or_exit(mce_context_t* mce, mce_param_t* p,
-			const char *card, const char *para, int no_exit);
+        const char *card, const char *para, int no_exit);
 void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
         int start, int32_t *data, int count, const char *opmsg);
 int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
-		   mce_param_t* sq2fb_col, int col0, int n_col);
+        mce_param_t* sq2fb_col, int col0, int n_col);
 int check_mux11d(mce_context_t* mce, mce_param_t* safb,
-		   mce_param_t* safb_col, int col0, int n_col);
+        mce_param_t* safb_col, int col0, int n_col);
 void duplicate_fill(int32_t value, int32_t *data, int count);
 
 void rerange(int32_t *dest, int32_t *src, int n_data,
-	     int *quanta, int n_quanta);
+        int *quanta, int n_quanta);
 
 int genrunfile (
-char *full_datafilename, /* datafilename including the path*/
-char *datafile,          /* datafilename */
-enum servo_type_t servo_type,
-int  which_rc,
-int  bias, int bstep, int nbias, int bias_active,
-int feed, int fstep, int nfeed,
-char *initline1, char *initline2, /*init lines to be included in <servo_init> section*/
-int n_cols,
-int servo,
-double *gains,
-int *quanta
-);
+        char *full_datafilename, /* datafilename including the path*/
+        char *datafile,          /* datafilename */
+        enum servo_type_t servo_type,
+        int  which_rc,
+        int  bias, int bstep, int nbias, int bias_active,
+        int feed, int fstep, int nfeed,
+        char *initline1, char *initline2, /*init lines to be included in <servo_init> section*/
+        int n_cols,
+        int servo,
+        double *gains,
+        int *quanta
+        );
 
 
 /* experiment.cfg assist */
@@ -125,5 +125,5 @@ int load_int_if_present(config_setting_t *cfg, char *name, int *dest);
 // hybrid mux11d
 int load_hybrid_rs_cards(config_setting_t *cfg, char *data[MAXCARDS]);//, int start, int count, int *data);
 int validate_hybrid_mux11d_mux_order(int nhybrid_rs_cards,
-                                     char *mux11d_row_select_cards[MAXCARDS],
-                                     int *mux11d_row_select_cards_row0);
+        char *mux11d_row_select_cards[MAXCARDS],
+        int *mux11d_row_select_cards_row0);

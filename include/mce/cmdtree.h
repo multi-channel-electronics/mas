@@ -11,11 +11,11 @@ struct mascmdtree_opt_struct;
 typedef struct mascmdtree_opt_struct mascmdtree_opt_t;
 
 struct mascmdtree_opt_struct {
-	int flags;
-	const char *name;//[32];
-	int min_args;
-	int max_args;
-	unsigned long user_cargo;
+    int flags;
+    const char *name;//[32];
+    int min_args;
+    int max_args;
+    unsigned long user_cargo;
     mascmdtree_opt_t *sub_opts;
 };
 
@@ -44,11 +44,11 @@ typedef enum {
 } mascmdtree_flag_t;
 
 typedef struct {
-	int start, stop, type, value;
-	unsigned long data;
+    int start, stop, type, value;
+    unsigned long data;
     mascmdtree_flag_t viol;
-	int n;
-	char *line;
+    int n;
+    char *line;
 } mascmdtree_token_t;
 
 int mascmdtree_suggest(mascmdtree_token_t *t, const mascmdtree_opt_t *opt,

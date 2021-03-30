@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _MCE_IOCTL_H_
 #define _MCE_IOCTL_H_
 
@@ -10,7 +13,7 @@
 #define MCEDEV_IOCT_RESET             _IO(MCEDEV_IOC_MAGIC,  0)
 
 #define MCEDEV_IOCT_QUERY             _IO(MCEDEV_IOC_MAGIC,  1)
-  
+
 #define MCEDEV_IOCT_HARDWARE_RESET    _IO(MCEDEV_IOC_MAGIC,  2)
 
 #define MCEDEV_IOCT_INTERFACE_RESET   _IO(MCEDEV_IOC_MAGIC,  3)

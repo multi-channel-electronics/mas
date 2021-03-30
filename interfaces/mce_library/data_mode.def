@@ -3,7 +3,7 @@
 
    The DECLARE_* macros are defined different on each call to
    accomplish this.
-*/ 
+*/
 
 DECLARE_RAW(0, ERROR)
 DECLARE_SCALE(1, FB, 1./4096)

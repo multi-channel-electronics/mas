@@ -1,5 +1,5 @@
-/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *      vim: sw=8 ts=8 et tw=80
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
  */
 #ifndef _DATA_H_
 #define _DATA_H_
@@ -16,7 +16,7 @@
  * index, called head_index and tail_index respectively.  When head is
  * equal to tail, there is no un-read data in the buffer.  When head
  * is not equal to tail, there is data to be consumed by the reader.
- * 
+ *
  * Once the buffer pointed to by head is filled, head_index is
  * incremented.  If head_index becomes equal to max_index, head_index
  * is instead set to 0.  If the new value of head_index would be equal
@@ -26,7 +26,7 @@
  * The data at tail_index can be processed only if tail_index !=
  * head_index.  Once the buffer has been read, tail_index shall be
  * incremented.
- * 
+ *
  * The partial data member allows parts of the buffer at tail_index to
  * be consumed.  Readers that consume part of the buffer at tail_index
  * should increment partial and not increment tail_index.  Once the
@@ -45,57 +45,55 @@
 
 typedef struct {
 
-	// Buffer addresses are, for 0 <= i < max_index,
-        //  addr[i] = base + frame_size*i
-	// But each buffer contains only data_size bytes of real data.
+    // Buffer addresses are, for 0 <= i < max_index,
+    //  addr[i] = base + frame_size*i
+    // But each buffer contains only data_size bytes of real data.
 
-	void*     base;
-	u32       size;
+    void*     base;
+    u32       size;
 
-	int       frame_size;
-	int       data_size;
-        int       max_index;
+    int       frame_size;
+    int       data_size;
+    int       max_index;
 
-        // New data is written at head, consumer data is read at tail.
-	volatile
-	int       head_index;
-	volatile
-	int       tail_index;
+    // New data is written at head, consumer data is read at tail.
+    volatile int head_index;
+    volatile int tail_index;
 
-	// Data mode of the DSP - DATAMODE_*
-	unsigned  data_mode;
+    // Data mode of the DSP - DATAMODE_*
+    unsigned  data_mode;
 
-	// If frame at tail_index has been only partially consumed, 
-	//  partial will indicate the current index into the buffer.
-	int       partial;
+    // If frame at tail_index has been only partially consumed,
+    //  partial will indicate the current index into the buffer.
+    int       partial;
 
-	// Low level equivalent information
-	unsigned long base_busaddr;
-	
-	// Semaphore should be held when modifying structure, but
-	// interrupt routines may modify head_index at any time.
+    // Low level equivalent information
+    unsigned long base_busaddr;
 
-	struct semaphore sem;
+    // Semaphore should be held when modifying structure, but
+    // interrupt routines may modify head_index at any time.
 
-	// Device lock - controls read access on data device and
-	// provides a system for checking whether the system is
-	// mid-acquisition.  Should be NULL (for idle) or pointer to
-        // reader's filp (for locking).
+    struct semaphore sem;
 
-	void *data_lock;	
+    // Device lock - controls read access on data device and
+    // provides a system for checking whether the system is
+    // mid-acquisition.  Should be NULL (for idle) or pointer to
+    // reader's filp (for locking).
 
-	int dropped;
+    void *data_lock;
 
-	int flags;
+    int dropped;
+
+    int flags;
 #define     FRAME_ERR 0x1
-	wait_queue_head_t queue;
+    wait_queue_head_t queue;
 
-	int major;
+    int major;
 
-        // acq_index - changes (increments, probably) if the frame
-        // size is changed or if the buffer gets reset (this is to 
-        // help leeches realize they need to update their view).
-        int acq_index;
+    // acq_index - changes (increments, probably) if the frame
+    // size is changed or if the buffer gets reset (this is to
+    // help leeches realize they need to update their view).
+    int acq_index;
 
 } frame_buffer_t;
 
@@ -124,10 +122,10 @@ int  data_frame_contribute(int count, int card);
 int  data_frame_divide(int new_data_size, int card);
 
 int data_copy_frame(void* __user user_buf, void *kern_buf,
-		    int count, int nonblock, int card);
+        int count, int nonblock, int card);
 
 int data_peek_frame(void* __user user_buf, int count, int card,
-                    int *tail, int *partial);
+        int *tail, int *partial);
 
 int data_frame_fake_stop(int card);
 

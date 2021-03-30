@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef __FRAME_H__
 #define __FRAME_H__
 
@@ -19,41 +22,41 @@ different things; e.g. status_v6 might be relevant to header v. 6 and
 
 struct frame_header_abstraction {
 
-	int _size;
+    int _size;
 
-	// If the status bits change meaning, define a new status word
-	// for that header version
+    // If the status bits change meaning, define a new status word
+    // for that header version
 
-	int status_v6;
+    int status_v6;
 
-	int frame_counter;
-	int row_len;
-	int num_rows_reported;
-	int data_rate;
-	int rtz_counter;
-	int header_version;
-	int ramp_value;
-	int ramp_address;
-	int num_rows;
-	int sync_number;
-	int run_id;
-	int user_word;
+    int frame_counter;
+    int row_len;
+    int num_rows_reported;
+    int data_rate;
+    int rtz_counter;
+    int header_version;
+    int ramp_value;
+    int ramp_address;
+    int num_rows;
+    int sync_number;
+    int run_id;
+    int user_word;
 
-	int fpga_block_v6;
-	int card_block_v6;
-	int psc_block_v6;
-	int box_block_v6;
+    int fpga_block_v6;
+    int card_block_v6;
+    int psc_block_v6;
+    int box_block_v6;
 
-	int data_block;
+    int data_block;
 };
 
 typedef struct frame_header_abstraction frame_header_abstraction_t;
 
 #define frame_property( /* u32* */ data, /* struct frame_header_abstraction* */ format, property ) \
-       (data[(format)->property & FRAME_OFFSET_MASK])
+    (data[(format)->property & FRAME_OFFSET_MASK])
 
 #define frame_has_property( /* struct frame_header_abstraction* */ format, property ) \
-       (format->property & FRAME_OFFSET_PRESENT)
+    (format->property & FRAME_OFFSET_PRESENT)
 
 /* Frame descriptions are in frame.c; bit breakouts are defined here */
 

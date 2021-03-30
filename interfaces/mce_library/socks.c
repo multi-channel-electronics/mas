@@ -48,13 +48,13 @@ static int fill_sockaddr(struct sockaddr_in *sa, const char *addr, int port)
     } else
         hostname = addr;
 
-	struct hostent *host = gethostbyname(hostname);
-	if (host==NULL) {
+    struct hostent *host = gethostbyname(hostname);
+    if (host==NULL) {
         free(addr_copy);
         return MASSOCK_NSLOOKUP;
-	}
+    }
 
-	memcpy(&sa->sin_addr.s_addr, host->h_addr, host->h_length);
+    memcpy(&sa->sin_addr.s_addr, host->h_addr, host->h_length);
     sa->sin_family = AF_INET;
 
     sa->sin_port = htons(port);
@@ -157,7 +157,8 @@ int massock_listen(const char *addr)
 int massock_listener_init( listener_t *list, int clients_max,
         int recv_max, int send_max)
 {
-    if (list==NULL) return -1;
+    if (list==NULL)
+        return -1;
 
     memset((void*)list, 0, sizeof(*list));
 
@@ -189,7 +190,8 @@ int massock_listener_init( listener_t *list, int clients_max,
 }
 
 int massock_listener_cleanup( listener_t *list) {
-    if (list==NULL) return -1;
+    if (list==NULL)
+        return -1;
     if (list->clients != NULL)
         free (list->clients);
 
@@ -248,7 +250,8 @@ massock_listen_flags massock_listener_select( listener_t *list )
     if (n < 0)
         return MASSOCK_SELECT;
 
-    if (n==0) return 0;
+    if (n==0)
+        return 0;
 
     // Check for new connections
     massock_listen_flags ret_flags = 0;
@@ -287,8 +290,10 @@ massock_listen_flags massock_listener_select( listener_t *list )
 
 massock_client_t* massock_client_add( listener_t *list, int fd )
 {
-    if (list==NULL) return NULL;
-    if (fd<=0) return NULL;
+    if (list==NULL)
+        return NULL;
+    if (fd<=0)
+        return NULL;
 
     int i;
     for (i=0; i<list->clients_max; i++) {
@@ -328,12 +333,14 @@ massock_listen_flags massock_client_send( massock_client_t *client, char *buf, i
 
     massock_listen_flags retf = 0;
 
-    /* 	if (count > client->send_max - client->send_idx) */
-    /* 		return LISTENER_ERR; */
+#if 0
+    if (count > client->send_max - client->send_idx)
+        return LISTENER_ERR;
 
-    /* 	memcpy(client->send_buf + client_send_idx, buf, count); */
+    memcpy(client->send_buf + client_send_idx, buf, count);
 
-    /* 	int count = client->recv_max - client->recv_idx; */
+    int count = client->recv_max - client->recv_idx;
+#endif
 
     ssize_t err = send(client->fd,
             buf,

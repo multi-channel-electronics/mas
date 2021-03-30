@@ -21,36 +21,36 @@
  *  - set sequence numbers
  *  - send go to selected column(s)
  */
-/*
+#if 0
 void data_setflag(data_thread_t *d, int flag)
 {
-	d->flags |= flag;
+    d->flags |= flag;
 }
 
 void data_clearflag(data_thread_t *d, int flag)
 {
-	d->flags &= ~flag;
+    d->flags &= ~flag;
 }
 
 int data_checkflags(data_thread_t *d, int flags)
 {
-	return d->flags & flags;
+    return d->flags & flags;
 }
 
 int  data_stop(params_t *p, char *errstr)
 {
-	data_setflag(&p->data_data, FLAG_STOP);
+    data_setflag(&p->data_data, FLAG_STOP);
 
-	return command_stop(&p->mce_comms, &p->frame_setup);
+    return command_stop(&p->mce_comms, &p->frame_setup);
 }
 
 int data_reset(params_t *p)
 {
-	data_kill(p);
-	data_clearflag( &p->data_data, FLAG_ALL );
-	return 0;
+    data_kill(p);
+    data_clearflag( &p->data_data, FLAG_ALL );
+    return 0;
 }
-*/
+#endif
 
 
 #define SUBNAME "data_go: "
@@ -63,134 +63,135 @@ int data_reset(params_t *p)
  */
 
 inline int stop_bit(char *packet) {
-	//Stop flag is bit 0 of first word
+    //Stop flag is bit 0 of first word
     return *( (uint32_t*)packet + 0) & 1;
 }
 
- 
+
 void *data_thread(void *p_void)
 {
-	int ret_val;
-	data_thread_t *d =(data_thread_t*) p_void;
+    int ret_val;
+    data_thread_t *d =(data_thread_t*) p_void;
     int size = d->acq->frame_size*sizeof(uint32_t);
-	int fd = d->acq->context->data.fd;
-	mcedata_storage_t *acts = d->acq->storage;
+    int fd = d->acq->context->data.fd;
+    mcedata_storage_t *acts = d->acq->storage;
     uint32_t *data = malloc(size);
-	int done = 0;
+    int done = 0;
 
-	if (data==NULL) {
-		sprintf(d->errstr, "Could not allocate data buffer memory\n");
-		d->state = MCETHREAD_ERROR;
-		return (void*)d;
-	}		
+    if (data==NULL) {
+        sprintf(d->errstr, "Could not allocate data buffer memory\n");
+        d->state = MCETHREAD_ERROR;
+        return (void*)d;
+    }
 
     mcelib_print(d->acq->context, "data_thread: entry");
-	//logger_print(&p->logger, "Data thread starting\n");
+    //logger_print(&p->logger, "Data thread starting\n");
 
-	d->count = 0;
-	d->chksum = 0;
-	d->drop = 0;
+    d->count = 0;
+    d->chksum = 0;
+    d->drop = 0;
 
-	int index = 0;
-	int count = 0;
-	while (!done) {
+    int index = 0;
+    int count = 0;
+    while (!done) {
 
-		if (acts->pre_frame != NULL && acts->pre_frame(d->acq)) {
+        if (acts->pre_frame != NULL && acts->pre_frame(d->acq)) {
             mcelib_warning(d->acq->context, "pre_frame action failed\n");
-		}
-	
-		ret_val = read(fd, (char*)data + index, size - index);
+        }
 
-		if (ret_val<0) {
-			if (errno==EAGAIN) {
-				usleep(1000);
-			} else {
-				// Error: clear rest of frame and quit
+        ret_val = read(fd, (char*)data + index, size - index);
+
+        if (ret_val<0) {
+            if (errno==EAGAIN) {
+                usleep(1000);
+            } else {
+                // Error: clear rest of frame and quit
                 mcelib_error(d->acq->context,
                         "read failed with code %i\n", ret_val);
-				memset((char*)data + index, 0, size - index);
-				done = EXIT_READ;
-				break;
-			}
-		} else if (ret_val==0) {
-			done = EXIT_EOF;
-		} else
-			index += ret_val;
+                memset((char*)data + index, 0, size - index);
+                done = EXIT_READ;
+                break;
+            }
+        } else if (ret_val==0) {
+            done = EXIT_EOF;
+        } else
+            index += ret_val;
 
-		if (d->state == MCETHREAD_STOP)
-			done = EXIT_STOP;
-		
-		// Only dump complete frames to disk
-		if (index < size)
-			continue;
+        if (d->state == MCETHREAD_STOP)
+            done = EXIT_STOP;
 
-		// Logical formatting
-		sort_columns( d->acq, data );
+        // Only dump complete frames to disk
+        if (index < size)
+            continue;
 
-		if ( (acts->post_frame != NULL) && acts->post_frame( d->acq, count, data ) ) {
+        // Logical formatting
+        sort_columns( d->acq, data );
+
+        if ( (acts->post_frame != NULL) && acts->post_frame( d->acq, count, data ) ) {
             mcelib_warning(d->acq->context, "post_frame action failed\n");
-		}
+        }
 
-		index = 0;
-		if (++count >= d->acq->n_frames)
-			done = EXIT_COUNT;
-	}
+        index = 0;
+        if (++count >= d->acq->n_frames)
+            done = EXIT_COUNT;
+    }
 
-	d->state = MCETHREAD_IDLE;
-/*
-	sprintf(errstr, "Data thread exiting with %i of %i expected frames; ",
-		d->count,
-		p->frame_setup.seq_last - p->frame_setup.seq_first + 1);
+    d->state = MCETHREAD_IDLE;
 
-	switch (done) {
-		
-	case EXIT_STOP:
-		strcat(errstr, "user STOP received.\n");
-		break;
+#if 0
+    sprintf(errstr, "Data thread exiting with %i of %i expected frames; ",
+            d->count,
+            p->frame_setup.seq_last - p->frame_setup.seq_first + 1);
 
-	case EXIT_READ:
-		strcat(errstr, "device read error.\n");
-		break;
+    switch (done) {
 
-	case EXIT_WRITE:
-		strcat(errstr, "file write error.\n");
-		break;
+        case EXIT_STOP:
+            strcat(errstr, "user STOP received.\n");
+            break;
 
-	case EXIT_LAST:
-		strcat(errstr, "last frame detected.\n");
-		break;
+        case EXIT_READ:
+            strcat(errstr, "device read error.\n");
+            break;
 
-	case EXIT_EOF:
-		strcat(errstr, "device signaled EOF.\n");
-		break;
+        case EXIT_WRITE:
+            strcat(errstr, "file write error.\n");
+            break;
 
-	default:
-		strcat(errstr, "unexpected loop termination.\n");
-	}
+        case EXIT_LAST:
+            strcat(errstr, "last frame detected.\n");
+            break;
 
-	printf("data_thread: %s\n", errstr);
-	logger_print(&p->logger, errstr);
+        case EXIT_EOF:
+            strcat(errstr, "device signaled EOF.\n");
+            break;
 
-	if (data_refile_stop(&p->datafile)) {
-		sprintf(errstr, "error closing data file '%s'.\n",
-			p->datafile.filename);
-		printf("data_thread: %s\n", errstr);
-		logger_print(&p->logger, errstr);
-	}	
+        default:
+            strcat(errstr, "unexpected loop termination.\n");
+    }
 
-	data_clearflag(d, FLAG_STOP);
-	data_setflag(d, FLAG_DONE);
-	d->done = 1;
-	d->error = err;
-*/
-	return (void*)d;
+    printf("data_thread: %s\n", errstr);
+    logger_print(&p->logger, errstr);
+
+    if (data_refile_stop(&p->datafile)) {
+        sprintf(errstr, "error closing data file '%s'.\n",
+                p->datafile.filename);
+        printf("data_thread: %s\n", errstr);
+        logger_print(&p->logger, errstr);
+    }
+
+    data_clearflag(d, FLAG_STOP);
+    data_setflag(d, FLAG_DONE);
+    d->done = 1;
+    d->error = err;
+#endif
+
+    return (void*)d;
 }
 
 int data_thread_launcher(data_thread_t *d)
 {
-	d->state = MCETHREAD_LAUNCH;
-	int err = pthread_create(&d->thread, NULL, data_thread, (void*)d);
-	
-	return err;
-}
+    d->state = MCETHREAD_LAUNCH;
+    int err = pthread_create(&d->thread, NULL, data_thread, (void*)d);
 
+    return err;
+}
