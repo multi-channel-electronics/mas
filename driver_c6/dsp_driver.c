@@ -22,16 +22,12 @@
 #include <rtai.h>
 #endif
 
-#ifndef OLD_KERNEL
-#  include <linux/dma-mapping.h>
+#include <linux/dma-mapping.h>
 /* Newer 2.6 kernels use IRQF_SHARED instead of SA_SHIRQ */
-#  ifdef IRQF_SHARED
-#    define IRQ_FLAGS IRQF_SHARED
-#  else
-#    define IRQ_FLAGS SA_SHIRQ
-#  endif
+#ifdef IRQF_SHARED
+#  define IRQ_FLAGS IRQF_SHARED
 #else
-#  define IRQ_FLAGS 0
+#  define IRQ_FLAGS SA_SHIRQ
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
@@ -934,23 +930,13 @@ int dsp_set_latency(int card, int value)
 
 void* dsp_allocate_dma(ssize_t size, unsigned long* bus_addr_p)
 {
-#ifdef OLD_KERNEL
-    //FIX_ME: mce will call this with out card info currently
-    return pci_alloc_consistent(dev->pci, size, bus_addr_p);
-#else
     return dma_alloc_coherent(NULL, size, (dma_addr_t*)bus_addr_p,
             GFP_KERNEL);
-#endif
 }
 
 void  dsp_free_dma(void* buffer, int size, unsigned long bus_addr)
 {
-#ifdef OLD_KERNEL
-    //FIX_ME: mce will call this with out card info currently
-    pci_free_consistent (dev->pci, size, buffer, bus_addr);
-#else
     dma_free_coherent(NULL, size, buffer, bus_addr);
-#endif
 }
 
 int dsp_pci_flush()
