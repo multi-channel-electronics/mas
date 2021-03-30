@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
@@ -90,21 +93,21 @@
 
 typedef struct frame_header_struct {
 
-	u32 flags;
-	u32 sequence;
-	u32 row_len;
-	u32 num_rows_rep;
-	u32 data_rate;
-	u32 sync_num; // cc return to 0
-	u32 header_v;
-	u32 ramp_val;
-	u32 ramp_card;
-	u32 num_rows;
-	u32 sync_dv;
-	u32 run_id;
-	u32 user_word;
+    u32 flags;
+    u32 sequence;
+    u32 row_len;
+    u32 num_rows_rep;
+    u32 data_rate;
+    u32 sync_num; // cc return to 0
+    u32 header_v;
+    u32 ramp_val;
+    u32 ramp_card;
+    u32 num_rows;
+    u32 sync_dv;
+    u32 run_id;
+    u32 user_word;
 
-	u32 other[30];
+    u32 other[30];
 
 } frame_header_t;
 
@@ -117,55 +120,55 @@ typedef struct frame_header_struct {
 
 struct mce_state_struct {
 
-	int led[N_LED];
-	u32 data_rate;
-	
-	u32 ret_dat;
-	u32 seq_first;
-	u32 seq_last;
-	u32 num_rows_rep;
-	u32 num_rows;
-	u32 row_len;
-	u32 run_id;
-	u32 user_word;
+    int led[N_LED];
+    u32 data_rate;
 
-	int seq;
+    u32 ret_dat;
+    u32 seq_first;
+    u32 seq_last;
+    u32 num_rows_rep;
+    u32 num_rows;
+    u32 row_len;
+    u32 run_id;
+    u32 user_word;
 
-	frame_header_t header;
-	int frame_size;
-	int frame_ticks;
-	float frame_rate;
+    int seq;
 
-        /* Not the MCE... */
+    frame_header_t header;
+    int frame_size;
+    int frame_ticks;
+    float frame_rate;
 
-	int initialized;
+    /* Not the MCE... */
 
-	struct tasklet_struct msg_tasklet;
+    int initialized;
 
-	int jiffies_counter;
+    struct tasklet_struct msg_tasklet;
 
-	/* HST locking:
-	 *  reply_pending != 0 when command received and reply imminent
-	 *  reply_ready != 0 when reply is ready to be NFYed
-	 *  data_ready != 0 when data is ready to be NFYed
-	 *  notification == PACKET_* indicates type of last NFY, next HST
-         *  - Do not send data packet if reply_pending or reply_ready.
-	 */
+    int jiffies_counter;
 
-	int go_now;
+    /* HST locking:
+     *  reply_pending != 0 when command received and reply imminent
+     *  reply_ready != 0 when reply is ready to be NFYed
+     *  data_ready != 0 when data is ready to be NFYed
+     *  notification == PACKET_* indicates type of last NFY, next HST
+     *  - Do not send data packet if reply_pending or reply_ready.
+     */
 
-	int reply_pending;
-	int reply_ready;
-	int data_ready;
-	int notification;
+    int go_now;
 
-	int timeout_trigger;
+    int reply_pending;
+    int reply_ready;
+    int data_ready;
+    int notification;
 
-	mce_reply reply;
-	int reply_data_count;
+    int timeout_trigger;
 
-	int data_frame[MAX_DATA];
-	int data_size;
+    mce_reply reply;
+    int reply_data_count;
+
+    int data_frame[MAX_DATA];
+    int data_size;
 
 } mce_state;
 
@@ -180,38 +183,38 @@ void fake_data_now(unsigned long arg);
 
 int mce_fake_init( void )
 {
-	tasklet_init(&mce_state.msg_tasklet,
-		     fake_notify_task, (unsigned long)&mce_state);
+    tasklet_init(&mce_state.msg_tasklet,
+            fake_notify_task, (unsigned long)&mce_state);
 
-	mce_state.data_rate = DEFAULT_DATA_RATE;
-	mce_state.num_rows_rep = DEFAULT_NUM_ROWS;
-	mce_state.num_rows = DEFAULT_NUM_ROWS;
-	mce_state.row_len = DEFAULT_ROW_LEN;
+    mce_state.data_rate = DEFAULT_DATA_RATE;
+    mce_state.num_rows_rep = DEFAULT_NUM_ROWS;
+    mce_state.num_rows = DEFAULT_NUM_ROWS;
+    mce_state.row_len = DEFAULT_ROW_LEN;
 
-	mce_state.initialized = INIT_KEY;
+    mce_state.initialized = INIT_KEY;
 
-	return 0;
+    return 0;
 }
 
 int mce_fake_cleanup ( void )
 {
-	tasklet_kill(&mce_state.msg_tasklet);
-	return 0;
+    tasklet_kill(&mce_state.msg_tasklet);
+    return 0;
 }
 
 /* RESET */
 
 int mce_fake_reset( void )
 {
-	// Stop sequencing!
-	dsp_retdat_callback(-1, -1, -1);
-	mce_state.data_ready = 0;
-	mce_state.ret_dat = 0;
-	mce_state.go_now = 0;
+    // Stop sequencing!
+    dsp_retdat_callback(-1, -1, -1);
+    mce_state.data_ready = 0;
+    mce_state.ret_dat = 0;
+    mce_state.go_now = 0;
 
-	tasklet_kill(&mce_state.msg_tasklet);
+    tasklet_kill(&mce_state.msg_tasklet);
 
-	return 0;
+    return 0;
 }
 
 /*
@@ -221,54 +224,55 @@ int mce_fake_reset( void )
 
 int fake_notify( int packet_type )
 {
-	if (mce_state.timeout_trigger) {
-		mce_state.timeout_trigger = 0;
-		return 0;
-	}
+    if (mce_state.timeout_trigger) {
+        mce_state.timeout_trigger = 0;
+        return 0;
+    }
 
-	switch (packet_type) {
+    switch (packet_type) {
 
-	case PACKET_DATA:
-		//Notify now
-		mce_state.notification = PACKET_DATA;
-		dsp_state_nfy_da(mce_state.data_size / sizeof(u32));
-		break;
+        case PACKET_DATA:
+            //Notify now
+            mce_state.notification = PACKET_DATA;
+            dsp_state_nfy_da(mce_state.data_size / sizeof(u32));
+            break;
 
-	case PACKET_REPLY:
-		//Schedule tasklet
-		if (mce_state.initialized != INIT_KEY) return -1;
-		tasklet_schedule(&mce_state.msg_tasklet);
-		break;
+        case PACKET_REPLY:
+            //Schedule tasklet
+            if (mce_state.initialized != INIT_KEY)
+                return -1;
+            tasklet_schedule(&mce_state.msg_tasklet);
+            break;
 
-	default:
-		return -1;
-	}
+        default:
+            return -1;
+    }
 
-	return 0;
+    return 0;
 }
 
 
 void fake_notify_task( unsigned long data )
 {
-	if (mce_state.notification != PACKET_NONE) {
-		PRINT_ERR("fake_notify_task: overwriting outstanding NFY!\n");
-	}
+    if (mce_state.notification != PACKET_NONE) {
+        PRINT_ERR("fake_notify_task: overwriting outstanding NFY!\n");
+    }
 
-	mce_state.notification = PACKET_REPLY;
-	dsp_state_nfy_rp(sizeof(mce_state.reply) / sizeof(u32));
+    mce_state.notification = PACKET_REPLY;
+    dsp_state_nfy_rp(sizeof(mce_state.reply) / sizeof(u32));
 
-	if (mce_state.go_now) {
-		mce_state.go_now = 0;
-		mce_state.frame_size = mce_state.num_rows_rep * 8;
-		if (mce_state.ret_dat == RCS) {
-			mce_state.frame_size *= 4;
-		}
+    if (mce_state.go_now) {
+        mce_state.go_now = 0;
+        mce_state.frame_size = mce_state.num_rows_rep * 8;
+        if (mce_state.ret_dat == RCS) {
+            mce_state.frame_size *= 4;
+        }
 
-		mce_state.frame_ticks = mce_state.num_rows *
-			mce_state.row_len * mce_state.data_rate;
-		dsp_retdat_callback(mce_state.frame_size, mce_state.frame_ticks,
-				    mce_state.seq_last - mce_state.seq_first + 1);
-	}
+        mce_state.frame_ticks = mce_state.num_rows *
+            mce_state.row_len * mce_state.data_rate;
+        dsp_retdat_callback(mce_state.frame_size, mce_state.frame_ticks,
+                mce_state.seq_last - mce_state.seq_first + 1);
+    }
 }
 
 
@@ -276,26 +280,27 @@ void fake_notify_task( unsigned long data )
 
 int mce_fake_host(void *dest)
 {
-	if (dest==NULL) return -1;
-	switch (mce_state.notification) {
+    if (dest==NULL)
+        return -1;
+    switch (mce_state.notification) {
 
-	case PACKET_DATA:
-		memcpy(dest, &mce_state.data_frame, mce_state.data_size);
-		mce_state.data_ready = 0;
-		break;
+        case PACKET_DATA:
+            memcpy(dest, &mce_state.data_frame, mce_state.data_size);
+            mce_state.data_ready = 0;
+            break;
 
-	case PACKET_REPLY:
-		memcpy(dest, &mce_state.reply, sizeof(mce_state.reply));
-		mce_state.reply_ready = 0;
-		break;
+        case PACKET_REPLY:
+            memcpy(dest, &mce_state.reply, sizeof(mce_state.reply));
+            mce_state.reply_ready = 0;
+            break;
 
-	default:
-		PRINT_ERR("mce_fake_host: called with no packet ready\n");
-	}
+        default:
+            PRINT_ERR("mce_fake_host: called with no packet ready\n");
+    }
 
-	mce_state.notification = PACKET_NONE;
+    mce_state.notification = PACKET_NONE;
 
-	return 0;
+    return 0;
 }
 
 
@@ -303,64 +308,64 @@ int mce_fake_host(void *dest)
 
 int fake_data_fill(u32 *data)
 {
-	frame_header_t *header = (frame_header_t*)data;
+    frame_header_t *header = (frame_header_t*)data;
 
-	int card_count, card_start, card, cols, r, c;
-	u32 chksum = 0;
-	
-	if (data==NULL) {
-	  	mce_state.seq++;
-		return 0;
-	}
+    int card_count, card_start, card, cols, r, c;
+    u32 chksum = 0;
 
-	header->flags = (mce_state.seq == mce_state.seq_last);
-	header->sequence = mce_state.seq;
-	header->row_len = mce_state.row_len;
-	header->num_rows_rep = mce_state.num_rows_rep;
-	header->data_rate = mce_state.data_rate;
-	header->num_rows = mce_state.num_rows;
-	header->header_v = HEADER_VERSION;
-	header->run_id = mce_state.run_id;
-	header->user_word = mce_state.user_word;
-	
-	cols = 8;
-	card_count = 1;
+    if (data==NULL) {
+        mce_state.seq++;
+        return 0;
+    }
 
-	if (mce_state.ret_dat == RCS) {
-		card_start = 0;
-		card_count = 4;
-	} else if (mce_state.ret_dat == RC1) {
-		card_start = 0;
-	} else if (mce_state.ret_dat == RC2) {
-		card_start = 1;
-	} else if (mce_state.ret_dat == RC3) {
-		card_start = 2;
-	} else if (mce_state.ret_dat == RC4) {
-		card_start = 3;
-	} else {
-		card_start = 0;
-		card_count = 0;
-	}
+    header->flags = (mce_state.seq == mce_state.seq_last);
+    header->sequence = mce_state.seq;
+    header->row_len = mce_state.row_len;
+    header->num_rows_rep = mce_state.num_rows_rep;
+    header->data_rate = mce_state.data_rate;
+    header->num_rows = mce_state.num_rows;
+    header->header_v = HEADER_VERSION;
+    header->run_id = mce_state.run_id;
+    header->user_word = mce_state.user_word;
 
-	// Cue data to data location while calculating checksum
-	while (data < (u32*) (header + 1) )
-		chksum ^= *(data++);
+    cols = 8;
+    card_count = 1;
 
-	// Write the appointed number of columns
-	for (card = card_start; card < card_start + card_count; card++) {
-		for (r=0; r<mce_state.num_rows_rep ; r++) {
-			for (c = 0; c < cols; c++) {
-				*data = (r << 8) | (c+card*cols);
-				chksum ^= *(data++);
-			}
-		}
-	}
+    if (mce_state.ret_dat == RCS) {
+        card_start = 0;
+        card_count = 4;
+    } else if (mce_state.ret_dat == RC1) {
+        card_start = 0;
+    } else if (mce_state.ret_dat == RC2) {
+        card_start = 1;
+    } else if (mce_state.ret_dat == RC3) {
+        card_start = 2;
+    } else if (mce_state.ret_dat == RC4) {
+        card_start = 3;
+    } else {
+        card_start = 0;
+        card_count = 0;
+    }
 
-	//Write the checksum and increment the frame counter
-	*(data++) = chksum;
-	mce_state.seq++;
+    // Cue data to data location while calculating checksum
+    while (data < (u32*) (header + 1) )
+        chksum ^= *(data++);
 
-	return (int)( (void*)data - (void*)header);
+    // Write the appointed number of columns
+    for (card = card_start; card < card_start + card_count; card++) {
+        for (r=0; r<mce_state.num_rows_rep ; r++) {
+            for (c = 0; c < cols; c++) {
+                *data = (r << 8) | (c+card*cols);
+                chksum ^= *(data++);
+            }
+        }
+    }
+
+    //Write the checksum and increment the frame counter
+    *(data++) = chksum;
+    mce_state.seq++;
+
+    return (int)( (void*)data - (void*)header);
 }
 
 
@@ -381,65 +386,65 @@ void fake_checksum(mce_reply *rep, int n_data);
 
 int  mce_fake_command(void *src)
 {
-	mce_command *cmd = (mce_command*)src;
-	mce_reply   *rep = &mce_state.reply;
+    mce_command *cmd = (mce_command*)src;
+    mce_reply   *rep = &mce_state.reply;
 
-	PRINT_INFO(SUBNAME "entry\n");
+    PRINT_INFO(SUBNAME "entry\n");
 
-	if (cmd==NULL) {
-		PRINT_ERR(SUBNAME "NULL command\n");
-		return -1;
-	}
+    if (cmd==NULL) {
+        PRINT_ERR(SUBNAME "NULL command\n");
+        return -1;
+    }
 
-	if (mce_state.reply_pending || mce_state.reply_ready) {
-		PRINT_ERR(SUBNAME "data/reply packet outstanding...\n");
-		return -1;
-	}
+    if (mce_state.reply_pending || mce_state.reply_ready) {
+        PRINT_ERR(SUBNAME "data/reply packet outstanding...\n");
+        return -1;
+    }
 
-	rep->ok_er = MCE_OK;
-	rep->command = cmd->command;
-	rep->para_id = cmd->para_id;
-	rep->card_id = cmd->card_id;
-	rep->data[0] = 0;    /* errno */
-	mce_state.reply_data_count = 1;
+    rep->ok_er = MCE_OK;
+    rep->command = cmd->command;
+    rep->para_id = cmd->para_id;
+    rep->card_id = cmd->card_id;
+    rep->data[0] = 0;    /* errno */
+    mce_state.reply_data_count = 1;
 
-	switch(cmd->command) {
+    switch(cmd->command) {
 
-	case MCE_WB:
-		fake_writeblock(cmd, rep);
-		break;
+        case MCE_WB:
+            fake_writeblock(cmd, rep);
+            break;
 
-	case MCE_RB:
-		mce_state.reply_data_count = cmd->count;
-		fake_readblock(cmd, rep);
-		break;
+        case MCE_RB:
+            mce_state.reply_data_count = cmd->count;
+            fake_readblock(cmd, rep);
+            break;
 
-	case MCE_GO:
-		fake_go(cmd, rep);
-		break;
+        case MCE_GO:
+            fake_go(cmd, rep);
+            break;
 
-	case MCE_ST:
-		fake_stop(cmd, rep);
-		break;
+        case MCE_ST:
+            fake_stop(cmd, rep);
+            break;
 
-	case MCE_RS:
-		//Um...
-		break;
+        case MCE_RS:
+            //Um...
+            break;
 
-	default:
-		rep->ok_er = MCE_ER;
-	}
+        default:
+            rep->ok_er = MCE_ER;
+    }
 
-	if (rep->ok_er == MCE_ER) {
-		rep->data[0] = 0xffffffff;
-		mce_state.reply_data_count = 1;
-	}
+    if (rep->ok_er == MCE_ER) {
+        rep->data[0] = 0xffffffff;
+        mce_state.reply_data_count = 1;
+    }
 
-	fake_checksum(rep, mce_state.reply_data_count);
+    fake_checksum(rep, mce_state.reply_data_count);
 
-	fake_notify(PACKET_REPLY);
+    fake_notify(PACKET_REPLY);
 
-	return 0;
+    return 0;
 }
 
 #undef SUBNAME
@@ -449,67 +454,70 @@ int  mce_fake_command(void *src)
 
 int fake_writeblock(const mce_command *cmd, mce_reply *rep)
 {
-	int card = cmd->card_id;
+    int card = cmd->card_id;
 
-	PRINT_INFO(SUBNAME "entry\n");
+    PRINT_INFO(SUBNAME "entry\n");
 
-	switch(cmd->para_id) {
+    switch(cmd->para_id) {
 
-	case LED:
-		if (card < 0 || card >= N_LED) break;
-		mce_state.led[card] ^= cmd->data[0];
-		break;
+        case LED:
+            if (card < 0 || card >= N_LED)
+                break;
+            mce_state.led[card] ^= cmd->data[0];
+            break;
 
-	case DATA_RATE:
-		if (card == CC) {
-			mce_state.data_rate = cmd->data[0];
-			
-			if (cmd->data[0] >= MIN_DATA_RATE) {
-				mce_state.data_rate = cmd->data[0];
-			} else {
-				PRINT_ERR(SUBNAME "data_rate too high, max "
-					  "freq is %i HZ = %#x units\n",
-					  HZ, MIN_DATA_RATE);
-				mce_state.data_rate = MIN_DATA_RATE;
-			}				
-		} 
-		break;
+        case DATA_RATE:
+            if (card == CC) {
+                mce_state.data_rate = cmd->data[0];
 
-	case RET_DAT_S:
-		mce_state.seq_first = cmd->data[0];
-		mce_state.seq_last  = cmd->data[1];
-		break;
+                if (cmd->data[0] >= MIN_DATA_RATE) {
+                    mce_state.data_rate = cmd->data[0];
+                } else {
+                    PRINT_ERR(SUBNAME "data_rate too high, max "
+                            "freq is %i HZ = %#x units\n",
+                            HZ, MIN_DATA_RATE);
+                    mce_state.data_rate = MIN_DATA_RATE;
+                }
+            }
+            break;
 
-	case NUM_ROWS_REPORTED:
-		mce_state.num_rows_rep = cmd->data[0];
-		break;
+        case RET_DAT_S:
+            mce_state.seq_first = cmd->data[0];
+            mce_state.seq_last  = cmd->data[1];
+            break;
 
-	case NUM_ROWS:
-		mce_state.num_rows = cmd->data[0];
-		break;
+        case NUM_ROWS_REPORTED:
+            mce_state.num_rows_rep = cmd->data[0];
+            break;
 
-	case ROW_LEN:
-		mce_state.row_len = cmd->data[0];
-		break;
+        case NUM_ROWS:
+            mce_state.num_rows = cmd->data[0];
+            break;
 
-	case USER_WORD:
-		mce_state.user_word = cmd->data[0];
-		break;
+        case ROW_LEN:
+            mce_state.row_len = cmd->data[0];
+            break;
 
-	case RUN_ID:
-		mce_state.run_id = cmd->data[0];
-		break;
+        case USER_WORD:
+            mce_state.user_word = cmd->data[0];
+            break;
 
-/* 	case TIMER_OUT: /\* select_clk ! *\/ */
-/* 		/\* This will cause the command to timeout, useful for testing *\/ */
-/* 		mce_state.timeout_trigger = 1; */
-/* 		break; */
+        case RUN_ID:
+            mce_state.run_id = cmd->data[0];
+            break;
 
-/* 	default: */
-/* 		//Who am I to stop you? */
-		
-	}
-	return 0;
+#if 0
+        case TIMER_OUT: /* select_clk ! */
+            /* This will cause the command to timeout, useful for testing */
+            mce_state.timeout_trigger = 1;
+            break;
+
+        default:
+            //Who am I to stop you?
+#endif
+
+    }
+    return 0;
 }
 
 #undef SUBNAME
@@ -517,112 +525,119 @@ int fake_writeblock(const mce_command *cmd, mce_reply *rep)
 
 int fake_readblock(const mce_command *cmd, mce_reply *rep)
 {
-	int card = cmd->card_id;
-	int i;	
+    int card = cmd->card_id;
+    int i;
 
-	switch(cmd->para_id) {
+    switch(cmd->para_id) {
 
-	case LED:
-		if (card < 0 || card >= N_LED) break;
-		rep->data[0] = mce_state.led[card];
-		break;
+        case LED:
+            if (card < 0 || card >= N_LED)
+                break;
+            rep->data[0] = mce_state.led[card];
+            break;
 
-	case FW_REV:
-		rep->data[0] = 0xde00ad;
-		break;
+        case FW_REV:
+            rep->data[0] = 0xde00ad;
+            break;
 
-	case RET_DAT_S:
-		rep->data[0] = mce_state.seq_first;
-		rep->data[1] = mce_state.seq_last;
-		break;
+        case RET_DAT_S:
+            rep->data[0] = mce_state.seq_first;
+            rep->data[1] = mce_state.seq_last;
+            break;
 
-	case NUM_ROWS_REPORTED:
-		rep->data[0] = mce_state.num_rows_rep;
-		break;
+        case NUM_ROWS_REPORTED:
+            rep->data[0] = mce_state.num_rows_rep;
+            break;
 
-	case NUM_ROWS:
-		rep->data[0] = mce_state.num_rows;
-		break;
+        case NUM_ROWS:
+            rep->data[0] = mce_state.num_rows;
+            break;
 
-	case ROW_LEN:
-		rep->data[0] = mce_state.row_len;
-		break;
+        case ROW_LEN:
+            rep->data[0] = mce_state.row_len;
+            break;
 
-	case DATA_RATE:
-		rep->data[0] = mce_state.data_rate;
-		break;
+        case DATA_RATE:
+            rep->data[0] = mce_state.data_rate;
+            break;
 
-	case USER_WORD:
-		rep->data[0] = mce_state.user_word;
-		break;
+        case USER_WORD:
+            rep->data[0] = mce_state.user_word;
+            break;
 
-	case RUN_ID:
-		rep->data[0] = mce_state.run_id;
-		break;
+        case RUN_ID:
+            rep->data[0] = mce_state.run_id;
+            break;
 
 
-	default:
-		//Here, have some data.
-		for (i=0; i<cmd->count; i++)
-			rep->data[i] = i;
-	}
+        default:
+            //Here, have some data.
+            for (i=0; i<cmd->count; i++)
+                rep->data[i] = i;
+    }
 
-	return 0;
+    return 0;
 }
 
 
 int fake_go(const mce_command *cmd, mce_reply *rep)
 {
-	int card = cmd->card_id;
+    int card = cmd->card_id;
 
-	switch(cmd->para_id) {
+    switch(cmd->para_id) {
 
-	case RET_DAT:
-		mce_state.go_now = 1;
-		mce_state.ret_dat = card;
-		mce_state.seq = mce_state.seq_first;
+        case RET_DAT:
+            mce_state.go_now = 1;
+            mce_state.ret_dat = card;
+            mce_state.seq = mce_state.seq_first;
 
-		// I THINK YOU SHOULD GO NOW //
+            // I THINK YOU SHOULD GO NOW //
 
-		PRINT_INFO("fake_go! card=%x, frames %i %i\n",
-			  card, mce_state.seq_first, mce_state.seq_last);
-		
-		break;
+            PRINT_INFO("fake_go! card=%x, frames %i %i\n",
+                    card, mce_state.seq_first, mce_state.seq_last);
 
-/* 	default: */
-/* 		//Who am I to stop you? */
-	}
-	return 0;
+            break;
+
+#if 0
+        default:
+            //Who am I to stop you?
+#endif
+    }
+    return 0;
 }
 
 int fake_stop(const mce_command *cmd, mce_reply *rep)
 {
-	switch(cmd->para_id) {
+    switch(cmd->para_id) {
 
-	case RET_DAT:
-		// PLEASE STOP //
+        case RET_DAT:
+            // PLEASE STOP //
 
-		PRINT_INFO("fake_stop. card=%x\n", cmd->card_id);
-		
-		dsp_retdat_callback(-1, -1, -1);
-		mce_state.data_ready = 0;
-		mce_state.ret_dat = 0;
-		mce_state.go_now = 0;
+            PRINT_INFO("fake_stop. card=%x\n", cmd->card_id);
 
-		break;
+            dsp_retdat_callback(-1, -1, -1);
+            mce_state.data_ready = 0;
+            mce_state.ret_dat = 0;
+            mce_state.go_now = 0;
 
-/* 	default: */
-/* 		//Who am I to stop you? */
-	}
-	return 0;
+            break;
+
+#if 0
+        default:
+            //Who am I to stop you?
+#endif
+    }
+    return 0;
 }
 
 
 void fake_checksum(mce_reply *rep, int n_data)
 {
-	int sum = 0;
-	u32 *d = (u32*)rep;
-	while ( d < rep->data + n_data ) sum ^= *(d++);
-	*(d++) = sum;
-	while ( d < rep->data + MCE_REP_DATA_MAX ) *(d++) = 0;
+    int sum = 0;
+    u32 *d = (u32*)rep;
+    while ( d < rep->data + n_data )
+        sum ^= *(d++);
+    *(d++) = sum;
+    while ( d < rep->data + MCE_REP_DATA_MAX )
+        *(d++) = 0;
 }

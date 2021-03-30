@@ -22,7 +22,7 @@ static int dirfile_init(unsigned long user_data, const options_t *options)
     dirfile_t *dirfile = (dirfile_t*)user_data;
     dirfile->out = stdout;
 
-    if (dirfile->options->output_on && 
+    if (dirfile->options->output_on &&
             (dirfile->out=fopen(dirfile->options->output_file, "w")) == NULL) {
         fprintf(stderr, "MAS mcestatus could not open '%s' for output.\n",
                 dirfile->options->output_file);

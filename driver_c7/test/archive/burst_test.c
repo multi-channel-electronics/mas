@@ -101,7 +101,8 @@ int main(void) {
             j = read_io(HRXS);
             i+=1;
             n_to_read -= 1;
-            if (n_to_read==0) break;
+            if (n_to_read==0)
+                break;
         }
         /* printf("  burst of %i (%i)\n", i, j); */
         /* dump_regs(); */

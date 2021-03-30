@@ -26,34 +26,34 @@
 #endif
 
 #define USAGE \
-"dsp_cmd [-i] [-q] [-p] [-n CARD] [-f FILE | -x COMMAND]\n" \
-"dsp_cmd [-h | -?]\n" \
-"\n" \
-"where:\n" \
-" -h / -?    show this help screen\n" \
-" -i         interactive mode\n" \
-" -q         quiet mode (report errors only)\n" \
-" -p         don't prefix output lines\n" \
-" -f FILE    read commands from FILE\n" \
-USAGE_OPTION_N \
-" -x COMMAND execute command COMMAND\n"
+    "dsp_cmd [-i] [-q] [-p] [-n CARD] [-f FILE | -x COMMAND]\n" \
+    "dsp_cmd [-h | -?]\n" \
+    "\n" \
+    "where:\n" \
+    " -h / -?    show this help screen\n" \
+    " -i         interactive mode\n" \
+    " -q         quiet mode (report errors only)\n" \
+    " -p         don't prefix output lines\n" \
+    " -f FILE    read commands from FILE\n" \
+    USAGE_OPTION_N \
+    " -x COMMAND execute command COMMAND\n"
 
 mce_context_t *mce;
 
 enum {
-	ENUM_COMMAND_LOW,
-	COMMAND_VER,
-	COMMAND_RDM,
-	COMMAND_WRM,
-	COMMAND_RST,
+    ENUM_COMMAND_LOW,
+    COMMAND_VER,
+    COMMAND_RDM,
+    COMMAND_WRM,
+    COMMAND_RST,
     COMMAND_PCIRST, /* obsolete in U0107 */
-	COMMAND_RCO,
-	COMMAND_QTS,    /* obsolete in U0107 */
-	ENUM_COMMAND_HIGH,
-	SPECIAL_COMMENT,
-	SPECIAL_SLEEP,
-	SPECIAL_RESETFLAGS,
-	DATA
+    COMMAND_RCO,
+    COMMAND_QTS,    /* obsolete in U0107 */
+    ENUM_COMMAND_HIGH,
+    SPECIAL_COMMENT,
+    SPECIAL_SLEEP,
+    SPECIAL_RESETFLAGS,
+    DATA
 };
 
 mascmdtree_opt_t anything_opts[] = {
@@ -127,16 +127,16 @@ mascmdtree_opt_t root_opts[] = {
 };
 
 typedef struct option_struct {
-	int interactive;
-	int nonzero_only;
-	int no_prefix;
+    int interactive;
+    int nonzero_only;
+    int no_prefix;
     int fibre_card;
 
-	char batch_file[LINE_LEN];
-	int  batch_now;
+    char batch_file[LINE_LEN];
+    int  batch_now;
 
-	char cmd_command[LINE_LEN];
-	int  cmd_now;
+    char cmd_command[LINE_LEN];
+    int  cmd_now;
 
 } option_t;
 
@@ -149,24 +149,25 @@ void uppify(char *s);
 
 int main(int argc, char **argv)
 {
-	int done = 0;
-	int err = 0;
-	char errmsg[1024];
-	char premsg[1024];
+    int done = 0;
+    int err = 0;
+    char errmsg[1024];
+    char premsg[1024];
 
-	int line_count = 0;
-	FILE *fin = stdin;
-	char *line = (char*) malloc(LINE_LEN);
+    int line_count = 0;
+    FILE *fin = stdin;
+    char *line = (char*) malloc(LINE_LEN);
 
     option_t options = {
-      .fibre_card = -1,
+        .fibre_card = -1,
     };
 
-	if (process_options(argc, argv, &options)) return 1;
+    if (process_options(argc, argv, &options))
+        return 1;
 
-	if (!options.nonzero_only) {
+    if (!options.nonzero_only) {
         printf("This is dsp_cmd version %s\n", VERSION_STRING);
-	}
+    }
 
     mce = mcelib_create(options.fibre_card, NULL, 0);
     if (mce == NULL) {
@@ -178,234 +179,244 @@ int main(int argc, char **argv)
     if ((err = mcedsp_open(mce)) != 0) {
         fprintf(stderr, "Could not open DSP device: %s\n",
                 mcedsp_error_string(err));
-		exit(1);
-	}
+        exit(1);
+    }
 
 
 
-	while (!done) {
+    while (!done) {
 
-		size_t n = LINE_LEN;
+        size_t n = LINE_LEN;
 
-		if ( options.cmd_now ) {
-			strcpy(line, options.cmd_command);
-			done = 1;
-		} else {
+        if ( options.cmd_now ) {
+            strcpy(line, options.cmd_command);
+            done = 1;
+        } else {
 
-			int ret = getline(&line, &n, fin);
-			if (ret == -1 || n==0 || feof(fin)) break;
+            int ret = getline(&line, &n, fin);
+            if (ret == -1 || n==0 || feof(fin))
+                break;
 
-			n = strlen(line);
-			if (line[n-1]=='\n') line[--n]=0;
-			line_count++;
-		}
+            n = strlen(line);
+            if (line[n-1]=='\n')
+                line[--n]=0;
+            line_count++;
+        }
 
-		if (options.no_prefix)
-			premsg[0] = 0;
-		else
-			sprintf(premsg, "Line %3i : ", line_count);
-		errmsg[0] = 0;
+        if (options.no_prefix)
+            premsg[0] = 0;
+        else
+            sprintf(premsg, "Line %3i : ", line_count);
+        errmsg[0] = 0;
 
         mascmdtree_token_t args[NARGS];
-		args[0].n = 0;
-		int err = 0;
+        args[0].n = 0;
+        int err = 0;
 
         mascmdtree_debug = 0;
 
         err = mascmdtree_tokenize(args, line, NARGS);
-		if (err) {
-			strcpy(errmsg, "could not tokenize");
-		}
+        if (err) {
+            strcpy(errmsg, "could not tokenize");
+        }
 
-		if (!err) {
+        if (!err) {
             int count = mascmdtree_select( args, root_opts, errmsg);
 
-			if (count < 0) {
-				err = -1;
-			} else if (count == 0) {
+            if (count < 0) {
+                err = -1;
+            } else if (count == 0) {
                 if (options.interactive || args->n > 0) {
                     mascmdtree_list(errmsg, root_opts,
                             "dsp_cmd expects argument from [ ", " ", "]");
-					err = -1;
-				}
-			} else {
+                    err = -1;
+                }
+            } else {
                 err = process_command(root_opts, args, errmsg);
-				if (err==0) err = 1;
-			}
-		}
+                if (err==0)
+                    err = 1;
+            }
+        }
 
-		if (err > 0) {
-			if (*errmsg == 0) {
-				if (!options.nonzero_only)
-					printf("%sok\n", premsg);
-			} else {
-				printf("%sok : %s\n", premsg, errmsg);
-			}
-		} else if (err < 0) {
-			printf("%serror : %s\n", premsg, errmsg);
-			if (options.interactive)
-				continue;
-			return 1;
-		}
-	}
+        if (err > 0) {
+            if (*errmsg == 0) {
+                if (!options.nonzero_only)
+                    printf("%sok\n", premsg);
+            } else {
+                printf("%sok : %s\n", premsg, errmsg);
+            }
+        } else if (err < 0) {
+            printf("%serror : %s\n", premsg, errmsg);
+            if (options.interactive)
+                continue;
+            return 1;
+        }
+    }
 
-	if (!options.cmd_now)
-		printf("EOF after %i lines\n", line_count);
+    if (!options.cmd_now)
+        printf("EOF after %i lines\n", line_count);
 
     mcedsp_close(mce);
 
-	return err;
+    return err;
 }
 
 
 int  process_options(int argc, char **argv, option_t *options)
 {
-	int option;
-	char *s;
-	while ( (option = getopt(argc, argv, "?hiqpf:d:n:x")) >=0) {
+    int option;
+    char *s;
+    while ( (option = getopt(argc, argv, "?hiqpf:d:n:x")) >=0) {
 
-		switch(option) {
-		case '?':
-		case 'h':
-            puts(USAGE);
-            exit(0);
+        switch(option) {
+            case '?':
+            case 'h':
+                puts(USAGE);
+                exit(0);
 
-		case 'i':
-			options->interactive = 1;
-			break;
+            case 'i':
+                options->interactive = 1;
+                break;
 
-		case 'q':
-			options->nonzero_only = 1;
-			break;
+            case 'q':
+                options->nonzero_only = 1;
+                break;
 
-		case 'p':
-			options->no_prefix = 1;
-			break;
+            case 'p':
+                options->no_prefix = 1;
+                break;
 
-		case 'f':
-			strcpy(options->batch_file, optarg);
-			options->batch_now = 1;
-			break;
+            case 'f':
+                strcpy(options->batch_file, optarg);
+                options->batch_now = 1;
+                break;
 
-        case 'n':
-            options->fibre_card = atoi(optarg);
-            break;
+            case 'n':
+                options->fibre_card = atoi(optarg);
+                break;
 
-		case 'x':
-			s = options->cmd_command;
-			while (optind < argc) {
-				s += sprintf(s, "%s ", argv[optind++]);
-			}
-			options->cmd_now = 1;
-			break;
+            case 'x':
+                s = options->cmd_command;
+                while (optind < argc) {
+                    s += sprintf(s, "%s ", argv[optind++]);
+                }
+                options->cmd_now = 1;
+                break;
 
-		default:
-            printf("Unimplemented option '-%c'!\n", option);
-            puts(USAGE);
-            return -1;
-		}
-	}
+            default:
+                printf("Unimplemented option '-%c'!\n", option);
+                puts(USAGE);
+                return -1;
+        }
+    }
 
-	return 0;
+    return 0;
 }
 
 void uppify(char *s) {
-	if (s==NULL || *(s--)==0) return;
-	while (*(++s)!=0) {
-		if (*s<'a' || *s>'z') continue;
-		*s += 'A' - 'a';
-	}
+    if (s==NULL || *(s--)==0)
+        return;
+    while (*(++s)!=0) {
+        if (*s >= 'a' && *s <= 'z')
+            *s += 'A' - 'a';
+    }
 }
 
 
 int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
         char *errmsg)
 {
-	int ret_val = 0;
-	int err = 0;
+    int ret_val = 0;
+    int err = 0;
 
-	int is_command = (tokens[0].value >= ENUM_COMMAND_LOW &&
-			  tokens[0].value < ENUM_COMMAND_HIGH);
+    int is_command = (tokens[0].value >= ENUM_COMMAND_LOW &&
+            tokens[0].value < ENUM_COMMAND_HIGH);
 
-	if (is_command) {
+    if (is_command) {
 
-		switch( tokens[0].value ) {
+        switch( tokens[0].value ) {
 
-		case COMMAND_VER:
-            err = mcedsp_version(mce);
-            if (err >= 0) {
-				sprintf(errmsg, "version = %#x", err);
-				err = 0;
-			}
-			break;
+            case COMMAND_VER:
+                err = mcedsp_version(mce);
+                if (err >= 0) {
+                    sprintf(errmsg, "version = %#x", err);
+                    err = 0;
+                }
+                break;
 
-		case COMMAND_RDM:
-            err = mcedsp_read_word(mce, tokens[1].value, tokens[2].value);
-            if (err >= 0) {
-				sprintf(errmsg, "%s[%#x] = %#x",
-					mcedsp_memtoa(tokens[1].value),
-					tokens[2].value, err);
-				err = 0;
-			}
-			break;
+            case COMMAND_RDM:
+                err = mcedsp_read_word(mce, tokens[1].value, tokens[2].value);
+                if (err >= 0) {
+                    sprintf(errmsg, "%s[%#x] = %#x",
+                            mcedsp_memtoa(tokens[1].value),
+                            tokens[2].value, err);
+                    err = 0;
+                }
+                break;
 
-		case COMMAND_WRM:
-            err = mcedsp_write_word(mce, tokens[1].value,
-						 tokens[2].value, tokens[3].value);
-			if (err >= 0) err = 0;
-			break;
+            case COMMAND_WRM:
+                err = mcedsp_write_word(mce, tokens[1].value,
+                        tokens[2].value, tokens[3].value);
+                if (err >= 0)
+                    err = 0;
+                break;
 
-		case COMMAND_PCIRST:
-            err = mcedsp_hard_reset(mce);
-			if (err >= 0) err = 0;
-			break;
+            case COMMAND_PCIRST:
+                err = mcedsp_hard_reset(mce);
+                if (err >= 0)
+                    err = 0;
+                break;
 
-		case COMMAND_RST:
-            err = mcedsp_reset(mce);
-			if (err >= 0) err = 0;
-			break;
+            case COMMAND_RST:
+                err = mcedsp_reset(mce);
+                if (err >= 0)
+                    err = 0;
+                break;
 
-		case COMMAND_RCO:
-            err = mcedsp_reset_mce(mce);
-			if (err >= 0) err = 0;
-			break;
+            case COMMAND_RCO:
+                err = mcedsp_reset_mce(mce);
+                if (err >= 0)
+                    err = 0;
+                break;
 
-		case COMMAND_QTS:
-            err = mcedsp_qt_set(mce, tokens[1].value, tokens[2].value,
-					 tokens[3].value);
-			if (err >= 0) err = 0;
-			break;
-		default:
-			sprintf(errmsg, "command not implemented");
-			return -1;
-		}
+            case COMMAND_QTS:
+                err = mcedsp_qt_set(mce, tokens[1].value, tokens[2].value,
+                        tokens[3].value);
+                if (err >= 0)
+                    err = 0;
+                break;
+            default:
+                sprintf(errmsg, "command not implemented");
+                return -1;
+        }
 
-		if (err!=0 && errmsg[0] == 0) {
-			sprintf(errmsg, "dsp library error -%#08x : %s", -err,
-				mcedsp_error_string(err));
-			ret_val = -1;
-		}
+        if (err!=0 && errmsg[0] == 0) {
+            sprintf(errmsg, "dsp library error -%#08x : %s", -err,
+                    mcedsp_error_string(err));
+            ret_val = -1;
+        }
 
-	} else {
+    } else {
 
-		switch( tokens[0].value ) {
+        switch( tokens[0].value ) {
 
-		case SPECIAL_COMMENT:
-			break;
+            case SPECIAL_COMMENT:
+                break;
 
-		case SPECIAL_SLEEP:
-			usleep(tokens[1].value);
-			break;
+            case SPECIAL_SLEEP:
+                usleep(tokens[1].value);
+                break;
 
-		case SPECIAL_RESETFLAGS:
-            ret_val = mcedsp_reset_flags(mce);
-			if (ret_val < 0) break;
-			break;
+            case SPECIAL_RESETFLAGS:
+                ret_val = mcedsp_reset_flags(mce);
+                if (ret_val < 0)
+                    break;
+                break;
 
-		default:
-			sprintf(errmsg, "command not implemented");
-		}
-	}
+            default:
+                sprintf(errmsg, "command not implemented");
+        }
+    }
 
-	return ret_val;
+    return ret_val;
 }

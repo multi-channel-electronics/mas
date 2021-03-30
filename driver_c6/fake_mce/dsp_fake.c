@@ -1,11 +1,14 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /*
-  dsp_fake.c
+   dsp_fake.c
 
-  This replaces dsp_pci.c by providing routines that imitate the
-  astrocam DSP card behaviour.  Sort of.  Ok, it doesn't do a very
-  good job of imitating the DSP, but it will trigger MCE command
-  loading and handle the generation of "interrupts" due to MCE
-  replies.
+   This replaces dsp_pci.c by providing routines that imitate the
+   astrocam DSP card behaviour.  Sort of.  Ok, it doesn't do a very
+   good job of imitating the DSP, but it will trigger MCE command
+   loading and handle the generation of "interrupts" due to MCE
+   replies.
 
 */
 
@@ -37,41 +40,41 @@
 
 
 /*
-  DSP command sending framework
+   DSP command sending framework
 
-  - The most straight-forward approach to sending DSP commands is to
-    call dsp_command with pointers to the full dsp_command structure
-    and an empty dsp_message structure.
+   - The most straight-forward approach to sending DSP commands is to
+   call dsp_command with pointers to the full dsp_command structure
+   and an empty dsp_message structure.
 
-  - A non-blocking version of the above that allows the caller to
-    specify a callback routine that will be run upon receipt of the
-    DSP ack/err interrupt message is exposed as dsp_command_nonblock.
-    The calling module must notify the dsp module that the message has
-    been processed by calling dsp_clear_commflags; this cannot be done
-    from within the callback routine!
+   - A non-blocking version of the above that allows the caller to
+   specify a callback routine that will be run upon receipt of the
+   DSP ack/err interrupt message is exposed as dsp_command_nonblock.
+   The calling module must notify the dsp module that the message has
+   been processed by calling dsp_clear_commflags; this cannot be done
+   from within the callback routine!
 
-  - The raw, no-semaphore-obtaining, no-flag-checking-or-setting,
-    non-invalid-command-rejecting command issuer is dsp_command_now.
-    Don't use it.  Only I'm allowed to use it.
+   - The raw, no-semaphore-obtaining, no-flag-checking-or-setting,
+   non-invalid-command-rejecting command issuer is dsp_command_now.
+   Don't use it.  Only I'm allowed to use it.
 
 */
 
 
 #define SUBNAME "dsp_send_command_now: "
 
-int dsp_send_command_now(dsp_command *cmd) 
+int dsp_send_command_now(dsp_command *cmd)
 {
-	if (dsp_state_command(cmd)) {
-		PRINT_ERR(SUBNAME "dsp_state_command failed!?\n");
-		return -1;
-	}
-	return 0;
+    if (dsp_state_command(cmd)) {
+        PRINT_ERR(SUBNAME "dsp_state_command failed!?\n");
+        return -1;
+    }
+    return 0;
 }
 
 #undef SUBNAME
 
 
-	
+
 
 /******************************************************************/
 
@@ -79,20 +82,22 @@ int dsp_send_command_now(dsp_command *cmd)
 void* dsp_allocate_dma(ssize_t size, unsigned int* bus_addr_p)
 {
 #ifdef OLD_KERNEL
-	void *ptr = kmalloc(size, GFP_KERNEL);
-	if (ptr != NULL) *bus_addr_p = virt_to_bus(ptr);
-	return ptr;
+    void *ptr = kmalloc(size, GFP_KERNEL);
+    if (ptr != NULL)
+        *bus_addr_p = virt_to_bus(ptr);
+    return ptr;
 #else
-	return dma_alloc_coherent(NULL, size, bus_addr_p, GFP_KERNEL);
+    return dma_alloc_coherent(NULL, size, bus_addr_p, GFP_KERNEL);
 #endif
 }
 
 void  dsp_free_dma(void* buffer, int size, unsigned int bus_addr)
 {
 #ifdef OLD_KERNEL
-	if (buffer!=NULL) kfree(buffer);
+    if (buffer!=NULL)
+        kfree(buffer);
 #else
-	dma_free_coherent(NULL, size, buffer, bus_addr);
+    dma_free_coherent(NULL, size, buffer, bus_addr);
 #endif
 }
 
@@ -102,17 +107,18 @@ void  dsp_free_dma(void* buffer, int size, unsigned int bus_addr)
 
 int dsp_fake_init(char *dev_name)
 {
-	int err = -1;
-	PRINT_INFO(SUBNAME "entry\n");
+    int err = -1;
+    PRINT_INFO(SUBNAME "entry\n");
 
-	mce_fake_init();
-	dsp_state_init();
-	dsp_state_set_handler(dsp_int_handler);
+    mce_fake_init();
+    dsp_state_init();
+    dsp_state_set_handler(dsp_int_handler);
 
-	err = 0;
-// out:
-	if (err==0) PRINT_INFO(SUBNAME "ok\n");
-	return err;
+    err = 0;
+    // out:
+    if (err==0)
+        PRINT_INFO(SUBNAME "ok\n");
+    return err;
 }
 
 #undef SUBNAME
@@ -120,49 +126,49 @@ int dsp_fake_init(char *dev_name)
 
 int dsp_fake_cleanup()
 {
-	mce_fake_cleanup();
-	dsp_state_cleanup();
+    mce_fake_cleanup();
+    dsp_state_cleanup();
 
-	return 0;
+    return 0;
 }
 
 #define SUBNAME "dsp_fake_ioctl: "
 
 int dsp_pci_ioctl(unsigned int iocmd, unsigned long arg)
 {
-	switch (iocmd) {
-	case DSPDEV_IOCT_CORE:
-		
-		PRINT_IOCT(SUBNAME "Fake_DSP doesn't have registers!\n");
-		
-		break;
+    switch (iocmd) {
+        case DSPDEV_IOCT_CORE:
 
-	case DSPDEV_IOCT_CORE_IRQ:
+            PRINT_IOCT(SUBNAME "Fake_DSP doesn't have registers!\n");
 
-		PRINT_IOCT(SUBNAME "Fake_DSP can't dis/enable irq!\n");
+            break;
 
-		break;
+        case DSPDEV_IOCT_CORE_IRQ:
 
-	default:
-		PRINT_ERR(SUBNAME "I don't handle iocmd=%ui\n", iocmd);
-		return -1;
-	}
+            PRINT_IOCT(SUBNAME "Fake_DSP can't dis/enable irq!\n");
 
-	return 0;
+            break;
+
+        default:
+            PRINT_ERR(SUBNAME "I don't handle iocmd=%ui\n", iocmd);
+            return -1;
+    }
+
+    return 0;
 }
 
 int dsp_pci_proc(char *buf, int count)
 {
-	int len = 0;
-	if (len < count) {
-		len += sprintf(buf+len, "    (pci emulator!)\n");
-		len += sprintf(buf+len, "    qt_enabled:  %7i\n", dsp_state.qt_data.enabled);
-		len += sprintf(buf+len, "    qt_number:   %7i\n", dsp_state.qt_data.number);
-		len += sprintf(buf+len, "    qt_head:     %7i\n", dsp_state.qt_data.head);
-		len += sprintf(buf+len, "    qt_tail:     %7i\n", dsp_state.qt_data.tail);
-		len += sprintf(buf+len, "    qt_inform:   %7i\n", dsp_state.qt_data.inform);
-		len += sprintf(buf+len, "    qt_period:   %7i\n", dsp_state.qt_data.period);
-	}
-	
-	return len;
+    int len = 0;
+    if (len < count) {
+        len += sprintf(buf+len, "    (pci emulator!)\n");
+        len += sprintf(buf+len, "    qt_enabled:  %7i\n", dsp_state.qt_data.enabled);
+        len += sprintf(buf+len, "    qt_number:   %7i\n", dsp_state.qt_data.number);
+        len += sprintf(buf+len, "    qt_head:     %7i\n", dsp_state.qt_data.head);
+        len += sprintf(buf+len, "    qt_tail:     %7i\n", dsp_state.qt_data.tail);
+        len += sprintf(buf+len, "    qt_inform:   %7i\n", dsp_state.qt_data.inform);
+        len += sprintf(buf+len, "    qt_period:   %7i\n", dsp_state.qt_data.period);
+    }
+
+    return len;
 }

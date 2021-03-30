@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _LOGGER_H_
 #define _LOGGER_H_
 
@@ -15,7 +18,7 @@ struct params_struct;
 
 typedef struct {
 
-	char name[MEDLEN];
+    char name[MEDLEN];
 
 } log_client_t;
 
@@ -24,20 +27,20 @@ typedef struct {
 
 typedef struct params_struct {
 
-	char serve_address[MEDLEN];
-	int  sock;
-	int  daemon;
-	int  level;
+    char serve_address[MEDLEN];
+    int  sock;
+    int  daemon;
+    int  level;
 
-	char filename[MEDLEN];
-	FILE *out;
-	int  flags;
+    char filename[MEDLEN];
+    FILE *out;
+    int  flags;
 #define    FLAG_FLUSH 0x0001
 #define    FLAG_QUIT  0x8000
 #define    FLAG_ALL   0xffff
 
-	log_client_t clients[MAX_CLIENTS];
-	listener_t listener;
+    log_client_t clients[MAX_CLIENTS];
+    listener_t listener;
 
 } params_t;
 

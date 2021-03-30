@@ -12,18 +12,18 @@
 #include "masconfig.h"
 
 options_t options = {
-	.mode = MODE_IDLE,
-	.format = FORMAT_BASH,
+    .mode = MODE_IDLE,
+    .format = FORMAT_BASH,
     .fibre_card = MCE_DEFAULT_MCE
 };
 
 int main(int argc, char **argv)
 {
-	config_t cfg;
-	int status = 0;
+    config_t cfg;
+    int status = 0;
 
-	if (process_options(&options, argc, argv))
-		return 1;
+    if (process_options(&options, argc, argv))
+        return 1;
 
     /* get default config file name, if necessary */
     if (options.source_file == NULL) {
@@ -38,42 +38,42 @@ int main(int argc, char **argv)
         mcelib_destroy(mce);
     }
 
-	// Load the target config file
-	if (mas_load(options.source_file, &cfg) != 0)
-		return 1;
-	options.root = config_root_setting (&cfg);
+    // Load the target config file
+    if (mas_load(options.source_file, &cfg) != 0)
+        return 1;
+    options.root = config_root_setting (&cfg);
 
-	switch(options.mode) {
-	case MODE_CRAWL:
-		status = crawl_now(&options);
-		break;
+    switch(options.mode) {
+        case MODE_CRAWL:
+            status = crawl_now(&options);
+            break;
 
-	case MODE_GET:
-		status = param_report(&options);
-		break;
+        case MODE_GET:
+            status = param_report(&options);
+            break;
 
-	case MODE_INFO:
-		status = param_info(&options);
-		break;
+        case MODE_INFO:
+            status = param_info(&options);
+            break;
 
-	case MODE_SET:
-		status = param_save(&options);
-        if ((status == 0) && mas_save(options.source_file, &cfg)) {
-			fprintf(stderr, "Could not save to '%s'.\n",
-				options.source_file);
-				status = 1;
-		}
-		break;
+        case MODE_SET:
+            status = param_save(&options);
+            if ((status == 0) && mas_save(options.source_file, &cfg)) {
+                fprintf(stderr, "Could not save to '%s'.\n",
+                        options.source_file);
+                status = 1;
+            }
+            break;
 
-	case MODE_IDLE:
-		break;
+        case MODE_IDLE:
+            break;
 
-	default:
-		fprintf(stderr, "Unexpected mode specification.\n");
-		return 1;
-	}
+        default:
+            fprintf(stderr, "Unexpected mode specification.\n");
+            return 1;
+    }
 
-	config_destroy(&cfg);
+    config_destroy(&cfg);
 
-	return status ? 1 : 0;
+    return status ? 1 : 0;
 }

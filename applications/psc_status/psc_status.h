@@ -1,21 +1,24 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /* psc_status.h
  * based on information from psu_monitor_gain.xls by Stan Knotek and
  * scuba2ps.h from psuc firmware.
  * Author: mandana@phas.ubc.ca
  *
-*/
+ */
 #include<stdio.h>
 #include<float.h>
 
 /********** PSU Data Block Settings  ***************/
 // PSU Data Block POINTERS - defining this way prevents pointers from being reassigned dynamically
-#define PSC_DATA_BLK_SIZE 72 
+#define PSC_DATA_BLK_SIZE 72
 
 static char psc_data_blk[PSC_DATA_BLK_SIZE] = "";
 
 #define SILICON_ID          0      // Read from DS18S20 LS 32 bits of 48
 #define SOFTWARE_VERSION    4*2      // Software Version
-#define FAN1_TACH           5*2      // Fan 1 speed /16   
+#define FAN1_TACH           5*2      // Fan 1 speed /16
 #define FAN2_TACH           6*2      // Fan 2 speed /16
 #define PSU_TEMP_1          7*2      // temperature 1 from DS18S20
 #define PSU_TEMP_2          8*2      // temperature 2 from DS18S20
@@ -35,47 +38,49 @@ static char psc_data_blk[PSC_DATA_BLK_SIZE] = "";
 #define ACK_NAK            34*2      // either ACK or NAK
 #define CHECK_BYTE         35*2      // checksum byte
 
-static char *psc_data_blk_titles[]=
-{"FAN1_TACH",
- "FAN2_TACH",
- "TEMP1 (PSUC)",
- "TEMP2 (PSU)",
- "TEMP3 (HS)",
- "ADC_OFFSET",
- "V_VCORE",
- "V_VLVD",
- "V_VAH",
- "V_VA+",
- "V_VA-",
- "I_VCORE",
- "I_VLVD",
- "I_VAH",
- "I_VA+",
- "I_VA-"};
+static char *psc_data_blk_titles[] = {
+    "FAN1_TACH",
+    "FAN2_TACH",
+    "TEMP1 (PSUC)",
+    "TEMP2 (PSU)",
+    "TEMP3 (HS)",
+    "ADC_OFFSET",
+    "V_VCORE",
+    "V_VLVD",
+    "V_VAH",
+    "V_VA+",
+    "V_VA-",
+    "I_VCORE",
+    "I_VLVD",
+    "I_VAH",
+    "I_VA+",
+    "I_VA-"
+};
 
-static float psc_conversion[]=
-{0.0, 
-4.101,
-6.161,
-13.722,
-8.488,
-8.512,
-21.312,
-6.5476,
-0.2461,
-24.622,
-3.2738};
+static float psc_conversion[] = {
+    0.0,
+    4.101,
+    6.161,
+    13.722,
+    8.488,
+    8.512,
+    21.312,
+    6.5476,
+    0.2461,
+    24.622,
+    3.2738
+};
 
-static float psc_nominal[]=
-{0.0,
-3.0,
-4.5,
-10.0,
-6.2,
-6.2,
-13.0,
-4.00,
-0.15,
-15.0,
-2.00};
-
+static float psc_nominal[] = {
+    0.0,
+    3.0,
+    4.5,
+    10.0,
+    6.2,
+    6.2,
+    13.0,
+    4.00,
+    0.15,
+    15.0,
+    2.00
+};

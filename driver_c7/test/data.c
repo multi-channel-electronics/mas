@@ -141,9 +141,11 @@ void clear_hrrq() {
 int32 read_pair() {
     /* printf( "read pair... (HTSR=%x)\n", read_io(HSTR)); */
     // Reconstruct 32 bit word from pair of hrxs reads.
-    while (!get_hrrq());
+    while (!get_hrrq())
+        ;
     int i1 = read_io(HRXS);
-    while (!get_hrrq());
+    while (!get_hrrq())
+        ;
     int i2 = read_io(HRXS);
     /* printf( "read pair... %i %i\n", i1, i2); */
     return (i1 & 0xffff) << 16 | (i2 & 0xffff);

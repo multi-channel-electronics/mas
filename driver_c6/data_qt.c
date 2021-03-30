@@ -2,19 +2,19 @@
  *      vim: sw=4 ts=4 et tw=80
  */
 /*
-  data_qt.c
+   data_qt.c
 
-  Quiet Transfer Mode support
+   Quiet Transfer Mode support
 
-  Information interrupts from DSP are directed to
-  data_frame_contribute, which checks for consistency of the informed
-  value and then updates tail_index in the driver.
+   Information interrupts from DSP are directed to
+   data_frame_contribute, which checks for consistency of the informed
+   value and then updates tail_index in the driver.
 
-  Following information, a tasklet is scheduled to update the head
-  index on the DSP.
+   Following information, a tasklet is scheduled to update the head
+   index on the DSP.
 
-  QT configuration is achieved with calls to data_qt_setup and
-  data_qt_enable.
+   QT configuration is achieved with calls to data_qt_setup and
+   data_qt_enable.
 
 */
 
@@ -64,58 +64,58 @@ int mce_qti_handler (dsp_message *msg, unsigned long data)
     return 0;
 }
 
-int data_qt_enable(int on, int card) 
+int data_qt_enable(int on, int card)
 {
-	frame_buffer_t *dframes = data_frames + card;
-	//FIX ME: should call mce_qt_command
-	int err = mce_qt_command(DSP_QT_ENABLE, on, 0, card);
-	if (!err)
-		dframes->data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
-	return err;
+    frame_buffer_t *dframes = data_frames + card;
+    //FIX ME: should call mce_qt_command
+    int err = mce_qt_command(DSP_QT_ENABLE, on, 0, card);
+    if (!err)
+        dframes->data_mode = (on ? DATAMODE_QUIET : DATAMODE_CLASSIC);
+    return err;
 }
 
 //FIX ME: requires mce_qt_command
 int data_qt_configure(int qt_interval, int card)
 {
-	frame_buffer_t *dframes = data_frames + card;
-	int err = 0;
-        PRINT_INFO(card, "entry\n");
+    frame_buffer_t *dframes = data_frames + card;
+    int err = 0;
+    PRINT_INFO(card, "entry\n");
 
-	if ( data_qt_enable(0, card) || data_reset(card) )
-		err = -1;
+    if ( data_qt_enable(0, card) || data_reset(card) )
+        err = -1;
 
-	if (!err)
-		err = mce_qt_command(DSP_QT_DELTA , dframes->frame_size, 0, card);
-	
-	if (!err)
-		err = mce_qt_command(DSP_QT_NUMBER, dframes->max_index, 0, card);
+    if (!err)
+        err = mce_qt_command(DSP_QT_DELTA , dframes->frame_size, 0, card);
 
-	if (!err)
-		err = mce_qt_command(DSP_QT_INFORM, qt_interval, 0, card);
+    if (!err)
+        err = mce_qt_command(DSP_QT_NUMBER, dframes->max_index, 0, card);
 
-	if (!err)
-		err = mce_qt_command(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0, card);
+    if (!err)
+        err = mce_qt_command(DSP_QT_INFORM, qt_interval, 0, card);
 
-	if (!err)
-		err = mce_qt_command(DSP_QT_SIZE  , dframes->data_size, 0, card);
+    if (!err)
+        err = mce_qt_command(DSP_QT_PERIOD, DSP_INFORM_COUNTS, 0, card);
 
-	if (!err)
-		err = mce_qt_command(DSP_QT_TAIL  , dframes->tail_index, 0, card);
+    if (!err)
+        err = mce_qt_command(DSP_QT_SIZE  , dframes->data_size, 0, card);
 
-	if (!err)
-		err = mce_qt_command(DSP_QT_HEAD  , dframes->head_index, 0, card);
+    if (!err)
+        err = mce_qt_command(DSP_QT_TAIL  , dframes->tail_index, 0, card);
 
-	if (!err)
-		err = mce_qt_command(DSP_QT_DROPS , 0, 0, card);
+    if (!err)
+        err = mce_qt_command(DSP_QT_HEAD  , dframes->head_index, 0, card);
 
-	if (!err)
-		err = mce_qt_command(DSP_QT_BASE,
-				  ((long)dframes->base_busaddr      ) & 0xffff,
-				  ((long)dframes->base_busaddr >> 16) & 0xffff,
-				  card);
-	
-	if (!err)
-		err = data_qt_enable(1, card);
+    if (!err)
+        err = mce_qt_command(DSP_QT_DROPS , 0, 0, card);
 
-	return err;
+    if (!err)
+        err = mce_qt_command(DSP_QT_BASE,
+                ((long)dframes->base_busaddr      ) & 0xffff,
+                ((long)dframes->base_busaddr >> 16) & 0xffff,
+                card);
+
+    if (!err)
+        err = data_qt_enable(1, card);
+
+    return err;
 }

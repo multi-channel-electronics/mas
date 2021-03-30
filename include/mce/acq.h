@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _ACQ_H_
 #define _ACQ_H_
 
@@ -43,49 +46,49 @@ typedef struct mcedata_storage mcedata_storage_t;
 
 struct mcedata_storage {
 
-	int (*init)(mce_acq_t*);
-	int (*pre_frame)(mce_acq_t *);
-	int (*flush)(mce_acq_t *);
-	int (*post_frame)(mce_acq_t *, int, u32 *);
-	int (*cleanup)(mce_acq_t *);
-	int (*destroy)(mcedata_storage_t *);
+    int (*init)(mce_acq_t*);
+    int (*pre_frame)(mce_acq_t *);
+    int (*flush)(mce_acq_t *);
+    int (*post_frame)(mce_acq_t *, int, u32 *);
+    int (*cleanup)(mce_acq_t *);
+    int (*destroy)(mcedata_storage_t *);
 
-	void* action_data;
+    void* action_data;
 
 };
 
 struct mce_acq_struct {
 
-	mce_context_t *context;
+    mce_context_t *context;
 
-	int n_frames;
-	int n_frames_complete;
-	int frame_size;                 // Active frame size
+    int n_frames;
+    int n_frames_complete;
+    int frame_size;                 // Active frame size
 
-	int status;
-	int cards;                      // Bit mask of RCs reporting
-	int n_cards;                    // Number of RCs reporting
-	int rows;                       // Number of rows reported
-	int cols;                       // Number of columns reported
-	int row0[MCEDATA_CARDS];        // Index, by RC, of first row reported
-	int col0[MCEDATA_CARDS];        // Index, by RC, of first column reported
-	int data_mode[MCEDATA_CARDS];   // Data modes, by card.
+    int status;
+    int cards;                      // Bit mask of RCs reporting
+    int n_cards;                    // Number of RCs reporting
+    int rows;                       // Number of rows reported
+    int cols;                       // Number of columns reported
+    int row0[MCEDATA_CARDS];        // Index, by RC, of first row reported
+    int col0[MCEDATA_CARDS];        // Index, by RC, of first column reported
+    int data_mode[MCEDATA_CARDS];   // Data modes, by card.
 
-	mcedata_storage_t* storage;
+    mcedata_storage_t* storage;
 
-	char errstr[MCE_LONG];
+    char errstr[MCE_LONG];
 
-	int timeout_ms;
- 	int options;
+    int timeout_ms;
+    int options;
 
-	mce_param_t ret_dat;
-	mce_param_t ret_dat_s;
+    mce_param_t ret_dat;
+    mce_param_t ret_dat_s;
 
-	int last_n_frames;
+    int last_n_frames;
 
-	frame_header_abstraction_t *header_description;
+    frame_header_abstraction_t *header_description;
 
-	int ready;
+    int ready;
 };
 
 #endif

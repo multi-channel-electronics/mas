@@ -28,53 +28,53 @@
 
 enum {
     ENUM_COMMAND_LOW,
-	COMMAND_RB,
-	COMMAND_WB,
-	COMMAND_REL,
-	COMMAND_WEL,
-	COMMAND_RRA,
-	COMMAND_WRA,
-	COMMAND_GO,
-	COMMAND_ST,
-	COMMAND_RS,
-	ENUM_COMMAND_HIGH,
-	ENUM_SPECIAL_LOW,
-	SPECIAL_HELP,
-	SPECIAL_ACQ,
+    COMMAND_RB,
+    COMMAND_WB,
+    COMMAND_REL,
+    COMMAND_WEL,
+    COMMAND_RRA,
+    COMMAND_WRA,
+    COMMAND_GO,
+    COMMAND_ST,
+    COMMAND_RS,
+    ENUM_COMMAND_HIGH,
+    ENUM_SPECIAL_LOW,
+    SPECIAL_HELP,
+    SPECIAL_ACQ,
     SPECIAL_ACQ_LINK,
-	SPECIAL_ACQ_PATH,
-	SPECIAL_ACQ_CONFIG,
-	SPECIAL_ACQ_CONFIG_FS,
-	SPECIAL_ACQ_CONFIG_DIRFILE,
-	SPECIAL_ACQ_CONFIG_DIRFILESEQ,
+    SPECIAL_ACQ_PATH,
+    SPECIAL_ACQ_CONFIG,
+    SPECIAL_ACQ_CONFIG_FS,
+    SPECIAL_ACQ_CONFIG_DIRFILE,
+    SPECIAL_ACQ_CONFIG_DIRFILESEQ,
     SPECIAL_ACQ_OPTION,
-	SPECIAL_ACQ_FLUSH,
-	SPECIAL_ACQ_MULTI_BEGIN,
-	SPECIAL_ACQ_MULTI_END,
-	SPECIAL_ACQ_TIMEOUT,
-	SPECIAL_LOCK_QUERY,
-	SPECIAL_LOCK_RESET,
-	SPECIAL_LOCK_DOWN,
-	SPECIAL_LOCK_UP,
-	SPECIAL_MRESET,
-	SPECIAL_DRESET,
-	SPECIAL_CLEAR,
-	SPECIAL_FAKESTOP,
-	SPECIAL_EMPTY,
-	SPECIAL_SLEEP,
-	SPECIAL_COMMENT,
-	SPECIAL_FRAME,
+    SPECIAL_ACQ_FLUSH,
+    SPECIAL_ACQ_MULTI_BEGIN,
+    SPECIAL_ACQ_MULTI_END,
+    SPECIAL_ACQ_TIMEOUT,
+    SPECIAL_LOCK_QUERY,
+    SPECIAL_LOCK_RESET,
+    SPECIAL_LOCK_DOWN,
+    SPECIAL_LOCK_UP,
+    SPECIAL_MRESET,
+    SPECIAL_DRESET,
+    SPECIAL_CLEAR,
+    SPECIAL_FAKESTOP,
+    SPECIAL_EMPTY,
+    SPECIAL_SLEEP,
+    SPECIAL_COMMENT,
+    SPECIAL_FRAME,
     SPECIAL_NFRAMES,
-	SPECIAL_DISPLAY,
-	SPECIAL_DEF,
-	SPECIAL_DEC,
-	SPECIAL_HEX,
-	SPECIAL_ECHO,
+    SPECIAL_DISPLAY,
+    SPECIAL_DEF,
+    SPECIAL_DEC,
+    SPECIAL_HEX,
+    SPECIAL_ECHO,
     SPECIAL_OPTION_DIRFILE,
     SPECIAL_DIROPT_INCLUDE,
     SPECIAL_DIROPT_SPF,
     SPECIAL_DIROPT_VERSION,
-	ENUM_SPECIAL_HIGH,
+    ENUM_SPECIAL_HIGH,
 };
 
 
@@ -136,19 +136,21 @@ mascmdtree_opt_t display_opts[] = {
 
 
 mascmdtree_opt_t root_opts[] = {
-	{ SEL_NO, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
-	{ SEL_NO, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
-/*  { SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts}, */
-/*  { SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts}, */
-	{ SEL_NO, "RRA"     , 4, 4, COMMAND_RRA, command_placeholder_opts},
-	{ SEL_NO, "WRA"     , 4,-1, COMMAND_WRA, command_placeholder_opts},
-	{ SEL_NO, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
-	{ SEL_NO, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
-	{ SEL_NO, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
-	{ SEL_NO, "MCE_RESET", 0,0, SPECIAL_MRESET, NULL},
-	{ SEL_NO, "DSP_RESET", 0,0, SPECIAL_DRESET, NULL},
-	{ SEL_NO, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
-	{ SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
+    { SEL_NO, "RB"      , 2, 3, COMMAND_RB, command_placeholder_opts},
+    { SEL_NO, "WB"      , 3,-1, COMMAND_WB, command_placeholder_opts},
+#if 0
+    { SEL_NO, "REL"     , 3, 3, COMMAND_REL, command_placeholder_opts},
+    { SEL_NO, "WEL"     , 4, 4, COMMAND_WEL, command_placeholder_opts},
+#endif
+    { SEL_NO, "RRA"     , 4, 4, COMMAND_RRA, command_placeholder_opts},
+    { SEL_NO, "WRA"     , 4,-1, COMMAND_WRA, command_placeholder_opts},
+    { SEL_NO, "GO"      , 2,-1, COMMAND_GO, command_placeholder_opts},
+    { SEL_NO, "STOP"    , 2,-1, COMMAND_ST, command_placeholder_opts},
+    { SEL_NO, "RS"      , 2,-1, COMMAND_RS, command_placeholder_opts},
+    { SEL_NO, "MCE_RESET", 0,0, SPECIAL_MRESET, NULL},
+    { SEL_NO, "DSP_RESET", 0,0, SPECIAL_DRESET, NULL},
+    { SEL_NO, "HELP"    , 0, 0, SPECIAL_HELP    , NULL},
+    { SEL_NO, "ACQ_CONFIG", 2, 2, SPECIAL_ACQ_CONFIG, flat_args},
     { SEL_NO, "ACQ_CONFIG_FS", 3, 3, SPECIAL_ACQ_CONFIG_FS, fs_args},
     { SEL_NO, "ACQ_CONFIG_DIRFILE", 2, 2, SPECIAL_ACQ_CONFIG_DIRFILE,
         flat_args},
@@ -162,29 +164,29 @@ mascmdtree_opt_t root_opts[] = {
     { SEL_NO, "ACQ_OPTION", 3, -1, SPECIAL_ACQ_OPTION, option_opts},
     { SEL_NO, "ACQ_PATH" , 1, 1, SPECIAL_ACQ_PATH , string_opts},
     { SEL_NO, "ACQ_TIMEOUT_MS", 1, 1, SPECIAL_ACQ_TIMEOUT, integer_opts},
-	{ SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
-	{ SEL_NO, "LOCK_RESET", 0, 0, SPECIAL_LOCK_RESET, NULL},
-	{ SEL_NO, "LOCK_DOWN" , 0, 0, SPECIAL_LOCK_DOWN, NULL},
-	{ SEL_NO, "LOCK_UP"   , 0, 0, SPECIAL_LOCK_UP, NULL},
-	{ SEL_NO, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
-	{ SEL_NO, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
-	{ SEL_NO, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
-	{ SEL_NO, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
+    { SEL_NO, "LOCK_QUERY", 0, 0, SPECIAL_LOCK_QUERY, NULL},
+    { SEL_NO, "LOCK_RESET", 0, 0, SPECIAL_LOCK_RESET, NULL},
+    { SEL_NO, "LOCK_DOWN" , 0, 0, SPECIAL_LOCK_DOWN, NULL},
+    { SEL_NO, "LOCK_UP"   , 0, 0, SPECIAL_LOCK_UP, NULL},
+    { SEL_NO, "FAKESTOP", 0, 0, SPECIAL_FAKESTOP, NULL},
+    { SEL_NO, "EMPTY"   , 0, 0, SPECIAL_EMPTY   , NULL},
+    { SEL_NO, "SLEEP"   , 1, 1, SPECIAL_SLEEP   , integer_opts},
+    { SEL_NO, "FRAME"   , 1, 1, SPECIAL_FRAME   , integer_opts},
     { SEL_NO, "NFRAMES" , 1, 1, SPECIAL_NFRAMES , integer_opts},
-	{ SEL_NO, "DISPLAY" , 1, 1, SPECIAL_DISPLAY , display_opts},
-	{ SEL_NO, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
-	{ SEL_NO, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
-	{ SEL_NO, "##"      , 0,-1, SPECIAL_COMMENT , anything_opts},
+    { SEL_NO, "DISPLAY" , 1, 1, SPECIAL_DISPLAY , display_opts},
+    { SEL_NO, "ECHO"    , 1, 1, SPECIAL_ECHO    , integer_opts},
+    { SEL_NO, "#"       , 0,-1, SPECIAL_COMMENT , anything_opts},
+    { SEL_NO, "##"      , 0,-1, SPECIAL_COMMENT , anything_opts},
     { MASCMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 
 /* Table for decoding RC strings into bit sets */
 mascmdtree_opt_t rc_list[] = {
-	{ SEL_NO, "rc1", 0, 0, MCEDATA_RC1, NULL },
-	{ SEL_NO, "rc2", 0, 0, MCEDATA_RC2, NULL },
-	{ SEL_NO, "rc3", 0, 0, MCEDATA_RC3, NULL },
-	{ SEL_NO, "rc4", 0, 0, MCEDATA_RC4, NULL },
-	{ SEL_NO, "rcs", 0, 0, 0, NULL},
+    { SEL_NO, "rc1", 0, 0, MCEDATA_RC1, NULL },
+    { SEL_NO, "rc2", 0, 0, MCEDATA_RC2, NULL },
+    { SEL_NO, "rc3", 0, 0, MCEDATA_RC3, NULL },
+    { SEL_NO, "rc4", 0, 0, MCEDATA_RC4, NULL },
+    { SEL_NO, "rcs", 0, 0, 0, NULL},
     { MASCMDTREE_TERMINATOR, "", 0,0,0, NULL},
 };
 
@@ -196,12 +198,12 @@ char *line = NULL;
 char *line_buffer = NULL;
 
 options_t options = {
-	.hardware_file =  NULL,
-	.masconfig_file = NULL,
-	.display =        SPECIAL_DEF,
-	.acq_path =       "./",
-	.use_readline =   1,
-	.fibre_card =     -1,
+    .hardware_file =  NULL,
+    .masconfig_file = NULL,
+    .display =        SPECIAL_DEF,
+    .acq_path =       "./",
+    .use_readline =   1,
+    .fibre_card =     -1,
     .dirfile_spf =    1,
     .dirfile_version = -1,
 };
@@ -229,7 +231,7 @@ int  bit_count(int k);
 int  menuify_mceconfig(mascmdtree_opt_t *opts);
 
 int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
-                    int n_args, char *errmsg);
+        int n_args, char *errmsg);
 
 int pathify_filename(char *dest, const char *src);
 
@@ -237,54 +239,54 @@ void die(int sig);
 
 int  main(int argc, char **argv)
 {
-	char msg[1024];
-	FILE *ferr = stderr;
-	FILE *fin  = stdin;
-	int err = 0;
+    char msg[1024];
+    FILE *ferr = stderr;
+    FILE *fin  = stdin;
+    int err = 0;
 
-	if (process_options(&options, argc, argv)) {
-		err = ERR_OPT;
-		goto exit_now;
-	}
+    if (process_options(&options, argc, argv)) {
+        err = ERR_OPT;
+        goto exit_now;
+    }
 
-	if (options.version_only) {
-		printf("%s\n", VERSION_STRING);
-		exit(0);
-	}
+    if (options.version_only) {
+        printf("%s\n", VERSION_STRING);
+        exit(0);
+    }
 
-	if (!options.nonzero_only) {
-		printf("This is %s version %s\n",
-		       PROGRAM_NAME, VERSION_STRING);
-	}
+    if (!options.nonzero_only) {
+        printf("This is %s version %s\n",
+                PROGRAM_NAME, VERSION_STRING);
+    }
 
-	line_buffer = (char*) malloc(LINE_LEN);
-	if (line_buffer==NULL) {
-		fprintf(ferr, "memory error!\n");
-		err = ERR_MEM;
-		goto exit_now;
-	}
+    line_buffer = (char*) malloc(LINE_LEN);
+    if (line_buffer==NULL) {
+        fprintf(ferr, "memory error!\n");
+        err = ERR_MEM;
+        goto exit_now;
+    }
 
     if ((mce = mcelib_create(options.fibre_card, options.masconfig_file,
                     options.nonzero_only ? MCELIB_QUIET : 0)) == NULL)
     {
         fprintf(ferr, "Could not initialise MAS.\n");
-		err = ERR_MEM;
-		goto exit_now;
-	}
+        err = ERR_MEM;
+        goto exit_now;
+    }
 
-	// Connect command, data, and configuration modules.
+    // Connect command, data, and configuration modules.
 
     if (mcecmd_open(mce) != 0) {
         fprintf(ferr, "Could not open CMD device\n");
-		err = ERR_MCE;
-		goto exit_now;
+        err = ERR_MCE;
+        goto exit_now;
     }
 
     if (mcedata_open(mce) != 0) {
         fprintf(ferr, "Could not open DATA device\n");
-		err = ERR_MCE;
-		goto exit_now;
-	}
+        err = ERR_MCE;
+        goto exit_now;
+    }
 
     if (mceconfig_open(mce, options.hardware_file, NULL)!=0) {
         fprintf(ferr, "Could not load MCE config file '%s'.\n",
@@ -328,7 +330,8 @@ int  main(int argc, char **argv)
 
         // Set input semaphore, then check kill condition.
         input_switch = 1;
-        if (kill_switch) break;
+        if (kill_switch)
+            break;
 
         if ( options.cmds_now > 0 ) {
             line = options.cmd_set[options.cmds_idx++];
@@ -345,11 +348,13 @@ int  main(int argc, char **argv)
             } else {
                 line = line_buffer;
                 int ret = getline(&line, &n, fin);
-                if (ret == -1 || n==0 || feof(fin)) break;
+                if (ret == -1 || n==0 || feof(fin))
+                    break;
             }
 
             n = strlen(line);
-            if (line[n-1]=='\n') line[--n]=0;
+            if (line[n-1]=='\n')
+                line[--n]=0;
             line_count++;
         }
 
@@ -387,7 +392,8 @@ int  main(int argc, char **argv)
                 }
             } else {
                 err = process_command(root_opts, args, count, errmsg);
-                if (err==0) err = 1;
+                if (err==0)
+                    err = 1;
             }
         }
 
@@ -416,7 +422,8 @@ exit_now:
     if (acq != NULL)
         mcedata_acq_destroy(acq);
 
-    if (line_buffer!=NULL) free(line_buffer);
+    if (line_buffer!=NULL)
+        free(line_buffer);
 
     mcelib_destroy(mce);
 
@@ -564,7 +571,7 @@ int prepare_outfile(char *errmsg, int storage_option)
 
         case SPECIAL_ACQ_CONFIG:
             storage = mcedata_flatfile_create(options.acq_filename,
-                                              options.symlink);
+                    options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not create flatfile");
                 return -1;
@@ -573,9 +580,9 @@ int prepare_outfile(char *errmsg, int storage_option)
 
         case SPECIAL_ACQ_CONFIG_FS:
             storage = mcedata_fileseq_create(options.acq_filename,
-                                             options.acq_interval,
-                                             FS_DIGITS,
-                                             options.symlink);
+                    options.acq_interval,
+                    FS_DIGITS,
+                    options.symlink);
             if (storage == NULL) {
                 sprintf(errmsg, "Could not set up file sequencer");
                 return -1;
@@ -645,9 +652,12 @@ int data_string(char* dest, const uint32_t *buf, int count,
             ( options.display == SPECIAL_DEF &&
               p->param.flags & MCE_PARAM_HEX ) );
 
-    for (i=0; i<count ; i++) {
-        if (hex) offset += sprintf(dest + offset, "%#x ", buf[i]);
-        else     offset += sprintf(dest + offset, "%i ", buf[i]);
+    if (hex) {
+        for (i=0; i<count ; i++) 
+            offset += sprintf(dest + offset, "%#x ", buf[i]);
+    } else {
+        for (i=0; i<count ; i++) 
+            offset += sprintf(dest + offset, "%i ", buf[i]);
     }
     return offset;
 }
@@ -688,7 +698,7 @@ int process_acq_option(mascmdtree_token_t *tokens, char *errmsg) {
 }
 
 int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
-                    int n_args, char *errmsg)
+        int n_args, char *errmsg)
 {
     int ret_val = 0;
     int err = 0;
@@ -775,7 +785,8 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 to_request = -1;
                 to_read = mcecmd_read_size(&mcep, to_request);
                 err = mcecmd_read_block(mce, &mcep, to_request, buf);
-                if (err) break;
+                if (err)
+                    break;
 
                 errmsg += data_string(errmsg, buf, to_read, &mcep);
 
@@ -786,7 +797,8 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 to_read = mcecmd_read_size(&mcep, to_request);
                 err = mcecmd_read_element(mce, &mcep,
                         tokens[3].value, buf);
-                if (err) break;
+                if (err)
+                    break;
 
                 errmsg += data_string(errmsg, buf, to_read, &mcep);
 
@@ -797,7 +809,8 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 to_request = tokens[4].value;
                 to_read = mcecmd_read_size(&mcep, to_request);
                 err = mcecmd_read_range(mce, &mcep, index, buf, to_request);
-                if (err) break;
+                if (err)
+                    break;
 
                 errmsg += data_string(errmsg, buf, to_read, &mcep);
 
@@ -840,8 +853,10 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 
         switch(tokens[0].value) {
             case SPECIAL_HELP:
-                /*              mascmdtree_list(errmsg, root_opts, */
-                /*                      "MCE commands: [ ", " ", "]"); */
+#if 0
+                mascmdtree_list(errmsg, root_opts,
+                        "MCE commands: [ ", " ", "]");
+#endif
                 break;
 
             case SPECIAL_ACQ:
@@ -945,7 +960,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
                 }
                 break;
 
-                
+
                 if (acq && acq->storage->flush != NULL) {
                     acq->storage->flush(acq);
                 }
@@ -1020,7 +1035,7 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
             case SPECIAL_NFRAMES:
                 ret_val = mcedata_set_nframes(mce, tokens[1].value);
                 break;
-            
+
             case SPECIAL_DISPLAY:
                 options.display = tokens[1].value;
                 break;
@@ -1042,9 +1057,11 @@ int process_command(mascmdtree_opt_t *opts, mascmdtree_token_t *tokens,
 int get_int(char *card, int *card_id)
 {
     char *end = card;
-    if (end==NULL || *end==0) return -1;
+    if (end==NULL || *end==0)
+        return -1;
     *card_id = strtol(card, &end, 0);
-    if (*end!=0) return -1;
+    if (*end!=0)
+        return -1;
     return 0;
 }
 
@@ -1088,4 +1105,3 @@ void die(int sig)
         }
     }
 }
-

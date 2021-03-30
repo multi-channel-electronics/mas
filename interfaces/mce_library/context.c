@@ -127,7 +127,7 @@ int mcedev_open(mce_context_t *context, mce_subsystem_t subsys)
 
             context->data.fd = fd;
             context->data.connected = 1;
-            sprintf(context->data.dev_name, context->drv_type == MCE_DSP ? 
+            sprintf(context->data.dev_name, context->drv_type == MCE_DSP ?
                     "/dev/mce_dev%u" : "/dev/mce_data%u",
                     (unsigned)context->fibre_card);
             break;
@@ -152,7 +152,7 @@ static char *get_default_dir(const mce_context_t *c,
         config_setting_t *masconfig, const char *name, const char *def)
 {
     config_setting_t *config_item;
-    
+
     if (masconfig == NULL)
         return def ? strdup(def) : NULL;
 

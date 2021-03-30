@@ -192,7 +192,7 @@ static PyObject *mce_connect(PyObject *self, PyObject *args, PyObject *kwargs)
                 err);
         Py_RETURN_NONE;
     }
-        
+
     if ((err=mcedata_open(mce)) != 0) {
         fprintf(stderr, "pymce: failed to open data device [err=%i].\n",
                 err);
@@ -224,7 +224,7 @@ static PyObject *lookup(mce_context_t *mce,
 {
     ptrobj *o = ptrobj_new(NULL);
     mce_param_t *p = &o->param;
-    // If these are both integers, 
+    // If these are both integers,
     if (PyInt_Check(ocard) && PyInt_Check(oparam)) {
         p->card.id[0] = (int)PyInt_AsLong(ocard);
         p->card.card_count = 1;
@@ -288,10 +288,10 @@ static PyObject *mce_write(PyObject *self, PyObject *args)
     p = (ptrobj *)lookup(mce, card, param);
     if (p == NULL)
         Py_RETURN_FALSE;
-    
+
     err = mcecmd_write_range(mce, &p->param, offset, vals.data, vals.count);
     Py_DECREF(p);
-        
+
     if (err==0)
         Py_RETURN_TRUE;
 
@@ -379,20 +379,23 @@ static PyObject *mce_read_data(PyObject *self, PyObject *args)
     f.index = 0;
     mcedata_storage_t *ramb = mcedata_rambuff_create( frame_callback,
                                                       (unsigned long)&f );
-     
+
     int err = 0;
     mce_acq_t acq;
     err = mcedata_acq_create(&acq, mce, 0, cards, -1, ramb);
-    if (err != 0) goto fail;
+    if (err != 0)
+        goto fail;
     err = mcedata_acq_go(&acq, count);
-    if (err != 0) goto fail;
+    if (err != 0)
+        goto fail;
     err = mcedata_acq_destroy(&acq);
-    if (err != 0) goto fail;
+    if (err != 0)
+        goto fail;
 
     Py_RETURN_TRUE;
 
 fail:
-    Py_RETURN_FALSE;    
+    Py_RETURN_FALSE;
 }
 
 

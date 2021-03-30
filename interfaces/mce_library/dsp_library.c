@@ -5,7 +5,7 @@
 
   API for SDSU DSP for MCE
 
-***************************/
+ ***************************/
 #include "mce_library.h"
 #ifndef NO_MCE_OPS
 
@@ -28,9 +28,9 @@
 #include <mce/defaults.h>
 
 #define CHECK_OPEN(cntx)   if (!cntx->dsp.opened) \
-                                   return -DSP_ERR_DEVICE
+    return -DSP_ERR_DEVICE
 #define CHECK_WORD(w)      if (w & ~0xffffff) \
-                                   return -DSP_ERR_BOUNDS;
+    return -DSP_ERR_BOUNDS;
 
 int mcedsp_open(mce_context_t *context)
 {
@@ -106,7 +106,7 @@ int mcedsp_send_command_c6(mce_context_t *context, dsp_command *cmd)
         return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR);
 
     dsp_message msg;
-  
+
     if (sizeof(msg) != read(context->dsp.fd, &msg, sizeof(msg)))
         return ioctl(context->dsp.fd, DSPDEV_IOCT_ERROR);
 
@@ -116,13 +116,13 @@ int mcedsp_send_command_c6(mce_context_t *context, dsp_command *cmd)
         return -DSP_ERR_REPLY;
     if (msg.reply != DSP_ACK)
         return -DSP_ERR_FAILURE;
-    
+
     return (int)(msg.data & DSP_DATAMASK);
 }
 
 int mcedsp_send_command_c7(mce_context_t *context,
-                           struct dsp_command *cmd,
-                           struct dsp_datagram *gram)
+        struct dsp_command *cmd,
+        struct dsp_datagram *gram)
 {
     CHECK_OPEN(context);
 
@@ -134,23 +134,25 @@ int mcedsp_send_command_c7(mce_context_t *context,
         cmd->size = cmd->data_size + 1;
 
     err = mcedsp_ioctl(context, DSPIOCT_COMMAND, (unsigned long)cmd);
-    if (err < 0) goto exit_err;
+    if (err < 0)
+        goto exit_err;
 
     err = mcedsp_ioctl(context, DSPIOCT_GET_DSP_REPLY, (unsigned long)gram);
-    if (err < 0) goto exit_err;
-    
+    if (err < 0)
+        goto exit_err;
+
     return 0;
 
 exit_err:
     switch(errno) {
-    case ENODATA:
-        return -DSP_ERR_TIMEOUT;
-    case EINTR:
-        return -DSP_ERR_INTERRUPTED;
-    case EIO:
-        return -DSP_ERR_IO;
-    case EAGAIN:
-        return -DSP_ERR_WOULDBLOCK;
+        case ENODATA:
+            return -DSP_ERR_TIMEOUT;
+        case EINTR:
+            return -DSP_ERR_INTERRUPTED;
+        case EIO:
+            return -DSP_ERR_IO;
+        case EAGAIN:
+            return -DSP_ERR_WOULDBLOCK;
     }
     return -DSP_ERR_UNKNOWN;
 }
@@ -174,13 +176,19 @@ int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address)
         CHECK_OPEN(context);
         uint32_t mem_code = 0;
         switch(mem) {
-        case DSP_MEMX: mem_code = DSP_C6_MEMX; break;
-        case DSP_MEMY: mem_code = DSP_C6_MEMY; break;
-        case DSP_MEMP: mem_code = DSP_C6_MEMP; break;
-        default:
-            return -DSP_ERR_MEMTYPE;
+            case DSP_MEMX:
+                mem_code = DSP_C6_MEMX;
+                break;
+            case DSP_MEMY:
+                mem_code = DSP_C6_MEMY;
+                break;
+            case DSP_MEMP:
+                mem_code = DSP_C6_MEMP;
+                break;
+            default:
+                return -DSP_ERR_MEMTYPE;
         }
-        
+
         dsp_command cmd = {DSP_RDM, {mem_code, address, 0 }};
         return mcedsp_send_command_c6(context, &cmd);
 
@@ -195,13 +203,19 @@ int mcedsp_read_word(mce_context_t *context, dsp_memory_code mem, int address)
         cmd.data[0] = address;
 
         switch(mem) {
-        case DSP_MEMX: cmd.cmd = DSP_CMD_READ_X; break;
-        case DSP_MEMY: cmd.cmd = DSP_CMD_READ_Y; break;
-        case DSP_MEMP: cmd.cmd = DSP_CMD_READ_P; break;
-        default:
-            return -DSP_ERR_MEMTYPE;
+            case DSP_MEMX:
+                cmd.cmd = DSP_CMD_READ_X;
+                break;
+            case DSP_MEMY:
+                cmd.cmd = DSP_CMD_READ_Y;
+                break;
+            case DSP_MEMP:
+                cmd.cmd = DSP_CMD_READ_P;
+                break;
+            default:
+                return -DSP_ERR_MEMTYPE;
         }
-    
+
         int err = mcedsp_send_command_c7(context, &cmd, &gram);
         if (err < 0)
             return err;
@@ -234,16 +248,22 @@ int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
         /* U0106- */
         CHECK_OPEN(context);
         CHECK_WORD(value);
-        
+
         uint32_t mem_code = 0;
         switch(mem) {
-        case DSP_MEMX: mem_code = DSP_C6_MEMX; break;
-        case DSP_MEMY: mem_code = DSP_C6_MEMY; break;
-        case DSP_MEMP: mem_code = DSP_C6_MEMP; break;
-        default:
-            return -DSP_ERR_MEMTYPE;
+            case DSP_MEMX:
+                mem_code = DSP_C6_MEMX;
+                break;
+            case DSP_MEMY:
+                mem_code = DSP_C6_MEMY;
+                break;
+            case DSP_MEMP:
+                mem_code = DSP_C6_MEMP;
+                break;
+            default:
+                return -DSP_ERR_MEMTYPE;
         }
-  
+
         dsp_command cmd = {DSP_WRM, {mem_code, address, value}};
         return mcedsp_send_command_c6(context, &cmd);
     } else {
@@ -253,7 +273,7 @@ int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
 
         CHECK_OPEN(context);
         CHECK_WORD(value);
-  
+
         cmd.flags = DSP_EXPECT_DSP_REPLY;
         cmd.size = -1;
         cmd.data_size = 2;
@@ -261,13 +281,19 @@ int mcedsp_write_word(mce_context_t *context, dsp_memory_code mem, int address,
         cmd.data[1] = value;
 
         switch(mem) {
-        case DSP_MEMX: cmd.cmd = DSP_CMD_WRITE_X; break;
-        case DSP_MEMY: cmd.cmd = DSP_CMD_WRITE_Y; break;
-        case DSP_MEMP: cmd.cmd = DSP_CMD_WRITE_P; break;
-        default:
-            return -DSP_ERR_MEMTYPE;
+            case DSP_MEMX:
+                cmd.cmd = DSP_CMD_WRITE_X;
+                break;
+            case DSP_MEMY:
+                cmd.cmd = DSP_CMD_WRITE_Y;
+                break;
+            case DSP_MEMP:
+                cmd.cmd = DSP_CMD_WRITE_P;
+                break;
+            default:
+                return -DSP_ERR_MEMTYPE;
         }
-    
+
         return mcedsp_send_command_c7(context, &cmd, &gram);
     }
 
@@ -293,13 +319,13 @@ int mcedsp_reset(mce_context_t *context)
     if (mcelib_legacy(context)) {
         /* U0106- */
         CHECK_OPEN(context);
-  
+
         dsp_command cmd = {
             .command = DSP_RST,
         };
 
         return mcedsp_send_command_c6(context, &cmd);
-    } 
+    }
     /* U0107+ */
     return mcedsp_ioctl(context, DSPIOCT_RESET_DSP, 0);
 }
@@ -312,7 +338,7 @@ int mcedsp_hard_reset(mce_context_t *context)
     }
     /* U0107+ -- same as mcedsp_reset. */
     return mcedsp_ioctl(context, DSPIOCT_RESET_DSP, 0);
-}    
+}
 
 int mcedsp_reset_mce(mce_context_t *context)
 {
@@ -324,7 +350,7 @@ int mcedsp_reset_mce(mce_context_t *context)
             .command = DSP_RCO,
         };
         return mcedsp_send_command_c6(context, &cmd);
-    } 
+    }
     /* U0107+ */
     return mcedsp_ioctl(context, DSPIOCT_RESET_MCE, 0);
 }
@@ -345,38 +371,39 @@ int mcedsp_qt_set(mce_context_t *context, int var, int arg1, int arg2)
 }
 
 int mcedsp_atomem(char *mem_type) {
-	if (strlen(mem_type) != 1) return -DSP_ERR_MEMTYPE;
+    if (strlen(mem_type) != 1)
+        return -DSP_ERR_MEMTYPE;
 
-	switch (toupper(mem_type[0])) {
+    switch (toupper(mem_type[0])) {
 
-	case 'X':
-		return DSP_MEMX;
+        case 'X':
+            return DSP_MEMX;
 
-	case 'Y':
-		return DSP_MEMY;
+        case 'Y':
+            return DSP_MEMY;
 
-	case 'P':
-		return DSP_MEMP;
-	}
+        case 'P':
+            return DSP_MEMP;
+    }
 
-	return -DSP_ERR_MEMTYPE;
+    return -DSP_ERR_MEMTYPE;
 }
 
 char *mcedsp_memtoa(int mem) {
 
-	switch (mem) {
+    switch (mem) {
 
-	case DSP_MEMX:
-		return "X";
+        case DSP_MEMX:
+            return "X";
 
-	case DSP_MEMY:
-		return "Y";
+        case DSP_MEMY:
+            return "Y";
 
-	case DSP_MEMP:
-		return "P";
+        case DSP_MEMP:
+            return "P";
 
-	}
+    }
 
-	return "?";
+    return "?";
 }
 #endif

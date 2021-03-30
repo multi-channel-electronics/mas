@@ -1,5 +1,5 @@
-/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *      vim: sw=8 ts=8 et tw=80
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
  */
 #ifndef _DATA_WATCHER_H_
 #define _DATA_WATCHER_H_
@@ -7,9 +7,9 @@
 #define MAX_WATCH 1024
 
 struct buffer_watcher {
-	int freq[MAX_WATCH];
-	int max;  
-	int on;
+    int freq[MAX_WATCH];
+    int max;
+    int on;
 };
 
 extern struct buffer_watcher watcher;

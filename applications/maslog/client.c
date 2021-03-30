@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
     } else {
         context = mcelib_create(MCE_DEFAULT_MCE, NULL, 0);
     }
-    
+
     if (context == NULL)
         exit(1);
 
@@ -29,20 +29,21 @@ int main(int argc, char **argv) {
     if (logger == NULL)
         exit(1);
 
-	char *line = (char*)malloc(LINE);
+    char *line = (char*)malloc(LINE);
 
-	while (!feof(stdin) ) {
-		size_t nin = LINE-1;
-		int nout = getline(&line, &nin, stdin);
-		if (nout>0) {
-			if (line[nout]!=0) line[nout]=0;
-			if (line[nout-1]=='\n')
-				line[--nout]=0;
+    while (!feof(stdin) ) {
+        size_t nin = LINE-1;
+        int nout = getline(&line, &nin, stdin);
+        if (nout>0) {
+            if (line[nout]!=0)
+                line[nout]=0;
+            if (line[nout-1]=='\n')
+                line[--nout]=0;
             maslog_print(logger, line);
-		}
-	}
+        }
+    }
 
     maslog_close(logger);
 
-	return 0;
+    return 0;
 }

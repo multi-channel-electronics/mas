@@ -1,5 +1,5 @@
-/* -*- mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *      vim: sw=8 ts=8 et tw=80
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
  */
 #ifndef _DSP_DRIVER_H_
 #define _DSP_DRIVER_H_
@@ -85,12 +85,12 @@
 
 typedef struct {
 
-	volatile u32 unused1[4];
-	volatile u32 hctr;      // Host control register
-	volatile u32 hstr;      // Host status register
-	volatile u32 hcvr;      // Host command vector register(base+$018)
-	volatile u32 htxr_hrxs; // Host transmit / receive data
-        //	volatile u32 unused2[16384-32];
+    volatile u32 unused1[4];
+    volatile u32 hctr;      // Host control register
+    volatile u32 hstr;      // Host status register
+    volatile u32 hcvr;      // Host command vector register(base+$018)
+    volatile u32 htxr_hrxs; // Host transmit / receive data
+    // volatile u32 unused2[16384-32];
 
 } dsp_reg_t;
 
@@ -103,9 +103,9 @@ typedef struct {
  * for example.  */
 
 typedef enum {
-	DSP_REQ_NORMAL = 0,
-	DSP_REQ_RESERVE,
-	DSP_REQ_PRIORITY,
+    DSP_REQ_NORMAL = 0,
+    DSP_REQ_RESERVE,
+    DSP_REQ_PRIORITY,
 } dsp_request_t;
 
 
@@ -122,7 +122,7 @@ int dsp_ready(int card);
 void dsp_unreserve(int card);
 
 int dsp_send_command(dsp_command *cmd, dsp_callback callback, int card,
-		     dsp_request_t reserve);
+        dsp_request_t reserve);
 
 int   dsp_send_command_wait(dsp_command *cmd, dsp_message *msg, int card);
 
@@ -133,7 +133,7 @@ int   dsp_request_grant(int card, int new_tail);
 int   dsp_driver_ioctl(unsigned int iocmd, unsigned long arg, int card);
 
 int   dsp_set_msg_handler(u32 code, dsp_handler handler, unsigned long data,
-			  int card);
+        int card);
 
 int   dsp_clear_handler(u32 code, int card);
 

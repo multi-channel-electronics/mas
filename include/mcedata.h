@@ -42,7 +42,7 @@ int mcedata_set_nframes(mce_context_t* context, int frame_count);
 int mcedata_empty_data(mce_context_t* context);
 int mcedata_fake_stopframe(mce_context_t* context);
 void mcedata_buffer_query(mce_context_t* context, int *head, int *tail,
-			  int *count);
+        int *count);
 int mcedata_poll_offset(mce_context_t* context, int *offset);
 int mcedata_consume_frame(mce_context_t* context);
 int mcedata_lock_query(mce_context_t* context);
@@ -56,10 +56,10 @@ int mcedata_lock_up(mce_context_t* context);
 /* rambuff: a user-defined callback routine services each frame */
 
 typedef int (*rambuff_callback_t)(unsigned long user_data,
-				  int frame_size, uint32_t *buffer);
+        int frame_size, uint32_t *buffer);
 
 mcedata_storage_t* mcedata_rambuff_create(rambuff_callback_t callback,
-					  unsigned long user_data);
+        unsigned long user_data);
 
 //void mcedata_rambuff_destroy(mce_acq_t *acq);
 
@@ -112,8 +112,8 @@ void mcedata_multisync_errcallback(mce_acq_t *multisync_acq,
         multisync_err_callback_t callback, void *user_data);
 
 int mcedata_acq_create(mce_acq_t* acq, mce_context_t* context,
-		       int options, int cards, int rows_reported, 
-		       mcedata_storage_t* storage);
+        int options, int cards, int rows_reported,
+        mcedata_storage_t* storage);
 
 int mcedata_acq_destroy(mce_acq_t *acq);
 

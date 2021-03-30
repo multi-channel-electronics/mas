@@ -12,7 +12,7 @@
 
 /******************************************************************
  * servo.c contains subroutines called by sq1servo.c and sq2servo.c
- * 
+ *
  * Contains subroutines used by sq1servo and sq2servo, especially
  * generic utility calls for generating runfiles and connecting to
  * the MCE library.
@@ -21,14 +21,14 @@
 
 int error_action(char *msg, int code){
     char temp[1024];
-  
+
     sprintf (temp, "%s with code %d", msg, code);
     ERRPRINT(temp);
-    exit (code);  
-}  
+    exit (code);
+}
 
 const char *get_string(struct string_table *table, int id, int column,
-                       char *def) {
+        char *def) {
     if (column >= STR_TABLE_NCOL)
         return def;
     while (table->id >= 0) {
@@ -41,18 +41,18 @@ const char *get_string(struct string_table *table, int id, int column,
 }
 
 struct string_table servo_var_codes[] = {
-    {CLASSIC_SQ2_SERVO,            
-     {"classic_sq2_servo"           , "sq2bias", "sq2fb", "safb"}},
+    {CLASSIC_SQ2_SERVO,
+        {"classic_sq2_servo"           , "sq2bias", "sq2fb", "safb"}},
     {CLASSIC_SQ1_SERVO_SINGLE_ROW,
-     {"classic_sq1_servo_single_row", "sq1bias", "sq1fb", "sq2fb"}},
+        {"classic_sq1_servo_single_row", "sq1bias", "sq1fb", "sq2fb"}},
     {CLASSIC_SQ1_SERVO_ALL_ROWS,
-     {"classic_sq1_servo_all_rows"  , "sq1bias", "sq1fb", "sq2fb"}},
+        {"classic_sq1_servo_all_rows"  , "sq1bias", "sq1fb", "sq2fb"}},
     {CLASSIC_SQ1_SERVO_SA_FB,
-     {"classic_sq1_servo_sa_fb"     , "sq1bias", "sq1fb", "safb"}},
+        {"classic_sq1_servo_sa_fb"     , "sq1bias", "sq1fb", "safb"}},
     {MUX11D_SQ1_SERVO_SA,
-     {"mux11d_sq1_servo_sa"         , "sq1bias", "sq1fb", "safb"}},
+        {"mux11d_sq1_servo_sa"         , "sq1bias", "sq1fb", "safb"}},
     {MUX11D_RS_SERVO,
-     {"mux11d_rs_servo"             , "sq1bias", "rowsel","safb"}},
+        {"mux11d_rs_servo"             , "sq1bias", "rowsel","safb"}},
     {-1, {"","",""}}
 };
 
@@ -67,14 +67,14 @@ int genrunfile (
         int  which_rc,
         int bias, int bstep, int nbias, int bias_active,
         int feed, int fstep, int nfeed,
-        char *servo_init1,       /* a line of servo_init var_name and values to be included in <servo_init>*/     
+        char *servo_init1,       /* a line of servo_init var_name and values to be included in <servo_init>*/
         char *servo_init2,        /* a line of servo_init var_name and values to be included in <servo_init>*/
         int n_cols,        /* number of gains and quanta (set 0 to ignore) */
         int super,         /* all rows? */
         double *gains,      /* servo gains used */
         int *quanta        /* the flux quanta used */
 
-)
+        )
 {
     /* Method: spawns mcestatus to create <header> section
      *         generates <par_ramp> section
@@ -106,25 +106,25 @@ int genrunfile (
         fprintf (runfile,"<servo_init>\n  %s\n", servo_init1);
     if (servo_init2 != NULL)
         fprintf (runfile,"  %s\n", servo_init2);
-    fprintf (runfile, "</servo_init>\n\n");    
+    fprintf (runfile, "</servo_init>\n\n");
 
-    /*<par_ramp> section*/  
+    /*<par_ramp> section*/
     fprintf (runfile,"<par_ramp>\n  <loop_list> loop1 loop2\n");
     fprintf (runfile,
             "    <par_list loop1> par1\n"
             "      <par_title loop1 par1> %s\n"
             "      <par_step loop1 par1> %d %d %d\n"
             "      <par_active loop1 par1> %d\n",
-             get_string(servo_var_codes, servo_type, SV_BIAS, "unknown"),
-             bias, bstep, nbias, bias_active);
+            get_string(servo_var_codes, servo_type, SV_BIAS, "unknown"),
+            bias, bstep, nbias, bias_active);
     fprintf (runfile,
             "    <par_list loop2> par1\n"
             "      <par_title loop2 par1> %s\n"
             "      <par_step loop2 par1> %d %d %d\n",
-             get_string(servo_var_codes, servo_type, SV_FLUX, "unknown"),
-             feed, fstep, nfeed);
+            get_string(servo_var_codes, servo_type, SV_FLUX, "unknown"),
+            feed, fstep, nfeed);
     fprintf (runfile, "  <par_servo_target> %s\n",
-             get_string(servo_var_codes, servo_type, SV_SERVO, "unknown"));
+            get_string(servo_var_codes, servo_type, SV_SERVO, "unknown"));
     fprintf (runfile, "</par_ramp>\n\n");
 
     /*<servo_params> section*/
@@ -208,7 +208,7 @@ int load_param_or_exit(mce_context_t* mce, mce_param_t* p,
             return error;
 
         sprintf(errmsg, "lookup of %s %s failed with %d (%s)",
-                card, para, error, mcelib_error_string(error)); 
+                card, para, error, mcelib_error_string(error));
         ERRPRINT(errmsg);
         exit(ERR_MCE_PARA);
     }
@@ -225,7 +225,7 @@ void write_range_or_exit(mce_context_t* mce, mce_param_t* p,
 
         sprintf (temp, "mcecmd_write_range %s with code %d", opmsg, error);
         ERRPRINT(temp);
-        exit (error);  
+        exit (error);
     }
 }
 
@@ -250,7 +250,7 @@ int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
 
     if (fb_err != 0 && fb0_err != 0) {
         sprintf(errmsg, "Neither %s %s nor %s %s could be loaded!",
-                SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0"); 
+                SQ2_CARD, SQ2_FB, SQ2_CARD, SQ2_FB_COL "0");
         ERRPRINT(errmsg);
         exit(ERR_MCE_PARA);
     } else if (fb0_err == 0 && fb_err != 0) {
@@ -292,7 +292,7 @@ int check_fast_sq2(mce_context_t* mce, mce_param_t* sq2fb,
 
    Initializes safb and/or safb_col for use and returns 1 or 0
    depending on whether mux11d appears to be enabled or not.
-*/
+   */
 
 int check_mux11d(mce_context_t* mce, mce_param_t* safb,
         mce_param_t* safb_col, int col0, int n_col)
@@ -440,12 +440,12 @@ int load_int_if_present(config_setting_t *cfg, char *name, int *dest)
 // Code created for hybrid RS muxing
 //
 
-/* 
+/*
    Because strings are annoying in C, dedicated function for loading
    contents of hybrid experiment.cfg variable mux11d_row_select_cards,
    which is a list of strings, each of which specifies a card in the
    MCE to pull RSes from.
-*/
+   */
 int load_hybrid_rs_cards(config_setting_t *cfg, char *data[MAXCARDS])
 {
     config_setting_t *el = config_setting_get_member(cfg, "mux11d_row_select_cards");
@@ -455,7 +455,7 @@ int load_hybrid_rs_cards(config_setting_t *cfg, char *data[MAXCARDS])
         exit(ERR_MCE_ECFG);
     }
     int size=el->value.list->length;
-    
+
     // need to think about the memory allocation here a little more...
     for (int i=0; i<size; i++)
         data[i]=((char *)config_setting_get_string_elem(el, i));
@@ -463,23 +463,23 @@ int load_hybrid_rs_cards(config_setting_t *cfg, char *data[MAXCARDS])
     return size;
 }
 
-/* 
+/*
    If row selects are hybridized, sanity check to make sure it's
    sensible.  "It" so far is;
 
-    1) No card appears twice in experiment.cfg:mux11d_row_select_cards
-    2) Card must be in [ac,bc1,bc2,bc3]
-    3) Enforces non-overlap between RS blocks.  Assumes RSes are in
-       contiguous blocks per card.
+   1) No card appears twice in experiment.cfg:mux11d_row_select_cards
+   2) Card must be in [ac,bc1,bc2,bc3]
+   3) Enforces non-overlap between RS blocks.  Assumes RSes are in
+   contiguous blocks per card.
 
    If we fail any of these three conditions, asserts.
-*/
+   */
 int validate_hybrid_mux11d_mux_order(int nhybrid_rs_cards,
-                                     char *mux11d_row_select_cards[MAXCARDS],
-                                     int *mux11d_row_select_cards_row0)
+        char *mux11d_row_select_cards[MAXCARDS],
+        int *mux11d_row_select_cards_row0)
 {
     char myerrmsg[100];
-    
+
     //                printf("card=%s r0=%d\n",mux11d_row_select_cards[i],mux11d_row_select_cards_row0[i]);
     // check to make sure there are no overlaps between blocks of AC or BC-driven RSes, and no duplicates
     for(int i=0; i<nhybrid_rs_cards; i++){
@@ -494,12 +494,12 @@ int validate_hybrid_mux11d_mux_order(int nhybrid_rs_cards,
                     exit(ERR_MCE_ECFG);
                 }
                 // make sure this mux11d_row_select_cards entry is supported
-                // should we make only bc2 supported, since that's the only 
+                // should we make only bc2 supported, since that's the only
                 // card that will be used for AdvACT?
                 if( ( strcmp(mux11d_row_select_cards[i], "ac") ) &&
-                    ( strcmp(mux11d_row_select_cards[i], "bc1") ) && 
-                    ( strcmp(mux11d_row_select_cards[i], "bc2") ) && 
-                    ( strcmp(mux11d_row_select_cards[i], "bc3") ) ){
+                        ( strcmp(mux11d_row_select_cards[i], "bc1") ) &&
+                        ( strcmp(mux11d_row_select_cards[i], "bc2") ) &&
+                        ( strcmp(mux11d_row_select_cards[i], "bc3") ) ){
                     ERRPRINT("Requested an unsupported card in mux11d_row_select_cards:");
                     ERRPRINT(mux11d_row_select_cards[i]);
                     exit(ERR_MCE_ECFG);
@@ -508,7 +508,7 @@ int validate_hybrid_mux11d_mux_order(int nhybrid_rs_cards,
                 int this_card_max_rs=(mux11d_row_select_cards_row0[i]-1)+( ( !strcmp(mux11d_row_select_cards[i], "ac" ) ) ? MAXACROWS : MAXBCROWS );
                 //printf("card=%s r0=%d rs_range=[%d,%d]\n",mux11d_row_select_cards[i],mux11d_row_select_cards_row0[i],mux11d_row_select_cards_row0[i],this_card_max_rs);
                 if( ( mux11d_row_select_cards_row0[j]>=mux11d_row_select_cards_row0[i] ) &&
-                    ( mux11d_row_select_cards_row0[j]<=this_card_max_rs ) ){
+                        ( mux11d_row_select_cards_row0[j]<=this_card_max_rs ) ){
                     ERRPRINT("Detected overlap in RS range of two cards in hybrid mode:");
                     sprintf(myerrmsg, "card=%s overlaps card=%s",
                             mux11d_row_select_cards[i],mux11d_row_select_cards[j]);
@@ -516,7 +516,7 @@ int validate_hybrid_mux11d_mux_order(int nhybrid_rs_cards,
                     exit(ERR_MCE_ECFG);
                 }
             }
-        }        
+        }
     }
     return 0;
 }

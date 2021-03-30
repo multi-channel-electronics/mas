@@ -23,11 +23,11 @@
 
 
 static int get_string(const mce_context_t *context, char *dest,
-	       config_setting_t *parent, const char *name)
+        config_setting_t *parent, const char *name)
 {
-	config_setting_t *set =
-		config_setting_get_member(parent, name);
-	if (set==NULL) {
+    config_setting_t *set =
+        config_setting_get_member(parent, name);
+    if (set==NULL) {
         mcelib_warning(context, "%s: key '%s' not found in config file\n",
                 __func__, name);
         return -1;
@@ -87,7 +87,8 @@ int maslog_print(maslog_t *logger, const char *str)
 
 int maslog_print_level(maslog_t *logger, const char *str, int level)
 {
-    if (logger==NULL || logger->fd<=0) return -1;
+    if (logger==NULL || logger->fd<=0)
+        return -1;
 
     char packet[2048];
     int idx = 0;
@@ -97,7 +98,8 @@ int maslog_print_level(maslog_t *logger, const char *str, int level)
         while (*str != 0 && *str != '\n') {
             packet[idx++] = *str++;
         }
-        if (*str == '\n') str++;
+        if (*str == '\n')
+            str++;
         packet[idx++] = 0;
     }
 
@@ -124,7 +126,8 @@ int maslog_print_level(maslog_t *logger, const char *str, int level)
 
 int maslog_write(maslog_t *logger, const char *buf, int size)
 {
-    if (logger==NULL || logger->fd<=0) return -1;
+    if (logger==NULL || logger->fd<=0)
+        return -1;
 
     int sent = send(logger->fd, buf, size, 0);
     if (sent != size) {

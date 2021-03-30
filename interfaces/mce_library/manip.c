@@ -3,39 +3,38 @@
  */
 /*******************************************************
 
- manip.c - manipulate MCE command / reply data according
-           to the parameter description.
+  manip.c - manipulate MCE command / reply data according
+  to the parameter description.
 
-*******************************************************/
+ *******************************************************/
 
 #include "context.h"
 
 int mcecmd_prewrite_manip(const mce_param_t* param, uint32_t* data, int count)
 {
-	int i;
-	const param_t *p = &param->param;
+    int i;
+    const param_t *p = &param->param;
 
-	if (!(p->flags & MCE_PARAM_MANIP))
-		return 0;
+    if (!(p->flags & MCE_PARAM_MANIP))
+        return 0;
 
-	for (i=0; i<count; i++) {
-		data[i] ^= p->op_xor;
-	}
+    for (i=0; i<count; i++) {
+        data[i] ^= p->op_xor;
+    }
 
-	return 0;
+    return 0;
 }
 
 int mcecmd_postread_manip(const mce_param_t* param, uint32_t* data, int count)
 {
-	int i;
-	const param_t *p = &param->param;
-	if (!(p->flags & MCE_PARAM_MANIP))
-		return 0;
+    int i;
+    const param_t *p = &param->param;
+    if (!(p->flags & MCE_PARAM_MANIP))
+        return 0;
 
-	for (i=0; i<count; i++) {
-		data[i] ^= p->op_xor;
-	}
+    for (i=0; i<count; i++) {
+        data[i] ^= p->op_xor;
+    }
 
-	return 0;
+    return 0;
 }
-

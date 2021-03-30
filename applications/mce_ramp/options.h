@@ -9,24 +9,24 @@
 
 typedef struct {
 
-	char output_file[LINE_LEN];
-	int  output_file_now;
+    char output_file[LINE_LEN];
+    int  output_file_now;
 
     char *mas_file;
     int fibre_card;
 
-	int status_block;
+    int status_block;
 
-	amble_t* ambles;
-	loop_t* loops;
-	value_t* values;
-	operation_t* operations;
+    amble_t* ambles;
+    loop_t* loops;
+    value_t* values;
+    operation_t* operations;
 
-	amble_t* preambles;
-	amble_t* postambles;
-  
-	int preamble_count;
-	int postamble_count;
+    amble_t* preambles;
+    amble_t* postambles;
+
+    int preamble_count;
+    int postamble_count;
 
 } options_t;
 

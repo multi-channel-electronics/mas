@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 /*
  * Registers and bits for the DSP 56301
  */
@@ -19,11 +22,11 @@
 
 typedef struct {
 
-	volatile u32 unused1[4];
-	volatile u32 hctr;      // Host control register
-	volatile u32 hstr;      // Host status register
-	volatile u32 hcvr;      // Host command vector register(base+$018)
-	volatile u32 htxr_hrxs; // Host transmit / receive data
+    volatile u32 unused1[4];
+    volatile u32 hctr;      // Host control register
+    volatile u32 hstr;      // Host status register
+    volatile u32 hcvr;      // Host command vector register(base+$018)
+    volatile u32 htxr_hrxs; // Host transmit / receive data
 
 } dsp_reg_t;
 

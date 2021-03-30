@@ -13,28 +13,29 @@
    read could return. */
 #define MAX_MCE_READ 1024
 
-enum { CRAWLER_DAS = 0,
-       CRAWLER_MAS,
-       CRAWLER_CFG,
-       CRAWLER_CFX,
-       CRAWLER_DRF,
+enum {
+    CRAWLER_DAS = 0,
+    CRAWLER_MAS,
+    CRAWLER_CFG,
+    CRAWLER_CFX,
+    CRAWLER_DRF,
 };
 
 
 /* options structure and processor */
 
 typedef struct {
-	int fibre_card;
-	char *config_file;
-	char *hardware_file;
-	char output_path[MCE_LONG];
+    int fibre_card;
+    char *config_file;
+    char *hardware_file;
+    char output_path[MCE_LONG];
 
-	char output_file[MCE_LONG];
-	int  output_on;
+    char output_file[MCE_LONG];
+    int  output_on;
 
-	int mode;
+    int mode;
 
-	mce_context_t* context;
+    mce_context_t* context;
 
 } options_t;
 
@@ -45,12 +46,12 @@ int process_options(options_t *options, int argc, char **argv);
 
 typedef struct {
 
-	int (*init)(unsigned long user_data, const options_t* options);
+    int (*init)(unsigned long user_data, const options_t* options);
     int (*card)(unsigned long user_data, const card_t *c);
-	int (*item)(unsigned long user_data, const mce_param_t *m);
-	int (*cleanup)(unsigned long user_data);
+    int (*item)(unsigned long user_data, const mce_param_t *m);
+    int (*cleanup)(unsigned long user_data);
 
-	unsigned long user_data;
+    unsigned long user_data;
 
 } crawler_t;
 

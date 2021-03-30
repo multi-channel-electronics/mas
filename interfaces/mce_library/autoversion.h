@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _VERSION_H_
 #define _VERSION_H_
 
@@ -19,7 +22,7 @@
 #define STRINGIFY1(X) #X
 
 #define VERSION_STRING          STRINGIFY(VERSION_MAJOR) "." \
-	                        STRINGIFY(VERSION_MINOR) \
-	                        " [" BRANCH_ID ":" REPO_VERSION "]"
+                                STRINGIFY(VERSION_MINOR) \
+                                " [" BRANCH_ID ":" REPO_VERSION "]"
 
 #endif

@@ -50,26 +50,26 @@ typedef struct multisync_struct {
 /* Use a template for all the ones that just want an mce_acq_t*: */
 
 #define DECLARE_MULTISYNC(MEMBER,STOP_OVERRIDE) \
-  static int multisync_ ## MEMBER(mce_acq_t* acq)               \
-  {                                                             \
-    multisync_t *f = (multisync_t*)acq->storage->action_data;   \
-    int i, err = 0;                                             \
-                                                                \
-    for (i=0; i<f->max_syncs && f->syncs[i] != NULL; i++) {     \
-        if (f->syncs[i]->storage->MEMBER == NULL)               \
-            continue;                                           \
-        if (!(STOP_OVERRIDE) && f->stopped[i])                  \
-            continue;                                           \
-        err = f->syncs[i]->storage->MEMBER(f->syncs[i]);        \
-        if (err != 0) {                                         \
-            if (f->err_callback)                                \
-              f->stopped[i] = f->err_callback(f->user_data,     \
-                      i, err, mcedata_acq_ ## MEMBER);          \
-            break;                                              \
-        }                                                       \
-    }                                                           \
-    return err;                                                 \
-}
+    static int multisync_ ## MEMBER(mce_acq_t* acq)                 \
+    {                                                               \
+        multisync_t *f = (multisync_t*)acq->storage->action_data;   \
+        int i, err = 0;                                             \
+                                                                    \
+        for (i=0; i<f->max_syncs && f->syncs[i] != NULL; i++) {     \
+            if (f->syncs[i]->storage->MEMBER == NULL)               \
+                continue;                                           \
+            if (!(STOP_OVERRIDE) && f->stopped[i])                  \
+                continue;                                           \
+            err = f->syncs[i]->storage->MEMBER(f->syncs[i]);        \
+            if (err != 0) {                                         \
+                if (f->err_callback)                                \
+                    f->stopped[i] = f->err_callback(f->user_data,   \
+                          i, err, mcedata_acq_ ## MEMBER);          \
+                break;                                              \
+            }                                                       \
+        }                                                           \
+        return err;                                                 \
+    }
 
 DECLARE_MULTISYNC(init, 0)
 DECLARE_MULTISYNC(cleanup, 1)
@@ -78,7 +78,7 @@ DECLARE_MULTISYNC(flush, 0)
 
 static int multisync_post_frame(mce_acq_t *acq, int frame_index, uint32_t *data)
 {
-	multisync_t *f = (multisync_t*)acq->storage->action_data;
+    multisync_t *f = (multisync_t*)acq->storage->action_data;
     int i, err = 0;
 
     for (i=0; i<f->max_syncs && f->syncs[i] != NULL; i++) {
@@ -103,7 +103,7 @@ static int multisync_post_frame(mce_acq_t *acq, int frame_index, uint32_t *data)
 static int multisync_destructor(mcedata_storage_t *storage)
 {
     int i, err;
-	multisync_t *f = (multisync_t*)storage->action_data;
+    multisync_t *f = (multisync_t*)storage->action_data;
     if (f == NULL)
         return 0;
 
@@ -119,50 +119,51 @@ static int multisync_destructor(mcedata_storage_t *storage)
             break;
     }
 
-	// Free the private data for the storage module, clear the structure
+    // Free the private data for the storage module, clear the structure
     free(f);
 
-	memset(storage, 0, sizeof(*storage));
-	return 0;
+    memset(storage, 0, sizeof(*storage));
+    return 0;
 }
 
 
 /* Must provide every method of mcedata_storage! */
 
 mcedata_storage_t multisync_actions = {
-	.init = multisync_init,
+    .init = multisync_init,
     .pre_frame = multisync_pre_frame,
-	.flush = multisync_flush,
-	.post_frame = multisync_post_frame,
-	.cleanup = multisync_cleanup,
-	.destroy = multisync_destructor,
+    .flush = multisync_flush,
+    .post_frame = multisync_post_frame,
+    .cleanup = multisync_cleanup,
+    .destroy = multisync_destructor,
 };
 
 
 mcedata_storage_t* mcedata_multisync_create(int options)
 {
-	multisync_t *f = (multisync_t*)malloc(sizeof(multisync_t));
-	mcedata_storage_t *storage =
-		(mcedata_storage_t*)malloc(sizeof(mcedata_storage_t));
-	if (f==NULL || storage==NULL) return NULL;
+    multisync_t *f = (multisync_t*)malloc(sizeof(multisync_t));
+    mcedata_storage_t *storage =
+        (mcedata_storage_t*)malloc(sizeof(mcedata_storage_t));
+    if (f==NULL || storage==NULL)
+        return NULL;
 
-	//Initialize storage with the file operations, then set local data.
-	memcpy(storage, &multisync_actions, sizeof(multisync_actions));
-	storage->action_data = f;
+    //Initialize storage with the file operations, then set local data.
+    memcpy(storage, &multisync_actions, sizeof(multisync_actions));
+    storage->action_data = f;
 
     //Make sure all pointers are NULL, and n_sync = 0.
-	memset(f, 0, sizeof(*f));
+    memset(f, 0, sizeof(*f));
     f->max_syncs = MAX_SYNCS;
-	return storage;
+    return storage;
 }
 
 /* Allow user to add a sync. */
 
 int mcedata_multisync_add(mce_acq_t *multisync_acq,
-                          mcedata_storage_t *sync)
+        mcedata_storage_t *sync)
 {
     int i, error = 0;
-	multisync_t *f = (multisync_t*)multisync_acq->storage->action_data;
+    multisync_t *f = (multisync_t*)multisync_acq->storage->action_data;
     if (f == NULL)
         return -1;
 

@@ -1,3 +1,6 @@
+/* -*- mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *      vim: sw=4 ts=4 et tw=80
+ */
 #ifndef _DSP_STATE_H_
 #define _DSP_STATE_H_
 
@@ -29,40 +32,40 @@ typedef int (*fake_int_handler_t)(dsp_message *msg);
 
 typedef struct dsp_state_struct {
 
-	u32 p[PSIZE];
-	u32 x[XSIZE];
-	u32 y[YSIZE];
+    u32 p[PSIZE];
+    u32 x[XSIZE];
+    u32 y[YSIZE];
 
-	fake_int_handler_t fake_int_handler;
+    fake_int_handler_t fake_int_handler;
 
-	dsp_message msg_q[10];
-	int msg_r;
-	int msg_w;
+    dsp_message msg_q[10];
+    int msg_r;
+    int msg_w;
 
-	int trigger_timeout;
+    int trigger_timeout;
 
-	void *mce_con;
+    void *mce_con;
 
-	struct tasklet_struct msg_tasklet;
+    struct tasklet_struct msg_tasklet;
 
-	struct {
-		int enabled;
-		int delta;
-		int number;
-		int inform;
-		int period;
-		int size;
-		int tail;
-		int head;
-		int drops;
-		void *base;
-	} qt_data;
+    struct {
+        int enabled;
+        int delta;
+        int number;
+        int inform;
+        int period;
+        int size;
+        int tail;
+        int head;
+        int drops;
+        void *base;
+    } qt_data;
 
-	int n_frames;
-	int delta_jiffies;
-	int delta_frames;
+    int n_frames;
+    int delta_jiffies;
+    int delta_frames;
 
-	struct timer_list timer;
+    struct timer_list timer;
 
 } dsp_state_t;
 

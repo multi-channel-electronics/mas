@@ -21,10 +21,10 @@
 #include "cfg_dump.h"
 
 options_t options = {
-	.fibre_card = -1,
-	.config_file = NULL,
-	.hardware_file = NULL,
-	.mode = CRAWLER_DAS,
+    .fibre_card = -1,
+    .config_file = NULL,
+    .hardware_file = NULL,
+    .mode = CRAWLER_DAS,
 };
 
 
@@ -35,9 +35,9 @@ int crawl_festival(crawler_t *crawler);
 int main(int argc, char **argv)
 {
     maslog_t *logger = NULL;
-	char msg[MCE_LONG];
+    char msg[MCE_LONG];
 
-	if (process_options(&options, argc, argv)) {
+    if (process_options(&options, argc, argv)) {
         fprintf(stderr, "invalid arguments");
         exit(2);
     }
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     }
 
     // Load configuration
-    if (mceconfig_open(options.context, 
+    if (mceconfig_open(options.context,
                 options.hardware_file, "hardware")!=0) {
         sprintf(msg, "Could not load MCE config file '%s'.\n",
                 options.hardware_file);
@@ -111,7 +111,7 @@ int crawl_festival(crawler_t *crawler)
     int i,j;
     int n_cards = mceconfig_card_count(options.context);
 
-    if (options.output_path[0] != 0 && 
+    if (options.output_path[0] != 0 &&
             chdir(options.output_path)!=0) {
         fprintf(stderr, "Failed to move to working directory '%s'\n",
                 options.output_path);
