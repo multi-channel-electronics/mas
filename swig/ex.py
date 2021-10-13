@@ -4,6 +4,8 @@
 
 # communicate.py
 
+from __future__ import print_function
+from builtins import str
 import wx
 from mceViewport import *
 from mce_acquisitions import *
@@ -127,7 +129,7 @@ class Communicate(wx.Frame):
         self.target.Show()
 
     def Destroy(self, force=False):
-        print 'Caught!'
+        print('Caught!')
         self.fig.Close(force)
         wx.Frame.Destroy(self, force)
 

@@ -1,8 +1,13 @@
+from __future__ import division
+from __future__ import print_function
 # mce.py
 # vim: ts=4 sw=4 et
 
 # This module exposes mce_context_t as an mce object.
 
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import os
 import subprocess
 from mce_library import *
@@ -25,7 +30,7 @@ class ParamError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class ChannelSet:
+class ChannelSet(object):
     """
     Defines a set of channels and offers information to Mce class on
     how to acquire them.
@@ -37,20 +42,20 @@ class ChannelSet:
 
         self.has_list = False
         self.channel_list = [[],[]]
-        self.rows = range(41)
+        self.rows = list(range(41))
 
         if rc != '':
             self.columns = self.columns_from_cards(self.cards_from_list([ rc ]))
         else:
-            self.columns = range(32)
+            self.columns = list(range(32))
 
     def cards_span(self):
         """
         Returns card_bits for acq necessary to acquire the ChannelSet
         channels.
         """
-        max_card = max(self.columns)/8
-        min_card = min(self.columns)/8
+        max_card = old_div(max(self.columns),8)
+        min_card = old_div(min(self.columns),8)
         if max_card != min_card:
             return self.cards_from_list(['rcs'])
         return self.cards_from_list([ 'rc%i' % (max_card+1) ])
@@ -87,7 +92,7 @@ class ChannelSet:
             elif c == "rc3": cards |= 0x4
             elif c == "rc4": cards |= 0x8
             else:
-                raise ParamError, 'Unknown card ' + cc
+                raise ParamError('Unknown card ' + cc)
         return cards
 
     def columns_from_cards(self, cards):
@@ -96,13 +101,13 @@ class ChannelSet:
         """
         c = []
         if cards & 0x1:
-            c.extend(range(0,8))
+            c.extend(list(range(0,8)))
         if cards & 0x2:
-            c.extend(range(8,16))
+            c.extend(list(range(8,16)))
         if cards & 0x4:
-            c.extend(range(16,24))
+            c.extend(list(range(16,24)))
         if cards & 0x8:
-            c.extend(range(24,32))
+            c.extend(list(range(24,32)))
         return c
 
     def extract_channels(self, data):
@@ -123,7 +128,7 @@ class ChannelSet:
         if self.has_list:
             return self.channel_list[index]
         else:
-            return [ self.columns[index / len(self.rows)],
+            return [ self.columns[old_div(index, len(self.rows))],
                      self.rows[index % len(self.rows)] ]
 
     def frame_indices(self):
@@ -142,7 +147,7 @@ class ChannelSet:
                      (r - rs[0])*(cs[1] - cs[0] + 1) + c - cs[0]
                      for r in self.rows for c in self.columns ]
     
-class mce:
+class mce(object):
     """
     Object representing an MCE.
     """
@@ -179,7 +184,7 @@ class mce:
         p = mce_param_t()
         err = mcecmd_load_param(self.context, p, card, para)
         if err != 0:
-            raise ParamError, mcelib_error_string(err)
+            raise ParamError(mcelib_error_string(err))
         return p
 
     def read(self, card, para, count=-1, offset=0, array=True):
@@ -194,7 +199,7 @@ class mce:
         err = mcecmd_read_range(self.context, p, offset, \
                                 u32_from_int_p(d.cast()), count)
         if (err != 0):
-            raise MCEError, mcelib_error_string(err)
+            raise MCEError(mcelib_error_string(err))
 
         if array == False: return d[0]
 
@@ -206,7 +211,7 @@ class mce:
             
         count = len(data)
         if count > p.param.count - offset:
-            raise ParamError, "Count is too big for parameter."
+            raise ParamError("Count is too big for parameter.")
 
         d = intarray(count)
         for i in range(count): d[i] = data[i]
@@ -214,18 +219,18 @@ class mce:
         err = mcecmd_write_range(self.context, p, offset,
                 u32_from_int_p(d.cast()), count)
         if err != 0:
-            raise MCEError, mcelib_error_string(err)
+            raise MCEError(mcelib_error_string(err))
 
     def reset(self, dsp_reset=False, mce_reset=True):
         if mce_reset:
             error = mcecmd_hardware_reset(self.context)
             if error != 0:
-                raise MCEError, "Hardware reset: " + mcelib_error_string(err)
+                raise MCEError("Hardware reset: " + mcelib_error_string(err))
 
         if dsp_reset:
             error = mcecmd_interface_reset(self.context)
             if error != 0:
-                raise MCEError, "PCI card reset: " + mcelib_error_string(err)            
+                raise MCEError("PCI card reset: " + mcelib_error_string(err))            
     def card_count(self, cards):
         return (cards & 0x1 != 0) + (cards & 0x2 != 0) + \
                (cards & 0x4 != 0) + (cards & 0x8 != 0)
@@ -233,7 +238,7 @@ class mce:
     def read_frames(self, count, channel_set=False, data_only=False):
         # Channel_sets aren't supported yet; they need to be smarter.
         if channel_set != False:
-            print 'Sorry, channel_set=False only!'
+            print('Sorry, channel_set=False only!')
             return None
         else:
             try:
@@ -243,13 +248,13 @@ class mce:
                     if rc & (1 << bits):
                         cards |= (1 << i)
             except:
-                print 'Could not query rcs_to_report_data register.'
+                print('Could not query rcs_to_report_data register.')
                 cards = 0xf
             channel_set = ChannelSet(rcs_cards=cards)
             n_cols = 8*self.card_count(cards)
             num_rows_rep = self.read('cc', 'num_rows_reported', array=False)
-            channel_set.rows = range(num_rows_rep)
-            channel_set.columns = range(n_cols)
+            channel_set.rows = list(range(num_rows_rep))
+            channel_set.columns = list(range(n_cols))
 
         indices = channel_set.frame_indices()
         n_extra = 44
@@ -287,7 +292,7 @@ class mce:
         index = channel_set.frame_indices()
 
         if (len(index) != 1):
-            print 'ChannelSet must have exactly one channel!'
+            print('ChannelSet must have exactly one channel!')
             return -1
 
         # Calculate index of target data

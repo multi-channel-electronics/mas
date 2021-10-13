@@ -1,5 +1,13 @@
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import str
+from builtins import zip
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import mcelib
-import const
+from . import const
 
 import numpy
 
@@ -8,7 +16,7 @@ try:
 except:
     mce_data = None
 
-class BasicMCE:
+class BasicMCE(object):
     """
     Minimal connection to the MCE library.
 
@@ -68,7 +76,7 @@ class BasicMCE:
             if isinstance(cards, str):
                 _card = const.RC_CODES.get(cards.lower(), None)
                 if _card == None:
-                    print "Could not parse card string '%s'"%_card
+                    print("Could not parse card string '%s'"%_card)
                     return None
                 if _card == -1:
                     cards = [i+1 for i in range(len(const.RCS_BITS))]
@@ -82,8 +90,8 @@ class BasicMCE:
             (sum([(c<=0) or (c>const.MAX_RC) for c in cards]) == 0) and \
             (sum([cards[i]-cards[i-1]<=0 for i in range(1,len(cards))]) == 0)
         if not ok:
-            print "Could not decode cards argument", cards_in
-            print "... got as far as ", cards
+            print("Could not decode cards argument", cards_in)
+            print("... got as far as ", cards)
             return None
         return cards
 
@@ -91,7 +99,7 @@ class BasicMCE:
         # Decode cards list -- ends up as a list of card numbers [1,2]
         cards = self.card_list(cards)
         if cards == None:
-            raise ValueError, "Invalid card list %s" % str(cards)
+            raise ValueError("Invalid card list %s" % str(cards))
         frame_size = self.frame_size(cards, n_rows)
         card_code = sum([1<<(c-1) for c in cards])
         # Create array, read.
@@ -114,8 +122,8 @@ class BasicMCE:
             return None
         # To go any further we need mce_data
         if mce_data == None:
-            raise RuntimeError, "mce_data module is required to process data "\
-                "(pass raw_frames=True to suppress)."
+            raise RuntimeError("mce_data module is required to process data "\
+                "(pass raw_frames=True to suppress).")
         d.fast_axis = 'dets'
 
         # Before _GetPayloadInfo(), populate self.header using info
@@ -140,7 +148,7 @@ class BasicMCE:
                     d.data.shape = (d.n_rows, d.n_cols*d.n_rc, -1)
             d.fast_axis = 'time'
         if fields != None:
-            d.data = dict(zip(fields, d.extract(fields, unfilter=unfilter)))
+            d.data = dict(list(zip(fields, d.extract(fields, unfilter=unfilter))))
         return d
 
     def lock_query(self):
@@ -188,7 +196,7 @@ class MCEBinaryData(mce_data.SmallMCEFile):
             ftype = self.mce.read('rc1', 'fltr_type')[0]
             fpara = self.mce.read('rc1', 'fltr_coeff')
             filt = mce_data.MCEButterworth.from_params(ftype, fpara)
-            return data / filt.gain()
+            return old_div(data, filt.gain())
         return data
 
     # Replace _rfMCEParam, and load stuff right from the MCE

@@ -1,6 +1,12 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from past.utils import old_div
+from builtins import object
 from mce import *
 
-class Ramp:
+class Ramp(object):
     def __init__(self, this_mce, card, param, param_offset=0, param_count=8,
                  start = 0, count = 1, step = 0. ):
         self.card = card
@@ -29,7 +35,7 @@ class Ramp:
         self.i = self.i + 1
         return True
 
-class MCEStage:
+class MCEStage(object):
     SQ1_fb = 1
     SQ2_fb = 2
     SA_fb = 3
@@ -48,7 +54,7 @@ class ServoException(Exception):
 
 
 
-class ColumnServo:
+class ColumnServo(object):
     """
     Class for servoing MCE parameters on a per-column basis.  Class
     handles frame acquisition and manipulation of SA, SQ2, or SQ1
@@ -81,7 +87,7 @@ class ColumnServo:
                 raise ServoException('len(gain_list) != n_columns')
 
         # Get rcs based on columns
-        rcs = [ i for i in range(4) if [ c/8 for c in self.columns ].count(i) > 0 ]
+        rcs = [ i for i in range(4) if [ old_div(c,8) for c in self.columns ].count(i) > 0 ]
         if len(rcs) > 1:
             self.channel_set = ChannelSet('rcs')
         else:
@@ -116,7 +122,7 @@ class ColumnServo:
             return self.ServoStep()
 
         while self.ServoStep(update_ramp=True):
-            print self.ramp.i
+            print(self.ramp.i)
 
     def ServoStep(self, update_ramp=True, write_values=True, read_data=True):
         done = True
@@ -132,7 +138,7 @@ class ColumnServo:
             for (c,d) in zip(self.columns, d):
                 self.values[c] += int(self.gain*d)
 
-        print self.values
+        print(self.values)
         if write_values:
             self.mce.write(self.card, self.param, self.values)
     
@@ -142,7 +148,7 @@ class ColumnServo:
 m = mce()
 r = Ramp(m, 'sq2', 'fb', param_offset=8, param_count=8,
          start = 0, count = 400, step = 160)
-s = ColumnServo(m, MCEStage.SA_fb, columns = range(8,16),
+s = ColumnServo(m, MCEStage.SA_fb, columns = list(range(8,16)),
                 ramp = r)
 
 s.Start()

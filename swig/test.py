@@ -1,3 +1,4 @@
+from __future__ import print_function
 from mce import *
 # from embedding_in_wx import PlotFigure
 
@@ -6,16 +7,16 @@ g = m.read_frame()
 #print g
 
 h = ChannelSet(rc = 'rc2')
-print 'Setting rows...'
+print('Setting rows...')
 h.rows = [1, 2, 8, 9]
-print h.columns
-print h.rows
-print h.cards_span()
-print h.data_size()
-print h.acq_size()
+print(h.columns)
+print(h.rows)
+print(h.cards_span())
+print(h.data_size())
+print(h.acq_size())
 
 g = m.read_frame(h)
-print g[1]
+print(g[1])
 
 from pylab import *
 

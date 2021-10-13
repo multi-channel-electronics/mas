@@ -1,12 +1,19 @@
+from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 from mce import *
 from mce_runfile import *
 from glob import glob
-import sys, commands
+import sys, subprocess
 from numpy import *
 
 def expt_param(key, dtype=None):
     src = '/data/cryo/current_data/experiment.cfg'
-    line = commands.getoutput('mas_param -s %s get %s' % (src, key))
+    line = subprocess.getoutput('mas_param -s %s get %s' % (src, key))
     s = line.split(' ')
     if dtype == None or dtype == 'string':
         return s
@@ -14,7 +21,7 @@ def expt_param(key, dtype=None):
         return [ int(ss) for ss in s if ss != '']
     if dtype == 'float':
         return [ float(ss) for ss in s if ss != '']
-    raise ValueError, 'can\'t handle dtype=\'%s\' '%dtype
+    raise ValueError('can\'t handle dtype=\'%s\' '%dtype)
 
 
 def reservo(m, param, gains=None, rows=None, steps=10):
@@ -29,7 +36,7 @@ def reservo(m, param, gains=None, rows=None, steps=10):
         dx = [g*d for d,g in zip(dy, gains)]
         x = m.read(param[0], param[1])
         x_new = [int(a+b) for (a,b) in zip(x,dx)]
-        print x_new
+        print(x_new)
         m.write(param[0], param[1], x_new)
         done = True
 
@@ -54,7 +61,7 @@ def get_historical_offset(folder, stage='ssa', rows=None):
 
 def write_adc_offset(m, ofs, fill=True, n_rows=33):
     for c in range(32):
-        m.write('rc%i'%((c/8)+1), 'adc_offset%i'%(c%8), [ofs[c]]*41)
+        m.write('rc%i'%((old_div(c,8))+1), 'adc_offset%i'%(c%8), [ofs[c]]*41)
 
     
 def get_line(m, rows=None):
@@ -82,7 +89,7 @@ if __name__ == '__main__':
           """ % sys.argv[0]
 
     if len(sys.argv)!=3:
-        print usage
+        print(usage)
         sys.exit(1)
         
     stage = sys.argv[1]
@@ -118,11 +125,11 @@ if __name__ == '__main__':
 
     err = [ get_line(m, rows) for i in range(n_check)]
     err = array(err)
-    print 'Initial error (%i): %10.2f' % (n_check, mean(abs(mean(err,axis=0))))
+    print('Initial error (%i): %10.2f' % (n_check, mean(abs(mean(err,axis=0)))))
 
-    print 'Servoing \'%s %s\' for %i steps...' % (param[0],param[1],n_servo)
+    print('Servoing \'%s %s\' for %i steps...' % (param[0],param[1],n_servo))
     for i in range(n_servo):
         reservo(m, param, gains=gains)
     err = array([ get_line(m, rows) for i in range(n_check)])
 
-    print 'Final error (%i):   %10.2f' % (n_check, mean(abs(mean(err,axis=0))))
+    print('Final error (%i):   %10.2f' % (n_check, mean(abs(mean(err,axis=0)))))
