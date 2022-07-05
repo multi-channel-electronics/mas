@@ -291,7 +291,7 @@ int mcecmd_send_command_simple(mce_context_t* context, int card_id, int para_id,
         .card_id  = (u16)card_id,
         .para_id  = (u16)para_id,
         .count    = 1
-    }
+    };
 
     cmd.data[0] = 1;
     cmd.checksum = mcecmd_cmd_checksum(&cmd);
