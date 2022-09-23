@@ -529,7 +529,7 @@ static int dirfile_destructor(mcedata_storage_t *storage)
     // Free the private data for the storage module, clear the structure
     dirfile_t *f = (dirfile_t*)storage->action_data;
     dirfile_free(f);
-    FREE_NOT_NULL(f)
+    FREE_NOT_NULL(f);
 
         memset(storage, 0, sizeof(*storage));
     return 0;
@@ -654,7 +654,7 @@ static int dirfileseq_destructor(mcedata_storage_t *storage)
     // Free the private data for the storage module, clear the structure
     dirfileseq_t *f = (dirfileseq_t*)storage->action_data;
     dirfile_free(&f->active_dirfile);
-    FREE_NOT_NULL(f)
+    FREE_NOT_NULL(f);
 
         memset(storage, 0, sizeof(*storage));
     return 0;
