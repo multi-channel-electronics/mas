@@ -61,3 +61,5 @@ configure
 defaults
 repo_version.txt
 autom4te.cache/
+
+driver_c7/mce_dsp_c7.mod
