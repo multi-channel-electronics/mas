@@ -466,7 +466,7 @@ int data_alloc(int mem_size, int data_size, int card)
 
     // Save physical address for hardware
     dframes->base_busaddr = phys;
-    dframes->base = &virt;
+    dframes->base = virt;
 
 #endif /* MEMMAP */
 

@@ -811,9 +811,15 @@ int mcedsp_probe(struct pci_dev *pci, const struct pci_device_id *id)
         goto fail;
     }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+    dsp->reg = (dsp_reg_t *)ioremap(pci_resource_start(pci, 0) &
+                        PCI_BASE_ADDRESS_MEM_MASK,
+                        sizeof(*dsp->reg));
+#else
     dsp->reg = (dsp_reg_t *)ioremap_nocache(pci_resource_start(pci, 0) &
             PCI_BASE_ADDRESS_MEM_MASK,
             sizeof(*dsp->reg));
+#endif
     if (dsp->reg==NULL) {
         PRINT_ERR(card, "Could not map PCI registers!\n");
         err = -EIO;
@@ -1513,6 +1519,14 @@ static int mcedsp_proc_open(struct inode *inode, struct file *file)
     return single_open(file, &mcedsp_proc_show, NULL);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+static const struct proc_ops mcedsp_proc_ops = {
+        .proc_open = mcedsp_proc_open,
+        .proc_read = seq_read,
+        .proc_lseek = seq_lseek,
+        .proc_release = single_release
+};
+#else
 static const struct file_operations mcedsp_proc_ops = {
     .owner = THIS_MODULE,
     .open = mcedsp_proc_open,
@@ -1520,6 +1534,7 @@ static const struct file_operations mcedsp_proc_ops = {
     .llseek = seq_lseek,
     .release = single_release
 };
+#endif
 
 
 inline int mcedsp_driver_init(void)

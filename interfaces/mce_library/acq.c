@@ -449,6 +449,8 @@ int copy_frames_mmap(mce_acq_t *acq)
             if (frame_property(data, &frame_header_v6, status_v6)
                     & FRAME_STATUS_V6_LAST)
                 done = EXIT_LAST;
+        } else {
+            mcelib_warning(acq->context, "checksum verification failed\n");
         }
 
         // Inform driver of consumption

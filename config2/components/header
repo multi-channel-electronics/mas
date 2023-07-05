@@ -57,6 +57,8 @@ if (isset($hw_num_rows))
 if (($num_rows_rc > 55) ||
     (isset($force_bank_scheme1) && $force_bank_scheme1)) {
    $use_bank_scheme1 = 1;
+} else {
+   $use_bank_scheme1 = 0;
 }
 
 /* "sys" cards -- order and eligibility */

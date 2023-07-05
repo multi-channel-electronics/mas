@@ -65,6 +65,14 @@ static int mcedsp_proc_open(struct inode *inode, struct file *file)
     return single_open(file, &proc_show, NULL);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+const struct proc_ops mcedsp_proc_ops = {
+    .proc_open = mcedsp_proc_open,
+    .proc_read = seq_read,
+    .proc_lseek = seq_lseek,
+    .proc_release = single_release
+};
+#else
 const struct file_operations mcedsp_proc_ops = {
     .owner = THIS_MODULE,
     .open = mcedsp_proc_open,
@@ -72,3 +80,4 @@ const struct file_operations mcedsp_proc_ops = {
     .llseek = seq_lseek,
     .release = single_release
 };
+#endif

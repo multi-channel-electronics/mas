@@ -930,13 +930,22 @@ int dsp_set_latency(int card, int value)
 
 void* dsp_allocate_dma(ssize_t size, unsigned long* bus_addr_p)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+    return dma_alloc_coherent(&dsp_dev->pci->dev, size, (dma_addr_t*)bus_addr_p,
+            GFP_KERNEL);
+#else
     return dma_alloc_coherent(NULL, size, (dma_addr_t*)bus_addr_p,
             GFP_KERNEL);
+#endif
 }
 
 void  dsp_free_dma(void* buffer, int size, unsigned long bus_addr)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+    dma_free_coherent(&dsp_dev->pci->dev, size, buffer, bus_addr);
+#else
     dma_free_coherent(NULL, size, buffer, bus_addr);
+#endif
 }
 
 int dsp_pci_flush()
@@ -1236,9 +1245,15 @@ int dsp_configure(struct pci_dev *pci)
         err = -1;
         goto fail;
     }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+    dev->dsp = (dsp_reg_t *)ioremap(pci_resource_start(dev->pci, 0) &
+            PCI_BASE_ADDRESS_MEM_MASK,
+            sizeof(*dev->dsp));
+#else
     dev->dsp = (dsp_reg_t *)ioremap_nocache(pci_resource_start(dev->pci, 0) &
             PCI_BASE_ADDRESS_MEM_MASK,
             sizeof(*dev->dsp));
+#endif
     if (dev->dsp==NULL) {
         PRINT_ERR(card, "Could not map PCI registers!\n");
         pci_release_regions(dev->pci);
@@ -1401,8 +1416,7 @@ int dsp_driver_probe(struct pci_dev *pci, const struct pci_device_id *id)
 
     /* Use the modern driver in this case */
     if (dev->version >= DSP_U0107) {
-        PRINT_ERR(card, "DSP Version not supported by driver.");
-        goto fail;
+        PRINT_ERR(card, "The c7 driver is preferred for this DSP firmware version!");
     }
 
     if (dev->version >= DSP_U0105) {
