@@ -1,3 +1,6 @@
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import wx
 import matplotlib
 
@@ -7,7 +10,7 @@ from matplotlib.backends.backend_wx import Toolbar, FigureCanvasWx, \
      FigureManager
 from matplotlib.figure import Figure
 
-class mcePlotInput:
+class mcePlotInput(object):
     """
     Structure to contain MCE data for the purposes of plotting.
     """
@@ -57,7 +60,7 @@ class mceViewport(wx.Frame):
     def Update(self, mce_data):
 
         y = mce_data.y
-        x = range(len(y))
+        x = list(range(len(y)))
 
         ll = self.axes.lines
         if len(ll) > 0: del ll[0]
@@ -65,7 +68,7 @@ class mceViewport(wx.Frame):
         self.axes.plot(x, y)
 
         if mce_data.x_limits != None:
-            print 'Setting x-lims to', mce_data.x_limits
+            print('Setting x-lims to', mce_data.x_limits)
             self.axes.set_xlim(mce_data.x_limits)
         
         self.axes.set_title(mce_data.name)

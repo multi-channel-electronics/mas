@@ -2,6 +2,8 @@
 
 # Some code based on embedding_in_ex.py by Jeremy O'Donoghue
 
+from __future__ import print_function
+from builtins import str
 import wx
 import mce
 from mceViewport import *
@@ -73,7 +75,7 @@ class ChannelView(wx.Frame):
         p = ca.acq(col, row, n_frames)
         
         trim = int(self.trim.GetValue())
-        print "Trim is %i" % trim
+        print("Trim is %i" % trim)
         if trim > 0:
             p.x_limits = (0, trim)
         else:
@@ -83,7 +85,7 @@ class ChannelView(wx.Frame):
             self.viewport.Update(p)
 
     def Destroy(self, force=False):
-        print 'Caught!'
+        print('Caught!')
         self.fig.Close(force)
         wx.Frame.Destroy(self, force)
 

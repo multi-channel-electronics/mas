@@ -1,3 +1,7 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import range
+from past.utils import old_div
 import mce
 
 from numpy import *
@@ -112,7 +116,7 @@ class xmce(mce.mce):
         # Mod out the flux quantum
         q = self.flux_quanta[row]
         if degain:
-            data += q/2
+            data += old_div(q,2)
         data = (data % q + q) % q
         # Prepare adc_offset
         new_adc = zeros(self.adc_offsets.shape)
@@ -138,7 +142,7 @@ if __name__ == '__main__':
     o.add_option('--no-status', action='store_true')
     opts, args = o.parse_args()
     m = xmce(load_status=not opts.no_status)
-    print 'm is your object.'
+    print('m is your object.')
     if opts.no_status:
-        print 'run m._load_status() before using.'
+        print('run m._load_status() before using.')
 

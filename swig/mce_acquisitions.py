@@ -1,10 +1,14 @@
+from __future__ import division
+from builtins import range
+from past.utils import old_div
+from builtins import object
 from mce import ChannelSet
 from mceViewport import mcePlotInput
 
 from numarray import *
 from numarray.fft import *
 
-class mceChannelAcq:
+class mceChannelAcq(object):
 
     def __init__(self, mce):
         self.mce = mce
@@ -23,7 +27,7 @@ class mceChannelAcq:
         return pi
 
 
-class mceChannelSetAcq:
+class mceChannelSetAcq(object):
 
     def __init__(self, mce):
         self.mce = mce
@@ -39,7 +43,7 @@ class mceChannelSetAcq:
         return pi
 
 
-class mceColumnAcq:
+class mceColumnAcq(object):
 
     def __init__(self, mce):
         self.mce = mce
@@ -58,7 +62,7 @@ class mceColumnAcq:
 
         return pi
     
-class mceColumnCorrAcq:
+class mceColumnCorrAcq(object):
 
     def __init__(self, mce):
         self.mce = mce
@@ -80,7 +84,7 @@ class mceColumnCorrAcq:
         f1 = fft(c1 - c1.mean())
         f2 = fft(c2 - c2.mean())
         cc = inverse_fft(f1*conjugate(f2))
-        cc = cc / cc[0]
+        cc = old_div(cc, cc[0])
 
         pi = mcePlotInput()
         pi.y = cc.real

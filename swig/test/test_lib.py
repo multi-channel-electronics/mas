@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 sys.path.append(sys.path[0] + '/..')
 
@@ -13,4 +14,4 @@ mcecmd_load_param(c, p, "cc", "fw_rev")
 
 d = u32array(32)
 mcecmd_read_block(c, p, 1, d.cast())
-print "%x" % int(d[0])
+print("%x" % int(d[0]))
