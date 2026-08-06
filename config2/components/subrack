@@ -41,6 +41,7 @@
         dump_card_block("bc3", "bias-fast card", True);
     else
         dump_card_block("bc3", "bias card", True);
+    dump_card_block("ac2", "address card", True);
     dump_card_block("ac",  "address card", True);
  ?>
 

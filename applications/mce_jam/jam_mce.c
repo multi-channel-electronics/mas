@@ -327,7 +327,6 @@ int write_mce_single(int tms, int tdi, int read_tdo)
 // I need to determine this one level up.
 int scan_mce(int count, char *tdi, char *tdo)
 {
-    /* printf("count=%i\n", count); */
     int dest_idx = 0;
     //int new_size = 0;
 

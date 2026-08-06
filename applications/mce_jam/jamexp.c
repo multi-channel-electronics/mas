@@ -1190,7 +1190,7 @@ int jam_yylex()
 /*																   		*/
 {
 	JAMS_SYMBOL_RECORD *symbol_rec = NULL;
-	int32_t val = 0L;
+	long val = 0L;
 	JAME_EXPRESSION_TYPE type = JAM_ILLEGAL_EXPR_TYPE;
 	int token_length;
 	int i;
@@ -1215,8 +1215,10 @@ int jam_yylex()
 
 	if (jam_token == VALUE_TOK)
 	{
-		if (jam_constant_value(jam_token_buffer, &val))
+		int32_t const_val = 0;
+		if (jam_constant_value(jam_token_buffer, &const_val))
 		{
+			val = const_val;
 			/* literal 0 and 1 may be interpreted as Integer or Boolean */
 			if ((val == 0) || (val == 1))
 			{
