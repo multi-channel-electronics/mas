@@ -1,0 +1,116 @@
+<?php
+
+
+/*
+ *   MCE HARDWARE
+ */
+
+/* Set $hw_subrack based on whether your MCE has 3 ("small") or 5
+ * ("full") MDM connectors.
+ */
+
+$hw_subrack = "full";
+
+
+/* Set $hw_mux11d=1 if this system uses new-school SA+SQ1 muxes. */
+
+$hw_mux11d = 1;
+
+/* Two-level addressing uses a second address card (ac2) in the bc3
+ * slot for chip selection.  The main AC handles row selection within
+ * each chip.
+ *
+ * With AC fw v6.0.1+, set $hw_num_rows_ac = 64 to access the full
+ * 64-entry row_order/on_bias/off_bias RAM.  On v5.0.4 the limit is
+ * 41 entries (sufficient for up to 41 total row visits per frame).
+ */
+//$hw_num_rows_ac = 64;
+
+/* These are only used if hw_mux11d != 0; they specify the bias card
+ * and offset of the flux_fb register used for the SQ1 bias. */
+$mux11d_sq1_bc = "bc2";
+$mux11d_sq1_offset = 0;
+
+/* In $card_list, list all cards present in your MCE.  The order
+ * probably doesn't matter.
+ *
+ * ac2 is a second address card occupying the bc3 slot (bus address 0x09).
+ * bc3 is removed from the card list since its slot is used by ac2.
+ */
+
+$card_list = array("ac", "ac2", "bc1", "bc2", "rc1", "rc2", "rc3", "rc4", "cc", "psc");
+
+
+/* In some cases we need to know what hardware revision the cards
+ * are. List here by card type.
+ */
+
+$hw_rev = array(
+	"bc" => "revD",
+);
+
+
+/* The TES bias line configuration can vary widely.  It is specified
+ * by setting $tes_para.  See mcewiki entry on "mce.cfg" for options.
+ *
+ * NOTE: bc3 has been replaced by ac2 in this configuration, so
+ * "small16" is not available.  Use "none" or "map" with bc1/bc2.
+ */
+
+$tes_para = "map";
+
+/* 24 LN_BIAS lines from bc1 and bc2.  Matches full32 layout for
+ * indices 0-19; bc3 bias[0:9] (full32 indices 20-29) are absent
+ * because bc3 slot is occupied by ac2. */
+
+$tes_bias_count = 24;
+$tes_bias_mapping = array (
+     /* args are mapping_start, mapping_count, card, param, param_offset */
+     array( 0, 10, "bc1", "bias", 0),
+     array(10, 10, "bc2", "bias", 0),
+     array(20,  2, "bc1", "bias", 10),
+     array(22,  2, "bc2", "bias", 10));
+
+
+/* The "heater bias" mapping described below will not be available
+ * unless "heater" is added to the $virt_list array below. */
+
+$heater_count = 0;
+$heater_mapping = array(
+		/* args are mapping_start, mapping_count, card, param, param_offset */
+/*		array(0, 4, "bc1", "flux_fb", 16),
+		array(4, 4, "bc2", "flux_fb", 16) */);
+
+
+
+/*
+ *   MCE FIRMWARE
+ */
+
+/* Describe firmware revisions (doesn't have to be exact) */
+
+$fw_rev = array(
+	"cc" => 0x5000000,
+	"rc" => 0x5000000,
+	"bc" => 0x5000000,
+	"ac" => 0x5000000,
+);
+
+
+/*
+ *   VIRTUAL FUNCTIONS
+ */
+
+/* List of virtual cards to expose.  Probably doesn't need to be altered
+ * except to add "heater".
+ */
+
+$virt_list = array("rcs", "rca", "sys", "sa", "sq1", "row", "tes");
+
+
+
+/* And execute. */
+
+include 'components/mce';
+
+?>
