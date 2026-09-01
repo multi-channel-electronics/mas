@@ -53,6 +53,8 @@ struct string_table servo_var_codes[] = {
         {"mux11d_sq1_servo_sa"         , "sq1bias", "sq1fb", "safb"}},
     {MUX11D_RS_SERVO,
         {"mux11d_rs_servo"             , "sq1bias", "rowsel","safb"}},
+    {MUX11D_CS_SERVO,
+        {"mux11d_cs_servo"             , "chipsel", "none"   ,"safb"}},
     {-1, {"","",""}}
 };
 

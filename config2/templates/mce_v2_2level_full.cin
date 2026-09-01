@@ -26,6 +26,9 @@ $hw_mux11d = 1;
  */
 //$hw_num_rows_ac = 64;
 
+/* 5 chips x 10 rows = 50 total row visits per frame. */
+$hw_num_rows = 50;
+
 /* These are only used if hw_mux11d != 0; they specify the bias card
  * and offset of the flux_fb register used for the SQ1 bias. */
 $mux11d_sq1_bc = "bc2";
@@ -90,10 +93,10 @@ $heater_mapping = array(
 /* Describe firmware revisions (doesn't have to be exact) */
 
 $fw_rev = array(
-	"cc" => 0x5000000,
-	"rc" => 0x5000000,
-	"bc" => 0x5000000,
-	"ac" => 0x5000000,
+	"cc" => 0x500000e,
+	"rc" => 0x5020000,
+	"bc" => 0x5030001,
+	"ac" => 0x5000004,
 );
 
 

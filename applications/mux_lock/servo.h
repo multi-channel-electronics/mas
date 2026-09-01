@@ -28,7 +28,8 @@ enum servo_type_t {
     CLASSIC_SQ1_SERVO_ALL_ROWS,
     CLASSIC_SQ1_SERVO_SA_FB,
     MUX11D_SQ1_SERVO_SA,
-    MUX11D_RS_SERVO
+    MUX11D_RS_SERVO,
+    MUX11D_CS_SERVO
 };
 
 /* For looking up names of bias, ramp_fb, servo_fb. */
@@ -67,6 +68,9 @@ const char *get_string(struct string_table *table, int id, int column,
 #define SQ2_FB_COL   "fb_col"
 #define SQ2_FB_MUX   "enbl_mux"
 #define ROWSEL_FB "select"
+
+#define CHIPSEL_CARD "ac2"
+#define CHIPSEL_FB   "on_bias"
 
 typedef struct {
     int fcount;

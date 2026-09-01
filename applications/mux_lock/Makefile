@@ -13,7 +13,7 @@ CFLAGS += $(DEFS)
 
 # targets
 
-TARGETS = sq1servo sq2servo sq1servo_all sq1servo_sa rs_servo
+TARGETS = sq1servo sq2servo sq1servo_all sq1servo_sa rs_servo cs_servo
 
 OBJECTS = $(foreach d,$(TARGETS),$(d).o ) \
 	servo.o options.o
@@ -39,6 +39,9 @@ sq1servo_sa: sq1servo_sa.o servo.o options.o
 rs_servo: rs_servo.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
+cs_servo: cs_servo.o servo.o options.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
+
 sq2servo: sq2servo.o servo.o options.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBRARY)
 
@@ -57,9 +60,11 @@ INSTALL_TARGET=sq1servo_sa
 include $(MAKERULES)/Makefile.install_rule
 INSTALL_TARGET=rs_servo
 include $(MAKERULES)/Makefile.install_rule
+INSTALL_TARGET=cs_servo
+include $(MAKERULES)/Makefile.install_rule
 INSTALL_TARGET=sq2servo
 include $(MAKERULES)/Makefile.install_rule
 
 install: install__sq1servo install__sq1servo_all install__sq2servo \
-	 install__sq1servo_sa install__rs_servo
+	 install__sq1servo_sa install__rs_servo install__cs_servo
 
