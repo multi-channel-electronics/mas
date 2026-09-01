@@ -83,7 +83,7 @@ int load_exp_config(const char *filename)
 
     load_int(cfg, "ac2_num_rows", &control.ac2_num_rows);
 
-    load_double_array(cfg, "rowsel_servo_gain",
+    load_double_array(cfg, "cs_servo_gain",
             control.column_0, control.column_n, control.gain);
     load_int_array(cfg, "sa_fb",
             control.column_0, control.column_n, control.sfb_init);
