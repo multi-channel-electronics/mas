@@ -1376,7 +1376,12 @@ int mcedsp_mmap(struct file *filp, struct vm_area_struct *vma)
     // Mark memory as reserved (prevents core dump inclusion and caching)
 #ifdef VM_DONTDUMP
     /* 3.0.+ kernels */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
+    /* 6.3+ kernels make vm_flags read-only outside these accessors */
+    vm_flags_set(vma, VM_DONTEXPAND | VM_DONTDUMP);
+#else
     vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;
+#endif
 #else
     /* 2.6.x kernels */
     vma->vm_flags |= VM_IO | VM_RESERVED;

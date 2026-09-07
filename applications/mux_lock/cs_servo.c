@@ -15,10 +15,12 @@
  *
  *    Sweeps the chip-select flux (ac2 on_bias) while servoing SA FB,
  *    producing a .bias file that the Python CSServo class analyzes to
- *    determine per-chip on/off bias levels.
+ *    determine per-chip on/off bias levels.  Optionally this may be
+ *    done for a series of sq1_bias values (cs_servo_bias_*).
  *
- *    No bias ramp, no hybrid mux support, always outputs all rows.
- *    Ramp parameters come from experiment.cfg (cs_servo_flux_*).
+ *    No hybrid mux support, always outputs all rows.
+ *    Ramp parameters come from experiment.cfg (cs_servo_flux_*,
+ *    cs_servo_bias_*).
  **************************************************************************/
 
 struct {
@@ -31,11 +33,17 @@ struct {
 
     int rows;       /* Row count */
 
+    int bias_active;  /* cs_servo_bias_ramp */
+    int bias;         /* cs_servo_bias_start */
+    int dbias;        /* cs_servo_bias_step */
+    int nbias;        /* cs_servo_bias_count */
+
     int fb;         /* cs_servo_flux_start */
     int dfb;        /* cs_servo_flux_step */
     int nfb;        /* cs_servo_flux_count */
 
     int ac2_num_rows;  /* Number of ac2 on_bias entries to fill */
+    int ac2_row_order[MAXACROWS];  /* ac2 on_bias register addresses */
 
     int sfb_init[MAXCOLS];
 
@@ -81,7 +89,14 @@ int load_exp_config(const char *filename)
     load_int(cfg, "cs_servo_flux_count", &control.nfb);
     load_int(cfg, "cs_servo_flux_step", &control.dfb);
 
+    load_int(cfg, "cs_servo_bias_ramp", &control.bias_active);
+    load_int(cfg, "cs_servo_bias_start", &control.bias);
+    load_int(cfg, "cs_servo_bias_count", &control.nbias);
+    load_int(cfg, "cs_servo_bias_step", &control.dbias);
+
     load_int(cfg, "ac2_num_rows", &control.ac2_num_rows);
+    load_int_array(cfg, "ac2_row_order", 0, control.ac2_num_rows,
+            control.ac2_row_order);
 
     load_double_array(cfg, "cs_servo_gain",
             control.column_0, control.column_n, control.gain);
@@ -95,6 +110,17 @@ int load_exp_config(const char *filename)
     return 0;
 }
 
+/* write_chipsel: write 'value' to ac2 on_bias at each configured chip
+   select address.  Addresses (ac2_row_order) need not be contiguous or
+   start at zero, so each is written individually. */
+void write_chipsel(mce_context_t *mce, mce_param_t *m_chipsel, int32_t value)
+{
+    int32_t v = value;
+    for (int j = 0; j < control.ac2_num_rows; j++)
+        write_range_or_exit(mce, m_chipsel, control.ac2_row_order[j],
+                &v, 1, "chipsel");
+}
+
 /************************************************************
  *          M A I N
  ************************************************************/
@@ -105,7 +131,7 @@ int main(int argc, char **argv)
 
     int32_t temparr[MAXTEMP];
 
-    int i, r, snum;
+    int i, j, r, snum;
 
     FILE *bias_out;
     char outfile[MAXLINE];
@@ -185,10 +211,15 @@ int main(int argc, char **argv)
     printf("Card bits=%#x, column count=%i num_rows_reported=%d\n",
             acq.cards, control.column_n, control.rows);
 
+    /* Make sure we servo exactly once when bias is suppressed. */
+    if (!control.bias_active)
+        control.nbias = 1;
+
     /* Lookup MCE parameters */
-    mce_param_t m_chipsel, m_safb, m_safb_col[MAXCOLS];
+    mce_param_t m_chipsel, m_sq1bias, m_safb, m_safb_col[MAXCOLS];
 
     load_param_or_exit(mce, &m_chipsel, CHIPSEL_CARD, CHIPSEL_FB, 0);
+    load_param_or_exit(mce, &m_sq1bias, SQ1_CARD, SQ1_BIAS, 0);
 
     /* Verify mux11d */
     int mux11d = check_mux11d(mce, &m_safb, m_safb_col,
@@ -220,19 +251,18 @@ int main(int argc, char **argv)
 
     /* Record init values for runfile */
     sprintf(init_line1, "<safb.init>");
-    for (int j = 0; j < control.column_n; j++)
+    for (j = 0; j < control.column_n; j++)
         sprintf(init_line1 + strlen(init_line1), " %d", safb[j][0]);
 
     sprintf(init_line2, "<super_servo> 1");
 
-    /* Generate runfile.  The flux sweep goes in loop1 (genrunfile's
-       "bias" slot) so that load_ramp_params reads it correctly when
-       par_title doesn't end with "bias". */
+    /* Generate runfile.  loop1 is the (optional) sq1 bias ramp, loop2
+       is the chip-select flux sweep. */
     error = genrunfile(
             full_datafilename, control.filename,
             MUX11D_CS_SERVO, control.rc,
-            control.fb, control.dfb, control.nfb, 1,
-            0, 0, 1,
+            control.bias, control.dbias, control.nbias, control.bias_active,
+            control.fb, control.dfb, control.nfb,
             init_line1, init_line2,
             control.column_n, 1,
             control.gain, control.quanta);
@@ -251,68 +281,81 @@ int main(int argc, char **argv)
         fprintf(bias_out, "<safb%02d> ", snum + control.column_0);
     fprintf(bias_out, "\n");
 
-    /* Initialize chip select */
-    duplicate_fill(control.fb, temparr, control.ac2_num_rows);
-    write_range_or_exit(mce, &m_chipsel, 0, temparr,
-            control.ac2_num_rows, "chipsel");
+    /* Sweep sq1 bias (if ramping), and chip select flux */
+    for (j = 0; j < control.nbias; j++) {
 
-    /* Sweep chip select flux */
-    for (i = -options.preservo; i < control.nfb; i++) {
-
-        /* Write SA FB per column */
-        for (snum = 0; snum < control.column_n; snum++) {
-            rerange(temparr, safb[snum], control.rows,
-                    control.quanta+snum, 1);
-            write_range_or_exit(mce, m_safb_col+snum, 0, temparr,
-                    (m_safb_col+snum)->param.count, "safb_col");
+        if (control.bias_active) {
+            /* Update the SQ1 bias */
+            duplicate_fill(control.bias + j*control.dbias, temparr,
+                    control.column_n);
+            write_range_or_exit(mce, &m_sq1bias, control.column_0, temparr,
+                    control.column_n, "sq1bias");
         }
 
-        if (i > 0) {
-            /* Next chipsel value */
-            duplicate_fill(control.fb + i*control.dfb, temparr,
-                    control.ac2_num_rows);
-            write_range_or_exit(mce, &m_chipsel, 0, temparr,
-                    control.ac2_num_rows, "chipsel");
-        }
+        /* Initialize chip select */
+        write_chipsel(mce, &m_chipsel, control.fb);
 
-        /* Acquire one frame */
-        if ((error = mcedata_acq_go(&acq, 1)) != 0)
-            error_action("data acquisition failed", error);
+        /* Sweep chip select flux */
+        for (i = -options.preservo; i < control.nfb; i++) {
 
-        /* Update servo */
-        for (snum = 0; snum < control.column_n; snum++) {
-            for (r = 0; r < control.rows; r++) {
-                safb[snum][r] += control.gain[snum] *
-                    ((int)sq1servo.last_frame[r*control.column_n + snum]
-                     - control.target[snum]);
+            /* Write SA FB per column */
+            for (snum = 0; snum < control.column_n; snum++) {
+                rerange(temparr, safb[snum], control.rows,
+                        control.quanta+snum, 1);
+                write_range_or_exit(mce, m_safb_col+snum, 0, temparr,
+                        (m_safb_col+snum)->param.count, "safb_col");
             }
-        }
 
-        /* Write to .bias file (all rows) */
-        if (i >= 0) {
-            for (r = 0; r < control.rows; r++) {
-                fprintf(bias_out, " 0 %4i %2i ", i, r);
-                for (snum = 0; snum < control.column_n; snum++)
-                    fprintf(bias_out, "%13d ",
-                            sq1servo.last_frame[
-                                r*control.column_n + snum]);
-                for (snum = 0; snum < control.column_n; snum++)
-                    fprintf(bias_out, "%13d ", safb[snum][r]);
-                fprintf(bias_out, "\n");
+            if (i > 0) {
+                /* Next chipsel value */
+                write_chipsel(mce, &m_chipsel, control.fb + i*control.dfb);
+            }
+
+            /* Acquire one frame */
+            if ((error = mcedata_acq_go(&acq, 1)) != 0)
+                error_action("data acquisition failed", error);
+
+            /* Update servo */
+            for (snum = 0; snum < control.column_n; snum++) {
+                for (r = 0; r < control.rows; r++) {
+                    safb[snum][r] += control.gain[snum] *
+                        ((int)sq1servo.last_frame[r*control.column_n + snum]
+                         - control.target[snum]);
+                }
+            }
+
+            /* Write to .bias file (all rows) */
+            if (i >= 0) {
+                for (r = 0; r < control.rows; r++) {
+                    fprintf(bias_out, "%2i %4i %2i ", j, i, r);
+                    for (snum = 0; snum < control.column_n; snum++)
+                        fprintf(bias_out, "%13d ",
+                                sq1servo.last_frame[
+                                    r*control.column_n + snum]);
+                    for (snum = 0; snum < control.column_n; snum++)
+                        fprintf(bias_out, "%13d ", safb[snum][r]);
+                    fprintf(bias_out, "\n");
+                }
             }
         }
     }
 
     /* Reset ac2 on_bias to zero */
-    duplicate_fill(0, temparr, control.ac2_num_rows);
-    write_range_or_exit(mce, &m_chipsel, 0, temparr,
-            control.ac2_num_rows, "chipsel");
+    write_chipsel(mce, &m_chipsel, 0);
 
     /* Reset SA FB to zero */
     duplicate_fill(0, temparr, MAXROWS);
     for (snum = 0; snum < control.column_n; snum++) {
         write_range_or_exit(mce, m_safb_col+snum, 0, temparr,
                 (m_safb_col+snum)->param.count, "safb_col");
+    }
+
+    if (control.bias_active) {
+        duplicate_fill(0, temparr, control.column_n);
+        write_range_or_exit(mce, &m_sq1bias, control.column_0, temparr,
+                control.column_n, "sq1bias");
+    } else {
+        printf("SQ1 bias unchanged.\n");
     }
 
     if (sq1servo.df != NULL)

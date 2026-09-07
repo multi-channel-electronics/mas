@@ -15,11 +15,11 @@ all: .build
 
 .build: $(SOURCE) _default_setup.py $(LIBDEP)
 	-rm -rf build .build   # This is necessary because of external library dependency.
-	python setup.py build
+	$(PYTHON) setup.py build
 	touch .build
 
 install: default
-	python setup.py install --install-lib=$(MAS_INSTALL_PYTHON)
+	$(PYTHON) setup.py install --install-lib=$(MAS_INSTALL_PYTHON)
 
 _default_setup.py:
 	-rm _default_setup.py
@@ -28,7 +28,7 @@ _default_setup.py:
 	echo lib_dir = \"$(MCELIB_F)\" >> $@
 
 clean:
-	-python setup.py clean
+	-$(PYTHON) setup.py clean
 	-rm -r build
 	-rm _default_setup.py
 	make -C $(MOD) clean
